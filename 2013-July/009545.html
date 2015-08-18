@@ -1,0 +1,420 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-70-gbe15f7f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-July/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091.0.1.8-70-gbe15f7f&In-Reply-To=%3C20130719213812.EA3A45DB37%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="009544.html">
+   <LINK REL="Next"  HREF="009546.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-70-gbe15f7f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091.0.1.8-70-gbe15f7f&In-Reply-To=%3C20130719213812.EA3A45DB37%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-70-gbe15f7f">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jul 19 23:38:12 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="009544.html">[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-66-gd2cc801
+</A></li>
+        <LI>Next message: <A HREF="009546.html">[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-65-g598c9ae
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9545">[ date ]</a>
+              <a href="thread.html#9545">[ thread ]</a>
+              <a href="subject.html#9545">[ subject ]</a>
+              <a href="author.html#9545">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  be15f7fafb8204df30ef4afc81e6556d094410ba (commit)
+      from  940adc9b5c6c51b920070bc007166789453da752 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                |    3 ++
+ debian/x2gothinclient.config    |   50 ++++++++++++++++++++++++
+ debian/x2gothinclient.init      |   55 +++++++++++++-------------
+ debian/x2gothinclient.postinst  |   30 +++++++++++++++
+ debian/x2gothinclient.prerm     |   81 +++++++++++++++++++++++++++++++++++++++
+ debian/x2gothinclient.templates |   20 ++++++++++
+ 6 files changed, 210 insertions(+), 29 deletions(-)
+ create mode 100644 debian/x2gothinclient.config
+ create mode 100755 debian/x2gothinclient.prerm
+ create mode 100644 debian/x2gothinclient.templates
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 8f0c2c6..f5bb270 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -71,6 +71,9 @@ x2gothinclient (1.0.99.1-0~x2go1) UNRELEASED; urgency=low
+       installed into package.
+   * /debian/x2gothinclient.init:
+     + Update pointer to X2Go TCE documentation on <A HREF="http://wiki.x2go.org.">http://wiki.x2go.org.</A>
++  * Launch X2Go TCE via /etc/X11/default-display-manager. Add debconf template
++    to handle default display manager selection. Inspired by Debian's gdm
++    package.
+ 
+   [ Oleksandr Shneyder ]
+   * New upstream version (1.0.99.1):
+diff --git a/debian/x2gothinclient.config b/debian/x2gothinclient.config
+new file mode 100644
+index 0000000..ac2bcc9
+--- /dev/null
++++ b/debian/x2gothinclient.config
+@@ -0,0 +1,50 @@
++#!/bin/sh
++# x2gothinclient package configuration script
++
++set -e
++
++# source debconf library
++. /usr/share/debconf/confmodule
++
++DEFAULT_DISPLAY_MANAGER_FILE=/etc/X11/default-display-manager
++
++OLD_DEFAULT=
++db_metaget shared/default-x-display-manager owners
++OWNERS=&quot;$RET&quot;
++db_metaget shared/default-x-display-manager choices
++CHOICES=&quot;$RET&quot;
++
++if [ &quot;$OWNERS&quot; != &quot;$CHOICES&quot; ]; then
++  db_subst shared/default-x-display-manager choices $OWNERS
++  db_fset shared/default-x-display-manager seen false
++fi
++
++if [ -e &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot; ]; then
++  OLD_DAEMON=&quot;$(grep -v '^[[:space:]]*#' \
++                            &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot; |
++                            head -n 1)&quot;
++  OLD_DEFAULT=&quot;$(basename $OLD_DAEMON 2&gt;/dev/null || true)&quot;
++  if [ -n &quot;$OLD_DEFAULT&quot; ]; then
++    db_set shared/default-x-display-manager &quot;$OLD_DEFAULT&quot;
++  fi
++else
++  if db_get shared/default-x-display-manager; then
++    OLD_DEFAULT=&quot;$RET&quot;
++  fi
++fi
++
++db_input high shared/default-x-display-manager || true
++db_go
++
++# using this display manager?
++db_get shared/default-x-display-manager
++CURRENT_DEFAULT=&quot;$RET&quot;
++
++# remove the default display manager file if we're going to change it
++if [ -e &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot; ]; then
++  if [ &quot;$OLD_DEFAULT&quot; != &quot;$CURRENT_DEFAULT&quot; ]; then
++    mv $DEFAULT_DISPLAY_MANAGER_FILE $DEFAULT_DISPLAY_MANAGER_FILE.dpkg-tmp
++  fi
++fi
++
++exit 0
+diff --git a/debian/x2gothinclient.init b/debian/x2gothinclient.init
+index d08d131..56b817b 100644
+--- a/debian/x2gothinclient.init
++++ b/debian/x2gothinclient.init
+@@ -29,12 +29,16 @@
+ # Short-Description: Start and stop the x2go thinclient daemon
+ ### END INIT INFO
+ 
++set -e
++
+ # use system's locale settings for the X2Go Client in TCE mode
+ if [ -r /etc/default/locale ]; then
+ 	. /etc/default/locale
+ 	export LANG LANGUAGE
+ fi
+ 
++. /lib/lsb/init-functions
++
+ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ export HOSTNAME
+ DAEMON=/usr/sbin/x2gothinclientd
+@@ -51,42 +55,36 @@ fi
+ # pre-init X2Go Thin Client through init script...
+ test -x /etc/x2go/x2gothinclient_init &amp;&amp; . /etc/x2go/x2gothinclient_init
+ 
+-set -e
++# To start x2gothinclient even if it is not the default display manager, change
++# HEED_DEFAULT_DISPLAY_MANAGER to &quot;false.&quot;
++HEED_DEFAULT_DISPLAY_MANAGER=${HEED_DEFAULT_DISPLAY_MANAGER:-true}
++DEFAULT_DISPLAY_MANAGER_FILE=/etc/X11/default-display-manager
+ 
+ case &quot;$1&quot; in
+   start)
+-	echo -n &quot;Starting $DESC: &quot;
+-	start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid \
+-		--exec $DAEMON -- $DAEMON_OPTS
+-	echo &quot;$NAME.&quot;
++	CONFIGURED_DAEMON=&quot;$(basename \&quot;$(cat $DEFAULT_DISPLAY_MANAGER_FILE 2&gt; /dev/null)\&quot;)&quot;
++	if grep -wqs text /proc/cmdline; then
++		log_warning_msg &quot;Not starting GNOME Display Manager (gdm); found 'text' in kernel commandline.&quot;
++	elif [ -e &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot; ] &amp;&amp; \
++	    [ &quot;$HEED_DEFAULT_DISPLAY_MANAGER&quot; = &quot;true&quot; ] &amp;&amp; \
++	    [ &quot;$CONFIGURED_DAEMON&quot; != x2gothinclientd ] ; then
++		log_action_msg &quot;Not starting X2Go Client in TCE mode; it is not configured as default display manager&quot;
++	else
++		log_daemon_msg &quot;Starting $DESC&quot; &quot;x2gothinclientd&quot;
++		start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS
++		log_end_msg $?
++	fi
+ 	;;
+   stop)
+-	echo -n &quot;Stopping $DESC: &quot;
+-	start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid &amp;&amp; echo &quot;$NAME.&quot; || echo &quot;not running&quot;
++	if [ -e /var/run/$NAME.pid ]; then
++		log_daemon_msg &quot;Stopping $DESC&quot; &quot;x2gothinclientd&quot;
++		start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid &amp;&amp; echo &quot;$NAME.&quot; || echo &quot;not running&quot;
++		log_end_msg $?
++	fi
+ 	;;
+-  #reload)
+-	#
+-	#	If the daemon can reload its config files on the fly
+-	#	for example by sending it SIGHUP, do it here.
+-	#
+-	#	If the daemon responds to changes in its config file
+-	#	directly anyway, make this a do-nothing entry.
+-	#
+-	# echo &quot;Reloading $DESC configuration files.&quot;
+-	# start-stop-daemon --stop --signal 1 --quiet --pidfile \
+-	#	/var/run/$NAME.pid --exec $DAEMON
+-  #;;
+   force-reload)
+-	#
+-	#	If the &quot;reload&quot; option is implemented, move the &quot;force-reload&quot;
+-	#	option to the &quot;reload&quot; entry above. If not, &quot;force-reload&quot; is
+-	#	just the same as &quot;restart&quot; except that it does nothing if the
+-	#   daemon isn't already running.
+ 	# check wether $DAEMON is running. If so, restart
+-	start-stop-daemon --stop --test --quiet --pidfile \
+-		/var/run/$NAME.pid  \
+-	&amp;&amp; $0 restart \
+-	|| exit 0
++	start-stop-daemon --stop --test --quiet --pidfile /var/run/$NAME.pid &amp;&amp; $0 restart || exit 0
+ 	;;
+   restart)
+ 	$0 stop
+@@ -95,7 +93,6 @@ case &quot;$1&quot; in
+ 	;;
+   *)
+ 	N=/etc/init.d/$NAME
+-	# echo &quot;Usage: $N {start|stop|restart|reload|force-reload}&quot; &gt;&amp;2
+ 	echo &quot;Usage: $N {start|stop|restart|force-reload}&quot; &gt;&amp;2
+ 	exit 1
+ 	;;
+diff --git a/debian/x2gothinclient.postinst b/debian/x2gothinclient.postinst
+index bc7f005..be096ce 100755
+--- a/debian/x2gothinclient.postinst
++++ b/debian/x2gothinclient.postinst
+@@ -5,6 +5,9 @@
+ 
+ set -e
+ 
++# source debconf's configuration module
++. /usr/share/debconf/confmodule
++
+ # summary of how this script can be called:
+ #        * &lt;postinst&gt; `configure' &lt;most-recently-configured-version&gt;
+ #        * &lt;old-postinst&gt; `abort-upgrade' &lt;new version&gt;
+@@ -17,6 +20,33 @@ set -e
+ # for details, see <A HREF="http://www.debian.org/doc/debian-policy/">http://www.debian.org/doc/debian-policy/</A> or
+ # the debian-policy package
+ 
++THIS_PACKAGE=x2gothinclient
++DEFAULT_DISPLAY_MANAGER_FILE=/etc/X11/default-display-manager
++
++# debconf is not a registry, so we only fiddle with the default file if it
++# does not exist
++if [ ! -e $DEFAULT_DISPLAY_MANAGER_FILE ]; then
++	if db_get shared/default-x-display-manager; then
++		# workaround debconf passthru bug (#379198)
++		if [ -z &quot;$RET&quot; ]; then
++			$RET=&quot;$THIS_PACKAGE&quot;
++		fi
++		if [ &quot;$THIS_PACKAGE&quot; != &quot;$RET&quot; ]; then
++			echo &quot;Please be sure to run \&quot;dpkg --configure $RET\&quot;.&quot;
++		fi
++		echo &quot;/usr/sbin/x2gothinclientd&quot; &gt; $DEFAULT_DISPLAY_MANAGER_FILE
++	fi
++fi
++
++# remove the displaced old default display manager file if it exists
++if [ -e &quot;$DEFAULT_DISPLAY_MANAGER_FILE.dpkg-tmp&quot; ]; then
++	rm &quot;$DEFAULT_DISPLAY_MANAGER_FILE.dpkg-tmp&quot;
++fi
++
++# debconf hangs if gdm gets started below without this
++db_stop || true
++
++
+ case &quot;$1&quot; in
+ 	configure)
+ 
+diff --git a/debian/x2gothinclient.prerm b/debian/x2gothinclient.prerm
+new file mode 100755
+index 0000000..92edd7a
+--- /dev/null
++++ b/debian/x2gothinclient.prerm
+@@ -0,0 +1,81 @@
++#! /bin/sh
++
++# prerm script for x2gothinclient
++#
++# see: dh_installdeb(1)
++
++set -e
++
++# source debconf's configuration module
++. /usr/share/debconf/confmodule
++
++# summary of how this script can be called:
++#        * &lt;prerm&gt; `remove'
++#        * &lt;old-prerm&gt; `upgrade' &lt;new-version&gt;
++#        * &lt;new-prerm&gt; `failed-upgrade' &lt;old-version&gt;
++#        * &lt;conflictor's-prerm&gt; `remove' `in-favour' &lt;package&gt; &lt;new-version&gt;
++#        * &lt;deconfigured's-prerm&gt; `deconfigure' `in-favour'
++#        &lt;package-being-installed&gt; &lt;version&gt; `removing'
++#        &lt;conflicting-package&gt; &lt;version&gt;
++# for details, see <A HREF="http://www.debian.org/doc/debian-policy/">http://www.debian.org/doc/debian-policy/</A> or
++# the debian-policy package
++
++THIS_PACKAGE=x2gothinclient
++DEFAULT_DISPLAY_MANAGER_FILE=/etc/X11/default-display-manager
++
++if [ &quot;$1&quot; = &quot;remove&quot; -o &quot;$1&quot; = &quot;deconfigure&quot; ]; then
++
++	# disown this question
++	db_unregister shared/default-x-display-manager || true
++
++	# does the question still exist?
++	if db_get shared/default-x-display-manager; then
++		db_metaget shared/default-x-display-manager owners
++		db_subst shared/default-x-display-manager choices &quot;$RET&quot;
++		db_get shared/default-x-display-manager
++		# are we removing the currently selected display manager?
++		if [ &quot;$THIS_PACKAGE&quot; = &quot;$RET&quot; ]; then
++			if [ -e &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot; ]; then
++				if [ &quot;$(cat $DEFAULT_DISPLAY_MANAGER_FILE)&quot; = &quot;/usr/sbin/x2gothinclientd&quot; ]; then
++					rm &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot;
++				fi
++			fi
++
++			# ask the user to choose a new default
++			db_fset shared/default-x-display-manager seen false
++			db_input critical shared/default-x-display-manager || true
++			db_go
++
++			# if the display manager file doesn't exist, write it with the path
++			# to the new default display manager
++			if [ ! -e $DEFAULT_DISPLAY_MANAGER_FILE ]; then
++				db_get shared/default-x-display-manager
++				echo &quot;Please be sure to run \&quot;dpkg-reconfigure $RET\&quot;.&quot;
++				db_get &quot;$RET&quot;/daemon_name
++				echo &quot;$RET&quot; &gt; &quot;$DEFAULT_DISPLAY_MANAGER_FILE&quot;
++			fi
++		fi
++	fi
++fi
++
++
++case &quot;$1&quot; in
++	remove)
++		if [ -x /etc/init.d/x2gothinclient ]; then
++			invoke-rc.d x2gothinclient stop
++		fi
++		;;
++	deconfigure|upgrade|failed-upgrade)
++		:
++		;;
++	*) echo &quot;$0: didn't understand being called with \`$1'&quot; 1&gt;&amp;2
++		exit 1
++		;;
++esac
++
++# dh_installdeb will replace this with shell code automatically
++# generated by other debhelper scripts.
++
++#DEBHELPER#
++
++exit 0
+diff --git a/debian/x2gothinclient.templates b/debian/x2gothinclient.templates
+new file mode 100644
+index 0000000..7a99ad9
+--- /dev/null
++++ b/debian/x2gothinclient.templates
+@@ -0,0 +1,20 @@
++Template: shared/default-x-display-manager
++Type: select
++Choices: ${choices}
++Description: Default display manager:
++ On X2Go thin clients X2Go Client is sort of used as a display manager. For
++ this, X2Go Client gets started in TCE mode. The TCE acronym stands for thin
++ client environment. In TCE mode, X2Go Client manages the default display of the
++ X Window System.
++ .
++ Generally, a display manager is a program that provides graphical login
++ capabilities for the X Window System. Other display managers for example
++ are GDM, KDM, etc. Login is--in most cases--granted to the local system.
++ .
++ However, X2Go Client in TCE mode does appear like a display manager,
++ but it will log you onto pre-defined X2Go sessions on remote servers.
++ .
++ As you are about to install X2Go Client in TCE mode on this machine
++ and as you already have other display managers installed on this machine,
++ please explicitly select which display manager is supposed to be the default
++ for your system.
+
+
+hooks/post-receive
+-- 
+x2gothinclient.git (X2Go Thin Client Environment)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gothinclient.git&quot; (X2Go Thin Client Environment).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="009544.html">[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-66-gd2cc801
+</A></li>
+	<LI>Next message: <A HREF="009546.html">[X2Go-Commits] x2gothinclient.git - build-main (branch) updated:	1.0.1.8-65-g598c9ae
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9545">[ date ]</a>
+              <a href="thread.html#9545">[ thread ]</a>
+              <a href="subject.html#9545">[ subject ]</a>
+              <a href="author.html#9545">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

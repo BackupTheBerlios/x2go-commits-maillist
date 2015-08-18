@@ -1,0 +1,664 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-11-g51cb597
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.5-11-g51cb597&In-Reply-To=%3C20130604190949.571CA5DB36%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008078.html">
+   <LINK REL="Next"  HREF="008081.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-11-g51cb597</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.5-11-g51cb597&In-Reply-To=%3C20130604190949.571CA5DB36%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-11-g51cb597">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:09:49 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008078.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-9-g5347ab0
+</A></li>
+        <LI>Next message: <A HREF="008081.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-17-g762de5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8080">[ date ]</a>
+              <a href="thread.html#8080">[ thread ]</a>
+              <a href="subject.html#8080">[ subject ]</a>
+              <a href="author.html#8080">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  51cb5974db42ea58b28b4b520337fa00a0a80eab (commit)
+      from  6c69ef04e6fda090552dfb0fd09152b2a8aee96a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/broker/x2gobroker-sessionprofiles.conf |    6 ++
+ etc/x2gobroker.conf                        |   43 ++++++++++++-
+ lib/x2gobroker-agent.pl                    |   86 +++++++++++++++++--------
+ x2gobroker/agent.py                        |   93 ++++++++++++++++++++++++++-
+ x2gobroker/brokers/base_broker.py          |   95 +++++++++++++++++++++++++---
+ x2gobroker/brokers/inifile_broker.py       |   13 +++-
+ x2gobroker/defaults.py                     |    2 +
+ x2gobroker/web/plain.py                    |    4 +-
+ 8 files changed, 299 insertions(+), 43 deletions(-)
+
+The diff of changes is:
+diff --git a/etc/broker/x2gobroker-sessionprofiles.conf b/etc/broker/x2gobroker-sessionprofiles.conf
+index f3b4e8b..af3dfc2 100644
+--- a/etc/broker/x2gobroker-sessionprofiles.conf
++++ b/etc/broker/x2gobroker-sessionprofiles.conf
+@@ -92,6 +92,7 @@ acl-groups-deny=ALL
+ acl-clients-deny=ALL
+ acl-clients-allow=10.1.0.0/16
+ acl-any-order=deny-allow
++broker-session-autostart=true
+ 
+ [pool-A-server-B]
+ user=
+@@ -103,6 +104,7 @@ acl-groups-deny=ALL
+ acl-clients-deny=ALL
+ acl-clients-allow=10.2.0.0/16
+ acl-any-order=deny-allow
++broker-session-autostart=true
+ 
+ [pool-A-server-C]
+ user=
+@@ -112,6 +114,7 @@ command=KDE
+ acl-groups-allow=kde-users,admins
+ acl-groups-deny=ALL
+ acl-any-order=deny-allow
++broker-session-autostart=true
+ 
+ ##
+ ## EXAMPLE: pool-B (e.g. webserver in the DMZ or on the internet)
+@@ -170,3 +173,6 @@ acl-users-deny=ALL
+ acl-groups-allow=students,admins
+ acl-groups-deny=ALL
+ acl-any-order=deny-allow
++# this server pool has a special broker setup for SSH authorized_keys
++broker-session-autostart=true
++broker-authorized-keys=/var/lib/x2gobroker/ssh/%u/authorized_keys
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index a1fc81a..70d0906 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -90,7 +90,48 @@
+ # detection can be quite CPU intensive on the X2Go Broker server.
+ #ignore-primary-group-memberships = true
+ 
+-# default X2Go Broker Agent query mode:
++# X2Go auto-start sessions via X2Go Session Broker
++#
++# Once authenticated against the session
++# broker, the user becomes a trusted user. That is, the X2Go session login can be
++# automatized by a very temporary SSH pub/priv key pair. Prior to the session
++# login the key is generated, after successful session login, the key is dropped
++# immediately.
++#
++# This option can be overridden by the session profile parameter
++# broker-session-autostart=&lt;file-location&gt;
++
++#default-session-autostart=false
++
++# X2Go's authorized_keys file for broker mediated auto-starting sessions
++#
++# For the X2Go auto-login via X2Go Session Broker feature to work thoroughly,
++# the X2Go Session Broker has to place the temporary public SSH key into the
++# user's home directory. It is not recommended to use SSH's default
++# authorized_keys file for this but a separate and X2Go-specific authorized_keys
++# file ($HOME/.x2go/authorized_keys).
++#
++# Of course, the SSH daemon has to be made aware of this. This can be configured
++# in /etc/ssh/sshd_config like this:
++#
++#     --- /etc/ssh/sshd_config.no-x2go        2013-03-01 09:57:04.000000000 +0100
++#     +++ /etc/ssh/sshd_config        2013-03-01 09:56:57.000000000 +0100
++#     @@ -28,7 +28,7 @@
++#
++#     RSAAuthentication yes
++#     PubkeyAuthentication yes
++#    -AuthorizedKeysFile     %h/.ssh/authorized_keys
++#    +AuthorizedKeysFile     %h/.ssh/authorized_keys %h/.x2go/authorized_keys
++#
++#     # Don't read the user's ~/.rhosts and ~/.shosts files
++#     IgnoreRhosts yes
++#
++# This option can be overridden by the session profile parameter
++# broker-authorized-keys=&lt;file-location&gt;
++
++#default-authorized-keys=%h/.x2go/authorized_keys
++
++# X2Go Broker Agent query mode
+ #
+ # The X2Go Broker Agent is needed for multi-server sites configured for
+ # load balancing. Multi-server sites require a setup that uses the
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index 3155837..1b7c06a 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -22,6 +22,8 @@
+ 
+ use strict;
+ 
++use File::Basename;
++
+ sub InitX2GoUser
+ {
+ 	my ($user, $uidNumber, $gidNumber, $home)=@_;
+@@ -49,32 +51,51 @@ sub InitX2GoUser
+ 	}
+ }
+ 
+-sub CreateKey
++sub AddAuthKey
++{
++	my ($uid, $uidNumber, $gidNumber, $home, $pubkey, $authkeyfile)=@_;
++
++	# rewrite %%, %u and %h in authkeyfile string
++	$authkeyfile =~ s/%u/$uid/;
++	$authkeyfile =~ s/%h/$home/;
++	$authkeyfile =~ s/%%/%/;
++
++	my $authkeydir = dirname($authkeyfile)
++
++	# make sure dir and file for authorized_keys do exist
++	if ( ! -d $authkeydir )
++	{
++		system (&quot;su - $uid -c mkdir -p $authkeydir&quot;);
++	}
++	if( ! -e $authkeyfile  )
++	{
++		system (&quot;su - $uid -c touch $authkeyfile&quot;);
++	}
++	if ( ! system(&quot;su - $uid -c cat $authkeyfile | grep $pubkey 1&gt;/dev/null&quot;) )
++	{
++		system(&quot;su - $uid -c \&quot;echo $pubkey &gt;&gt; $authkeyfile\&quot;&quot;);
++	}
++}
++
++sub DelAuthKey
+ {
+-	###
+-	### FIXME: This bit of code looks dangerous... My
+-	###        authorized_keys file is starting to get
+-	###        scared... (Mike)
+-	###
+-	#my ($uidNumber, $gidNumber, $home)=@_;
+-	#if ( ! -d &quot;$home/.ssh&quot; )
+-	#{
+-	#	mkdir (&quot;$home/.ssh&quot;, 0700);
+-	#	chown ($uidNumber, $gidNumber, &quot;$home/.ssh&quot;);
+-	#}
+-	#if( -e &quot;$home/.ssh/authorized_keys&quot; )
+-	#{
+-	#	unlink(&quot;$home/.ssh/authorized_keys&quot;);
+-	#}
+-	#open my $save_out, &quot;&gt;&amp;STDOUT&quot;;
+-	#close (STDOUT);
+-	#system &quot;/usr/bin/ssh-keygen&quot;, &quot;-t&quot;, &quot;dsa&quot;, &quot;-N&quot;,&quot;&quot;,&quot;-f&quot;,&quot;$home/.ssh/authorized_keys&quot;;
+-	#open STDOUT, &quot;&gt;&amp;&quot;, $save_out;
+-	#open (F,&quot;&lt;$home/.ssh/authorized_keys&quot;);
+-	#print &lt;F&gt;;
+-	#close (F);
+-	#unlink(&quot;$home/.ssh/authorized_keys&quot;);
+-	#rename(&quot;$home/.ssh/authorized_keys.pub&quot;, &quot;$home/.ssh/authorized_keys&quot;);
++	my ($uid, $uidNumber, $gidNumber, $home, $pubkey, $authkeyfile)=@_;
++
++	# rewrite %%, %u and %h in authkeyfile string
++	$authkeyfile =~ s/%u/$uid/;
++	$authkeyfile =~ s/%h/$home/;
++	$authkeyfile =~ s/%%/%/;
++
++	my $authkeydir = dirname($authkeyfile)
++
++	if( -e $authkeyfile  )
++	{
++		if ( ! system(&quot;su - $uid -c cat $authkeyfile | grep $pubkey 1&gt;/dev/null&quot;) )
++		{
++			system(&quot;su - $uid -c \&quot;cat $authkeyfile.tmp | grep -v $pubkey &gt; $authkeyfile.tmp\&quot;&quot;);
++			system(&quot;su - $uid -c mv $authkeyfile.tmp $authkeyfile&quot;);
++		}
++	}
+ }
+ 
+ $&lt; = $&gt;;
+@@ -150,11 +171,22 @@ if($mode eq 'getservers')
+ 	exec (&quot;/bin/su - $uid -c \&quot;x2gogetservers\&quot;&quot;);
+ }
+ 
+-if($mode eq 'key')
++if($mode eq 'addauthkey')
++{
++	my $pubkey = shift or die;
++	my $authkeyfile = shift or die;
++	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
++	print &quot;OK\n&quot;;
++	AddAuthKey($uid, $uidNumber, $gidNumber, $home, $pubkey, $authkeyfile);
++}
++
++if($mode eq 'delauthkey')
+ {
++	my $pubkey = shift or die;
++	my $authkeyfile = shift or die;
+ 	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
+ 	print &quot;OK\n&quot;;
+-	createKey($uidNumber, $gidNumber, $home);
++	DelAuthKey($uidNumber, $gidNumber, $home);
+ }
+ 
+ if($mode eq 'suspend')
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index 13dc2af..0c5873a 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -21,6 +21,7 @@
+ 
+ import subprocess
+ import paramiko
++import cStringIO
+ 
+ import x2gobroker._paramiko
+ x2gobroker._paramiko.monkey_patch_paramiko()
+@@ -30,7 +31,7 @@ import x2gobroker.defaults
+ from x2gobroker.loggers import logger_error
+ 
+ 
+-def call_local_broker_agent(username, mode):
++def call_local_broker_agent(username, mode, cmdline_args=[]):
+     &quot;&quot;&quot;\
+     Launch X2Go Broker Agent locally and process its output.
+ 
+@@ -46,6 +47,9 @@ def call_local_broker_agent(username, mode):
+         '{mode}'.format(mode=mode),
+     ]
+ 
++    for cmdline_arg in cmdline_args:
++        cmd_line.append('&quot;{arg}&quot;'.format(arg=cmdline_arg))
++
+     agent_process = subprocess.Popen(cmd_line,
+                                      stdin=None,
+                                      stdout=subprocess.PIPE,
+@@ -57,7 +61,7 @@ def call_local_broker_agent(username, mode):
+     if result[0].startswith('OK'):
+         return [ r for r in result[1:] if r ]
+ 
+-def call_remote_broker_agent(username, mode, remote_agent):
++def call_remote_broker_agent(username, mode, cmdline_args=[], remote_agent=None):
+     &quot;&quot;&quot;\
+     Launch remote X2Go Broker Agent via SSH and process its output.
+ 
+@@ -69,12 +73,18 @@ def call_remote_broker_agent(username, mode, remote_agent):
+     @type remote_agent: C{dict}
+ 
+     &quot;&quot;&quot;
++    if remote_agent is None:
++        logger_error.error('With the SSH agent-query-mode remote agent (hostname, port) has to be specified!')
++
+     cmd_line = [
+         '{x2gobroker_agent_binary}'.format(x2gobroker_agent_binary=x2gobroker.defaults.X2GOBROKER_AGENT_CMD),
+         '{username}'.format(username=username),
+         '{mode}'.format(mode=mode),
+     ]
+ 
++    for cmdline_arg in cmdline_args:
++        cmd_line.append('&quot;{arg}&quot;'.format(arg=cmdline_arg))
++
+     remote_username = x2gobroker.defaults.X2GOBROKER_AGENT_USER
+     remote_hostname = remote_agent[u'hostname']
+     remote_port = int(remote_agent[u'port'])
+@@ -147,6 +157,48 @@ def find_busy_servers(username, query_mode='LOCAL', remote_agent=None):
+ 
+     return server_usage
+ 
++def add_authorized_key(username, pubkey_hash, authorized_keys_file='%h/.x2go/authorized_keys', query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Add a public key hash to the user's authorized_keys file.
++
++    @param username: run the query on behalf of this username
++    @type username: C{unicode}
++    @param pubkey_hash: the public key hash as found in SSH authorized_keys files
++    @type pubkey_hash: C{unicode}
++    @param authorized_keys_file: the full path to the remote X2Go server's authorized_keys file
++    @type authorized_keys_file: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    if query_mode.upper() == u'LOCAL':
++        return call_local_broker_agent(username, mode='addauthkey', cmdline_args=[pubkey_hash, authorized_keys_file, ])
++    else:
++        return call_local_broker_agent(username, mode='addauthkey', cmdline_args=[pubkey_hash, authorized_keys_file, ], remote_agent=remote_agent)
++
++def delete_authorized_key(username, pubkey_hash, authorized_keys_file='%h/.x2go/authorized_keys', query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Remove a public key hash from the user's authorized_keys file.
++
++    @param username: run the query on behalf of this username
++    @type username: C{unicode}
++    @param pubkey_hash: the public key hash as found in SSH authorized_keys files
++    @type pubkey_hash: C{unicode}
++    @param authorized_keys_file: the full path to the remote X2Go server's authorized_keys file
++    @type authorized_keys_file: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    if query_mode.upper() == u'LOCAL':
++        return call_local_broker_agent(username, mode='delauthkey', cmdline_args=[pubkey_hash, authorized_keys_file, ])
++    else:
++        return call_local_broker_agent(username, mode='delauthkey', cmdline_args=[pubkey_hash, authorized_keys_file, ], remote_agent=remote_agent)
++
+ def get_servers(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+     Query X2Go Broker Agent for the list of currently used servers.
+@@ -166,3 +218,40 @@ def get_servers(username, query_mode='LOCAL', remote_agent=None):
+     else:
+         return call_local_broker_agent(username, mode='getservers', remote_agent=remote_agent)
+ 
++def genkeypair(username, client_address, key_type='RSA'):
++    &quot;&quot;&quot;\
++    Generate an SSH pub/priv key pair without writing the private key to file.
++
++    @param username: the key is for this user
++    @type username: C{unicode}
++    @param client_address: the key is only valid for this client
++    @type client_address: C{unicode}
++    @param key_type: either of: RSA, DSA
++    @type key_type: C{unicode}
++
++    &quot;&quot;&quot;
++    key = None
++    pubkey = None
++    privkey = None
++
++    # generate key pair
++    if unicode(key_type) == u'RSA':
++        key = paramiko.RSAKey.generate(2048)
++    elif unicode(key_type) == u'DSA':
++        key = paramiko.DSSKey.generate(1024)
++
++    if key:
++
++        # assemble the public key
++        if key_type == &quot;RSA&quot;:
++            pubkey_type = 'ssh-rsa'
++        elif key_type == &quot;DSA&quot;:
++            pubkey_type = 'ssh-dss'
++        pubkey = &quot;from={hostname},no-X11-forwarding,no-pty,no-user-rc {pubkey_type} {pubkey} {username}@{hostname}&quot;.format(pubkey=key.get_base64(), pubkey_type=pubkey_type, username=username, hostname=client_address)
++
++        # assemble the private key
++        privkey_obj = cStringIO.StringIO()
++        key.write_private_key(privkey_obj)
++        privkey = privkey_obj.getvalue()
++
++    return (pubkey, privkey)
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index ad3e3e7..c718dc4 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -220,7 +220,20 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;\
+         Get the session profile for profile ID &lt;profile_id&gt;.
+ 
+-        @param profile_id: the ID of a profile, in other words the section name in the configuration file
++        @param profile_id: the ID of a profile
++        @type profile_id: C{unicode}
++
++        @return: a dictionary representing the session profile for ID &lt;profile_id&gt;
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
++    def get_profile_broker(self, profile_id):
++        &quot;&quot;&quot;\
++        Get broker-specific session profile options from the session profile with profile ID &lt;profile_id&gt;.
++
++        @param profile_id: the ID of a profile
+         @type profile_id: C{unicode}
+ 
+         @return: a dictionary representing the session profile for ID &lt;profile_id&gt;
+@@ -233,7 +246,7 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;\
+         Get the ACLs for session profile with profile ID &lt;profile_id&gt;.
+ 
+-        @param profile_id: the ID of a profile, in other words the section name in the configuration file
++        @param profile_id: the ID of a profile
+         @type profile_id: C{unicode}
+ 
+         @return: a dictionary representing the ACLs for session profile with ID &lt;profile_id&gt;
+@@ -419,14 +432,15 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;
+         _default_auth_mech = &quot;pam&quot;
+         _auth_mech = &quot;&quot;
+-        if self.config.has_value('global', 'default-auth-mech'):
+-            _default_auth_mech = self.config.get_value('global', 'default-auth-mech').lower()
+-            logger_broker.debug('base_broker.X2GoBroker.get_authentication_mechanism(): found default-auth-mech in global config section: {value}'.format(value=_default_auth_mech))
+ 
+         if self.config.has_value(self.backend_name, 'auth-mech'):
+             _auth_mech = self.config.get_value(self.backend_name, 'auth-mech').lower()
+             logger_broker.debug('base_broker.X2GoBroker.get_authentication_mechanism(): found auth-mech in backend config section &#187;{backend}&#171;: {value}. This one has precendence over the default value.'.format(backend=self.backend_name, value=_auth_mech))
+ 
++        elif self.config.has_value('global', 'default-auth-mech'):
++            _default_auth_mech = self.config.get_value('global', 'default-auth-mech').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_authentication_mechanism(): found default-auth-mech in global config section: {value}'.format(value=_default_auth_mech))
++
+         return unicode(_auth_mech) or unicode(_default_auth_mech)
+ 
+     def get_agent_query_mode(self):
+@@ -440,16 +454,64 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;
+         _default_agent_query_mode = &quot;LOCAL&quot;
+         _agent_query_mode = &quot;&quot;
+-        if self.config.has_value('global', 'default-agent-query-mode'):
+-            _default_agent_query_mode = self.config.get_value('global', 'default-agent-query-mode').lower()
+-            logger_broker.debug('base_broker.X2GoBroker.get_agent_query_mode(): found default-agent-query-mode in global config section: {value}'.format(value=_default_agent_query_mode))
+-
+         if self.config.has_value(self.backend_name, 'agent-query-mode'):
+             _agent_query_mode = self.config.get_value(self.backend_name, 'agent-query-mode').lower()
+             logger_broker.debug('base_broker.X2GoBroker.get_agent_query_mode(): found agent-query-mode in backend config section &#187;{backend}&#171;: {value}. This one has precendence over the default value.'.format(backend=self.backend_name, value=_agent_query_mode))
+ 
++        elif self.config.has_value('global', 'default-agent-query-mode'):
++            _default_agent_query_mode = self.config.get_value('global', 'default-agent-query-mode').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_agent_query_mode(): found default-agent-query-mode in global config section: {value}'.format(value=_default_agent_query_mode))
++
+         return unicode(_agent_query_mode) or unicode(_default_agent_query_mode)
+ 
++    def use_session_autostart(self, profile_id):
++        &quot;&quot;&quot;\
++        Detect if the given profile is configured to try session
++        auto-starting.
++
++        @return: C{True} to denote that session auto-starting should be attempted
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        _default_session_autostart = False
++        _session_autostart = &quot;&quot;
++        _profile = self.get_profile_broker(profile_id)
++        if _profile and _profile.has_key(u'broker-session-autostart') and _profile['broker-session-autostart']:
++            _session_autostart = _profile[u'broker-session-autostart']
++            logger_broker.debug('base_broker.X2GoBroker.get_session_autostart(): found broker-session-autostart in session profile with ID {id}: {value}. This one has precendence over the default value.'.format(id=profile_id, value=_session_autostart))
++
++        elif self.config.has_value('global', 'default-session-autostart'):
++            _default_session_autostart = self.config.get_value('global', 'default-session-autostart').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_session_autostart(): found default-session-autostart in global config section: {value}'.format(value=_default_session_autostart))
++
++        return unicode(_session_autostart) or unicode(_default_session_autostart)
++
++    def get_authorized_keys_file(self, profile_id):
++        &quot;&quot;&quot;\
++        Get the default location of server-side authorized_keys files used with
++        the X2Go Session Broker.
++
++        The file location can be configured broker-wide. It is also possible to
++        provide a broker-authorized-keys file in session profiles. The latter
++        will override the broker-wide conigured file location.
++
++        @return: authorized_keys location on the remote server
++        @rtype: C{unicode}
++
++        &quot;&quot;&quot;
++        _default_authorized_keys_file = &quot;%h/.x2go/authorized_keys&quot;
++        _authorized_keys_file = &quot;&quot;
++        _profile = self.get_profile_broker(profile_id)
++        if _profile and _profile.has_key(u'broker-authorized-keys') and _profile['broker-authorized-keys']:
++            _authorized_keys_file = _profile[u'broker-authorized-keys']
++            logger_broker.debug('base_broker.X2GoBroker.get_authorized_keys_file(): found broker-authorized-keys in session profile with ID {id}: {value}. This one has precendence over the default value.'.format(id=profile_id, value=_authorized_keys_file))
++
++        elif self.config.has_value('global', 'default-authorized-keys'):
++            _default_authorized_keys_file = self.config.get_value('global', 'default-authorized-keys').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_authorized_keys_file(): found default-authorized-keys in global config section: {value}'.format(value=_default_authorized_keys_file))
++
++        return unicode(_authorized_keys_file) or unicode(_default_authorized_keys_file)
++
+     def get_userdb_service(self):
+         &quot;&quot;&quot;\
+         Get the name of the backend being used for retrieving user information from the
+@@ -767,7 +829,7 @@ class X2GoBroker(object):
+             'port': profile[u'sshport'],
+         }
+ 
+-        # do some load balancing if more than one server is configured
++        # find already running sessions and resume the first one found
+         if len(server_list) &gt;= 2 and username:
+ 
+             session_list = x2gobroker.agent.list_sessions(username=username, query_mode=agent_query_mode, remote_agent=remote_agent)
+@@ -782,6 +844,19 @@ class X2GoBroker(object):
+                     'session_info': session_info,
+                 })
+ 
++        # session auto-start feature
++        if self.use_session_autostart(profile_id):
++
++            pubkey, privkey = x2gobroker.agent.genkeypair()
++            x2gobroker.agent.add_authorized_key(username=username,
++                                                pubkey_hash=pubkey,
++                                                authorized_keys_file=self.get_authorized_keys_file(profile_id),
++                                                self.getremote_agent,
++            ),
++            selected_session.update({
++                'authentication_privkey': privkey,
++            })
++
+         return selected_session
+ 
+     def change_password(self, new='', old=''):
+diff --git a/x2gobroker/brokers/inifile_broker.py b/x2gobroker/brokers/inifile_broker.py
+index af33bf2..3071a13 100644
+--- a/x2gobroker/brokers/inifile_broker.py
++++ b/x2gobroker/brokers/inifile_broker.py
+@@ -76,10 +76,22 @@ class X2GoBroker(base.X2GoBroker):
+         for key in profile.keys():
+             if key.startswith('acl-'):
+                 del profile[key]
++            if key.startswith('broker-'):
++                del profile[key]
+             if key == 'default':
+                 del profile[key]
+         return profile
+ 
++    def get_profile_broker(self, profile_id):
++
++        profile = self.session_profiles.get_section(profile_id)
++        for key in profile.keys():
++            if not key.startswith('broker-'):
++                del profile[key]
++            if key.startswith('brokerl-') and (profile[key] == '' or profile[key] == ['']):
++                del profile[key]
++        return profile
++
+     def get_profile_acls(self, profile_id):
+ 
+         profile = self.session_profiles.get_section(profile_id)
+@@ -89,4 +101,3 @@ class X2GoBroker(base.X2GoBroker):
+             if key.startswith('acl-') and (profile[key] == '' or profile[key] == ['']):
+                 del profile[key]
+         return profile
+-
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index cd0dfd7..8274e71 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -124,6 +124,8 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'default-user-db': u'libnss',
+         u'default-group-db': u'libnss',
+         u'ignore-primary-group-memberships': True,
++        u'default-session-autostart': False,
++        u'default-authorized-keys': u'%h/.x2go/authorized_keys',
+         u'default-agent-query-mode': u'LOCAL',
+     },
+     'zeroconf': {
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/plain.py
+index f7f0f5f..aae3ffe 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/web/plain.py
+@@ -155,8 +155,8 @@ class X2GoBrokerWeb:
+                         if profile_info.has_key('port'):
+                             output += &quot;:{port}&quot;.format(port=profile_info['port'])
+                         output += &quot;\n&quot;
+-                        if profile_info.has_key('authentication_key'):
+-                            output += &quot;&quot;
++                        if profile_info.has_key('authentication_privkey'):
++                            output += profile_info['authentication_privkey']
+                         if profile_info.has_key('session_info'):
+                             output += &quot;SESSION_INFO:&quot;
+                             output += profile_info['session_info'] + &quot;\n&quot;
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008078.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-9-g5347ab0
+</A></li>
+	<LI>Next message: <A HREF="008081.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-17-g762de5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8080">[ date ]</a>
+              <a href="thread.html#8080">[ thread ]</a>
+              <a href="subject.html#8080">[ subject ]</a>
+              <a href="author.html#8080">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

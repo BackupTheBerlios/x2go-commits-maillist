@@ -1,0 +1,244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.6-19-g90cd1a0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20release/4.0.1.x%20%28branch%29%20updated%3A%0A%094.0.1.6-19-g90cd1a0&In-Reply-To=%3C20131121220912.3A5835DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014746.html">
+   <LINK REL="Next"  HREF="014748.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.6-19-g90cd1a0</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20release/4.0.1.x%20%28branch%29%20updated%3A%0A%094.0.1.6-19-g90cd1a0&In-Reply-To=%3C20131121220912.3A5835DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.6-19-g90cd1a0">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Nov 21 23:09:12 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014746.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-237-g34aec1a
+</A></li>
+        <LI>Next message: <A HREF="014748.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-29-g3c8ddea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14747">[ date ]</a>
+              <a href="thread.html#14747">[ thread ]</a>
+              <a href="subject.html#14747">[ subject ]</a>
+              <a href="author.html#14747">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/4.0.1.x has been updated
+       via  90cd1a0343765c6581d06ce41e4007e32740366e (commit)
+      from  25e91a5dcbb4643a943097e4c2325ebac2570372 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 90cd1a0343765c6581d06ce41e4007e32740366e
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Nov 18 15:39:28 2013 +0100
+
+    Start/resume rootless sessions without geometry parameter. Esp. using X2GO_GEOMETRY=fullscreen for rootless sessions lead to an extra 1x1 px session window (nxagentCreateIconWindow in nxagent's Window.c).
+    
+    Conflicts (resolved by Mike Gabriel):
+    	debian/changelog
+    	x2goserver/bin/x2gostartagent
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    7 +++++--
+ x2goserver/bin/x2goresume-session |   23 ++++++++++++++++++-----
+ x2goserver/bin/x2gostartagent     |   32 +++++++++++++++++++++++++-------
+ 3 files changed, 48 insertions(+), 14 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 1adfedb..f78fb29 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -20,13 +20,16 @@ x2goserver (4.0.1.7-0~x2go1) UNRELEASED; urgency=low
+       launching sessions. Also, prevent x2gouser_root from being added as a
+       PostgreSQL user. (Fixes: #310).
+     - Execute DB status changes as late as possible during suspend / terminate.
+-  * /debian/control:
++    - Start/resume rootless sessions without geometry parameter. Esp. using
++      X2GO_GEOMETRY=fullscreen for rootless sessions lead to an extra 1x1 px
++      session window (nxagentCreateIconWindow in nxagent's Window.c).
++  * debian/control:
+     + Update LONG_DESCRIPTIONS.
+     + Move xfonts-base from Recommends: field to Depends: field (bin:package
+       x2goserver).
+     + Raise Standards: to 3.9.4 (no changes needed).
+     + Move xfonts-base to Recommends: field of bin:package x2goserver.
+-  * /debian/x2goserver.init:
++  * debian/x2goserver.init:
+     + Make init script LSB compliant.
+ 
+   [ Helmer Teles ]
+diff --git a/x2goserver/bin/x2goresume-session b/x2goserver/bin/x2goresume-session
+index 9c8e2bc..a39c76e 100755
+--- a/x2goserver/bin/x2goresume-session
++++ b/x2goserver/bin/x2goresume-session
+@@ -43,13 +43,22 @@ fi
+ 
+ $X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+-if [ &quot;$X2GO_GEOMETRY&quot; == &quot;&quot; ]
+-then
+-	X2GO_GEOMETRY=fullscreen
++
++# rootless sessions require to be resizable
++if [ &quot;$SESSION_TYPE&quot; == &quot;R&quot; ]; then
++	X2GO_RESIZE=1
+ fi
+ 
+-if [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ]
+-then
++# rootless sessions of geometry fullscreen are invalid
++if [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ] &amp;&amp; [ &quot;$SESSION_TYPE&quot; == &quot;R&quot; ]; then
++	X2GO_GEOMETRY=&quot;&quot;
++fi
++
++# no geometry for desktop sessions shall result in fullscreen desktop sessions
++if [ &quot;$X2GO_GEOMETRY&quot; == &quot;&quot; ] &amp;&amp; [ &quot;$SESSION_TYPE&quot; == &quot;D&quot; ]; then
++	X2GO_GEOMETRY=&quot;fullscreen&quot;
++fi
++if [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ]; then
+ 	X2GO_RESIZE=1
+ 	X2GO_FULLSCREEN=1
+ fi
+@@ -146,6 +155,10 @@ NEWOPTIONS=`echo &quot;$OPTIONS&quot; | sed  -e  &quot;s/$LSTR/link=$X2GO_LINK/&quot;\
+  -e &quot;s/$LISTSTR/listen=$GR_PORT/&quot;\
+  -e &quot;s/$FSTR/fullscreen=$X2GO_FULLSCREEN/&quot;`
+ 
++if [ -z &quot;$X2GO_GEOMETRY&quot; ] || [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ]; then
++	NEWOPTIONS=`echo $NEWOPTIONS | sed -e &quot;s/geometry=${X2GO_GEOMETRY},//&quot;`
++fi
++
+ X2GO_CLIENT=`echo &quot;$SSH_CLIENT&quot; | awk '{print $1}'`
+ if [ &quot;$X2GO_CLIENT&quot; == &quot;&quot; ]
+ then
+diff --git a/x2goserver/bin/x2gostartagent b/x2goserver/bin/x2gostartagent
+index 66b5e5e..5127865 100755
+--- a/x2goserver/bin/x2gostartagent
++++ b/x2goserver/bin/x2gostartagent
+@@ -206,16 +206,26 @@ while [ &quot;$GR_PORT&quot; == &quot;&quot; ] || [ &quot;$SOUND_PORT&quot; == &quot;&quot; ] || [ &quot;$FS_PORT&quot; == &quot;&quot; ]; d
+ 	fi
+ done
+ 
++# rootless sessions require to be resizable
++if [ &quot;$SESSION_TYPE&quot; == &quot;R&quot; ]; then
++	X2GO_RESIZE=1
++fi
+ 
+-if [ &quot;$X2GO_GEOMETRY&quot; == &quot;&quot; ]; then
+-	X2GO_GEOMETRY=fullscreen
++# rootless sessions of geometry fullscreen are invalid
++if [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ] &amp;&amp; [ &quot;$SESSION_TYPE&quot; == &quot;R&quot; ]; then
++	X2GO_GEOMETRY=&quot;&quot;
+ fi
+ 
++# no geometry for desktop sessions shall result in fullscreen desktop sessions
++if [ &quot;$X2GO_GEOMETRY&quot; == &quot;&quot; ] &amp;&amp; [ &quot;$SESSION_TYPE&quot; == &quot;D&quot; ]; then
++	X2GO_GEOMETRY=&quot;fullscreen&quot;
++fi
+ if [ &quot;$X2GO_GEOMETRY&quot; == &quot;fullscreen&quot; ]; then
+ 	X2GO_RESIZE=1
+ 	X2GO_FULLSCREEN=1
+ fi
+ 
++# shadow sessions are never fullscreen session and adopt the original session's geometry
+ if [ &quot;$X2GO_STYPE&quot; == &quot;S&quot; ]; then
+ 	X2GO_GEOMETRY=`DISPLAY=&quot;$SHADOW_DESKTOP&quot; xwininfo -root | grep geometry`
+ 	X2GO_GEOMETRY=`echo &quot;$X2GO_GEOMETRY&quot; | sed  -e  &quot;s/ //g&quot;`
+@@ -246,7 +256,6 @@ fi
+ X2GO_COOKIE=`mcookie`
+ 
+ 
+-
+ PATH=&quot;${PATH}:${X2GO_BIN}/&quot;
+ export PATH
+ 
+@@ -255,10 +264,15 @@ xauth -f &quot;$XAUTHORITY&quot; add &quot;${HOSTNAME}/unix:${X2GO_PORT}&quot; MIT-MAGIC-COOKIE-1 &quot;$
+ xauth -f &quot;$XAUTHORITY&quot; add &quot;${HOSTNAME}:${X2GO_PORT}&quot; MIT-MAGIC-COOKIE-1 &quot;${X2GO_COOKIE}&quot;
+ 
+ 
++option_geometry=&quot;&quot;
++if [ -n &quot;$X2GO_GEOMETRY&quot; ] &amp;&amp; [ &quot;$X2GO_GEOMETRY&quot; != &quot;fullscreen&quot; ]; then
++	option_geometry=&quot;geometry=${X2GO_GEOMETRY},&quot;
++fi
++
+ if [ &quot;$X2GO_SET_KBD&quot; == &quot;0&quot; ] || [ &quot;$X2GO_KBD_TYPE&quot; == &quot;auto&quot; ];then
+-    X2GO_HOST=&quot;nx/nx,link=${X2GO_LINK},pack=${X2GO_PACK},limit=0,root=${SESSION_DIR},cache=8M,images=32M,type=${X2GO_TYPE},id=${SESSION_NAME},cookie=$X2GO_COOKIE,errors=${SESSION_LOG},kbtype=null/null,geometry=${X2GO_GEOMETRY},resize=${X2GO_RESIZE},fullscreen=${X2GO_FULLSCREEN},accept=${REMOTE},listen=${GR_PORT},client=linux,menu=0&quot;
++    X2GO_HOST=&quot;nx/nx,link=${X2GO_LINK},pack=${X2GO_PACK},limit=0,root=${SESSION_DIR},cache=8M,images=32M,type=${X2GO_TYPE},id=${SESSION_NAME},cookie=$X2GO_COOKIE,errors=${SESSION_LOG},kbtype=null/null,${option_geometry}resize=${X2GO_RESIZE},fullscreen=${X2GO_FULLSCREEN},accept=${REMOTE},listen=${GR_PORT},client=linux,menu=0&quot;
+ else
+-    X2GO_HOST=&quot;nx/nx,link=${X2GO_LINK},pack=${X2GO_PACK},limit=0,root=${SESSION_DIR},cache=8M,images=32M,type=${X2GO_TYPE},id=${SESSION_NAME},cookie=$X2GO_COOKIE,errors=${SESSION_LOG},kbtype=${X2GO_KBD_TYPE},geometry=${X2GO_GEOMETRY},resize=${X2GO_RESIZE},fullscreen=${X2GO_FULLSCREEN},accept=${REMOTE},listen=${GR_PORT},client=linux,menu=0&quot;
++    X2GO_HOST=&quot;nx/nx,link=${X2GO_LINK},pack=${X2GO_PACK},limit=0,root=${SESSION_DIR},cache=8M,images=32M,type=${X2GO_TYPE},id=${SESSION_NAME},cookie=$X2GO_COOKIE,errors=${SESSION_LOG},kbtype=${X2GO_KBD_TYPE},${option_geometry}resize=${X2GO_RESIZE},fullscreen=${X2GO_FULLSCREEN},accept=${REMOTE},listen=${GR_PORT},client=linux,menu=0&quot;
+ fi
+ 
+ 
+@@ -288,13 +302,17 @@ fi
+ x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$SESSION_NAME&quot; pre-start || true
+ 
+ SESSION_WINDOW_TITLE=&quot;X2GO-${SESSION_NAME}&quot;
++agent_geometry=&quot;&quot;
++if [ -n &quot;$X2GO_GEOMETRY&quot; ] &amp;&amp; [ &quot;$X2GO_GEOMETRY&quot; != &quot;fullscreen&quot; ]; then
++	agent_geometry=&quot;-geometry ${X2GO_GEOMETRY}&quot;
++fi
+ 
+ if  [ &quot;$X2GO_STYPE&quot; == &quot;S&quot; ]; then
+ 	# set NX_TEMP to /tmp, make sure x2goagent starts when pam_tmpdir.so is in use
+-	NX_TEMP=/tmp x2goagent $X2GO_NXAGENT_OPTIONS $NOLISTOPT $X2GODPIOPTION_ -$SESSION_TYPE -auth &quot;$XAUTHORITY&quot; -shadow $SHADOW_DESKTOP -shadowmode $SHADOW_MODE -geometry ${X2GO_GEOMETRY} -name &quot;${SESSION_WINDOW_TITLE}&quot;  &quot;${NX_AGENT}&quot; 2&gt;&quot;${SESSION_LOG}&quot; &amp;
++	NX_TEMP=/tmp x2goagent $X2GO_NXAGENT_OPTIONS $NOLISTOPT $X2GODPIOPTION_ -$SESSION_TYPE -auth &quot;$XAUTHORITY&quot; -shadow $SHADOW_DESKTOP -shadowmode $SHADOW_MODE $agent_geometry -name &quot;${SESSION_WINDOW_TITLE}&quot;  &quot;${NX_AGENT}&quot; 2&gt;&quot;${SESSION_LOG}&quot; &amp;
+ else
+ 	# set NX_TEMP to /tmp, make sure x2goagent starts when pam_tmpdir.so is in use
+-	NX_TEMP=/tmp x2goagent $X2GO_NXAGENT_OPTIONS $NOLISTOPT $X2GODPIOPTION_ $XDMCPOPT -$SESSION_TYPE $NOEXITPARAM -auth &quot;$XAUTHORITY&quot; -geometry ${X2GO_GEOMETRY} -name &quot;${SESSION_WINDOW_TITLE}&quot;  &quot;${NX_AGENT}&quot; 2&gt;&quot;${SESSION_LOG}&quot; &amp;
++	NX_TEMP=/tmp x2goagent $X2GO_NXAGENT_OPTIONS $NOLISTOPT $X2GODPIOPTION_ $XDMCPOPT -$SESSION_TYPE $NOEXITPARAM -auth &quot;$XAUTHORITY&quot; $agent_geometry -name &quot;${SESSION_WINDOW_TITLE}&quot;  &quot;${NX_AGENT}&quot; 2&gt;&quot;${SESSION_LOG}&quot; &amp;
+ fi
+ 
+ ln -s &quot;${SESSION_LOG}&quot; &quot;${SESSION_DIR}/session.log&quot; 
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014746.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-237-g34aec1a
+</A></li>
+	<LI>Next message: <A HREF="014748.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-29-g3c8ddea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14747">[ date ]</a>
+              <a href="thread.html#14747">[ thread ]</a>
+              <a href="subject.html#14747">[ subject ]</a>
+              <a href="author.html#14747">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

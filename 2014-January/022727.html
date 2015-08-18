@@ -1,0 +1,144 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%099ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6&In-Reply-To=%3C20140108142538.7EC855DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022709.html">
+   <LINK REL="Next"  HREF="022729.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%099ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6&In-Reply-To=%3C20140108142538.7EC855DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:25:38 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022709.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	8dfd1f368df28d1a767c1b9345457d59bbe097c6
+</A></li>
+        <LI>Next message: <A HREF="022729.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	98bc65e33b9f0a92d8be038482c919d7d87819d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22727">[ date ]</a>
+              <a href="thread.html#22727">[ thread ]</a>
+              <a href="subject.html#22727">[ subject ]</a>
+              <a href="author.html#22727">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6 (commit)
+      from  98bc65e33b9f0a92d8be038482c919d7d87819d5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/terminal/_stdout.py |   18 ++++++++++++++++++
+ x2go/client.py                    |    2 ++
+ 2 files changed, 20 insertions(+)
+
+The diff of changes is:
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 7e1a1f4..e6b3553 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -633,6 +633,16 @@ class X2goTerminalSessionSTDOUT(object):
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+         self.logger('x2gomountdirs output is : %s' % stdout.read().split('\n'), log.loglevel_NOTICE)
+ 
++    def has_command(self, cmd):
++        &quot;&quot;&quot;\
++        Verify if the command &lt;cmd&gt; exists on the X2go server.
++
++        &quot;&quot;&quot;
++        test_cmd = 'which %s &amp;&amp; echo OK' % os.path.basename(cmd)
++        (stdin, stdout, stderr) = self.control_session._x2go_exec_command([test_cmd])
++        _stdout = stdout.read()
++        return _stdout.find('OK') != -1
++
+     def run_command(self, cmd=None):
+         &quot;&quot;&quot;\
+         Run a command in this session.
+@@ -649,6 +659,10 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: tuple of str
+ 
+         &quot;&quot;&quot;
++        if not self.has_command(_rewrite_cmd(self.params.cmd)):
++            self.client_instance.HOOK_no_such_command(profile_name=self.profile_name, session_name=self.session_info.name, cmd=self.params.cmd)
++            return False
++
+         if cmd in (&quot;&quot;, None):
+             if self.params.cmd is None:
+                 cmd = 'TERMINAL'
+@@ -729,6 +743,10 @@ class X2goTerminalSessionSTDOUT(object):
+         that can be passed to the class constructor.
+ 
+         &quot;&quot;&quot;
++        if not self.has_command(_rewrite_cmd(self.params.cmd)):
++            self.client_instance.HOOK_no_such_command(profile_name=self.profile_name, session_name=self.session_info.name, cmd=self.params.cmd)
++            return False
++
+         setkbd = &quot;0&quot;
+         if self.params.kblayout or self.params.kbtype:
+             setkbd = &quot;1&quot;
+diff --git a/x2go/client.py b/x2go/client.py
+index 29ff8f4..a0bf135 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -277,6 +277,8 @@ class X2goClient(object):
+         self.logger('the Python X2go module could not find any usable XServer application, you will not be able to start X2go sessions without XServer', loglevel=log.loglevel_WARN)
+     def HOOK_open_print_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_open_print_dialog: incoming print job ,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
++    def HOOK_no_such_command(self, cmd, profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_no_such_command: the command %s is not available for X2go server (profile: %s, session: %s)' % (cmd, profile_name, session_name), loglevel=log.loglevel_WARN)
+     def HOOK_open_dropbox_saveas_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_open_dropbox_saveas_dialog: incoming dropbox job ,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
+     def HOOK_printaction_error(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN', err_msg='GENERIC_ERROR'):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022709.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	8dfd1f368df28d1a767c1b9345457d59bbe097c6
+</A></li>
+	<LI>Next message: <A HREF="022729.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	98bc65e33b9f0a92d8be038482c919d7d87819d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22727">[ date ]</a>
+              <a href="thread.html#22727">[ thread ]</a>
+              <a href="subject.html#22727">[ subject ]</a>
+              <a href="author.html#22727">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

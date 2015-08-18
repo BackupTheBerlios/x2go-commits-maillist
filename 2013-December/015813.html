@@ -1,0 +1,380 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-13-g1204142
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-13-g1204142&In-Reply-To=%3C20131204052110.C4CB95DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015812.html">
+   <LINK REL="Next"  HREF="015814.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-13-g1204142</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-13-g1204142&In-Reply-To=%3C20131204052110.C4CB95DB1C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-13-g1204142">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:21:10 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015812.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-11-gf1c4f7f
+</A></li>
+        <LI>Next message: <A HREF="015814.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-12-g2042ae2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15813">[ date ]</a>
+              <a href="thread.html#15813">[ thread ]</a>
+              <a href="subject.html#15813">[ subject ]</a>
+              <a href="author.html#15813">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  1204142af2c8e7f6430136d50ff8f6b40fbc99f2 (commit)
+      from  2042ae237c3f6ad906104eaee208fc98d75afd03 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    6 ++++++
+ sql              |    7 ++++++-
+ x2godbadmin      |   13 +++++++++----
+ x2godbwrapper.pm |   51 +++++++++++++++++++++++++++------------------------
+ 4 files changed, 48 insertions(+), 29 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index bf3f606..6424e87 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,3 +1,9 @@
++x2goserver (3.0.99-4) unstable; urgency=low
++
++  * support for ssl connect (postgresql)
++
++ -- Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;  Wed, 16 Mar 2011 11:16:21 +0100
++
+ x2goserver (3.0.99-3) unstable; urgency=low
+ 
+   * fixed wrong path to dbfile, thanks Moritz Struebe &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">Moritz.Struebe at informatik.uni-erlangen.de</A>&gt;
+diff --git a/sql b/sql
+index f3052d7..66a7f7d 100644
+--- a/sql
++++ b/sql
+@@ -6,4 +6,9 @@ host=localhost
+ port=5432
+ #database admin (must have permissions to create databases and users)
+ dbadmin=postgres
+-
++#disable: SSL connections are never used
++#allow: try non-SSL, then SSL
++#prefer: try SSL, then non-SSL
++#require: connect only with SSL
++#default - prefer
++ssl=prefer
+diff --git a/x2godbadmin b/x2godbadmin
+index 6a93e05..ccb1bdf 100755
+--- a/x2godbadmin
++++ b/x2godbadmin
+@@ -138,6 +138,11 @@ if($Config-&gt;param(&quot;backend&quot;) eq 'sqlite')
+ 
+     my $host=$Config-&gt;param(&quot;postgres.host&quot;);
+     my $port=$Config-&gt;param(&quot;postgres.port&quot;);
++    my $sslmode=$Config-&gt;param(&quot;postgres.ssl&quot;);
++    if(!$sslmode)
++    {
++         $sslmode=&quot;prefer&quot;;
++    }
+     my $dbadmin=$Config-&gt;param(&quot;postgres.dbadmin&quot;);
+     my $x2goadmin=&quot;x2godbuser&quot;;
+     my $x2goadminpass=`makepasswd`;
+@@ -165,10 +170,10 @@ if($Config-&gt;param(&quot;backend&quot;) eq 'sqlite')
+     my $dbh;
+     if($createdb)
+     {
+-	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:;host=$host;port=$port;&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=postgres;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	  create_database();
+ 	  $dbh-&gt;disconnect();
+-	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	  create_tables();
+ 	  $dbh-&gt;disconnect();      
+ 	  exit(0);
+@@ -176,13 +181,13 @@ if($Config-&gt;param(&quot;backend&quot;) eq 'sqlite')
+ 
+     if($listusers)
+     {
+-	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:;host=$host;port=$port;&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	  $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=postgres;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	  list_users();
+ 	  $dbh-&gt;disconnect();
+ 	  exit(0);
+     }
+ 
+-    $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++    $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbadmin&quot;, &quot;$dbadminpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+     if($adduser)
+     {
+ 	add_user($adduser);
+diff --git a/x2godbwrapper.pm b/x2godbwrapper.pm
+index ebadcff..d433cad 100644
+--- a/x2godbwrapper.pm
++++ b/x2godbwrapper.pm
+@@ -6,9 +6,6 @@ use DBI;
+ 
+ use POSIX;
+ 
+-use lib &quot;/usr/lib/x2go&quot;;
+-use x2godbwrapper; 
+-
+ my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
+ 
+ my $Config = new Config::Simple(syntax=&gt;'ini');
+@@ -20,7 +17,7 @@ my $port;
+ my $db=&quot;x2go_sessions&quot;;
+ my $dbpass;
+ my $dbuser;
+-
++my $sslmode;
+ 
+ if($backend ne 'postgres' &amp;&amp; $backend ne 'sqlite')
+ {
+@@ -50,7 +47,11 @@ if($backend eq 'postgres')
+     $dbuser=&quot;x2gouser_$uname&quot;;
+     $passfile=&quot;$homedir/.x2go/sqlpass&quot;;
+   }
+-
++  $sslmode=$Config-&gt;param(&quot;postgres.ssl&quot;);
++  if(!$sslmode)
++  {
++         $sslmode=&quot;prefer&quot;;
++  }
+   open (FL,&quot;&lt; $passfile&quot;) or die &quot;Can't read password file $passfile&lt;br&gt;&lt;b&gt;Use x2godbadmin on server to configure database access for user $uname&lt;/b&gt;&lt;br&gt;&quot;;
+   $dbpass=&lt;FL&gt;;
+   close(FL);
+@@ -73,7 +74,8 @@ sub dbsys_rmsessionsroot
+        my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
++	       &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id='$sid'&quot;);
+                $sth-&gt;execute()or die;
+@@ -90,7 +92,8 @@ sub dbsys_listsessionsroot
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
++	       &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+ 				     to_char(init_time,'DD.MM.YY*HH24:MI:SS'),cookie,client,gr_port,
+@@ -119,7 +122,7 @@ sub dbsys_listsessionsroot_all
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+ 				     to_char(init_time,'DD.MM.YY*HH24:MI:SS'),cookie,client,gr_port,
+@@ -150,7 +153,7 @@ sub dbsys_getmounts
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
+                $sth-&gt;execute()or die;
+                my @data;
+@@ -176,7 +179,7 @@ sub db_getmounts
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts_view where session_id='$sid'&quot;);
+                $sth-&gt;execute()or die;
+                my @data;
+@@ -201,7 +204,7 @@ sub db_deletemount
+        my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;delete from mounts_view where session_id='$sid' and path='$path'&quot;);
+                $sth-&gt;execute();
+                $sth-&gt;finish();
+@@ -222,7 +225,7 @@ sub db_insertmount
+        my $res_ok=1;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  ('$sid','$path','$client')&quot;);
+                $sth-&gt;execute();
+ 	       if(!$sth-&gt;err())
+@@ -250,7 +253,7 @@ sub db_insertsession
+         my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$uname','$sid')&quot;);
+                $sth-&gt;execute()or die $_;
+                $sth-&gt;finish();
+@@ -278,7 +281,7 @@ sub db_createsession
+        my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;update sessions_view set status='R',last_time=now(),
+ 				     cookie='$cookie',agent_pid='$pid',client='$client',gr_port='$gr_port',
+ 				     sound_port='$snd_port',fs_port='$fs_port' where session_id='$sid'&quot;);
+@@ -304,7 +307,7 @@ sub db_insertport
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
+                $sth-&gt;execute()or die;
+ 	       $sth-&gt;finish();
+@@ -324,7 +327,7 @@ sub db_resume
+        my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;       
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='R',client='$client' where session_id = '$sid'&quot;);
+                $sth-&gt;execute()or die;
+ 	       $sth-&gt;finish();
+@@ -343,7 +346,7 @@ sub db_changestatus
+        my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;       
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='$status' where session_id = '$sid'&quot;);
+                $sth-&gt;execute()or die;
+ 	       $sth-&gt;finish();
+@@ -363,7 +366,7 @@ sub db_getdisplays
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       my $sth=$dbh-&gt;prepare(&quot;select display from servers_view&quot;);
+                $sth-&gt;execute()or die;
+                my @data;
+@@ -390,7 +393,7 @@ sub db_getports
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       my $sth=$dbh-&gt;prepare(&quot;select port from ports_view&quot;);
+                $sth-&gt;execute()or die;
+                my @data;
+@@ -415,7 +418,7 @@ sub db_getservers
+        if($backend eq 'postgres')
+        {
+        my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select server,count(*) from servers_view where status != 'F' group by server&quot;);
+                $sth-&gt;execute()or die;
+@@ -442,7 +445,7 @@ sub db_getagent
+        my $agent;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions_view
+ 				      where session_id ='$sid'&quot;);
+@@ -469,7 +472,7 @@ sub db_getdisplay
+        my $display;
+        if($backend eq 'postgres')
+        {
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select display from sessions_view
+ 				      where session_id ='$sid'&quot;);
+@@ -495,7 +498,7 @@ sub db_listsessions
+        if($backend eq 'postgres')
+        {
+ 	       my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+ 				     to_char(init_time,'DD.MM.YY*HH24:MI:SS'), cookie, client, gr_port,
+@@ -526,7 +529,7 @@ sub db_listsessions_all
+        if($backend eq 'postgres')
+        {
+ 	       my @strings;
+-	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	       my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	       
+ 	       my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+ 				     to_char(init_time,'DD.MM.YY*HH24:MI:SS'), cookie, client, gr_port,
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015812.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-11-gf1c4f7f
+</A></li>
+	<LI>Next message: <A HREF="015814.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-12-g2042ae2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15813">[ date ]</a>
+              <a href="thread.html#15813">[ thread ]</a>
+              <a href="subject.html#15813">[ subject ]</a>
+              <a href="author.html#15813">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

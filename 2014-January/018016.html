@@ -1,0 +1,432 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-121-gd2e3018
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-121-gd2e3018&In-Reply-To=%3C20140103170505.BC9845DB43%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="018014.html">
+   <LINK REL="Next"  HREF="018017.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-121-gd2e3018</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-121-gd2e3018&In-Reply-To=%3C20140103170505.BC9845DB43%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-121-gd2e3018">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 18:05:05 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="018014.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-115-g8b1b91f
+</A></li>
+        <LI>Next message: <A HREF="018017.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-118-g9394f9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18016">[ date ]</a>
+              <a href="thread.html#18016">[ thread ]</a>
+              <a href="subject.html#18016">[ subject ]</a>
+              <a href="author.html#18016">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  d2e3018311a85734001bde6da8cbff6a060d3c4c (commit)
+      from  58e58ea304d91945a96e1757b419283ac696c830 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server/DB.pm                                  |   25 +++++++++
+ X2Go/Server/DB/PostgreSQL.pm                       |   49 ++++++++++++++++-
+ X2Go/Server/DB/SQLite3.pm                          |   53 ++++++++++++++++++-
+ debian/changelog                                   |    1 +
+ .../lib/libx2go-server-db-sqlite3-wrapper.pl       |    2 +-
+ .../{x2golistsessions =&gt; x2golistshadowsessions}   |   34 ++++++------
+ x2goserver/man/man8/x2golistshadowsessions.8       |   55 ++++++++++++++++++++
+ x2goserver/share/x2gofeature.d/x2goserver.features |    1 +
+ 8 files changed, 199 insertions(+), 21 deletions(-)
+ copy x2goserver/bin/{x2golistsessions =&gt; x2golistshadowsessions} (74%)
+ create mode 100644 x2goserver/man/man8/x2golistshadowsessions.8
+
+The diff of changes is:
+diff --git a/X2Go/Server/DB.pm b/X2Go/Server/DB.pm
+index c9a83a1..c87334d 100644
+--- a/X2Go/Server/DB.pm
++++ b/X2Go/Server/DB.pm
+@@ -424,3 +424,28 @@ sub db_listsessions_all
+ 		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listsessions_all`);
+ 	}
+ }
++
++sub db_listshadowsessions
++{
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	if ($backend eq 'postgres')
++	{
++		return X2Go::Server::DB::PostgreSQL::db_listshadowsessions($server);
++	}
++	if ($backend eq 'sqlite')
++	{
++		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listshadowsessions $server`);
++	}
++}
++
++sub db_listshadowsessions_all
++{
++	if($backend eq 'postgres')
++	{
++		return X2Go::Server::DB::PostgreSQL::db_listshadowsessions_all();
++	}
++	if ($backend eq 'sqlite')
++	{
++		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listshadowsessions_all`);
++	}
++}
+diff --git a/X2Go/Server/DB/PostgreSQL.pm b/X2Go/Server/DB/PostgreSQL.pm
+index 72ba833..f1233e9 100644
+--- a/X2Go/Server/DB/PostgreSQL.pm
++++ b/X2Go/Server/DB/PostgreSQL.pm
+@@ -45,7 +45,7 @@ use base 'Exporter';
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
+              'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount', 
+              'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot', 
+-             'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts');
++             'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts', 'db_listshadowsessions','db_listshadowsessions_all');
+ 
+ my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
+ 
+@@ -493,4 +493,51 @@ sub db_listsessions_all
+ 	return @sessions;
+ }
+ 
++sub db_listshadowsessions
++{
++	init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my @sessions;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
++	                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
++	                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
++	                      where status !='F' and server='$server' and  
++	                      (session_id like '%XSHAD%') order by status desc&quot;);
++	$sth-&gt;execute() or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@sessions[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
++
++sub db_listshadowsessions_all
++{
++	init_db();
++	my @sessions;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
++	                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
++	                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
++	                      where status !='F'  and  
++	                      (session_id is like '%XSHAD%') order by status desc&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@sessions[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
++
+ 1;
+diff --git a/X2Go/Server/DB/SQLite3.pm b/X2Go/Server/DB/SQLite3.pm
+index 6abdb82..b615c76 100644
+--- a/X2Go/Server/DB/SQLite3.pm
++++ b/X2Go/Server/DB/SQLite3.pm
+@@ -54,8 +54,8 @@ use base 'Exporter';
+ 
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
+              'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount', 
+-             'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot', 
+-             'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts');
++             'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot',.
++             'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts', 'db_listshadowsessions','db_listshadowsessions_all', );
+ 
+ sub init_db
+ {
+@@ -509,6 +509,55 @@ sub db_listsessions_all
+ 	return @sessions;
+ }
+ 
++sub db_listshadowsessions
++{
++	my $dbh = init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my @strings;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                       strftime('%Y-%m-%dT%H:%M:%S',init_time),
++	                       cookie,client,gr_port,sound_port,
++	                       strftime('%Y-%m-%dT%H:%M:%S',last_time),
++	                       uname,
++	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
++	                       where status !='F' and server=? and uname=?
++	                       and  (  session_id like '%XSHAD%')  order by status desc&quot;);
++	$sth-&gt;execute($server, $realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;listsessions (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
++	}
++	my @sessions = fetchrow_array_datasets($sth);
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
++
++sub db_listshadowsessions_all
++{
++	my $dbh = init_db();
++	my @strings;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                       strftime('%Y-%m-%dT%H:%M:%S',init_time),
++	                       cookie,client,gr_port,sound_port,
++	                       strftime('%Y-%m-%dT%H:%M:%S',last_time),
++	                       uname,
++	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions 
++	                       where status !='F' and uname=? and  (  session_id like '%XSHAD%')  order by status desc&quot;);
++	
++	$sth-&gt;execute($realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;listsessions_all (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
++	}
++	my @sessions = fetchrow_array_datasets($sth);
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
++
+ sub check_root
+ {
+ 	if ($realuser ne &quot;root&quot;)
+diff --git a/debian/changelog b/debian/changelog
+index 4349cbf..f4ab554 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -18,6 +18,7 @@ x2goserver (4.1.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Make session type label XFCE a valid session that starts xfce4-session.
+     - Fix failures of x2gogetagent that was related to faulty regexp in
+       SQLite3 DB wrapper script.
++    - Add X2Go Server feature X2GO_LIST_SHADOWSESSIONS.
+   * /debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+diff --git a/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl b/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
+index 751aa69..97c63fd 100755
+--- a/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
++++ b/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
+@@ -55,7 +55,7 @@ my $cmd=shift or die &quot;command not specified&quot;;
+ switch ($cmd)
+ {
+ 	case /.*listsessions.*root/              { @result_list = eval(&quot;X2Go::Server::DB::SQLite3::dbsys_$cmd(\@ARGV)&quot;) }
+-	case /.*(listsessions|getmounts).*/      { @result_list = eval(&quot;X2Go::Server::DB::SQLite3::db_$cmd(\@ARGV)&quot;) }
++	case /.*(list.*sessions|getmounts).*/    { @result_list = eval(&quot;X2Go::Server::DB::SQLite3::db_$cmd(\@ARGV)&quot;) }
+ 	case /.*root/                            { $result = eval(&quot;X2Go::Server::DB::SQLite3::dbsys_$cmd(\@ARGV)&quot;) }
+ 	else                                     { $result = eval(&quot;X2Go::Server::DB::SQLite3::db_$cmd(\@ARGV)&quot;) }
+ }
+diff --git a/x2goserver/bin/x2golistsessions b/x2goserver/bin/x2golistshadowsessions
+similarity index 74%
+copy from x2goserver/bin/x2golistsessions
+copy to x2goserver/bin/x2golistshadowsessions
+index 75ff45a..46893ce 100755
+--- a/x2goserver/bin/x2golistsessions
++++ b/x2goserver/bin/x2golistshadowsessions
+@@ -24,30 +24,30 @@ use strict;
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
+ 
+-use X2Go::Server::DB qw(db_listsessions db_listsessions_all);
++use X2Go::Server::DB qw(db_listshadowsessions db_listshadowsessions_all);
+ use X2Go::Log qw(loglevel);
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+ 
+ if ( @ARGV ) {
+-	syslog('info', &quot;x2golistsessions has been called with options: @ARGV&quot;);
++	syslog('info', &quot;x2golistshadowsessions has been called with options: @ARGV&quot;);
+ } else {
+-	# hiding normal x2golistsessions calls into debug loglevel
+-	syslog('debug', &quot;x2golistsessions has been called with no option&quot;);
++	# hiding normal x2golistshadowsessions calls into debug loglevel
++	syslog('debug', &quot;x2golistshadowsessions has been called with no option&quot;);
+ }
+ 
+-sub check_stat
+-{
+-	my $sess=shift;
+-	my $log=&quot;$ENV{'HOME'}/.x2go/C-$sess/session.log&quot;;
+-	my $text=`tail -1 $log 2&gt;/dev/null`;
+-	if ($text =~ m/Session suspended/)
+-	{
+-		return 0;
+-	}
+-	return 1;
+-}
++#sub check_stat
++#{
++#	my $sess=shift;
++#	my $log=&quot;$ENV{'HOME'}/.x2go/C-$sess/session.log&quot;;
++#	my $text=`tail -1 $log 2&gt;/dev/null`;
++#	if ($text =~ m/Session suspended/)
++#	{
++#		return 0;
++#	}
++#	return 1;
++#}
+ 
+ my $serv=shift;
+ if( ! $serv)
+@@ -58,11 +58,11 @@ if( ! $serv)
+ my @outp;
+ if($serv eq &quot;--all-servers&quot;)
+ {
+-	@outp=db_listsessions_all();
++	@outp=db_listshadowsessions_all();
+ }
+ else
+ {
+-	@outp=db_listsessions($serv);
++	@outp=db_listshadowsessions($serv);
+ }
+ 
+ for (my $i=0;$i&lt;@outp;$i++)
+diff --git a/x2goserver/man/man8/x2golistshadowsessions.8 b/x2goserver/man/man8/x2golistshadowsessions.8
+new file mode 100644
+index 0000000..b832147
+--- /dev/null
++++ b/x2goserver/man/man8/x2golistshadowsessions.8
+@@ -0,0 +1,55 @@
++'\&quot; -*- coding: utf-8 -*-
++.if \n(.g .ds T&lt; \\FC
++.if \n(.g .ds T&gt; \\F[\n[.fam]]
++.de URL
++\\$2 \(la\\$1\(ra\\$3
++..
++.if \n(.g .mso www.tmac
++.TH x2golistshadowsessions 8 &quot;Jan 2013&quot; &quot;Version 4.0.x.y&quot; &quot;X2Go Server Tool&quot;
++.SH NAME
++x2golistshadowsessions \- List Available X2Go Shadow Sessions for User
++.SH SYNOPSIS
++'nh
++.fi
++.ad l
++x2golistshadowsessions [&lt;server_hostname&gt;|--all-servers]
++
++.SH DESCRIPTION
++\fBx2golistshadowsessions\fR returns a list of running or suspended X2Go shadow sessions
++(sessions that provide the X2Go Desktop Sharing feature) for X2Go server &lt;server_hostname&gt;.
++If no server hostname is given at the command line, the shadow session list query runs for the local system.
++.PP
++\fBx2golistshadowsessions\fR is run with normal user privileges and it is used by X2Go clients to render
++a list of available X2Go shadow sessions.
++.SH X2GO CLUSTER MODE
++If \fBx2golistshadowsessions\fR is executed with the \fI--all-servers\fR option then the central database
++of your X2Go cluster is queried for running/suspended shadow sessions belonging to the user executing this command.
++These sessions may be active on any of the X2Go servers within your cluster.
++.SH RETURN VALUES
++A line-by-line list of available X2Go sessions. Each line consists of several session attribute fields separated by the pipe
++symbol (,,|'').
++.PP
++The meaning of the session attributes of each output line are shown below:
++
++  field 01: &lt;agent_pid&gt;
++  field 02: &lt;session_id&gt;
++  field 03: &lt;port&gt;
++  field 04: &lt;host&gt;
++  field 05: &lt;state&gt;
++  field 06: &lt;init_time&gt;
++  field 07: &lt;session_cookie&gt;
++  field 08: &lt;client_ip&gt;
++  field 09: &lt;gr_port&gt;
++  field 10: &lt;snd_port&gt;
++  field 11: &lt;last_time&gt;
++  field 12: &lt;user&gt;
++  field 13: &lt;age_in_secs&gt;
++  field 14: &lt;sshfs_port&gt;
++
++.PP
++As exitcode \fBx2golistshadowsessions\fR always returns 0.
++.SH SEE ALSO
++x2golistsessions(8), x2golistdesktops(8), x2goresume-session(8), x2gosuspend-session(8), x2goterminate-session(8)
++.SH AUTHOR
++This manual has been written by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt; for the X2Go project
++(<A HREF="http://www.x2go.org">http://www.x2go.org</A>).
+diff --git a/x2goserver/share/x2gofeature.d/x2goserver.features b/x2goserver/share/x2gofeature.d/x2goserver.features
+index 1d23695..5e4ce76 100755
+--- a/x2goserver/share/x2gofeature.d/x2goserver.features
++++ b/x2goserver/share/x2gofeature.d/x2goserver.features
+@@ -36,6 +36,7 @@ case &quot;$X2GO_FEATURE&quot; in
+     &quot;X2GO_PUBLISHED_APPLICATIONS&quot;) echo &quot;ok&quot;; exit 0;;
+     &quot;X2GO_SERVERSIDE_DESKTOPCOMMANDS&quot;) echo &quot;ok&quot;; exit 0;;
+     &quot;X2GO_SET_KEYBOARD&quot;) echo &quot;ok&quot;; exit 0;;
++    &quot;X2GO_LIST_SHADOWSESSIONS&quot;) echo &quot;ok&quot;; exit 0;;
+     *) exit -1;;
+ 
+ esac
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="018014.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-115-g8b1b91f
+</A></li>
+	<LI>Next message: <A HREF="018017.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-118-g9394f9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18016">[ date ]</a>
+              <a href="thread.html#18016">[ thread ]</a>
+              <a href="subject.html#18016">[ subject ]</a>
+              <a href="author.html#18016">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

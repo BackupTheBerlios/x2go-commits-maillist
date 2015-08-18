@@ -1,0 +1,324 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-243-gf3de332
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-243-gf3de332&In-Reply-To=%3C20140108142908.C18885DB9F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024543.html">
+   <LINK REL="Next"  HREF="024549.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-243-gf3de332</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-243-gf3de332&In-Reply-To=%3C20140108142908.C18885DB9F%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-243-gf3de332">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:08 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024543.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-242-g63ac948
+</A></li>
+        <LI>Next message: <A HREF="024549.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-240-g5820e62
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24546">[ date ]</a>
+              <a href="thread.html#24546">[ thread ]</a>
+              <a href="subject.html#24546">[ subject ]</a>
+              <a href="author.html#24546">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  f3de332ae4b466bb329df00f31ca9eb92b44ba3c (commit)
+      from  63ac948ac2d787b9d82dc086d316f7c7b1246cf3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   26 +++++++++++++-------------
+ x2go/registry.py                 |   10 ++++++----
+ x2go/rforward.py                 |    2 +-
+ x2go/session.py                  |    9 ++++++---
+ 5 files changed, 27 insertions(+), 21 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 98d3ae5..3e16857 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -134,6 +134,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Catch session startup failures due to faulty port forwarding tunnels
+       and make the notifiable via hooks.
+     - Properly set setkbd value for x2gostartagent and x2goresume-session.
++    - Fix local folder sharing when the master session changes during runtime.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 74c2350..e249cc4 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -174,6 +174,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self.logger('sFTP-put: %s -&gt; %s:%s' % (os.path.normpath(local_path), self.remote_peername(), remote_path), loglevel=log.loglevel_DEBUG)
+         try:
++            while self.sftp_client is None:
++                gevent.sleep(.1)
+             self.sftp_client.put(os.path.normpath(local_path), remote_path)
+         except x2go_exceptions.SSHException:
+             # react to connection dropped error for SSH connections
+@@ -183,6 +185,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self.logger('sFTP-write: opening remote file %s on host %s for writing' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
+         try:
++            while self.sftp_client is None:
++                gevent.sleep(.1)
+             remote_fileobj = self.sftp_client.open(remote_path, 'w')
+             self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
+             remote_fileobj.write(content)
+@@ -193,6 +197,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     def _x2go_sftp_remove(self, remote_path):
+ 
+         self.logger('sFTP-write: removing remote file %s on host %s' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
++        while self.sftp_client is None:
++            gevent.sleep(.1)
+         self.sftp_client.remove(remote_path)
+ 
+     def _x2go_exec_command(self, cmd_line, loglevel=log.loglevel_INFO, timeout=20, **kwargs):
+@@ -207,10 +213,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             cmd = &quot; &quot;.join(cmd_line)
+         else:
+             cmd = cmd_line
+-        if self.get_transport() is not None:
++        ssh_transport = self.get_transport()
++        if ssh_transport is not None:
+ 
+             timer = gevent.Timeout(timeout)
+             timer.start()
++            self.sftp_client = None
+             try:
+                 self.logger(&quot;executing command on X2Go server ,,%s'': %s&quot; % (self.profile_name, _rerewrite_blanks(cmd)), loglevel)
+                 _retval = self.exec_command(_rewrite_password(cmd, user=self.get_transport().get_username(), password=self._session_password), **kwargs)
+@@ -247,6 +255,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             finally:
+                 self.locked = False
+                 timer.cancel()
++                self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
+ 
+         else:
+             self.locked = False
+@@ -448,12 +457,6 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 gevent.sleep(.1)
+                 port = self.sshproxy_session.get_local_proxy_port()
+ 
+-        if not add_to_known_hosts and session_instance:
+-            self.set_missing_host_key_policy(checkhosts.X2goInteractiveAddPolicy(caller=self, session_instance=session_instance))
+-
+-        if add_to_known_hosts:
+-            self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+-
+         # disable pub/priv key authentication if forced
+         if force_password_auth:
+             key_filename = None
+@@ -538,16 +541,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.hostname = hostname
+         self.port = port
+ 
+-        # if we succeed, we immediately grab us an sFTP client session
+-        try:
+-            self.sftp_client = self.open_sftp()
+-        except:
+-            raise x2go_exceptions.X2goControlSessionException('could not invoke server-side SFTP subsystem')
+-
+         # preparing reverse tunnels
+         ssh_transport = self.get_transport()
+         ssh_transport.reverse_tunnels = {}
+ 
++        # if we succeed, we use the same credentials to create a second transport for sFTP client access
++        self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++
+         # mark Paramiko/SSH transport as X2goControlSession
+         ssh_transport._x2go_session_marker = True
+         self._session_password = password
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 0b25e4d..7b174a1 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -344,16 +344,16 @@ class X2goSessionRegistry(object):
+                 for _r_a_s in _running_associated_sessions:
+                     if _r_a_s.is_desktop_session():
+                         self.master_sessions[_profile_name] = _r_a_s
+-                        _r_a_s.set_master_session()
++                        _r_a_s.set_master_session(wait=1)
+                         break
+                 if not self.master_sessions.has_key(_profile_name):
+                     _pubapp_associated_sessions = self.pubapp_sessions_of_profile_name(_profile_name, return_objects=True)
+                     if _pubapp_associated_sessions:
+                         self.master_sessions[_profile_name] = _pubapp_associated_sessions[0]
+-                        _pubapp_associated_sessions[0].set_master_session()
++                        _pubapp_associated_sessions[0].set_master_session(wait=1)
+                     else:
+                         self.master_sessions[_profile_name] = _running_associated_sessions[0]
+-                        _running_associated_sessions[0].set_master_session()
++                        _running_associated_sessions[0].set_master_session(wait=1)
+ 
+         return True
+ 
+@@ -492,9 +492,10 @@ class X2goSessionRegistry(object):
+ 
+         # when starting a new session, we will try to use unused registered virgin sessions
+         # depending on your application layout, there should either be one or no such virgin session at all
+-        _virgin_sessions = self.virgin_sessions_of_profile_name(profile_name, return_objects=True)
++        _virgin_sessions = [ s for s in self.virgin_sessions_of_profile_name(profile_name, return_objects=True) if not s.activated ]
+         if _virgin_sessions and not session_name:
+ 
++            _virgin_sessions[0].activated = True
+             session_uuid = _virgin_sessions[0].get_uuid()
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+             for _k in _params.keys():
+@@ -508,6 +509,7 @@ class X2goSessionRegistry(object):
+ 
+         session_uuid = self.get_session_of_session_name(session_name)
+         if session_uuid is not None:
++            self(session_uuid).activated = True
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+             for _k in _params.keys():
+                 if _k in kwargs.keys():
+diff --git a/x2go/rforward.py b/x2go/rforward.py
+index dde9fd6..a138870 100644
+--- a/x2go/rforward.py
++++ b/x2go/rforward.py
+@@ -146,7 +146,7 @@ class X2goRevFwTunnel(threading.Thread):
+         timeout = Timeout(10)
+         timeout.start()
+         try:
+-            self.ssh_transport.cancel_port_forward('', self.server_port)
++            self.ssh_transport.global_request('cancel-tcpip-forward', (address, port), wait=True)
+         except:
+             pass
+         finally:
+diff --git a/x2go/session.py b/x2go/session.py
+index 35db50a..c2bd8e6 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -131,7 +131,7 @@ class X2goSession(object):
+                  add_to_known_hosts=False,
+                  known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+-                 connected=False, virgin=True, running=None, suspended=None, terminated=None, faulty=None,
++                 connected=False, activated=False, virgin=True, running=None, suspended=None, terminated=None, faulty=None,
+                  client_instance=None,
+                  **params):
+         &quot;&quot;&quot;\
+@@ -191,6 +191,8 @@ class X2goSession(object):
+         @type known_hosts: C{str}
+         @param connected: manipulate session state &#187;connected&#171; by giving a pre-set value
+         @type connected: C{bool}
++        @param activated: normal leave this untouched, an activated session is a session that is about to be used
++        @type activated: C{bool}
+         @param virgin: manipulate session state &#187;virgin&#171; by giving a pre-set value
+         @type virgin: C{bool}
+         @param running: manipulate session state &#187;running&#171; by giving a pre-set value
+@@ -218,6 +220,7 @@ class X2goSession(object):
+         self.uuid = uuid.uuid1()
+         self.connected = connected
+ 
++        self.activated = activated
+         self.virgin = virgin
+         self.running = running
+         self.suspended = suspended
+@@ -481,14 +484,14 @@ class X2goSession(object):
+             return True
+         return self.master_session
+ 
+-    def set_master_session(self):
++    def set_master_session(self, wait=0):
+         &quot;&quot;&quot;\
+         Declare this as a master session of a connection channel.
+ 
+         &quot;&quot;&quot;
+         self.logger('Using session %s as master session for profile %s.' % (self.get_session_name(), self.get_profile_name()), loglevel=log.loglevel_NOTICE)
+         self.master_session = True
+-        gevent.spawn(self.share_all_local_folders)
++        gevent.spawn_later(wait, self.share_all_local_folders)
+ 
+     def unset_master_session(self):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024543.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-242-g63ac948
+</A></li>
+	<LI>Next message: <A HREF="024549.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-240-g5820e62
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24546">[ date ]</a>
+              <a href="thread.html#24546">[ thread ]</a>
+              <a href="subject.html#24546">[ subject ]</a>
+              <a href="author.html#24546">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

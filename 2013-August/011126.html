@@ -1,0 +1,598 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-44-g51f6e18
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.2.1.1-44-g51f6e18&In-Reply-To=%3C20130827112253.93CC85DB8A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011123.html">
+   <LINK REL="Next"  HREF="011127.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-44-g51f6e18</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.2.1.1-44-g51f6e18&In-Reply-To=%3C20130827112253.93CC85DB8A%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-44-g51f6e18">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:22:53 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011123.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-42-g9f6c08f
+</A></li>
+        <LI>Next message: <A HREF="011127.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-46-ga49b979
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11126">[ date ]</a>
+              <a href="thread.html#11126">[ thread ]</a>
+              <a href="subject.html#11126">[ subject ]</a>
+              <a href="author.html#11126">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  51f6e18ddb78fc74cca3f496281549ea54015d20 (commit)
+      from  ff2c5020c462c1ee05ef32b82c60dd6ccf22777e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    2 +
+ pyhoca/wxgui/frontend.py       |   81 ++++++++++++++++++---
+ pyhoca/wxgui/menus_taskbar.py  |   50 ++++++++-----
+ pyhoca/wxgui/profilemanager.py |  156 +++++++++++++++++++++++++++++++++-------
+ 4 files changed, 239 insertions(+), 50 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 8398714..053faf9 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -27,6 +27,8 @@ pyhoca-gui (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Give control of auto-starting and auto-resuming fully into the hands
+       of the session profiles. No extra cmdline options needed anymore to
+       activate auto-starting/-resuming of sessions.
++    - Add support for desktop sharing in PyHoca-GUI. Requires X2Go Server
++      4.1.0.0 and above.
+   * /debian/control:
+     + Thanks to Orion's patch in bug #91 we can drop many build dependencies.
+     + Versioned Depend: on python-x2go (&gt;= 0.4.0.0-0~).
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 4254f26..8ae0576 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -59,6 +59,7 @@ import basepath
+ import messages
+ import splash
+ import sessiontitle
++import listdesktops
+ 
+ wx.SetDefaultPyEncoding(&quot;utf-8&quot;)
+ wx.InitAllImageHandlers()
+@@ -145,6 +146,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+         self.appname = appname
+         self.vendorname = vendorname
+         self.version = version
++        self._exiting = False
+ 
+         self.args = args
+ 
+@@ -431,6 +433,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+           - close all associated windows
+ 
+         &quot;&quot;&quot;
++        self._exiting = True
+         # close open password dialogs (or other remaining windows)
+         for _win in self._sub_windows:
+             _win.Close()
+@@ -684,7 +687,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                 pass
+             connect_failed = True
+         except x2go.X2GoRemoteHomeException, e:
+-            self.notifier.send(_(u'%s - missing home directory') % profile_name, _(&quot;The remote user's home directory does not exist.&quot;), icon='auth_error', timeout=4000)
++            self.notifier.send(_(u'%s - missing home directory') % profile_name, _(u&quot;The remote user's home directory does not exist.&quot;), icon='auth_error', timeout=4000)
+             try:
+                 self._temp_disabled_profile_names.remove(profile_name)
+             except ValueError:
+@@ -758,6 +761,39 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             gevent.spawn(self._X2GoClient__start_session, session_uuid)
+             self._X2GoClient__list_sessions(session_uuid, refresh_cache=True)
+ 
++    def OnShadowSessionStart(self, evt):
++        &quot;&quot;&quot;\
++        Gets called if the user requests to start a new X2Go session.
++
++        @param evt: event
++        @type evt: C{obj}
++
++        &quot;&quot;&quot;
++        profile_name = self._eventid_profilenames_map[evt.GetId()]
++
++        server_version = self.get_server_versions(profile_name, 'x2goserver')
++        if not self.has_server_feature(profile_name, 'X2GO_LIST_SHADOWSESSIONS'):
++            m = messages.PyHoca_MessageWindow_Ok(self,
++                                                 title=_(u'Desktop Sharing with %s not supported by server') % self.appname,
++                                                 msg=_(u&quot;We apologize for the inconvenience...\n\nSession profiles of type ,,SHADOW'' are not\nsupported by X2Go Server (v%s)!!!\n\nDesktop Sharing with %s requires\nX2Go Server 4.1.0.0 and above.&quot;) % (server_version, self.appname),
++                                                 icon='warning',
++                                                 profile_name=profile_name)
++            m.ShowModal()
++            return
++
++        listbox = listdesktops.PyHocaGUI_DialogBoxListDesktops(self, profile_name)
++        listbox.ShowModal()
++
++        if listbox.connect:
++
++            desktop = listbox.GetSelectedDesktop()
++            if desktop:
++                session_uuid = self._X2GoClient__register_session(profile_name=profile_name, published_applications=False)
++                if self._X2GoClient__server_is_alive(session_uuid):
++                    gevent.spawn(self._X2GoClient__share_desktop_session, session_uuid, desktop=desktop, share_mode=listbox.share_mode, check_desktop_list=True)
++
++        listbox.Close()
++
+     def OnPubAppSessionStart(self, evt):
+         &quot;&quot;&quot;\
+         Gets called if the user requests to start a new X2Go session in published applications mode.
+@@ -1129,10 +1165,10 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             else:
+                 self._pyhoca_logger('Exporting session profile(s) to file %s failed.' % _export_file, loglevel=x2go.loglevel_ERROR)
+                 m = messages.PyHoca_MessageWindow_Ok(self,
+-                                                        title=_(u'%s: Exporting session profile(s) failed') % self.appname,
+-                                                        msg=_(u&quot;The selected session profile(s) could not be exported to the \nfile &#187;%s&#171;.\n\nCheck for common problems (disk full, insufficient access, etc.).&quot;) % os.path.normpath(_export_file),
+-                                                        icon='error',
+-                                                        profile_name=profile_name)
++                                                     title=_(u'%s: Exporting session profile(s) failed') % self.appname,
++                                                     msg=_(u&quot;The selected session profile(s) could not be exported to the \nfile &#187;%s&#171;.\n\nCheck for common problems (disk full, insufficient access, etc.).&quot;) % os.path.normpath(_export_file),
++                                                     icon='error',
++                                                     profile_name=profile_name)
+                 m.ShowModal()
+ 
+     def OnShareCustomLocalFolder(self, evt):
+@@ -1355,7 +1391,8 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+         @type profile_name: C{str}
+ 
+         &quot;&quot;&quot;
+-        self.notifier.send(_(u'%s - channel error') % profile_name, _(u'Lost connection to server %s unexpectedly! Try to re-authenticate to the server...') % profile_name, icon='session_warning', timeout=10000)
++        if not self._exiting:
++            self.notifier.send(_(u'%s - channel error') % profile_name, _(u'Lost connection to server %s unexpectedly! Try to re-authenticate to the server...') % profile_name, icon='session_warning', timeout=10000)
+         try:
+             del self._temp_disabled_session_names[profile_name]
+         except KeyError:
+@@ -1364,7 +1401,6 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+ 
+-
+     def HOOK_session_startup_failed(self, profile_name='UNKNOWN', **kwargs):
+         &quot;&quot;&quot;\
+         Notify about session startup failures.
+@@ -1373,7 +1409,32 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+         @type profile_name: C{str}
+ 
+         &quot;&quot;&quot;
+-        self.notifier.send(_(u'%s - session failure') % profile_name, _('The session startup failed.'), icon='session_error', timeout=10000)
++        self.notifier.send(_(u'%s - session failure') % profile_name, _(u'The session startup failed.'), icon='session_error', timeout=10000)
++        if self.exit_on_disconnect:
++            self.WakeUpIdle()
++            self.ExitMainLoop()
++
++    def HOOK_list_desktops_timeout(self, profile_name='UNKNOWN', **kwargs):
++        &quot;&quot;&quot;\
++        Notify about x2golistdesktops timeout events.
++
++        @param profile_name: profile name of session that called this hook method
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
++        self.notifier.send(_(u'%s - timeout') % profile_name, _(u'The server took long to provide a list of sharable desktops.\nThis can happen from time to time, please try again'), icon='session_warning', timeout=10000)
++
++    def HOOK_no_such_desktop(self, profile_name='UNKNOWN', desktop='UNKNOWN', **kwargs):
++        &quot;&quot;&quot;\
++        Notify that a before-seen sharable desktop is not available for sharing (anymore).
++
++        @param profile_name: profile name of session that called this hook method
++        @type profile_name: C{str}
++        @param desktop: the desktop identifier that was attemted to be shared
++        @type desktop: C{str}
++
++        &quot;&quot;&quot;
++        self.notifier.send(_(u'%s - desktop sharing failed') % profile_name, _(u'The desktop %s is not available for sharing (anymore).') % desktop, icon='session_warning', timeout=10000)
+         if self.exit_on_disconnect:
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+@@ -1391,9 +1452,9 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+ 
+         &quot;&quot;&quot;
+         if session_name == 'UNKNOWN':
+-            self.notifier.send(_(u'%s - session failure') % profile_name, _('The command ,,%s\'\' is not available on X2Go server.') % cmd, icon='session_error', timeout=10000)
++            self.notifier.send(_(u'%s - session failure') % profile_name, _(u'The command ,,%s\'\' is not available on X2Go server.') % cmd, icon='session_error', timeout=10000)
+         else:
+-            self.notifier.send(_(u'%s - session failure') % profile_name, _('The command ,,%s\'\' is not available on X2Go server\n%s.') % (cmd, session_name), icon='session_error', timeout=10000)
++            self.notifier.send(_(u'%s - session failure') % profile_name, _(u'The command ,,%s\'\' is not available on X2Go server\n%s.') % (cmd, session_name), icon='session_error', timeout=10000)
+         if self.exit_on_disconnect:
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 9aca407..eff9387 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -253,22 +253,30 @@ class PyHocaGUI_Menu_TaskbarSessionActions(wx.Menu):
+                     _ts = self.Append(text=_(u&quot;Transfer Session (not possible)&quot;), id=ID_TRANSFERSESSION_DISABLED)
+                     _ts.Enable(False)
+ 
+-            if self._PyHocaGUI.disconnect_on_suspend and self._PyHocaGUI.exit_on_disconnect and _s.has_terminal_session(): 
+-                _ss = self.Append(text=_(u&quot;Suspend Session (and disconnect/exit)&quot;), id=ID_SUSPENDSESSION)
+-            elif self._PyHocaGUI.disconnect_on_suspend and _s.has_terminal_session():
+-                _ss = self.Append(text=_(u&quot;Suspend Session (and disconnect)&quot;), id=ID_SUSPENDSESSION)
++            if not _s.is_shadow_session():
++                if self._PyHocaGUI.disconnect_on_suspend and self._PyHocaGUI.exit_on_disconnect and _s.has_terminal_session(): 
++                    _ss = self.Append(text=_(u&quot;Suspend Session (and disconnect/exit)&quot;), id=ID_SUSPENDSESSION)
++                elif self._PyHocaGUI.disconnect_on_suspend and _s.has_terminal_session():
++                    _ss = self.Append(text=_(u&quot;Suspend Session (and disconnect)&quot;), id=ID_SUSPENDSESSION)
++                else:
++                    _ss = self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
++
++                if _s.is_published_applications_provider() and not self._PyHocaGUI.get_profile_config(profile_name)['published']:
++                    _ss.Enable(False)
++        if not _s.is_shadow_session():
++            if self._PyHocaGUI.disconnect_on_terminate and self._PyHocaGUI.exit_on_disconnect and _s.has_terminal_session():
++                self.Append(text=_(u&quot;Terminate Session (and disconnect/exit)&quot;), id=ID_SUSPENDSESSION)
++            elif self._PyHocaGUI.disconnect_on_terminate and _s.has_terminal_session():
++                self.Append(text=_(u&quot;Terminate Session (and disconnect)&quot;), id=ID_TERMINATESESSION)
+             else:
+-                _ss = self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
+-
+-            if _s.is_published_applications_provider() and not self._PyHocaGUI.get_profile_config(profile_name)['published']:
+-                _ss.Enable(False)
+-
+-        if self._PyHocaGUI.disconnect_on_terminate and self._PyHocaGUI.exit_on_disconnect and _s.has_terminal_session():
+-            self.Append(text=_(u&quot;Terminate Session (and disconnect/exit)&quot;), id=ID_SUSPENDSESSION)
+-        elif self._PyHocaGUI.disconnect_on_terminate and _s.has_terminal_session():
+-            self.Append(text=_(u&quot;Terminate Session (and disconnect)&quot;), id=ID_TERMINATESESSION)
++                self.Append(text=_(u&quot;Terminate Session&quot;), id=ID_TERMINATESESSION)
+         else:
+-            self.Append(text=_(u&quot;Terminate Session&quot;), id=ID_TERMINATESESSION)
++            if self._PyHocaGUI.disconnect_on_terminate and self._PyHocaGUI.exit_on_disconnect and _s.has_terminal_session():
++                self.Append(text=_(u&quot;End Session Sharing (and disconnect/exit)&quot;), id=ID_SUSPENDSESSION)
++            elif self._PyHocaGUI.disconnect_on_terminate and _s.has_terminal_session():
++                self.Append(text=_(u&quot;End Session Sharing (and disconnect)&quot;), id=ID_TERMINATESESSION)
++            else:
++                self.Append(text=_(u&quot;End Session Sharing&quot;), id=ID_TERMINATESESSION)
+ 
+         if _s is not None and _s.is_published_applications_provider() and self._PyHocaGUI.get_profile_config(profile_name)['published']:
+             self.AppendSeparator()
+@@ -514,6 +522,7 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+         ID_CONNECT=wx.NewId()
+         ID_PUBAPPSESSIONSTART=wx.NewId()
+         ID_SESSIONSTART=wx.NewId()
++        ID_SHADOWSESSIONSTART=wx.NewId()
+         ID_LAUNCHAPPLICATION = wx.NewId()
+         ID_CLEANSESSIONS = wx.NewId()
+         ID_EDITPROFILEWHILECONNECTED = wx.NewId()
+@@ -540,11 +549,17 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+ 
+             else:
+ 
+-                self._PyHocaGUI._eventid_profilenames_map[ID_SESSIONSTART] = profile_name
++                self._PyHocaGUI._eventid_profilenames_map[ID_SESSIONSTART] = \
++                    self._PyHocaGUI._eventid_profilenames_map[ID_SHADOWSESSIONSTART] = profile_name
+ 
+                 if current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS:
+                     self.Append(id=ID_SESSIONSTART, text='%s (%s)' % (_(u&quot;Start &amp;new Desktop Session&quot;), current_profile_config['command']))
+                     self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionStart, id=ID_SESSIONSTART)
++
++                elif current_profile_config['command'] == 'SHADOW':
++                    start_shadow_session = self.Append(id=ID_SHADOWSESSIONSTART, text=_(u&quot;Connect to another Desktop Session&quot;))
++                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnShadowSessionStart, id=ID_SHADOWSESSIONSTART)
++
+                 elif current_profile_config['command'] == '' and current_profile_config['published']:
+                     _pub_app_start_item = None
+                     if profile_name in self._PyHocaGUI._temp_launching_pubapp_profiles:
+@@ -636,11 +651,14 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+                     self._PyHocaGUI._eventid_profilenames_map[ID_LAUNCHAPPLICATION] = \
+                         self._PyHocaGUI._eventid_profilenames_map[ID_CLEANSESSIONS] = profile_name
+ 
+-                    if current_profile_config['applications'] and current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS and not current_profile_config['published']:
++                    if current_profile_config['applications'] and current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS.keys() and not current_profile_config['published']:
+                         self.AppendSeparator()
+                         self.AppendMenu(id=ID_LAUNCHAPPLICATION, text=_(u&quot;Launch Single Application&quot;),
+                                         submenu=PyHocaGUI_Menu_LaunchSingleApplication(self._PyHocaGUI, caller=self, profile_name=profile_name)
+                                        )
++                        if current_profile_config['command'] != 'SHADOW' and not self._PyHocaGUI.restricted_trayicon:
++                            self.Append(id=ID_SHADOWSESSIONSTART, text=_(u&quot;Connect to Shared Desktop&quot;))
++                            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnShadowSessionStart, id=ID_SHADOWSESSIONSTART)
+ 
+                     if current_profile_config['published']:
+ 
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 71fd136..9f01a78 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -84,6 +84,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'XFCE': _(u'XFCE Desktop (XFCE)'),
+             'PUBLISHEDAPPLICATIONS': _(u'Published Applications'),
+             'APPLICATION': _(u'Single Application'),
++            'SHADOW': _(u'Share desktop session (SHADOW)'),
+             'XDMCP': _(u'XDMCP Query'),
+             'RDP': _(u'Windows Terminal Server (X2Go-proxied RDP)'),
+             'DirectRDP': _(u'Windows Terminal Server (Direct RDP)'),
+@@ -898,6 +899,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         if _command == 'RDP' and self.profile_config['directrdp']:
+             self.SessionType.SetValue(self.sessionChoices['DirectRDP'])
+             self.Command.SetValue('')
++        elif _command == 'SHADOW':
++            self.SessionType.SetValue(self.sessionChoices[_command])
++            self.Application.SetValue('')
++            self.Command.SetValue('')
++            self.AutoStartSession.Enable(False)
++            self.AutoStartSession.SetValue(False)
+         elif _command in self.sessionChoices.keys():
+             self.SessionType.SetValue(self.sessionChoices[_command])
+             self.Application.SetValue('')
+@@ -985,27 +992,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.KeyboardModel.Enable(True)
+             self.KeyboardVariant.Enable(True)
+ 
+-        self.EnableSound.SetValue(self.profile_config['sound'])
+-        self.DefaultSoundPort.SetValue(self.profile_config['defsndport'])
+-        self.SoundPort.SetValue(self.profile_config['sndport'])
+-        if self.profile_config['sound']:
+-            self.PulseAudio.Enable(True)
+-            self.Esd.Enable(True)
+-            self.DefaultSoundPort.Enable(True)
+-            if not self.profile_config['defsndport']:
+-                self.SoundPortLabel.Enable(True)
+-                self.SoundPort.Enable(True)
+-            else:
+-                self.SoundPortLabel.Enable(False)
+-                self.SoundPort.Enable(False)
++        if _command != 'SHADOW':
++            self.ClientSidePrinting.SetValue(self.profile_config['print'])
+         else:
+-            self.PulseAudio.Enable(False)
+-            self.Esd.Enable(False)
+-            self.DefaultSoundPort.Enable(False)
+-            self.SoundPortLabel.Enable(False)
+-            self.SoundPort.Enable(False)
+-
+-        self.ClientSidePrinting.SetValue(self.profile_config['print'])
++            self.ClientSidePrinting.SetValue(False)
++            self.ClientSidePrinting.Enable(False)
++            self.staticbox_Printing.Enable(False)
+ 
+         if _command == 'RDP':
+             if self.profile_config['directrdp']:
+@@ -1049,6 +1041,26 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.RDPOptionsLabel.Enable(False)
+             self.RDPOptions.Enable(False)
+ 
++        if _command != 'SHADOW':
++            self.EnableSound.SetValue(self.profile_config['sound'])
++            self.DefaultSoundPort.SetValue(self.profile_config['defsndport'])
++            self.SoundPort.SetValue(self.profile_config['sndport'])
++            if self.EnableSound.GetValue():
++                self.PulseAudio.Enable(True)
++                self.Esd.Enable(True)
++                self.DefaultSoundPort.Enable(True)
++                self._toggle_DefaultSoundPort()
++        else:
++            self.EnableSound.SetValue(False)
++            self.EnableSound.Enable(False)
++            self.PulseAudio.Enable(False)
++            self.Arts.Enable(False)
++            self.Esd.Enable(False)
++            self.DefaultSoundPort.Enable(False)
++            self.SoundPortLabel.Enable(False)
++            self.SoundPort.Enable(False)
++            self.staticbox_Sound.Enable(False)
++
+         self.XDMCPServer.SetValue(self.profile_config['xdmcpserver'])
+ 
+         self.DisplayTypeFullscreen.SetValue(self.profile_config['fullscreen'] and not self.profile_config['maxdim'])
+@@ -1066,7 +1078,13 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         else:
+             self.DisplayDPI.Enable(True)
+ 
+-        self.UseLocalFolderSharing.SetValue(self.profile_config['useexports'])
++        if _command != 'SHADOW':
++            self.UseLocalFolderSharing.SetValue(self.profile_config['useexports'])
++        else:
++            self.UseLocalFolderSharing.SetValue(False)
++            self.UseLocalFolderSharing.Enable(False)
++            self.staticbox_FolderSharing.Enable(False)
++
+         self.RestoreSharedLocalFolders.SetValue(self.profile_config['restoreexports'])
+         self._toggle_localFolderSharing()
+         self.SharedFoldersList.DeleteAllItems()
+@@ -1080,7 +1098,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         if ',' in self.profile_config['export']:
+             self.profile_config['export'] = self.profile_config['export'].replace(',', ';')
+ 
+-
+         # strip off whitespaces and &quot;;&quot; from beginning and end of string
+         _shared_folders = self.profile_config['export'].strip().strip(';').strip()
+         # strip off '&quot;' from beginning and end of string
+@@ -1117,7 +1134,13 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.ServerEncoding.SetValue(self.profile_config['iconvto'])
+         self._toggle_useEncodingConverter()
+ 
+-        self.UseFileMIMEbox.SetValue(self.profile_config['usemimebox'])
++        if _command != 'SHADOW':
++            self.UseFileMIMEbox.SetValue(self.profile_config['usemimebox'])
++        else:
++            self.UseFileMIMEbox.SetValue(False)
++            self.UseFileMIMEbox.Enable(False)
++            self.staticbox_FileMIMEbox.Enable(False)
++
+         self.FileMIMEboxExtensions.SetValue(self.profile_config['mimeboxextensions'])
+         if self.profile_config['mimeboxaction'] in self.mimeboxactionChoices.keys():
+             self.FileMIMEboxAction.SetValue(self.mimeboxactionChoices[self.profile_config['mimeboxaction']])
+@@ -1127,6 +1150,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.disable_EditConnected_options()
+ 
++        self._last_session_type = [ i for i in self.sessionChoices.keys() if self.sessionChoices[i] == self.SessionType.GetValue() ][0]
++
+     def _toggle_DisplayProperties(self):
+         &quot;&quot;&quot;\
+         Toggle display properties, depend on activation/deactivation of rootless session mode.
+@@ -1207,7 +1232,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHPort.Enable(False)
+             self.SSHKeyFileLabel.Enable(False)
+             self.SSHKeyFile.Enable(False)
+-            self.UniqueHostAliases.Enable(False)
++            self.UniqueHostKeyAliases.Enable(False)
+             self.SSHAutoLogin.Enable(False)
+             if PARAMIKO_FEATURE['forward-ssh-agent']:
+                 self.SSHForwardAuthAgent.Enable(False)
+@@ -1582,6 +1607,44 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         &quot;&quot;&quot;
+         _session_type = [ i for i in self.sessionChoices.keys() if self.sessionChoices[i] == self.SessionType.GetValue() ][0]
++        if self._last_session_type == 'SHADOW':
++
++            self.EnableSound.SetValue(self.profile_config_bak['sound'])
++            self.RootlessSession.SetValue(self.profile_config_bak['rootless'])
++            self.UseLocalFolderSharing.SetValue(self.profile_config_bak['useexports'])
++            self.ClientSidePrinting.SetValue(self.profile_config_bak['print'])
++            self.UseFileMIMEbox.SetValue(self.profile_config_bak['usemimebox'])
++            self.AutoStartSession.SetValue(self.profile_config_bak['autostart'])
++
++            self.RootlessSession.Enable(True)
++
++            if self.EnableSound.GetValue():
++                self.PulseAudio.Enable(True)
++                self.Esd.Enable(True)
++                self.DefaultSoundPort.Enable(True)
++                self._toggle_DefaultSoundPort()
++            else:
++                self.PulseAudio.Enable(False)
++                self.Esd.Enable(False)
++                self.DefaultSoundPort.Enable(False)
++                self.SoundPortLabel.Enable(False)
++                self.SoundPort.Enable(False)
++
++            self.staticbox_Sound.Enable(True)
++
++            # no local folder sharing available
++            self.staticbox_FolderSharing.Enable(True)
++            self.UseLocalFolderSharing.Enable(True)
++            self._toggle_localFolderSharing()
++
++            # no printing available
++            self.ClientSidePrinting.Enable(True)
++            self.staticbox_Printing.Enable(True)
++
++            # no file MIME box available
++            self.UseFileMIMEbox.Enable(True)
++            self.staticbox_FileMIMEbox.Enable(True)
++
+         self.UsePublishedApplications.Enable(True)
+         self.AutoStartSession.Enable(True)
+ 
+@@ -1711,9 +1774,54 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+                 self.AutoStartSession.SetValue(self._last_auto_start_value)
+                 self._last_auto_start_value = None
+ 
++        if _session_type == 'SHADOW':
++
++            self.profile_config_bak['autostart'] = self.AutoStartSession.GetValue()
++            self.profile_config_bak['sound'] = self.EnableSound.GetValue()
++            self.profile_config_bak['rootless'] = self.RootlessSession.GetValue()
++            self.profile_config_bak['useexports'] = self.UseLocalFolderSharing.GetValue()
++            self.profile_config_bak['print'] = self.ClientSidePrinting.GetValue()
++            self.profile_config_bak['usemimebox'] = self.UseFileMIMEbox.GetValue()
++
++            self.AutoStartSession.SetValue(False)
++            self.AutoStartSession.Enable(False)
++
++            # shadow sessions are always desktop sessions
++            self.RootlessSession.SetValue(True)
++            self.RootlessSession.Enable(False)
++
++            # no sound available with SHADOW sessions
++            self.EnableSound.SetValue(False)
++            self.EnableSound.Enable(False)
++            self.PulseAudio.Enable(False)
++            self.Esd.Enable(False)
++            self.DefaultSoundPort.Enable(False)
++            self.SoundPortLabel.Enable(False)
++            self.SoundPort.Enable(False)
++            self.staticbox_Sound.Enable(False)
++
++            # no local folder sharing available
++            self.UseLocalFolderSharing.SetValue(False)
++            self.UseLocalFolderSharing.Enable(False)
++            self.staticbox_FolderSharing.Enable(False)
++            self._toggle_localFolderSharing()
++
++            # no printing available
++            self.ClientSidePrinting.SetValue(False)
++            self.ClientSidePrinting.Enable(False)
++            self.staticbox_Printing.Enable(False)
++
++            # no file MIME box available
++            self.UseFileMIMEbox.SetValue(False)
++            self.UseFileMIMEbox.Enable(False)
++            self.staticbox_FileMIMEbox.Enable(False)
++            self._toggle_useFileMIMEbox()
++
+         self._toggle_DisplayProperties()
+         self.disable_EditConnected_options()
+ 
++        self._last_session_type = _session_type
++
+     def OnCompressionSelected(self, event):
+         &quot;&quot;&quot;\
+         Gets called if another compression method gets selected.
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011123.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-42-g9f6c08f
+</A></li>
+	<LI>Next message: <A HREF="011127.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.2.1.1-46-ga49b979
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11126">[ date ]</a>
+              <a href="thread.html#11126">[ thread ]</a>
+              <a href="subject.html#11126">[ subject ]</a>
+              <a href="author.html#11126">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

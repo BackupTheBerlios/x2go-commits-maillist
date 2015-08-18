@@ -1,0 +1,522 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-81-g2d21a9d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.1.0-81-g2d21a9d&In-Reply-To=%3C20130604191019.C207E5DB2D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008285.html">
+   <LINK REL="Next"  HREF="008294.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-81-g2d21a9d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.1.0-81-g2d21a9d&In-Reply-To=%3C20130604191019.C207E5DB2D%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-81-g2d21a9d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:10:19 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008285.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-80-g9bab6a6
+</A></li>
+        <LI>Next message: <A HREF="008294.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-79-g3d3f78f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8293">[ date ]</a>
+              <a href="thread.html#8293">[ thread ]</a>
+              <a href="subject.html#8293">[ subject ]</a>
+              <a href="author.html#8293">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  2d21a9df895b5c66269e05c827bcbb5da612eb08 (commit)
+      from  9bab6a6a97e22a86c16b5c22c4a2390a8664d3be (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |   12 +++-
+ sbin/x2gobroker                   |    5 +-
+ x2gobroker/basicauth.py           |   55 +++++++++++++++++
+ x2gobroker/brokers/base_broker.py |    3 -
+ x2gobroker/uccsjson.py            |   26 ++++----
+ x2gobroker/web/uccs.py            |  123 +++++++++++++++++++------------------
+ 6 files changed, 143 insertions(+), 81 deletions(-)
+ create mode 100644 x2gobroker/basicauth.py
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index c0ab3f0..c50551a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,6 +1,12 @@
+-x2gobroker (0.0.1.2-0~x2go1) UNRELEASED; urgency=low
+-
+-  * Continue development...
++x2gobroker (0.0.2.0-0~x2go1) UNRELEASED; urgency=low
++
++  * New upstream version (0.0.2.0):
++    - Add a UCCS-like web frontend UI that allows unity greeter to offer
++      X2Go session logins. At the time of writing this, on the system running
++      Unity Greeter it requires a patched remote-login-service (see LP:1172943,
++      LP:1172318) and patched unity-greeter (LP:1172928, LP:1172877).
++      Additionally the system running Unity Greeter requires the extra packages
++      lightdm-remote-session-x2go and libpam-x2go.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Tue, 23 Apr 2013 23:26:21 +0200
+ 
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index aff9f8d..c2ee335 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -114,10 +114,11 @@ import x2gobroker.web.extras
+ 
+ # define the web.py URLs
+ urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
+-         ('/uccs/(.*)', x2gobroker.web.uccs.X2GoBrokerWeb,),
++         ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
++         ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
+ #        ('/json/(.*)', x2gobroker.web.json.X2GoBrokerWeb,),
+ #        ('/html/(.*)', x2gobroker.web.html.X2GoBrokerWeb,),
+-         ('/pubkeys(|/)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
++         ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
+        )
+ 
+ settings = {
+diff --git a/x2gobroker/basicauth.py b/x2gobroker/basicauth.py
+new file mode 100644
+index 0000000..f48da4c
+--- /dev/null
++++ b/x2gobroker/basicauth.py
+@@ -0,0 +1,55 @@
++#!/usr/bin/env python
++
++# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
++# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++# modules
++import base64
++
++def require_basic_auth(realm, validate_callback):
++    def require_basic_auth_decorator(handler_class):
++        def wrap_execute(handler_execute):
++            def require_basic_auth(handler, kwargs):
++                def create_auth_header():
++                    handler.set_status(401)
++                    handler.set_header('WWW-Authenticate', 'Basic realm=&quot;{realm}&quot;'.format(realm=realm))
++                    handler._transforms = []
++                    handler.finish()
++
++                auth_header = handler.request.headers.get('Authorization')
++                if auth_header is None or not auth_header.startswith('Basic '):
++                    create_auth_header()
++                else:
++                    auth_decoded = base64.decodestring(auth_header[6:])
++                    username, kwargs['basicauth_pass'] = [ unicode(s) for s in auth_decoded.split(':', 2) ]
++                    kwargs['basicauth_user'], access = validate_callback(username, kwargs['basicauth_pass'])
++                    if access:
++                        return True
++                    else:
++                        create_auth_header()
++            def _execute(self, transforms, *args, **kwargs):
++                if not require_basic_auth(self, kwargs):
++                    return False
++                return handler_execute(self, transforms, *args, **kwargs)
++            return _execute
++
++        handler_class._execute = wrap_execute(handler_class._execute)
++        return handler_class
++    return require_basic_auth_decorator
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 3cac792..2ce0ba4 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -731,9 +731,6 @@ class X2GoBroker(object):
+ 
+         access = False
+         access = self._do_authenticate(username=username, password=password)
+-        if not access and &quot;@&quot; in username:
+-            _username = username.split('@')[0]
+-            access = self._do_authenticate(username=_username, password=password)
+         logger_broker.debug('base_broker.X2GoBroker.check_access(): result of authentication check is: {access}'.format(access=access))
+ 
+         ### HANDLING OF DYNAMIC AUTHENTICATION ID HASHES
+diff --git a/x2gobroker/uccsjson.py b/x2gobroker/uccsjson.py
+index ca61dab..8393a59 100644
+--- a/x2gobroker/uccsjson.py
++++ b/x2gobroker/uccsjson.py
+@@ -1,3 +1,5 @@
++# -*- coding: utf-8 -*-
++
+ # Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ # Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+ # Copyright (C) 2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+@@ -59,7 +61,7 @@ class ManagementServer():
+         &quot;&quot;&quot;
+         if isinstance(ts_name, str):
+             self.DefaultServer = unicode(ts_name)
+-        elif isinstance(domain, unicode):
++        elif isinstance(ts_name, unicode):
+             self.DefaultServer = ts_name
+         else:
+             raise TypeError(&quot;set_default expects a string argument&quot;)
+@@ -87,7 +89,7 @@ class ManagementServer():
+         Dump this instance as JSON object.
+ 
+         &quot;&quot;&quot;
+-        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=4)
++        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=2)
+ 
+ 
+ # NOT USED!!!
+@@ -102,7 +104,7 @@ class RDPServer():
+     Instantiate a UCCS compatible RDP server session profile object.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, host, name, username=None, password=None):
++    def __init__(self, host, name, username='', password=''):
+         &quot;&quot;&quot;\
+         @param host: hostname of RDP server host
+         @type host: C{unicode}
+@@ -114,9 +116,9 @@ class RDPServer():
+         @type password: C{unicode}
+ 
+         &quot;&quot;&quot;
+-        self.URL = unicode(host)
++        self.URL = '<A HREF="http://{url">http://{url</A>}/'.format(url=unicode(host))
+         self.Name = unicode(name)
+-        self.Protocol = u'freerdp'
++        self.Protocol = u'rdp'
+         self.DomainRequired = True
+         self.Username = unicode(username)
+         self.Password = unicode(password)
+@@ -143,7 +145,7 @@ class RDPServer():
+         Dump this instance as JSON object.
+ 
+         &quot;&quot;&quot;
+-        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=4)
++        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=2)
+ 
+ 
+ class ICAServer():
+@@ -151,7 +153,7 @@ class ICAServer():
+     Instantiate a UCCS compatible ICA server session profile object.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, host, name, username=None, password=None):
++    def __init__(self, host, name, username='', password=''):
+         &quot;&quot;&quot;\
+         @param host: hostname of ICA server host
+         @type host: C{unicode}
+@@ -163,7 +165,7 @@ class ICAServer():
+         @type password: C{unicode}
+ 
+         &quot;&quot;&quot;
+-        self.URL = unicode(host)
++        self.URL = '<A HREF="http://{url">http://{url</A>}/'.format(url=unicode(host))
+         self.Name = unicode(name)
+         self.Protocol = u'ica'
+         self.DomainRequired = unicode(True)
+@@ -192,7 +194,7 @@ class ICAServer():
+         Dump this instance as JSON object.
+ 
+         &quot;&quot;&quot;
+-        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=4)
++        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=2)
+ 
+ 
+ class X2GoServer():
+@@ -200,7 +202,7 @@ class X2GoServer():
+     Instantiate a UCCS compatible X2Go Server session profile object.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, host, name, username=None, password=None):
++    def __init__(self, host, name, username='', password=''):
+         &quot;&quot;&quot;\
+         @param host: hostname of X2Go Server host
+         @type host: C{unicode}
+@@ -212,7 +214,7 @@ class X2GoServer():
+         @type password: C{unicode}
+ 
+         &quot;&quot;&quot;
+-        self.URL = unicode(host)
++        self.URL = '<A HREF="http://{url">http://{url</A>}/'.format(url=unicode(host))
+         self.Name = unicode(name)
+         self.Protocol = u'x2go'
+         self.SessionTypeRequired = True
+@@ -241,5 +243,5 @@ class X2GoServer():
+         Dump this instance as JSON object.
+ 
+         &quot;&quot;&quot;
+-        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=4)
++        return json.dumps(self, default=convert_to_builtin_type, sort_keys=True, indent=2)
+ 
+diff --git a/x2gobroker/web/uccs.py b/x2gobroker/web/uccs.py
+index db59f24..041ea81 100644
+--- a/x2gobroker/web/uccs.py
++++ b/x2gobroker/web/uccs.py
+@@ -21,59 +21,50 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ # modules
+-import types
+ import re
+ import base64
++import datetime
+ import tornado.web
+-from tornado.escape import native_str, parse_qs_bytes
+ 
+ # Python X2Go Broker modules
+ import x2gobroker.defaults
+ 
+ from x2gobroker.loggers import logger_broker, logger_error
+ import x2gobroker.uccsjson
++import x2gobroker.basicauth
++
++
++def credentials_validate(username, password):
+ 
+-def require_basic_auth(realm, validate_callback):
+-    def require_basic_auth_decorator(handler_class):
+-        def wrap_execute(handler_execute):
+-            def require_basic_auth(handler, kwargs):
+-                def create_auth_header():
+-                    handler.set_status(401)
+-                    handler.set_header('WWW-Authenticate', 'Basic realm=&quot;{realm}&quot;'.format(realm=realm))
+-                    handler._transforms = []
+-                    handler.finish()
+-
+-                auth_header = handler.request.headers.get('Authorization')
+-                if auth_header is None or not auth_header.startswith('Basic '):
+-                    create_auth_header()
+-                else:
+-                    auth_decoded = base64.decodestring(auth_header[6:])
+-                    kwargs['basicauth_user'], kwargs['basicauth_pass'] = [ unicode(s) for s in auth_decoded.split(':', 2) ]
+-                    if validate_callback(handler_class, kwargs['basicauth_user'], kwargs['basicauth_pass']):
+-                        return True
+-                    else:
+-                        create_auth_header()
+-            def _execute(self, transforms, *args, **kwargs):
+-                if not require_basic_auth(self, kwargs):
+-                    return False
+-                return handler_execute(self, transforms, *args, **kwargs)
+-            return _execute
+-
+-        handler_class._execute = wrap_execute(handler_class._execute)
+-        return handler_class
+-    return require_basic_auth_decorator
+-
+-
+-def credentials_validate(handler_class, username, password):
+     import x2gobroker.brokers.base_broker
+     # FIXME: with the below hack, the backend broker detection in X2GoBrokerWeb is disabled, only global options
+     #        from x2gobroker.conf are available here...
+-    return x2gobroker.brokers.base_broker.X2GoBroker().check_access(username=username, password=password)
++    broker = x2gobroker.brokers.base_broker.X2GoBroker()
++    broker.enable()
++    access = broker.check_access(username=username, password=password)
++    # UCCS only allows email addresses for remote login 
++    if not access and &quot;@&quot; in username:
++        username = username.split('@')[0]
++        access = broker.check_access(username=username, password=password)
++    return username, access
+ 
+ 
+<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">- at require_basic_auth</A>('Authentication required', credentials_validate)
+ class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
++    def get(self, path):
++        if x2gobroker.defaults.X2GOBROKER_DEBUG:
++            logger_broker.warn('GET http request detected, if unwanted: disable X2GOBROKER_DEBUG')
++            return self.head(path)
++        raise tornado.web.HTTPError(405)
++
++    def head(self, path):
++        self.write(unicode(datetime.datetime.utcnow()))
++        return
++
++
+<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">+ at x2gobroker.basicauth.require_basic_auth</A>('Authentication required', credentials_validate)
++class X2GoBrokerWebAPI(tornado.web.RequestHandler):
++
+     http_header_items = {
+         'Content-Type': 'text/plain; charset=utf-8',
+         'Expires': '+1h',
+@@ -84,30 +75,26 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+         for http_header_item in self.http_header_items.keys():
+             self.set_header(http_header_item, self.http_header_items[http_header_item])
+ 
+-    def get(self, backend, basicauth_user, basicauth_pass):
+-        if x2gobroker.defaults.X2GOBROKER_DEBUG:
+-            self._gen_http_header()
+-            logger_broker.warn('GET http request detected, if unwanted: disable X2GOBROKER_DEBUG')
+-            return self.head(backend, basicauth_user, basicauth_pass)
+-        raise tornado.web.HTTPError(404)
++    def get(self, *args, **kwargs):
++
++        self._gen_http_header()
+ 
+-    def head(self, backend, basicauth_user, basicauth_pass):
++        backend = args[0]
++        api_version = args[1]
++        try:
++            api_version = int(api_version)
++        except TypeError:
++            api_version = 4
+ 
+         if not backend:
+-            backend = x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND
++            self.backend = x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND
+         else:
+-            backend = backend.rstrip('/')
+-
+-        api_version = 4
+-        if re.match('.*/api/[0-9].*', backend):
+-            # get the first and the third item as backend, api_version
+-            backend, api_version = backend.split('/')[:3:2]
+-            api_version = int(api_version)
++            self.backend = backend.rstrip('/')
+ 
+         try:
+             # dynamically detect broker backend from given URL
+-            exec(&quot;import x2gobroker.brokers.{backend}_broker&quot;.format(backend=backend))
+-            exec(&quot;self.broker_backend = x2gobroker.brokers.{backend}_broker.X2GoBroker()&quot;.format(backend=backend))
++            exec(&quot;import x2gobroker.brokers.{backend}_broker&quot;.format(backend=self.backend))
++            exec(&quot;self.broker_backend = x2gobroker.brokers.{backend}_broker.X2GoBroker()&quot;.format(backend=self.backend))
+         except ImportError:
+             # throw a 404 if the backend does not exist
+             raise tornado.web.HTTPError(404)
+@@ -121,27 +108,34 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+         # set the client address for the broker backend
+         ip = self.request.remote_ip
+         if ip:
+-            logger_broker.info('client address is {address}'.format(address=ip))
+             self.broker_backend.set_client_address(ip)
++            logger_broker.info('client address is {address}'.format(address=ip))
+         elif not x2gobroker.defaults.X2GOBROKER_DEBUG:
+             # if the client IP is not set, we pretend to have nothing on offer
+             logger_error.error('client could not provide an IP address, pretending: 404 Not Found')
+             raise tornado.web.HTTPError(404)
+ 
+-        username, password = basicauth_user, basicauth_pass
+-        cookie = ''
++        ###
++        ### CONFIRM SUCCESSFUL AUTHENTICATION FIRST
++        ###
+ 
+-        output = ''
++        try:
++            username = kwargs['basicauth_user']
++        except KeyError:
++            raise tornado.web.HTTPError(401)
+ 
++        cookie = ''
+         logger_broker.debug ('Authenticated as username: {username}, with password: &lt;hidden&gt;'.format(username=username))
+ 
+         ###
+-        ### CONFIRM SUCCESSFUL AUTHENTICATION FIRST
++        ### GENERATE UCCS JSON TREE
+         ###
+ 
++        output = ''
++
+         profiles = self.broker_backend.list_profiles(username)
+         urlbase = self.broker_backend.get_global_value('my-uccs-url-base').rstrip('/')
+-        ms = x2gobroker.uccsjson.ManagementServer('{urlbase}/uccs/{backend}'.format(urlbase=urlbase, backend=backend), 'X2Go Session Broker')
++        ms = x2gobroker.uccsjson.ManagementServer('{urlbase}/uccs/{backend}/'.format(urlbase=urlbase, backend=backend), 'X2Go Session Broker')
+ 
+         profile_ids = profiles.keys()
+         profile_ids.sort()
+@@ -149,14 +143,21 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+         for profile_id in profile_ids:
+ 
+             if profiles[profile_id][u'directrdp']:
+-                pass
++                ts = x2gobroker.uccsjson.RDPServer(
++                        host='{hostname}'.format(hostname=profiles[profile_id][u'host'][0]),
++                        name=profiles[profile_id][u'name'],
++                        username=profiles[profile_id][u'user'],
++                )
++                ts.set_domain('LOCAL')
+             else:
+                 ts = x2gobroker.uccsjson.X2GoServer(
+-                        host='{hostname}:{port}'.format(hostname=profiles[profile_id][u'host'], port=profiles[profile_id][u'sshport']),
++                        host='{hostname}:{port}'.format(hostname=profiles[profile_id][u'host'][0], port=profiles[profile_id][u'sshport']),
+                         name=profiles[profile_id][u'name'],
+                         username=profiles[profile_id][u'user'],
+                 )
++                ts.set_session_type(profiles[profile_id]['command'])
+             ms.add_terminalserver(ts)
++            ms.set_default(ts.Name)
+ 
+         output += ms.toJson()
+ 
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008285.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-80-g9bab6a6
+</A></li>
+	<LI>Next message: <A HREF="008294.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.1.0-79-g3d3f78f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8293">[ date ]</a>
+              <a href="thread.html#8293">[ thread ]</a>
+              <a href="subject.html#8293">[ subject ]</a>
+              <a href="author.html#8293">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,258 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	203b7cb65ff266f47508681fdce91fb1a345ad17
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09203b7cb65ff266f47508681fdce91fb1a345ad17&In-Reply-To=%3C20140108142744.91C305DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024393.html">
+   <LINK REL="Next"  HREF="024395.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	203b7cb65ff266f47508681fdce91fb1a345ad17</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09203b7cb65ff266f47508681fdce91fb1a345ad17&In-Reply-To=%3C20140108142744.91C305DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	203b7cb65ff266f47508681fdce91fb1a345ad17">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:44 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024393.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-41-g8dd9b31
+</A></li>
+        <LI>Next message: <A HREF="024395.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-40-gb98840c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24394">[ date ]</a>
+              <a href="thread.html#24394">[ thread ]</a>
+              <a href="subject.html#24394">[ subject ]</a>
+              <a href="author.html#24394">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  203b7cb65ff266f47508681fdce91fb1a345ad17 (commit)
+      from  13272248f26b3242bb1e7f13fbe17e35519667d3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py     |    6 +++
+ x2go/pulseaudio.py |  104 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 110 insertions(+)
+ create mode 100644 x2go/pulseaudio.py
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index 46d4fea..2ad5e71 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -162,6 +162,7 @@ import x2go.backends.printing as printing
+ 
+ if _X2GOCLIENT_OS == 'Windows':
+     from xserver import X2goClientXConfig, X2goXServer
++    from pulseaudio import X2goPulseAudio
+ 
+ 
+ class X2goClient(object):
+@@ -187,11 +188,13 @@ class X2goClient(object):
+                  sessions_rootdir=None,
+                  ssh_rootdir=None,
+                  start_xserver=False,
++                 start_pulseaudio=False,
+                  use_listsessions_cache=False, 
+                  auto_update_listsessions_cache=False,
+                  auto_update_sessionregistry=False,
+                  auto_register_sessions=False,
+                  refresh_interval=5,
++                 pulseaudio_installdir=os.path.join(os.getcwd(), 'pulseaudio'),
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param logger: you can pass an L{X2goLogger} object to the
+@@ -259,6 +262,9 @@ class X2goClient(object):
+                 # presume the running XServer listens on :0
+                 os.environ.update({'DISPLAY': 'localhost:0'})
+ 
++        if _X2GOCLIENT_OS == 'Windows' and start_pulseaudio:
++            self.pulseaudio = X2goPulseAudio(path=self.pulseaudio_installdir, logger=self.logger)
++
+         self.auto_register_sessions = auto_register_sessions
+         self.session_registry = X2goSessionRegistry(self, logger=self.logger)
+         self.session_guardian = X2goSessionGuardian(self, auto_update_listsessions_cache=auto_update_listsessions_cache &amp; use_listsessions_cache, 
+diff --git a/x2go/pulseaudio.py b/x2go/pulseaudio.py
+new file mode 100644
+index 0000000..d163afa
+--- /dev/null
++++ b/x2go/pulseaudio.py
+@@ -0,0 +1,104 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++#
++# This code was initially written by:
++#       2010 Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++#
++# Other contributors:
++#       none so far
++
++__NAME__ = 'x2gopulseaudio-pylib'
++
++from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
++if _X2GOCLIENT_OS == 'Windows':
++    import wmi
++
++# modules
++import os
++import subprocess
++import threading
++import gevent
++import copy
++
++# Python X2go modules
++import log
++
++class X2goPulseAudio(threading.Thread):
++    &quot;&quot;&quot;
++    This class controls the Pulse Audio daemon.
++    &quot;&quot;&quot;
++
++    def __init__(self, path=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if _X2GOCLIENT_OS not in (&quot;Windows&quot;):
++            import exceptions
++            class OSNotSupportedException(exceptions.StandardError): pass
++            raise OSNotSupportedException('classes of x2go.pulseaudio module are for Windows only')
++
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        self.path = path
++        self._keepalive = None
++
++        threading.Thread.__init__(self)
++        self.daemon = True
++        self.start()
++
++    def run(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._keepalive = True
++        cmd = 'pulseaudio'
++        if self.path:
++            cmd = os.path.join(self.path, cmd)
++        cmd_options = [
++            '-n',
++            '-L module-native-protocol-tcp port=4713',
++            '-L module-esound-protocol-tcp port=16001',
++            '-L module-waveout',
++        ]
++        cmd_line = [cmd]
++        cmd_line.extend(cmd_options)
++        self.logger('starting PulsaAudio server with command line: %s' % ' '.join(cmd_line), loglevel=log.loglevel_DEBUG)
++        p = subprocess.Popen(cmd_line, shell=False)
++        while self._keepalive:
++            gevent.sleep(1)
++        self.logger('terminating running PulseAudio server', loglevel=log.loglevel_DEBUG)
++        try:
++            p.terminate()
++        except WindowsError:
++            pass
++
++    def stop_thread(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self.logger('stop_thread() method has been called', loglevel=log.loglevel_DEBUG)
++        self._keepalive = False
++
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024393.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-41-g8dd9b31
+</A></li>
+	<LI>Next message: <A HREF="024395.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-40-gb98840c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24394">[ date ]</a>
+              <a href="thread.html#24394">[ thread ]</a>
+              <a href="subject.html#24394">[ subject ]</a>
+              <a href="author.html#24394">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

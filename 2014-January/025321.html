@@ -1,0 +1,642 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-82-g02d00cf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-82-g02d00cf&In-Reply-To=%3C20140108143047.D79565DEB6%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025305.html">
+   <LINK REL="Next"  HREF="025606.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-82-g02d00cf</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-82-g02d00cf&In-Reply-To=%3C20140108143047.D79565DEB6%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-82-g02d00cf">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:47 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025305.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-81-g998741e
+</A></li>
+        <LI>Next message: <A HREF="025606.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-83-g8c2c5b4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25321">[ date ]</a>
+              <a href="thread.html#25321">[ thread ]</a>
+              <a href="subject.html#25321">[ subject ]</a>
+              <a href="author.html#25321">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  02d00cf85ff6e2fc9bcde04c2c9118e423c519c8 (commit)
+      from  998741e75447c444478a8165d158f28892cbb719 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/terminal/_stdout.py |   54 ++++++++++++++++++++++++++++++++-----
+ x2go/client.py                    |   15 +++++++++++
+ x2go/session.py                   |   13 +++++++++
+ x2go/utils.py                     |   29 ++++++++++++++++++++
+ 5 files changed, 106 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index eb74667..98b72dc 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -18,6 +18,7 @@ python-x2go (0.1.1.9-0-x2go1) UNRELEASED; urgency=low
+     - Fix for list processing in  INI files.
+     - Make terminal backend ,,applications'' aware.
+     - Allow session parameter change for already registered sessions.
++    - Add support for session window title renaming.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 12 Oct 2011 10:54:23 +0200
+ 
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 3817b43..7753572 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -751,6 +751,49 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;
+         return self.params.depth
+ 
++    def _auto_session_window_title(self):
++
++        _generic_title = 'X2GO-%s' % self.session_info.name
++
++        if self.params.session_type == 'D':
++            if self.set_session_title:
++
++                if not self.session_title:
++                    self.session_title = '%s for %s@%s' % (self.params.cmd, self.control_session.remote_username(), self.control_session.get_hostname())
++
++            else:
++                # session title fallback... (like X2Go server does it...)
++                self.session_title = _generic_title
++
++        else:
++            # do nothing for rootless sessions
++            self.session_title = _generic_title
++
++        if self.session_title != _generic_title:
++            self.set_session_window_title(title=self.session_title)
++
++
++    def set_session_window_title(self, title=''):
++        &quot;&quot;&quot;\
++        Modify session window title. If the session ID does not occur in the
++        given title, it will be prepended, so that every X2Go session window
++        always contains the X2Go session ID of that window.
++
++        @param title: new title for session window
++        @type title: C{str}
++
++        &quot;&quot;&quot;
++        print self.params.cmd
++
++        if self.session_info.name not in title:
++            title = '%s (X2GO-%s)' % (title, self.session_info.name)
++
++        gevent.spawn(utils.set_session_window_title,
++                     session_name=self.session_info.name,
++                     title=title,
++                     timeout=30,
++                    )
++
+     def has_command(self, cmd):
+         &quot;&quot;&quot;\
+         Verify if the command &lt;cmd&gt; exists on the X2go server.
+@@ -923,12 +966,6 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.params.cmd == 'XDMCP' and self.params.xdmcp_server:
+             cmd_line = ['X2GOXDMCP=%s' % self.params.xdmcp_server] + cmd_line
+ 
+-        if self.set_session_title:
+-            cmd_line = ['X2GO_CLIENTFEATURE_SET_SESSIONTITLE=enabled '] + cmd_line
+-
+-        if self.session_title:
+-            cmd_line = ['X2GO_SESSION_WINDOW_TITLE=&quot;%s&quot; ' % self.session_title] + cmd_line
+-
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+ 
+         _stdout = stdout.read()
+@@ -970,6 +1007,8 @@ class X2goTerminalSessionSTDOUT(object):
+         self.proxy_subprocess = self.proxy.start_proxy()
+         self.active_threads.append(self.proxy)
+ 
++        self._auto_session_window_title()
++
+         return self.ok()
+ 
+     def resume(self):
+@@ -1015,6 +1054,9 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.depth = self.session_info.name.split('_')[2][2:]
+         # on a session resume the user name comes in as a user ID. We have to translate this...
+         self.session_info.username = self.control_session.remote_username()
++
++        self._auto_session_window_title()
++
+         return self.ok()
+ 
+     def suspend(self):
+diff --git a/x2go/client.py b/x2go/client.py
+index 7928adf..aca0b68 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1182,6 +1182,21 @@ class X2goClient(object):
+         self.session_registry(session_uuid).set_print_action(print_action=print_action, **kwargs)
+     __set_session_print_action = set_session_print_action
+ 
++    def set_session_window_title(self, session_uuid, title=''):
++        &quot;&quot;&quot;\
++        Modify session window title. If the session ID does not occur in the
++        given title, it will be prepended, so that every X2Go session window
++        always contains the X2Go session ID of that window.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @param title: new title for session window
++        @type title: C{str}
++
++        &quot;&quot;&quot;
++        self.session_registry(session_uuid).set_session_window_title(title=title)
++    __set_session_window_title = set_session_window_title
++
+     def start_session(self, session_uuid):
+         &quot;&quot;&quot;\
+         Start a new X2go session on the remote X2go server. This method
+diff --git a/x2go/session.py b/x2go/session.py
+index 2d0c693..0539524 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -849,6 +849,19 @@ class X2goSession(object):
+         return retval
+     __disconnect = disconnect
+ 
++    def set_session_window_title(self, title=''):
++        &quot;&quot;&quot;\
++        Modify session window title. If the session ID does not occur in the
++        given title, it will be prepended, so that every X2Go session window
++        always contains the X2Go session ID of that window.
++
++        @param title: new title for session window
++        @type title: C{str}
++
++        &quot;&quot;&quot;
++        if self.terminal_session is not None:
++            self.terminal_session.set_session_window_title(title=title)
++
+     def set_print_action(self, print_action, **kwargs):
+         &quot;&quot;&quot;\
+         If X2go client-side printing is enable within this X2go session you can use
+diff --git a/x2go/utils.py b/x2go/utils.py
+index ab23c19..b197ea8 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -35,6 +35,8 @@ import gevent
+ import string
+ import re
+ import subprocess
++import Xlib
++import Xlib.display
+ 
+ # Python X2go modules
+ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+@@ -462,3 +464,30 @@ def is_color_depth_ok(depth_session, depth_local):
+         return True;
+     return False
+ 
++def set_session_window_title(session_name, title, timeout=0):
++
++    timeout += 1
++    while timeout:
++
++        timeout -= 1
++        success = False
++
++        if _X2GOCLIENT_OS != 'Windows':
++
++            display = Xlib.display.Display()
++            root = display.screen().root
++
++            windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
++            for windowID in windowIDs:
++                window = display.create_resource_object('window', windowID)
++                if session_name in window.get_wm_name():
++                    success = True
++                    window.set_wm_name('%s' % str(title))
++                    window.set_wm_icon_name('%s' % str(title))
++                    display.sync()
++                    break
++
++        if success:
++            break
++
++        gevent.sleep(1)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025305.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-81-g998741e
+</A></li>
+	<LI>Next message: <A HREF="025606.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-83-g8c2c5b4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25321">[ date ]</a>
+              <a href="thread.html#25321">[ thread ]</a>
+              <a href="subject.html#25321">[ subject ]</a>
+              <a href="author.html#25321">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

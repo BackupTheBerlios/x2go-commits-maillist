@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-56-gb5b429a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-56-gb5b429a&In-Reply-To=%3C20130519110314.978C25DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007020.html">
+   <LINK REL="Next"  HREF="007022.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-56-gb5b429a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-56-gb5b429a&In-Reply-To=%3C20130519110314.978C25DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-56-gb5b429a">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:03:14 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007020.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-52-gd4b5e9d
+</A></li>
+        <LI>Next message: <A HREF="007022.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-54-g5e3b718
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7021">[ date ]</a>
+              <a href="thread.html#7021">[ thread ]</a>
+              <a href="subject.html#7021">[ subject ]</a>
+              <a href="author.html#7021">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  b5b429ae7e66d9194f189495f7a90d92d72ba20d (commit)
+      from  858156403553f936da5eb1765a855c12991e8329 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ sbin/x2gobroker-keygen |   43 ++++++++++++++++++++++++++++---------------
+ x2gobroker/loggers.py  |    2 +-
+ 2 files changed, 29 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/sbin/x2gobroker-keygen b/sbin/x2gobroker-keygen
+index 2307dd6..fe9fee6 100755
+--- a/sbin/x2gobroker-keygen
++++ b/sbin/x2gobroker-keygen
+@@ -111,20 +111,33 @@ if __name__ == '__main__':
+     # generate key pair
+     if cmdline_args.key_type.upper() == 'RSA':
+         key = paramiko.RSAKey.generate(2048)
+-    elif cmdine_args.key_type.upper() == 'DSA':
+-        key = paramiko.DSAKey.generate(2048)
+-
+-    logger_broker.info('  {key_type} key has been generated, fingerprint is {fingerprint}'.format(key_type=cmdline_args.key_type.upper(), fingerprint=binascii.hexlify(key.get_fingerprint())))
+-
+-    key.write_private_key_file('{home}/.ssh/id_rsa'.format(home=broker_home))
+-    os.chown('{home}/.ssh/id_rsa'.format(home=broker_home), broker_uidnumber, broker_gidnumber)
+-    os.chmod('{home}/.ssh/id_rsa'.format(home=broker_home), 0600)
+-    logger_broker.info('  Private key written to file {key_file}'.format(key_file='{home}/.ssh/id_rsa'.format(home=broker_home)))
+-
+-    pubkey_file = open('{home}/.ssh/id_rsa.pub'.format(home=broker_home),'w')
+-    pubkey_file.write(&quot;ssh-rsa &quot; +key.get_base64())
++        id_file = 'id_rsa'
++    elif cmdline_args.key_type.upper() == 'DSA':
++        key = paramiko.DSSKey.generate(1024)
++        id_file = 'id_dsa'
++
++    logger_broker.info('  The {key_type} key has been generated, fingerprint is {fingerprint}'.format(key_type=cmdline_args.key_type.upper(), fingerprint=binascii.hexlify(key.get_fingerprint())))
++
++    if os.path.exists('{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file)) and not cmdline_args.force:
++        logger_broker.error('  Private key {home}/.ssh/{id_file} exists. Use --force to overwrite the file and regenerate a new key pair. Exiting...'.format(home=broker_home, id_file=id_file))
++        sys.exit(-3)
++    elif os.path.exists('{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file)):
++        logger_broker.warn('WARNING: you requested to overwrite existing key files!!!')
++
++    key.write_private_key_file('{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file))
++    os.chown('{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file), broker_uidnumber, broker_gidnumber)
++    os.chmod('{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file), 0600)
++    logger_broker.info('  Private key written to file {key_file}'.format(key_file='{home}/.ssh/{id_file}'.format(home=broker_home, id_file=id_file)))
++
++    pubkey_file = open('{home}/.ssh/{id_file}.pub'.format(home=broker_home, id_file=id_file),'w')
++    if id_file == 'id_rsa':
++        pubkey_file.write(&quot;ssh-rsa &quot; +key.get_base64())
++    elif id_file == 'id_dsa':
++        pubkey_file.write(&quot;ssh-dsa &quot; +key.get_base64())
+     pubkey_file.close()
+-    os.chown('{home}/.ssh/id_rsa,pub'.format(home=broker_home), broker_uidnumber, broker_gidnumber)
+-    os.chmod('{home}/.ssh/id_rsa.pub'.format(home=broker_home), 0600)
+-    logger_broker.info('  Public key written to file {key_file}'.format(key_file='{home}/.ssh/id_rsa.pub'.format(home=broker_home)))
++    os.chown('{home}/.ssh/{id_file}.pub'.format(home=broker_home, id_file=id_file), broker_uidnumber, broker_gidnumber)
++    os.chmod('{home}/.ssh/{id_file}.pub'.format(home=broker_home, id_file=id_file), 0644)
++    logger_broker.info('  Public key written to file {key_file}'.format(key_file='{home}/.ssh/{id_file}.pub'.format(home=broker_home, id_file=id_file)))
++
++    logger_broker.info('Key file generation has been successful!')
+ 
+diff --git a/x2gobroker/loggers.py b/x2gobroker/loggers.py
+index 303e2b9..5be50f3 100644
+--- a/x2gobroker/loggers.py
++++ b/x2gobroker/loggers.py
+@@ -36,7 +36,7 @@ else:
+     X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
+ 
+ # standalone daemon mode (x2gobroker-daemon) or interactive mode (called from the cmdline)?
+-if getpass.getuser() == X2GOBROKER_DAEMON_USER:
++if getpass.getuser() in (X2GOBROKER_DAEMON_USER, 'root'):
+ 
+     # we run in standalone daemon mode, so let's use the system configuration for logging
+     logging.config.fileConfig(X2GOBROKER_LOGCONFIG)
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007020.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-52-gd4b5e9d
+</A></li>
+	<LI>Next message: <A HREF="007022.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-54-g5e3b718
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7021">[ date ]</a>
+              <a href="thread.html#7021">[ thread ]</a>
+              <a href="subject.html#7021">[ subject ]</a>
+              <a href="author.html#7021">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

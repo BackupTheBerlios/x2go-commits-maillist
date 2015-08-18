@@ -1,0 +1,301 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.4-5-gdca80a8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.4-5-gdca80a8&In-Reply-To=%3C20130423190851.BE3C05DB53%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005858.html">
+   <LINK REL="Next"  HREF="005863.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.4-5-gdca80a8</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.4-5-gdca80a8&In-Reply-To=%3C20130423190851.BE3C05DB53%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.4-5-gdca80a8">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Apr 23 21:08:51 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005858.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.3-1-g7ed759b
+</A></li>
+        <LI>Next message: <A HREF="005863.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.3-3-g7381ed8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5859">[ date ]</a>
+              <a href="thread.html#5859">[ thread ]</a>
+              <a href="subject.html#5859">[ subject ]</a>
+              <a href="author.html#5859">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, tmp has been updated
+       via  dca80a8fb0efb3eb45e136ddf541f8074cac93e7 (commit)
+      from  af748b18e58a4b05eefb84559a30901cfa9fada4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    1 +
+ sbin/x2gobroker-keygen   |    3 ++
+ x2gobroker/_paramiko.py  |  133 ++++++++++++++++++++++++++++++++++++++++++++++
+ x2gobroker/agent.py      |    3 ++
+ x2gobroker/web/extras.py |    4 ++
+ 5 files changed, 144 insertions(+)
+ create mode 100644 x2gobroker/_paramiko.py
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index aa9e52b..e5bd37e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -2,6 +2,7 @@ x2gobroker (0.0.0.5-0~x2go1) UNRELEASED; urgency=low
+ 
+   * New upstream version (0.0.0.5):
+     - Prepare for WSGI based integration into an external httpd.
++    - Monkey patch Paramiko/SSH (adopted from Python X2Go).
+   * /debian/control:
+     + Add dependency to python-x2gobroker: python-paramiko.
+   * /debian/x2gobroker-daemon.default:
+diff --git a/sbin/x2gobroker-keygen b/sbin/x2gobroker-keygen
+index 2d3c037..e05e4c0 100755
+--- a/sbin/x2gobroker-keygen
++++ b/sbin/x2gobroker-keygen
+@@ -29,6 +29,9 @@ import logging
+ import binascii
+ import paramiko
+ 
++import x2gobroker._paramiko
++x2gobroker._paramiko.monkey_patch_paramiko()
++
+ from pwd import getpwnam
+ from grp import getgrnam
+ 
+diff --git a/x2gobroker/_paramiko.py b/x2gobroker/_paramiko.py
+new file mode 100644
+index 0000000..3b93d14
+--- /dev/null
++++ b/x2gobroker/_paramiko.py
+@@ -0,0 +1,133 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2Go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2Go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++Monkey Patch and feature map for Python Paramiko
++
++&quot;&quot;&quot;
++
++import paramiko
++import platform
++from utils import compare_versions
++
++PARAMIKO_VERSION = paramiko.__version__.split()[0]
++PARAMIKO_FEATURE = {
++    'forward-ssh-agent': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '1.8.0') and (platform.system() != &quot;Windows&quot;),
++    'use-compression': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '1.7.7.1'),
++    'hash-host-entries': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '99'),
++    'host-entries-reloadable': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '99'),
++    'preserve-known-hosts': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '99'),
++}
++
++def _SSHClient_save_host_keys(self, filename):
++    &quot;&quot;&quot;\
++    FIXME!!! --- this method should become part of Paramiko
++
++    This method has been taken from SSHClient class in Paramiko and
++    has been improved and adapted to latest SSH implementations.
++
++    Save the host keys back to a file.
++    Only the host keys loaded with
++    L{load_host_keys} (plus any added directly) will be saved -- not any
++    host keys loaded with L{load_system_host_keys}.
++
++    @param filename: the filename to save to
++    @type filename: str
++
++    @raise IOError: if the file could not be written 
++
++    &quot;&quot;&quot;
++    # update local host keys from file (in case other SSH clients
++    # have written to the known_hosts file meanwhile.
++    if self.known_hosts is not None:
++        self.load_host_keys(self.known_hosts)
++
++    f = open(filename, 'w')
++    #f.write('# SSH host keys collected by paramiko\n')
++    _host_keys = self.get_host_keys()
++    for hostname, keys in _host_keys.iteritems():
++
++        for keytype, key in keys.iteritems():
++            f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
++
++    f.close()
++
++
++def _HostKeys_load(self, filename):
++    &quot;&quot;&quot;\
++    Read a file of known SSH host keys, in the format used by openssh.
++    This type of file unfortunately doesn't exist on Windows, but on
++    posix, it will usually be stored in
++    C{os.path.expanduser(&quot;~/.ssh/known_hosts&quot;)}.
++
++    If this method is called multiple times, the host keys are merged,
++    not cleared. So multiple calls to C{load} will just call L{add},
++    replacing any existing entries and adding new ones.
++
++    @param filename: name of the file to read host keys from
++    @type filename: str
++
++    @raise IOError: if there was an error reading the file
++
++    &quot;&quot;&quot;
++    f = open(filename, 'r')
++    for line in f:
++        line = line.strip()
++        if (len(line) == 0) or (line[0] == '#'):
++            continue
++        e = paramiko.hostkeys.HostKeyEntry.from_line(line)
++        if e is not None:
++            _hostnames = e.hostnames
++            for h in _hostnames:
++                if self.check(h, e.key):
++                    e.hostnames.remove(h)
++            if len(e.hostnames):
++                self._entries.append(e)
++    f.close() 
++
++
++def _HostKeys_add(self, hostname, keytype, key, hash_hostname=True):
++    &quot;&quot;&quot;\
++    Add a host key entry to the table. Any existing entry for a
++    C{(hostname, keytype)} pair will be replaced.
++
++    @param hostname: the hostname (or IP) to add
++    @type hostname: str
++    @param keytype: key type (C{&quot;ssh-rsa&quot;} or C{&quot;ssh-dss&quot;})
++    @type keytype: str
++    @param key: the key to add
++    @type key: L{PKey}
++
++    &quot;&quot;&quot;
++    for e in self._entries:
++        if (hostname in e.hostnames) and (e.key.get_name() == keytype):
++            e.key = key
++            return
++    if not hostname.startswith('|1|') and hash_hostname:
++        hostname = self.hash_host(hostname)
++    self._entries.append(paramiko.hostkeys.HostKeyEntry([hostname], key))
++
++
++def monkey_patch_paramiko():
++    if not PARAMIKO_FEATURE['preserve-known-hosts']:
++        paramiko.SSHClient.save_host_keys = _SSHClient_save_host_keys
++    if not PARAMIKO_FEATURE['host-entries-reloadable']:
++        paramiko.hostkeys.HostKeys.load = _HostKeys_load
++    if not PARAMIKO_FEATURE['hash-host-entries']:
++        paramiko.hostkeys.HostKeys.add = _HostKeys_add
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index 600a361..7fbc5f5 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -22,6 +22,9 @@
+ import subprocess
+ import paramiko
+ 
++import x2gobroker._paramiko
++x2gobroker._paramiko.monkey_patch_paramiko()
++
+ # X2Go Broker modules
+ import x2gobroker.defaults
+ from x2gobroker.loggers import logger_error
+diff --git a/x2gobroker/web/extras.py b/x2gobroker/web/extras.py
+index 728aaec..75571e6 100644
+--- a/x2gobroker/web/extras.py
++++ b/x2gobroker/web/extras.py
+@@ -23,6 +23,10 @@
+ # modules
+ import os.path
+ import paramiko
++
++import x2gobroker._paramiko
++x2gobroker._paramiko.monkey_patch_paramiko()
++
+ import x2gobroker.defaults
+ 
+ class X2GoBrokerPubKeyService:
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005858.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.3-1-g7ed759b
+</A></li>
+	<LI>Next message: <A HREF="005863.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.3-3-g7381ed8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5859">[ date ]</a>
+              <a href="thread.html#5859">[ thread ]</a>
+              <a href="subject.html#5859">[ subject ]</a>
+              <a href="author.html#5859">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

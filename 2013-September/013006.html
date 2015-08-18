@@ -1,0 +1,220 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	ffada7f75b49527f55ac054620d7df024a92e16e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09ffada7f75b49527f55ac054620d7df024a92e16e&In-Reply-To=%3C20130914135544.63B725DBA3%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013004.html">
+   <LINK REL="Next"  HREF="013008.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	ffada7f75b49527f55ac054620d7df024a92e16e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09ffada7f75b49527f55ac054620d7df024a92e16e&In-Reply-To=%3C20130914135544.63B725DBA3%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	ffada7f75b49527f55ac054620d7df024a92e16e">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013004.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	ebba8f1a15142f77a0cb409493212f83a5ba5d41
+</A></li>
+        <LI>Next message: <A HREF="013008.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-106-g8cf5888
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13006">[ date ]</a>
+              <a href="thread.html#13006">[ thread ]</a>
+              <a href="subject.html#13006">[ subject ]</a>
+              <a href="author.html#13006">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  ffada7f75b49527f55ac054620d7df024a92e16e (commit)
+      from  c5136ce01cb6e6a9fca5a220fcfad65dfd27bf6e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/base.py       |    5 ++++-
+ x2go/backends/terminal/_stdout.py |   10 +++++++++-
+ x2go/session.py                   |    3 +++
+ x2go/sftpserver.py                |   18 +++++++++++++++---
+ 4 files changed, 31 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 0047940..b84e69f 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -196,7 +196,10 @@ class X2goProxyBASE(threading.Thread):
+         if _X2GOCLIENT_OS == 'Windows':
+             _stdin.close()
+         self.logger('terminating proxy: %s' % p, loglevel=log.loglevel_DEBUG)
+-        p.terminate()
++        try:
++            p.terminate()
++        except WindowsError:
++            pass
+ 
+     def _update_local_proxy_socket(self, port):
+         pass
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 73fe7dd..ea93ef0 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -48,6 +48,7 @@ import x2go.x2go_exceptions as x2go_exceptions
+ from x2go.cleanup import x2go_cleanup 
+ 
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
++from x2go.defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+@@ -520,6 +521,7 @@ class X2goTerminalSessionSTDOUT(object):
+             self.logger('local folder does not exist: %s' % folder_name, log.loglevel_WARN)
+             return False
+ 
++        folder_name = os.path.normpath(folder_name)
+         self.logger('sharing local folder: %s' % folder_name, log.loglevel_INFO)
+ 
+         _auth_rsakey = self.control_session._x2go_session_auth_rsakey
+@@ -530,11 +532,17 @@ class X2goTerminalSessionSTDOUT(object):
+         _tmp_io_object.write('----BEGIN RSA IDENTITY----')
+         _tmp_io_object.write('%s %s' % (_host_rsakey.get_name(),_host_rsakey.get_base64(),))
+ 
+-        _x2go_key_fname = os.path.join(os.path.dirname(self.session_info.remote_container), 'ssh', 'key.z%s' % self.session_info.agent_pid)
++        # _x2go_key_fname must be a UniX pathn
++        _x2go_key_fname = '%s/%s/%s' % (os.path.dirname(self.session_info.remote_container), 'ssh', 'key.z%s' % self.session_info.agent_pid)
+         _x2go_key_bundle = _tmp_io_object.getvalue()
+ 
+         self.control_session._x2go_sftp_write(_x2go_key_fname, _x2go_key_bundle)
+ 
++        if _X2GOCLIENT_OS == 'Windows':
++            folder_name = folder_name.replace('\\', '/')
++            folder_name = folder_name.replace(':', '')
++            folder_name = '/windrive/%s' % folder_name
++
+         if folder_type is 'disk':
+ 
+             cmd_line = [ 'export HOSTNAME &amp;&amp;',
+diff --git a/x2go/session.py b/x2go/session.py
+index f2e3173..5ba91d5 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -158,6 +158,9 @@ class X2goSession(object):
+         self.logger('X2go terminal session parameters for profile %s:' % profile_name, log.loglevel_DEBUG)
+         for p in self.terminal_params:
+             self.logger('    %s: %s' % (p,self.terminal_params[p]), log.loglevel_DEBUG)
++        self.logger('X2go sshproxy parameters for profile %s:' % profile_name, log.loglevel_DEBUG)
++        for p in self.sshproxy_params:
++            self.logger('    %s: %s' % (p,self.sshproxy_params[p]), log.loglevel_DEBUG)
+ 
+         if control_session is None:
+             self.logger('initializing X2goControlSession', loglevel=log.loglevel_DEBUG)
+diff --git a/x2go/sftpserver.py b/x2go/sftpserver.py
+index db57377..deb5a93 100644
+--- a/x2go/sftpserver.py
++++ b/x2go/sftpserver.py
+@@ -80,6 +80,8 @@ class _SSHServer(paramiko.ServerInterface):
+         Ensure proper authentication.
+ 
+         &quot;&quot;&quot;
++        # for debugging!!!
++        return paramiko.AUTH_SUCCESSFUL
+         if username == self.current_local_user:
+             self.logger('sFTP server %s: username is %s' % (self, self.current_local_user), loglevel=log.loglevel_DEBUG)
+             if type(key) == paramiko.RSAKey and key == self.auth_key:
+@@ -132,10 +134,19 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Enforce the chroot jail.
+         &quot;&quot;&quot;
+-        path = self.CHROOT + self.canonicalize(path)
+-        path = path.replace('//','/')
++        if defaults.X2GOCLIENT_OS == 'Windows' and path.startswith('/windrive'):
++            _path_components = path.split('/')
++            _drive = _path_components[2]
++            _tail_components = (len(_path_components) &gt; 3) and _path_components[3:] or ''
++            _tail = os.path.normpath('/'.join(_tail_components))
++            path = os.path.join('%s:' % _drive, '/', _tail)
++        else:
++            path = os.path.normpath(os.path.join(self.CHROOT, self.canonicalize(path)))
+         return path
+ 
++    def session_started(self):
++        print 'SESSION STARTED: %s' % self.CHROOT
++
+     def list_folder(self, path):
+         &quot;&quot;&quot;\
+         List the contents of a folder.
+@@ -239,6 +250,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Remove a file.
+         &quot;&quot;&quot;
++        path = self._realpath(path)
+         os.remove(path)
+         self.logger('sFTP server %s: removing file: %s' % (self, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         return paramiko.SFTP_OK
+@@ -490,4 +502,4 @@ def x2go_rev_forward_sftpchannel_handler(chan=None, auth_key=None, logger=None):
+ 
+ 
+ class X2goRevFwSFTPChannelThread(rforward.X2goRevFwChannelThread): pass
+-&quot;&quot;&quot;A clone of L{rforward.X2goRevFwChannelThread}.&quot;&quot;&quot;
+\ No newline at end of file
++&quot;&quot;&quot;A clone of L{rforward.X2goRevFwChannelThread}.&quot;&quot;&quot;
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013004.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	ebba8f1a15142f77a0cb409493212f83a5ba5d41
+</A></li>
+	<LI>Next message: <A HREF="013008.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-106-g8cf5888
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13006">[ date ]</a>
+              <a href="thread.html#13006">[ thread ]</a>
+              <a href="subject.html#13006">[ subject ]</a>
+              <a href="author.html#13006">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

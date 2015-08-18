@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-4-g9d05c07
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.0.2-4-g9d05c07&In-Reply-To=%3C20131204051832.604315DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015712.html">
+   <LINK REL="Next"  HREF="015715.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-4-g9d05c07</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.0.2-4-g9d05c07&In-Reply-To=%3C20131204051832.604315DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-4-g9d05c07">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:18:32 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015712.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-8-gafeeb58
+</A></li>
+        <LI>Next message: <A HREF="015715.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-5-g1f4efc0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15713">[ date ]</a>
+              <a href="thread.html#15713">[ thread ]</a>
+              <a href="subject.html#15713">[ subject ]</a>
+              <a href="author.html#15713">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  9d05c077283673a2386d07e678d54a0057e37f73 (commit)
+      from  82ff682e9e52aaa158f35ec3b615580f57fd3419 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 ++
+ x2goserver/sbin/x2gocleansessions |   44 +++++++++++++++++++++++++++++++++----
+ 2 files changed, 42 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 56eb297..3648e93 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -3,6 +3,8 @@ x2goserver (4.0.0.3-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (4.0.0.3):
+     - Make pre-set DESTDIR and PREFIX traverse through all Makefiles.
+       Do not include DESTDIR in Makefile-hard-coded path in x2gosqlitewrapper.
++    - Add support to x2gocleansessions to suspend session via state changes
++      in the session DB.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sun, 19 May 2013 15:02:53 +0200
+ 
+diff --git a/x2goserver/sbin/x2gocleansessions b/x2goserver/sbin/x2gocleansessions
+index 6cc0edd..0be7cee 100755
+--- a/x2goserver/sbin/x2gocleansessions
++++ b/x2goserver/sbin/x2gocleansessions
+@@ -51,7 +51,20 @@ sub check_pid
+ 	return 0;
+ }
+ 
+-sub check_stat
++sub has_terminated
++{
++	my $sess=shift;
++	my $user=shift;
++	my $log=&quot;/tmp/.x2go-${user}/session-C-${sess}.log&quot;;
++	my $text=`tail -1 $log 2&gt;/dev/null`;
++	if ($text =~ m/Session terminated/)
++	{
++		return 1;
++	}
++	return 0;
++}
++
++sub is_suspended
+ {
+ 	my $sess=shift;
+ 	my $user=shift;
+@@ -59,9 +72,22 @@ sub check_stat
+ 	my $text=`tail -1 $log 2&gt;/dev/null`;
+ 	if ($text =~ m/Session suspended/)
+ 	{
+-		return 0;
++		return 1;
++	}
++	return 0;
++}
++
++sub is_running
++{
++	my $sess=shift;
++	my $user=shift;
++	my $log=&quot;/tmp/.x2go-${user}/session-C-${sess}.log&quot;;
++	my $text=`tail -1 $log 2&gt;/dev/null`;
++	if (!is_suspended($sess, $user) &amp;&amp; !has_terminated($sess, $user))
++	{
++		return 1;
+ 	}
+-	return 1;
++	return 0;
+ }
+ 
+ sub catch_term
+@@ -116,7 +142,7 @@ elsif ($pid == 0 )
+ 			{ 
+ 				if (@sinfo[4]eq 'R')
+ 				{
+-					if (!check_stat(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
++					if (is_suspended(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 					{
+ 						system(&quot;su @sinfo[11] -c  \&quot;$x2go_lib_path/x2gochangestatus 'S' @sinfo[1] \&quot; &gt; /dev/null&quot;);
+ 						syslog('debug', &quot;@sinfo[1] is suspended, changing status from @sinfo[4] to S&quot;);
+@@ -124,6 +150,16 @@ elsif ($pid == 0 )
+ 						system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
+ 					}
+ 				}
++				if (@sinfo[4]eq 'S')
++				{
++					if (is_running(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
++					{
++						syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
++						system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
++						system(&quot;su @sinfo[11] -c  \&quot;x2gosuspend-session @sinfo[1] \&quot; &gt; /dev/null&quot;);
++						syslog('debug', &quot;@sinfo[1] was found running and has now been suspended&quot;);
++					}
++				}
+ 			}
+ 		}
+ 	}
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015712.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-8-gafeeb58
+</A></li>
+	<LI>Next message: <A HREF="015715.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.0.2-5-g1f4efc0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15713">[ date ]</a>
+              <a href="thread.html#15713">[ thread ]</a>
+              <a href="subject.html#15713">[ subject ]</a>
+              <a href="author.html#15713">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

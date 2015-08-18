@@ -1,0 +1,917 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-7-g4adfcbf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-7-g4adfcbf&In-Reply-To=%3C20120830151135.AB6C75DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003102.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-7-g4adfcbf</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-7-g4adfcbf&In-Reply-To=%3C20120830151135.AB6C75DB1C%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-7-g4adfcbf">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Aug 30 17:11:35 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003102.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-6-g6f97d0f
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3103">[ date ]</a>
+              <a href="thread.html#3103">[ thread ]</a>
+              <a href="subject.html#3103">[ subject ]</a>
+              <a href="author.html#3103">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  4adfcbf0aa5f34283089786032b47727530e5d78 (commit)
+      from  6f97d0f1a8141411f2ac1c171ca2648053302ee1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4adfcbf0aa5f34283089786032b47727530e5d78
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Thu Aug 30 18:11:28 2012 +0300
+
+    Add settings for direct RDP connection
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    7 +-
+ editconnectiondialog.cpp |  190 +++++++++++++++++++++++++---------------------
+ editconnectiondialog.h   |    1 +
+ sessionwidget.cpp        |   91 ++++++++++++++++++++---
+ sessionwidget.h          |   11 +++
+ settingswidget.cpp       |  137 ++++++++++++++++++++++++++++++++-
+ settingswidget.h         |   19 +++++
+ 7 files changed, 354 insertions(+), 102 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2ef8a6d..753b008 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,4 +1,4 @@
+-x2goclient (3.99.2.3-0~x2go1) UNRELEASED; urgency=low
++x2goclient (3.99.2.3-0~x2go2) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+   * New upstream version (3.99.2.2):
+@@ -8,7 +8,10 @@ x2goclient (3.99.2.3-0~x2go1) UNRELEASED; urgency=low
+   [ Christoffer Krakou ]
+     - Add Danish translation to x2goclient.
+ 
+- -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 15 Aug 2012 15:14:05 +0200
++  [ Oleksandr Shneyder ]
++  * Add settings for direct RDP connection 
++
++ -- Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;  Thu, 30 Aug 2012 18:10:57 +0300
+ 
+ x2goclient (3.99.2.2-0~x2go2) unstable; urgency=low
+ 
+diff --git a/editconnectiondialog.cpp b/editconnectiondialog.cpp
+index 99b3b25..f50ed85 100644
+--- a/editconnectiondialog.cpp
++++ b/editconnectiondialog.cpp
+@@ -24,78 +24,84 @@
+ 
+ EditConnectionDialog::EditConnectionDialog ( QString id, QWidget * par,
+         int ind,Qt::WFlags f )
+-		: QDialog ( par,f )
++        : QDialog ( par,f )
+ {
+-	QVBoxLayout* ml=new QVBoxLayout ( this );
++    QVBoxLayout* ml=new QVBoxLayout ( this );
+ #ifdef Q_WS_HILDON
+-	ml-&gt;setMargin ( 2 );
++    ml-&gt;setMargin ( 2 );
+ #endif
+-	fr=new QTabWidget ( this );
+-	ml-&gt;addWidget ( fr );
+-	ONMainWindow* parent= ( ONMainWindow* ) par;
++    fr=new QTabWidget ( this );
++    ml-&gt;addWidget ( fr );
++    ONMainWindow* parent= ( ONMainWindow* ) par;
+ 
+-	QFont fnt=font();
+-	if ( parent-&gt;retMiniMode() )
++    QFont fnt=font();
++    if ( parent-&gt;retMiniMode() )
+ #ifdef Q_WS_HILDON
+-		fnt.setPointSize ( 10 );
++        fnt.setPointSize ( 10 );
+ #else
+-		fnt.setPointSize ( 9 );
++        fnt.setPointSize ( 9 );
+ #endif
+-	setFont ( fnt );
+-
+-	sessSet=new SessionWidget ( id,parent );
+-	conSet=new ConnectionWidget ( id,parent );
+-	otherSet=new SettingsWidget ( id,parent );
+-	exportDir=new ShareWidget ( id,parent );
+-
+-
+-	fr-&gt;addTab ( sessSet,tr ( &quot;&amp;Session&quot; ) );
+-	fr-&gt;addTab ( conSet,tr ( &quot;&amp;Connection&quot; ) );
+-	fr-&gt;addTab ( otherSet,tr ( &quot;&amp;Settings&quot; ) );
+-	fr-&gt;addTab ( exportDir,tr ( &quot;&amp;Shared folders&quot; ) );
+-
+-	QPushButton* ok=new QPushButton ( tr ( &quot;&amp;OK&quot; ),this );
+-	QPushButton* cancel=new QPushButton ( tr ( &quot;&amp;Cancel&quot; ),this );
+-	QPushButton* def=new QPushButton ( tr ( &quot;Defaults&quot; ),this );
+-	QHBoxLayout* bLay=new QHBoxLayout();
+-	bLay-&gt;setSpacing ( 5 );
+-	bLay-&gt;addStretch();
+-	bLay-&gt;addWidget ( ok );
+-	bLay-&gt;addWidget ( cancel );
+-	bLay-&gt;addWidget ( def );
+-	ml-&gt;addLayout ( bLay );
++    setFont ( fnt );
++
++    sessSet=new SessionWidget ( id,parent );
++    conSet=new ConnectionWidget ( id,parent );
++    otherSet=new SettingsWidget ( id,parent );
++    exportDir=new ShareWidget ( id,parent );
++
++
++    fr-&gt;addTab ( sessSet,tr ( &quot;&amp;Session&quot; ) );
++    fr-&gt;addTab ( conSet,tr ( &quot;&amp;Connection&quot; ) );
++    fr-&gt;addTab ( otherSet,tr ( &quot;&amp;Settings&quot; ) );
++    fr-&gt;addTab ( exportDir,tr ( &quot;&amp;Shared folders&quot; ) );
++
++    QPushButton* ok=new QPushButton ( tr ( &quot;&amp;OK&quot; ),this );
++    QPushButton* cancel=new QPushButton ( tr ( &quot;&amp;Cancel&quot; ),this );
++    QPushButton* def=new QPushButton ( tr ( &quot;Defaults&quot; ),this );
++    QHBoxLayout* bLay=new QHBoxLayout();
++    bLay-&gt;setSpacing ( 5 );
++    bLay-&gt;addStretch();
++    bLay-&gt;addWidget ( ok );
++    bLay-&gt;addWidget ( cancel );
++    bLay-&gt;addWidget ( def );
++    ml-&gt;addLayout ( bLay );
+ #ifdef Q_WS_HILDON
+-	bLay-&gt;setMargin ( 2 );
++    bLay-&gt;setMargin ( 2 );
+ #endif
+ 
+-	setSizeGripEnabled ( true );
+-	setWindowIcon ( QIcon ( parent-&gt;iconsPath ( &quot;/32x32/edit.png&quot; ) ) );
+-	connect ( ok,SIGNAL ( clicked() ),this,SLOT ( accept() ) );
+-	connect ( cancel,SIGNAL ( clicked() ),this,SLOT ( reject() ) );
+-	connect ( def,SIGNAL ( clicked() ),this,SLOT ( slot_default() ) );
+-	connect ( sessSet,SIGNAL ( nameChanged ( const QString &amp; ) ),this,
+-	          SLOT ( slot_changeCaption ( const QString&amp; ) ) );
+-	connect ( this,SIGNAL ( accepted() ),this,SLOT ( slot_accepted() ) );
+-	
+-	ok-&gt;setDefault ( true );
++    setSizeGripEnabled ( true );
++    setWindowIcon ( QIcon ( parent-&gt;iconsPath ( &quot;/32x32/edit.png&quot; ) ) );
++    connect ( ok,SIGNAL ( clicked() ),this,SLOT ( accept() ) );
++    connect ( cancel,SIGNAL ( clicked() ),this,SLOT ( reject() ) );
++    connect ( def,SIGNAL ( clicked() ),this,SLOT ( slot_default() ) );
++    connect ( sessSet,SIGNAL ( nameChanged ( const QString &amp; ) ),this,
++              SLOT ( slot_changeCaption ( const QString&amp; ) ) );
++    connect ( this,SIGNAL ( accepted() ),this,SLOT ( slot_accepted() ) );
++    connect (sessSet, SIGNAL(directRDP(bool)), this, SLOT(slot_directRDP(bool)));
++     
++    connect (sessSet, 
++	     SIGNAL(settingsChanged(QString,QString,QString)), otherSet, 
++ 	     SLOT(setServerSettings(QString,QString,QString)));
++
++    ok-&gt;setDefault ( true );
+ #ifdef Q_WS_HILDON
+-	QSize sz=ok-&gt;sizeHint();
+-	sz.setWidth ( ( int ) ( sz.width() /1.5 ) );
+-	sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
+-	ok-&gt;setFixedSize ( sz );
+-	sz=cancel-&gt;sizeHint();
+-	sz.setWidth ( ( int ) ( sz.width() ) );
+-	sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
+-	cancel-&gt;setFixedSize ( sz );
+-	sz=def-&gt;sizeHint();
+-	sz.setWidth ( ( int ) ( sz.width() ) );
+-	sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
+-	def-&gt;setFixedSize ( sz );
++    QSize sz=ok-&gt;sizeHint();
++    sz.setWidth ( ( int ) ( sz.width() /1.5 ) );
++    sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
++    ok-&gt;setFixedSize ( sz );
++    sz=cancel-&gt;sizeHint();
++    sz.setWidth ( ( int ) ( sz.width() ) );
++    sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
++    cancel-&gt;setFixedSize ( sz );
++    sz=def-&gt;sizeHint();
++    sz.setWidth ( ( int ) ( sz.width() ) );
++    sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
++    def-&gt;setFixedSize ( sz );
+ #endif
+-	if ( parent-&gt;retMiniMode() )
+-		setContentsMargins ( 3,3,3,3 );
+-	fr-&gt;setCurrentIndex ( ind );
+-	slot_changeCaption(sessSet-&gt;sessionName());
++    if ( parent-&gt;retMiniMode() )
++        setContentsMargins ( 3,3,3,3 );
++    fr-&gt;setCurrentIndex ( ind );
++    slot_changeCaption(sessSet-&gt;sessionName());
++    sessSet-&gt;slot_rdpDirectClicked();
+ }
+ 
+ 
+@@ -106,43 +112,51 @@ EditConnectionDialog::~EditConnectionDialog()
+ 
+ void EditConnectionDialog::slot_changeCaption ( const QString&amp; newName )
+ {
+-	setWindowTitle ( tr ( &quot;Session preferences - &quot; ) +newName );
++    setWindowTitle ( tr ( &quot;Session preferences - &quot; ) +newName );
+ }
+ 
+ 
+ void EditConnectionDialog::slot_accepted()
+ {
+-	conSet-&gt;saveSettings();
+-	exportDir-&gt;saveSettings();
+-	otherSet-&gt;saveSettings();
+-	sessSet-&gt;saveSettings();
++    conSet-&gt;saveSettings();
++    exportDir-&gt;saveSettings();
++    otherSet-&gt;saveSettings();
++    sessSet-&gt;saveSettings();
+ }
+ 
+ 
+ void EditConnectionDialog::slot_default()
+ {
+-	switch ( fr-&gt;currentIndex() )
+-	{
+-		case 0:
+-		{
+-			sessSet-&gt;setDefaults();
+-		}
+-		break;
+-		case 1:
+-		{
+-			conSet-&gt;setDefaults();
+-		}
+-		break;
+-		case 2:
+-		{
+-			otherSet-&gt;setDefaults();
+-		}
+-		break;
+-		case 3:
+-		{
+-			exportDir-&gt;setDefaults();
+-		}
+-		break;
+-	}
++    switch ( fr-&gt;currentIndex() )
++    {
++    case 0:
++    {
++        sessSet-&gt;setDefaults();
++    }
++    break;
++    case 1:
++    {
++        conSet-&gt;setDefaults();
++    }
++    break;
++    case 2:
++    {
++        otherSet-&gt;setDefaults();
++    }
++    break;
++    case 3:
++    {
++        exportDir-&gt;setDefaults();
++    }
++    break;
++    }
+ }
+ 
++void EditConnectionDialog::slot_directRDP(bool direct)
++{
++    fr-&gt;setTabEnabled(1,!direct);
++    fr-&gt;setTabEnabled(3,!direct);
++    otherSet-&gt;setDirectRdp(direct);
++}
++
++
+diff --git a/editconnectiondialog.h b/editconnectiondialog.h
+index 45c524a..ea177db 100644
+--- a/editconnectiondialog.h
++++ b/editconnectiondialog.h
+@@ -57,6 +57,7 @@ class EditConnectionDialog : public QDialog
+ 		void slot_changeCaption ( const QString&amp; newName );
+ 		void slot_accepted();
+ 		void slot_default();
++		void slot_directRDP(bool direct);
+ };
+ 
+ #endif
+diff --git a/sessionwidget.cpp b/sessionwidget.cpp
+index 2f66aa2..be73c9b 100644
+--- a/sessionwidget.cpp
++++ b/sessionwidget.cpp
+@@ -67,10 +67,14 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     sshPort-&gt;setValue ( mainWindow-&gt;getDefaultSshPort().toInt() );
+     sshPort-&gt;setMinimum ( 1 );
+     sshPort-&gt;setMaximum ( 999999999 );
++    rdpPort=new QSpinBox ( sgb );
++    rdpPort-&gt;setValue ( mainWindow-&gt;getDefaultSshPort().toInt() );
++    rdpPort-&gt;setMinimum ( 1 );
++    rdpPort-&gt;setMaximum ( 999999999 );
+     key=new QLineEdit ( sgb );
+ 
+ #ifndef Q_WS_HILDON
+-    QPushButton* openKey=new QPushButton (
++    openKey=new QPushButton (
+         QIcon ( mainWindow-&gt;iconsPath (
+                     &quot;/32x32/file-open.png&quot; ) ),
+         QString::null,sgb );
+@@ -86,10 +90,12 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     QVBoxLayout *elLay =new QVBoxLayout();
+     slLay-&gt;addWidget ( new QLabel ( tr ( &quot;Host:&quot; ),sgb ) );
+     slLay-&gt;addWidget ( new QLabel ( tr ( &quot;Login:&quot; ),sgb ) );
+-    slLay-&gt;addWidget ( new QLabel ( tr ( &quot;SSH port:&quot; ),sgb ) );
++    lPort=new QLabel ( tr ( &quot;SSH port:&quot; ),sgb );
++    slLay-&gt;addWidget ( lPort );
+     elLay-&gt;addWidget ( server );
+     elLay-&gt;addWidget ( uname );
+     elLay-&gt;addWidget ( sshPort );
++    elLay-&gt;addWidget ( rdpPort );
+     suLay-&gt;addLayout ( slLay );
+     suLay-&gt;addLayout ( elLay );
+ #ifdef Q_WS_HILDON
+@@ -97,8 +103,8 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+ #endif
+ 
+     QHBoxLayout *keyLay =new QHBoxLayout();
+-    keyLay-&gt;addWidget (
+-        new QLabel ( tr ( &quot;Use RSA/DSA key for ssh connection:&quot; ),sgb ) );
++    lKey=new QLabel ( tr ( &quot;Use RSA/DSA key for ssh connection:&quot; ),sgb );
++    keyLay-&gt;addWidget (lKey );
+     keyLay-&gt;addWidget ( key );
+     keyLay-&gt;addWidget ( openKey );
+ 
+@@ -111,7 +117,7 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+ 
+ #ifndef Q_WS_HILDON
+     QGroupBox *deskSess=new QGroupBox ( tr ( &quot;&amp;Session type&quot; ),this );
+-    QHBoxLayout* cmdLay=new QHBoxLayout ( deskSess );
++    QGridLayout* cmdLay=new QGridLayout ( deskSess );
+ #else
+     QFrame* deskSess=this;
+     QHBoxLayout* cmdLay=new QHBoxLayout ();
+@@ -131,13 +137,14 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     sessBox-&gt;addItem ( tr ( &quot;Custom desktop&quot; ) );
+     sessBox-&gt;addItem ( tr ( &quot;Single application&quot; ) );
+     sessBox-&gt;addItem ( tr ( &quot;Published applications&quot; ) );
+-    cmdLay-&gt;addWidget ( sessBox );
++    cmdLay-&gt;addWidget ( sessBox,0,1,Qt::AlignLeft );
+     leCmdIp=new QLabel ( tr ( &quot;Command:&quot; ),deskSess );
+     pbAdvanced=new QPushButton ( tr ( &quot;Advanced options...&quot; ),deskSess );
+-    cmdLay-&gt;addWidget ( leCmdIp );
+-    cmdLay-&gt;addWidget ( cmd );
+-    cmdLay-&gt;addWidget ( cmdCombo );
+-    cmdLay-&gt;addWidget ( pbAdvanced );
++    cmdLay-&gt;addWidget ( leCmdIp,0,2 );
++    cmdLay-&gt;setColumnStretch(6,1);
++    cmdLay-&gt;addWidget ( cmd ,0,3);
++    cmdLay-&gt;addWidget ( cmdCombo,0,4 );
++    cmdLay-&gt;addWidget ( pbAdvanced ,0,5);
+     cmdCombo-&gt;setSizePolicy ( QSizePolicy::Expanding,
+                               QSizePolicy::Preferred );
+     cmdCombo-&gt;hide();
+@@ -153,6 +160,13 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+         sessLay-&gt;addSpacing ( 15 );
+     sessLay-&gt;addWidget ( sgb );
+     sessLay-&gt;addWidget ( deskSess );
++#ifdef Q_OS_LINUX
++    cbDirectRDP=new QCheckBox(&quot;Direct RDP Connection&quot;, deskSess);
++    cmdLay-&gt;addWidget(cbDirectRDP,1,0,1,6);
++    cbDirectRDP-&gt;hide();
++    connect(cbDirectRDP,SIGNAL(clicked()), this, SLOT(slot_rdpDirectClicked()));
++#endif
++
+ #else
+     QVBoxLayout* sHildILay = new QVBoxLayout();
+     sHildILay-&gt;addLayout ( slay );
+@@ -181,6 +195,9 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+               SLOT ( slot_changeCmd ( int ) ) );
+     connect ( sessName,SIGNAL ( textChanged ( const QString &amp; ) ),this,
+               SIGNAL ( nameChanged ( const QString &amp; ) ) );
++    connect (server, SIGNAL(textChanged(const QString&amp;)),this, SLOT(slot_emitSettings()));
++    connect (uname, SIGNAL(textChanged(const QString&amp;)),this, SLOT(slot_emitSettings()));
++    connect (rdpPort, SIGNAL(valueChanged(int)),this, SLOT(slot_emitSettings()));
+     readConfig();
+     cbKrbLogin-&gt;setChecked(false);
+     cbKrbLogin-&gt;setVisible(false);
+@@ -191,6 +208,33 @@ SessionWidget::~SessionWidget()
+ }
+ 
+ 
++void SessionWidget::slot_rdpDirectClicked()
++{
++    bool isDirectRDP=cbDirectRDP-&gt;isChecked();
++    if (cbDirectRDP-&gt;isHidden())
++        isDirectRDP=false;
++    pbAdvanced-&gt;setVisible(!isDirectRDP);
++    leCmdIp-&gt;setVisible(!isDirectRDP);
++    cmd-&gt;setVisible(!isDirectRDP);
++    key-&gt;setVisible(!isDirectRDP);
++    cbAutoLogin-&gt;setVisible(!isDirectRDP);
++    lKey-&gt;setVisible(!isDirectRDP);
++    openKey-&gt;setVisible(!isDirectRDP);
++    sshPort-&gt;setVisible(!isDirectRDP);
++    rdpPort-&gt;setVisible(isDirectRDP);
++    if (isDirectRDP)
++    {
++        lPort-&gt;setText((&quot;RDP port&quot;));
++    }
++    else
++    {
++        lPort-&gt;setText(tr(&quot;SSH port&quot;));
++    }
++
++    emit directRDP(isDirectRDP);
++    slot_emitSettings();
++}
++
+ void SessionWidget::slot_getIcon()
+ {
+     QString path= QFileDialog::getOpenFileName (
+@@ -253,6 +297,9 @@ void SessionWidget::slot_changeCmd ( int var )
+ {
+     leCmdIp-&gt;setText ( tr ( &quot;Command:&quot; ) );
+     pbAdvanced-&gt;hide();
++    cbDirectRDP-&gt;hide();
++    leCmdIp-&gt;show();
++    cmd-&gt;show();
+     if ( var==APPLICATION )
+     {
+         cmd-&gt;hide();
+@@ -276,6 +323,7 @@ void SessionWidget::slot_changeCmd ( int var )
+                 leCmdIp-&gt;setText ( tr ( &quot;Server:&quot; ) );
+                 pbAdvanced-&gt;show();
+                 cmd-&gt;setText ( rdpServer );
++                cbDirectRDP-&gt;show();
+             }
+             if ( var== XDMCP )
+             {
+@@ -289,6 +337,7 @@ void SessionWidget::slot_changeCmd ( int var )
+             cmd-&gt;setText ( &quot;&quot; );
+         }
+     }
++    slot_rdpDirectClicked();
+ }
+ 
+ void SessionWidget::slot_rdpOptions()
+@@ -336,6 +385,10 @@ void SessionWidget::readConfig()
+             sessionId+&quot;/sshport&quot;,
+             ( QVariant ) mainWindow-&gt;getDefaultSshPort().toInt()
+         ).toInt() );
++    rdpPort-&gt;setValue (
++        st.setting()-&gt;value (
++            sessionId+&quot;/rdpport&quot;,3389
++        ).toInt() );
+ 
+     QStringList appNames=st.setting()-&gt;value (
+                              sessionId+&quot;/applications&quot; ).toStringList();
+@@ -356,6 +409,10 @@ void SessionWidget::readConfig()
+     xdmcpServer=st.setting()-&gt;value ( sessionId+&quot;/xdmcpserver&quot;,
+                                       ( QVariant ) &quot;localhost&quot; ).toString();
+ 
++    cbDirectRDP-&gt;setChecked(st.setting()-&gt;value (
++                                sessionId+&quot;/directrdp&quot;,false ).toBool());
++
++
+     for ( int i=0;i&lt;appNames.count();++i )
+     {
+         QString app=mainWindow-&gt;transAppName ( appNames[i] );
+@@ -409,6 +466,8 @@ void SessionWidget::readConfig()
+             cmd-&gt;setEnabled ( true );
+             cmd-&gt;setText ( rdpServer );
+             pbAdvanced-&gt;show();
++            cbDirectRDP-&gt;show();
++            slot_rdpDirectClicked();
+         }
+         else if ( command==&quot;XDMCP&quot; )
+         {
+@@ -429,6 +488,7 @@ void SessionWidget::readConfig()
+         sessName-&gt;selectAll();
+         sessName-&gt;setFocus();
+     }
++    slot_rdpDirectClicked();
+ }
+ 
+ void SessionWidget::setDefaults()
+@@ -450,6 +510,7 @@ void SessionWidget::setDefaults()
+     icon-&gt;setIcon ( QIcon ( sessIcon ) );
+     sshPort-&gt;setValue (
+         mainWindow-&gt;getDefaultSshPort().toInt() );
++    rdpPort-&gt;setValue (3389);
+ }
+ 
+ 
+@@ -468,10 +529,14 @@ void SessionWidget::saveSettings()
+ 
+     st.setting()-&gt;setValue ( sessionId+&quot;/key&quot;,
+                              ( QVariant ) key-&gt;text() );
++    st.setting()-&gt;setValue ( sessionId+&quot;/rdpport&quot;,
++                             ( QVariant ) rdpPort-&gt;value() );
++
+     st.setting()-&gt;setValue ( sessionId+&quot;/sshport&quot;,
+                              ( QVariant ) sshPort-&gt;value() );
+     st.setting()-&gt;setValue(sessionId+&quot;/autologin&quot;,( QVariant ) cbAutoLogin-&gt;isChecked());
+     st.setting()-&gt;setValue(sessionId+&quot;/krblogin&quot;,( QVariant ) cbKrbLogin-&gt;isChecked());
++    st.setting()-&gt;setValue(sessionId+&quot;/directrdp&quot;,( QVariant ) cbDirectRDP-&gt;isChecked());
+     QString command;
+     bool rootless=false;
+     bool published=false;
+@@ -538,3 +603,9 @@ QString SessionWidget::sessionName()
+ {
+     return sessName-&gt;text();
+ }
++
++void SessionWidget::slot_emitSettings()
++{
++    emit settingsChanged(server-&gt;text(), QString::number( rdpPort-&gt;value()), uname-&gt;text());
++}
++
+diff --git a/sessionwidget.h b/sessionwidget.h
+index 869d9bb..9ad5c35 100644
+--- a/sessionwidget.h
++++ b/sessionwidget.h
+@@ -23,6 +23,7 @@ class QPushButton;
+ class QComboBox;
+ class QLabel;
+ class QCheckBox;
++class QGroupBox;
+ class SessionWidget : public ConfigWidget
+ {
+     Q_OBJECT
+@@ -38,6 +39,9 @@ private slots:
+     void slot_getKey();
+     void slot_changeCmd ( int var );
+     void slot_rdpOptions();
++public slots:
++    void slot_rdpDirectClicked();
++    void slot_emitSettings();
+ 
+ private:
+     enum {KDE,GNOME,LXDE,UNITY,RDP,XDMCP,SHADOW,OTHER,APPLICATION,PUBLISHED};
+@@ -45,23 +49,30 @@ private:
+     QLineEdit* uname;
+     QLineEdit* server;
+     QSpinBox* sshPort;
++    QSpinBox* rdpPort;
+     QLineEdit* key;
+     QCheckBox* cbAutoLogin;
+     QCheckBox* cbKrbLogin;
++    QCheckBox* cbDirectRDP;
+     QString sessIcon;
+     QPushButton* icon;
+     QLineEdit* cmd;
+     QComboBox* cmdCombo;
+     QComboBox* sessBox;
+     QLabel* leCmdIp;
++    QLabel* lPort;
++    QLabel* lKey;
+     QPushButton* pbAdvanced;
+     QString rdpOptions;
+     QString rdpServer;
+     QString xdmcpServer;
++    QPushButton* openKey;
+ private:
+     void readConfig();
+ signals:
+     void nameChanged ( const QString &amp; );
++    void directRDP(bool);
++    void settingsChanged(const QString &amp;, const QString &amp;, const QString &amp;);
+ };
+ 
+ #endif
+diff --git a/settingswidget.cpp b/settingswidget.cpp
+index 1d1a229..5439059 100644
+--- a/settingswidget.cpp
++++ b/settingswidget.cpp
+@@ -26,6 +26,7 @@
+ #include &lt;QTimer&gt;
+ #include &lt;QSplashScreen&gt;
+ #include &quot;x2gologdebug.h&quot;
++#include &lt;QGridLayout&gt;
+ 
+ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+                                  QWidget * parent, Qt::WindowFlags f )
+@@ -42,8 +43,9 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     tabSettings-&gt;addTab ( sbgr,tr ( &quot;Sound&quot; ) );
+ #else
+     QGroupBox *dgb=new QGroupBox ( tr ( &quot;&amp;Display&quot; ),this );
+-    QGroupBox *kgb=new QGroupBox ( tr ( &quot;&amp;Keyboard&quot; ),this );
+-    QGroupBox *sbgr=new QGroupBox ( tr ( &quot;Sound&quot; ),this );
++    kgb=new QGroupBox ( tr ( &quot;&amp;Keyboard&quot; ),this );
++    sbgr=new QGroupBox ( tr ( &quot;Sound&quot; ),this );
++    rdpBox=new QGroupBox ( tr ( &quot;RDP Client&quot; ),this );
+ #endif
+     QVBoxLayout *dbLay = new QVBoxLayout ( dgb );
+     QVBoxLayout  *sndLay=new QVBoxLayout ( sbgr );
+@@ -61,11 +63,13 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     custom=new QRadioButton ( tr ( &quot;Window&quot; ),dgb );
+ #endif
+     display=new QRadioButton ( tr ( &quot;Use whole display&quot; ),dgb );
++    maxRes=new QRadioButton ( tr ( &quot;Maximum available&quot; ),dgb );
+ 
+     radio-&gt;addButton ( fs );
+     radio-&gt;addButton ( custom );
+     radio-&gt;setExclusive ( true );
+     radio-&gt;addButton(display);
++    radio-&gt;addButton(maxRes);
+     width=new QSpinBox ( dgb );
+     height=new QSpinBox ( dgb );
+     cbSetDPI=new QCheckBox ( tr ( &quot;Set display DPI&quot; ),dgb );
+@@ -98,6 +102,7 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     dwLay-&gt;addStretch();
+ 
+     dispLay-&gt;addWidget(display);
++    dispLay-&gt;addWidget(maxRes);
+     dispLay-&gt;addSpacing(15);
+     dispLay-&gt;addWidget(lDisplay=new QLabel(tr(&quot;&amp;Display:&quot;),dgb));
+     dispLay-&gt;addWidget(displayNumber=new QSpinBox(dgb));
+@@ -123,10 +128,12 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     dbLay-&gt;addLayout ( dwLay );
+     dbLay-&gt;addLayout(dispLay);
+     QFrame* dhl=new QFrame ( dgb );
++    hLine1=dhl;
+     dhl-&gt;setFrameStyle ( QFrame::HLine | QFrame::Sunken );
+     dbLay-&gt;addWidget ( dhl );
+     dbLay-&gt;addLayout ( ddLay );
+     dhl=new QFrame ( dgb );
++    hLine2=dhl;
+     dhl-&gt;setFrameStyle ( QFrame::HLine | QFrame::Sunken );
+     dbLay-&gt;addWidget ( dhl );
+     dbLay-&gt;addWidget ( cbXinerama );
+@@ -223,6 +230,27 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     setLay-&gt;addWidget ( dgb );
+     setLay-&gt;addWidget ( kgb );
+     setLay-&gt;addWidget ( sbgr );
++    setLay-&gt;addWidget ( rdpBox );
++
++
++    rRdesktop=new QRadioButton (&quot;rdesktop&quot;,rdpBox );
++    rRdesktop-&gt;setChecked(true);
++    rXfreeRDP=new QRadioButton ( &quot;xfreerdp&quot;,rdpBox);
++
++    QButtonGroup* rClient=new QButtonGroup(rdpBox);
++    rClient-&gt;addButton ( rRdesktop );
++    rClient-&gt;addButton ( rXfreeRDP );
++    rClient-&gt;setExclusive ( true );
++    QGridLayout *rdpLay=new QGridLayout(rdpBox);
++    rdpLay-&gt;addWidget(rRdesktop,0,0);
++    rdpLay-&gt;addWidget(rXfreeRDP,1,0);
++    rdpLay-&gt;addWidget(new QLabel(tr(&quot;Additional parameters:&quot;)),2,0);
++    rdpLay-&gt;addWidget(new QLabel(tr(&quot;Command line:&quot;)),3,0);
++    cmdLine=new QLineEdit(rdpBox);
++    cmdLine-&gt;setReadOnly(true);
++    params=new QLineEdit(rdpBox);
++    rdpLay-&gt;addWidget(cmdLine,4,0,1,2);
++    rdpLay-&gt;addWidget(params,2,1);
+ #else
+     setLay-&gt;addWidget ( tabSettings );
+ // 	cbClientPrint-&gt;hide();
+@@ -267,6 +295,12 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+               SLOT ( slot_sndStartClicked() ) );
+     connect ( cbDefSndPort,SIGNAL ( toggled ( bool ) ),this,
+               SLOT ( slot_sndDefPortChecked ( bool ) ) );
++
++    connect (rClient, SIGNAL(buttonClicked(int)), this, SLOT(updateCmdLine()));
++    connect (radio, SIGNAL(buttonClicked(int)), this, SLOT(updateCmdLine()));
++    connect (params, SIGNAL(textChanged(QString)), this, SLOT(updateCmdLine()));
++    connect (width, SIGNAL(valueChanged(int)), this, SLOT(updateCmdLine()));
++    connect (height, SIGNAL(valueChanged(int)), this, SLOT(updateCmdLine()));
+     kbd-&gt;setChecked ( true );
+     custom-&gt;setChecked ( true );
+     readConfig();
+@@ -277,6 +311,39 @@ SettingsWidget::~SettingsWidget()
+ {
+ }
+ 
++void SettingsWidget::setDirectRdp(bool direct)
++{
++    cbClientPrint-&gt;setVisible(!direct);
++    kgb-&gt;setVisible(!direct);
++    sbgr-&gt;setVisible(!direct);
++    cbSetDPI-&gt;setVisible(!direct);
++    cbXinerama-&gt;setVisible(!direct);
++    display-&gt;setVisible(!direct);
++    maxRes-&gt;setVisible(direct);
++    DPI-&gt;setVisible(!direct);
++    lDisplay-&gt;setVisible(!direct);
++    displayNumber-&gt;setVisible(!direct);
++    pbIdentDisp-&gt;setVisible(!direct);
++    hLine1-&gt;setVisible(!direct);
++    hLine2-&gt;setVisible(!direct);
++    rdpBox-&gt;setVisible(direct);
++    if (direct)
++    {
++        if (display-&gt;isChecked())
++        {
++            display-&gt;setChecked(false);
++            custom-&gt;setChecked(true);
++        }
++    }
++    else
++    {
++        if (maxRes-&gt;isChecked())
++        {
++            maxRes-&gt;setChecked(false);
++            custom-&gt;setChecked(true);
++        }
++    }
++}
+ 
+ void SettingsWidget::slot_identDisplays()
+ {
+@@ -457,6 +524,20 @@ void SettingsWidget::readConfig()
+             displayNumber-&gt;setValue(1);
+     }
+ 
++
++    maxRes-&gt;setChecked(st.setting()-&gt;value ( sessionId+&quot;/maxdim&quot;, false).toBool());
++
++    QString client=st.setting()-&gt;value ( sessionId+&quot;/rdpclient&quot;,&quot;rdesktop&quot;).toString();
++    
++    if(client==&quot;rdesktop&quot;)
++      rRdesktop-&gt;setChecked(true);
++    else
++      rXfreeRDP-&gt;setChecked(true);
++
++    params-&gt;setText(st.setting()-&gt;value ( sessionId+&quot;/directrdpsettings&quot;,&quot;&quot;).toString());
++
++
++
+     cbSetDPI-&gt;setChecked (
+         st.setting()-&gt;value ( sessionId+&quot;/setdpi&quot;,
+                               ( QVariant ) mainWindow-&gt;getDefaultSetDPI() ).toBool() );
+@@ -575,6 +656,19 @@ void SettingsWidget::saveSettings()
+                              ( QVariant ) display-&gt;isChecked() );
+     st.setting()-&gt;setValue ( sessionId+&quot;/display&quot;,
+                              ( QVariant ) displayNumber-&gt;value() );
++
++    st.setting()-&gt;setValue ( sessionId+&quot;/maxdim&quot;,
++                             ( QVariant ) maxRes-&gt;isChecked() );
++
++    if (rXfreeRDP-&gt;isChecked())
++        st.setting()-&gt;setValue ( sessionId+&quot;/rdpclient&quot;,
++                                 ( QVariant ) &quot;xfreerdp&quot; );
++    else
++        st.setting()-&gt;setValue ( sessionId+&quot;/rdpclient&quot;,
++                                 ( QVariant ) &quot;rdesktop&quot; );
++    st.setting()-&gt;setValue ( sessionId+&quot;/directrdpsettings&quot;,
++                             ( QVariant ) params-&gt;text());
++
+     st.setting()-&gt;setValue ( sessionId+&quot;/height&quot;,
+                              ( QVariant ) height-&gt;value() );
+     st.setting()-&gt;setValue ( sessionId+&quot;/dpi&quot;,
+@@ -614,3 +708,42 @@ void SettingsWidget::saveSettings()
+                              ( QVariant ) cbClientPrint-&gt;isChecked() );
+     st.setting()-&gt;sync();
+ }
++
++void SettingsWidget::setServerSettings(QString server, QString port, QString user)
++{
++    this-&gt;server=server;
++    this-&gt;port=port;
++    this-&gt;user=user;
++    updateCmdLine();
++}
++
++void SettingsWidget::updateCmdLine()
++{
++    QString client=&quot;xfreerdp&quot;;
++    QString userOpt;
++    if (user.length()&gt;0)
++    {
++        userOpt=&quot; -u &quot;;
++        userOpt+=user;
++    }
++    if (rRdesktop-&gt;isChecked())
++    {
++        client=&quot;rdesktop&quot;;
++    }
++
++    QString grOpt;
++
++    if (fs-&gt;isChecked())
++    {
++        grOpt=&quot; -f &quot;;
++    }
++    if (maxRes-&gt;isChecked())
++    {
++        grOpt=&quot; -g &lt;maxW&gt;x&lt;maxH&gt;&quot;;
++    }
++    if (custom-&gt;isChecked())
++    {
++        grOpt=&quot; -g &quot;+QString::number(width-&gt;value())+&quot;x&quot;+QString::number(height-&gt;value());
++    }
++    cmdLine-&gt;setText(client +&quot; &quot;+params-&gt;text()+ grOpt +userOpt+&quot; -p &lt;&quot;+tr(&quot;password&quot;)+&quot;&gt; &quot;+ server+&quot;:&quot;+port );
++}
+diff --git a/settingswidget.h b/settingswidget.h
+index 8c5ebf8..79aae0c 100644
+--- a/settingswidget.h
++++ b/settingswidget.h
+@@ -25,6 +25,7 @@ class QSpinBox;
+ class QLabel;
+ class QPushButton;
+ class QMainWindow;
++class QGroupBox;
+ 
+ 
+ class SettingsWidget : public ConfigWidget
+@@ -36,6 +37,10 @@ public:
+     ~SettingsWidget();
+     void setDefaults();
+     void saveSettings();
++    void setDirectRdp(bool direct);
++public slots:
++    void setServerSettings(QString server, QString port, QString user);
++    void updateCmdLine();
+ private slots:
+     void slot_sndSysSelected ( int system );
+     void slot_sndToggled ( bool val );
+@@ -54,6 +59,7 @@ private:
+     QLineEdit* type;
+     QRadioButton* custom;
+     QRadioButton* display;
++    QRadioButton* maxRes;
+     QRadioButton* arts;
+     QRadioButton* pulse;
+     QRadioButton* esd;
+@@ -76,6 +82,19 @@ private:
+     bool multiDisp;
+     QPushButton* pbIdentDisp;
+     QList &lt;QMainWindow*&gt; identWins;
++    QGroupBox *kgb;
++    QGroupBox *sbgr;
++    QGroupBox *rdpBox;
++    QRadioButton* rRdesktop;
++    QRadioButton* rXfreeRDP;
++    QLineEdit* cmdLine;
++    QLineEdit* params;
++    QFrame* hLine1;
++    QFrame* hLine2;
++    QString server;
++    QString user;
++    QString port;
++
+ private:
+     void readConfig();
+ };
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003102.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-6-g6f97d0f
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3103">[ date ]</a>
+              <a href="thread.html#3103">[ thread ]</a>
+              <a href="subject.html#3103">[ subject ]</a>
+              <a href="author.html#3103">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

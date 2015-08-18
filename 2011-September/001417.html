@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-24-g8599d98
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-24-g8599d98&In-Reply-To=%3C20110909111730.2001E5DB1B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001416.html">
+   <LINK REL="Next"  HREF="001418.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-24-g8599d98</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-24-g8599d98&In-Reply-To=%3C20110909111730.2001E5DB1B%40ymir%3E"
+       TITLE="[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-24-g8599d98">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Sep  9 13:17:30 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001416.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-23-g2643535
+</A></li>
+        <LI>Next message: <A HREF="001418.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-25-gd94e29d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1417">[ date ]</a>
+              <a href="thread.html#1417">[ thread ]</a>
+              <a href="subject.html#1417">[ subject ]</a>
+              <a href="author.html#1417">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  8599d986f186442a9c9c150657bba930d1da2c6f (commit)
+      from  264353530bff5c54a5f2294a8af9c8fea00ddc03 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8599d986f186442a9c9c150657bba930d1da2c6f
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Sep 9 13:18:36 2011 +0200
+
+    Add loglevel config option, allow different log levels (i.e. levels of syslog verbosity).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ cups-x2go        |   47 ++++++++++++++++++++++++++++++++++++++++++-----
+ cups-x2go.conf   |    2 ++
+ debian/changelog |    2 ++
+ 3 files changed, 46 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/cups-x2go b/cups-x2go
+index d9bf5f5..ad2c436 100755
+--- a/cups-x2go
++++ b/cups-x2go
+@@ -42,6 +42,9 @@ my $printdsa = &quot;/root/.ssh/id_dsa-x2goprint&quot;;
+ my $ps2pdf = &quot;/usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f \&quot;%s\&quot;&quot;;
+ #my $ps2pdf = &quot;/usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f /usr/bin/margin-offset.ps \&quot;%s\&quot;&quot;;
+ 
++## loglevel for cups-x2go, possible values: err, warn, notice, info, debug
++my $strloglevel = 'notice';
++
+ # override hardcoded settings via config file
+ my $cfgfile=&quot;/etc/cups/cups-x2go.conf&quot;;
+ 
+@@ -77,12 +80,46 @@ sub readconfig
+ 				{
+ 					$ps2pdf=$value;
+ 				}
++				if($option eq &quot;loglevel&quot;)
++				{
++					$strloglevel=$value;
++				}
+ 			}
+ 		close(CFG);
+ 	}
+ }
+ 
+ 
++sub setmylogmask {
++	if ( $strloglevel == 'emerg' ) {
++		my $intloglevel = LOG_EMERG;
++	}
++	elsif ( $strloglevel == 'alert' ) {
++		my $intloglevel = LOG_ALERT;
++	}
++	elsif ( $strloglevel == 'crit' ) {
++		my $intloglevel = LOG_CRIT;
++	}
++	elsif ( $strloglevel == 'err' ) {
++		my $intloglevel = LOG_ERR;
++	}
++	elsif ( $strloglevel == 'warn' ) {
++		my $intloglevel = LOG_WARNING;
++	}
++	elsif ( $strloglevel == 'notice' ) {
++		my $intloglevel = LOG_NOTICE
++	}
++	elsif ( $strloglevel == 'info' {
++		my $intloglevel = LOG_INFO;
++	}
++	elsif ( $strloglevel == 'debug' ) {
++		my $intloglevel = LOG_DEBUG;
++	} else {
++		my $intloglevel = LOG_ERR;
++	}
++	setlogmask( LOG_UPTO( $intloglevel ) );
++}
++
+ sub getsessions
+ {
+ 	my $sesslist;
+@@ -113,7 +150,6 @@ sub printfile
+ 		copy($tfile, &quot;$spfile.title&quot;);
+ 		chown $uid,$gid,&quot;$spfile&quot;;
+ 		chown $uid,$gid,&quot;$spfile.title&quot;;
+-		syslog('debug', `ls /var/spool/x2goprint`);
+ 		# log that we are about to process a print job
+ 		syslog('debug', &quot;x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title&quot;);
+ 
+@@ -140,13 +176,16 @@ sub printfile
+ 
+ ### main ###
+ 
+-my $uname=$ENV{USER};
+ if (!$ARGV[0])
+ {
+ 	print &quot;file cups-x2go:/ \&quot;Virtual X2GO Printer\&quot; \&quot;CUPS-X2GO\&quot; \&quot;MFG:Generic;MDL:CUPS-X2GO Printer;DES:Generic CUPS-X2GO Printer;CLS:PRINTER;CMD:POSTSCRIPT;\&quot;\n&quot;;
+ 	exit 0;
+ }
+ 
++# read config file before we go on...
++readconfig();
++setmylogmask();
++
+ if (scalar(@ARGV) &lt; 5 || scalar(@ARGV) &gt; 6)
+ {
+ 	print STDERR &quot;ERROR: Usage: cups-x2go job-id user title copies options [file]\n&quot;;
+@@ -160,7 +199,7 @@ my $printOptions;
+ my $psFile;
+ 
+ ($jobID, $userName, $jobTitle, $copies, $printOptions, $psFile) =  @ARGV;
+-syslog('info', &quot;Print job received from cups -&gt; $jobID $userName $jobTitle $copies $printOptions $psFile&quot;);
++syslog('notice', &quot;Print job received from cups -&gt; $jobID $userName $jobTitle $copies $printOptions $psFile&quot;);
+ 
+ my $tempFile;
+ if (!$psFile)
+@@ -181,8 +220,6 @@ if (!$psFile)
+ 	$psFile = $tempFile;
+ }
+ 
+-readconfig();
+-
+ # converting PS file that we retrieved from CUPS into PDF format
+ $ps2pdf=~s/%s/$psFile/g;
+ syslog('info', &quot;Converting printjob with command: $ps2pdf\n&quot;);
+diff --git a/cups-x2go.conf b/cups-x2go.conf
+index f238e2a..6c7bf28 100644
+--- a/cups-x2go.conf
++++ b/cups-x2go.conf
+@@ -16,3 +16,5 @@
+ ## command to generate PDF file
+ #ps2pdf = /usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f \&quot;%s\&quot;
+ 
++## loglevel for cups-x2go, possible values: err, warn, notice, info, debug
++# loglevel = notice
+\ No newline at end of file
+diff --git a/debian/changelog b/debian/changelog
+index e732607..fa97eb2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -10,6 +10,8 @@ cups-x2go (3.0.0.2-0~x2go2) UNRELEASED; urgency=low
+   * Major change of code, add comments, syslogging, fix ghostscript call.
+   * Fix remote printing, use host specified in X2go session information for
+     destination of print jobs, not the host specified in cups-x2go.conf.
++  * Add loglevel config option, allow different log levels (i.e. levels of
++    syslog verbosity).
+ 
+   [ Mario Oroz ]
+   * Add syslog support for cups-x2go.
+
+
+hooks/post-receive
+-- 
+cups-x2go.git (CUPS Backend for X2go Printing)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;cups-x2go.git&quot; (CUPS Backend for X2go Printing).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001416.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-23-g2643535
+</A></li>
+	<LI>Next message: <A HREF="001418.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-25-gd94e29d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1417">[ date ]</a>
+              <a href="thread.html#1417">[ thread ]</a>
+              <a href="subject.html#1417">[ subject ]</a>
+              <a href="author.html#1417">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

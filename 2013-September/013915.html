@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-62-g8966252
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.1.4-62-g8966252&In-Reply-To=%3C20130914135707.37E165DC65%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013913.html">
+   <LINK REL="Next"  HREF="013921.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-62-g8966252</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.1.4-62-g8966252&In-Reply-To=%3C20130914135707.37E165DC65%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-62-g8966252">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:07 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013913.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-63-g42e073c
+</A></li>
+        <LI>Next message: <A HREF="013921.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-61-g6126afe
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13915">[ date ]</a>
+              <a href="thread.html#13915">[ thread ]</a>
+              <a href="subject.html#13915">[ subject ]</a>
+              <a href="author.html#13915">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  8966252f797a3dcf1bde347d6cfb7520e9900129 (commit)
+      from  6126afedc1af9473b2b3581ac4f2c64663b9810e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py  |   30 ++++++++++++++++++++++++++++-
+ x2go/session.py |   57 +++++++++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 72 insertions(+), 15 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index e8b85b5..32b7386 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1043,10 +1043,38 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).check_host()
+     __check_session_host = check_session_host
+ 
++    def session_uses_sshproxy(self, session_uuid):
++        &quot;&quot;&quot;\
++        Check if session with unique identifier &lt;session_uuid&gt; is configured to use an
++        intermediate SSH proxy server.
++
++        @return: returns C{True} if the session is configured to use an SSH proxy, C{False} otherwise.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).uses_sshproxy()
++    __session_uses_sshproxy = session_uses_sshproxy
++
++    def session_can_sshproxy_auto_connect(self, session_uuid):
++        &quot;&quot;&quot;\
++        Check if the SSH proxy of session with unique identifier &lt;session_uuid&gt; is configured adequately
++        to be able to auto-connect to the SSH proxy server (e.g. by public key authentication).
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++
++        @return: returns C{True} if the session's SSH proxy can auto-connect, C{False} otherwise, C{None}
++            if no control session has been set up yet.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).can_sshproxy_auto_connect()
++    __session_can_sshproxy_auto_connect = session_can_sshproxy_auto_connect
++
+     def session_can_auto_connect(self, session_uuid):
+         &quot;&quot;&quot;\
+         Check if session with unique identifier &lt;session_uuid&gt; is configured adequately
+-        to be able to auto-connect to the X2go server (e.g. public key authentication).
++        to be able to auto-connect to the X2go server (e.g. by public key authentication).
+ 
+         @param session_uuid: the X2go session's UUID registry hash
+         @type session_uuid: C{str}
+diff --git a/x2go/session.py b/x2go/session.py
+index 63cdd64..faf2598 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -681,6 +681,37 @@ class X2goSession(object):
+         return _valid or self.HOOK_check_host_dialog(host=_host, port=_port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
+     __check_host = check_host
+ 
++    def uses_sshproxy(self):
++        &quot;&quot;&quot;\
++        Check if a session is configured to use an intermediate SSH proxy server.
++
++        @return: returns C{True} if the session is configured to use an SSH proxy, C{False} otherwise.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.use_sshproxy
++
++    def can_sshproxy_auto_connect(self):
++        &quot;&quot;&quot;\
++        Check if a session's SSH proxy (if used) is configured adequately to be able to auto-connect
++        to the SSH proxy server (e.g. by public key authentication).
++
++        @return: returns C{True} if the session's SSH proxy can auto-connect, C{False} otherwise, C{None}
++            if no SSH proxy is used for this session, C{None} is returned.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.use_sshproxy:
++            if self.sshproxy_params.has_key('sshproxy_key_filename') and self.sshproxy_params['sshproxy_key_filename'] and os.path.exists(os.path.normpath(self.sshproxy_params['sshproxy_key_filename'])):
++                return True
++            elif self.sshproxy_params.has_key('sshproxy_pkey') and self.sshproxy_params['sshproxy_pkey']:
++                return True
++            else:
++                return False
++        else:
++            return None
++    __can_sshproxy_auto_connect = can_sshproxy_auto_connect
++
+     def can_auto_connect(self):
+         &quot;&quot;&quot;\
+         Check if a session is configured adequately to be able to auto-connect to the X2go
+@@ -691,26 +722,24 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-
+-        def _can_sshproxy_autoconnect():
+-
+-            if self.use_sshproxy:
+-                if self.sshproxy_params.has_key('sshproxy_key_filename') and self.sshproxy_params['sshproxy_key_filename'] and os.path.exists(os.path.normpath(self.sshproxy_params['sshproxy_key_filename'])):
+-                    return True
+-                elif self.sshproxy_params.has_key('sshproxy_pkey') and self.sshproxy_params['sshproxy_pkey']:
+-                    return True
+-                else:
+-                    return False
+-            else:
+-                return True
++        if self.control_session is None:
++            return None
+ 
+         # do we have a key file passed as control parameter?
+         if self.control_params.has_key('key_filename') and self.control_params['key_filename'] and os.path.exists(os.path.normpath(self.control_params['key_filename'])):
+-            return _can_sshproxy_autoconnect()
++            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
++            if _can_sshproxy_auto_connect is not None:
++                return _can_sshproxy_auto_connect
++            else:
++                return True
+ 
+         # or a private key?
+         elif self.control_params.has_key('pkey') and self.control_params['pkey']:
+-            return _can_sshproxy_autoconnect()
++            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
++            if _can_sshproxy_auto_connect is not None:
++                return _can_sshproxy_auto_connect
++            else:
++                return True
+ 
+         else:
+             return False
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013913.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-63-g42e073c
+</A></li>
+	<LI>Next message: <A HREF="013921.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-61-g6126afe
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13915">[ date ]</a>
+              <a href="thread.html#13915">[ thread ]</a>
+              <a href="subject.html#13915">[ subject ]</a>
+              <a href="author.html#13915">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

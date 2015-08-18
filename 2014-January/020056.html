@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-7-g08312e2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.21-7-g08312e2&In-Reply-To=%3C20140104205504.27E555DB05%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020053.html">
+   <LINK REL="Next"  HREF="020058.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-7-g08312e2</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.21-7-g08312e2&In-Reply-To=%3C20140104205504.27E555DB05%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-7-g08312e2">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Jan  4 21:55:03 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020053.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-6-g2382d88
+</A></li>
+        <LI>Next message: <A HREF="020058.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-8-gb413799
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20056">[ date ]</a>
+              <a href="thread.html#20056">[ thread ]</a>
+              <a href="subject.html#20056">[ subject ]</a>
+              <a href="author.html#20056">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  08312e2e16fe5fe97b0c887353ac77457b4f5a0f (commit)
+      from  2382d88357fa8a3196f61d2643ac190278cc8132 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    4 ++
+ ...s.h-dont-use-STL-internals-on-libc++.full.patch |   52 ++++++++++++++++++++
+ debian/patches/series                              |    1 +
+ 3 files changed, 57 insertions(+)
+ create mode 100644 debian/patches/605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a4c78fb..78ce45e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,6 +13,10 @@ nx-libs (2:3.5.0.22-0x2go1) UNRELEASED; urgency=low
+   * debian/control:
+     + Add libfreetype6-dev to Build-Depends: field.
+ 
++  [ Clemens Lang ]
++  * Add patch 605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch. Fix
++    FTBFS of nx-libs-lite on Mac OS X Mavericks. (Fixes: #337).
++
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Fri, 30 Aug 2013 16:20:18 +0200
+ 
+ nx-libs (2:3.5.0.21-0) unstable; urgency=low
+diff --git a/debian/patches/605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch b/debian/patches/605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch
+new file mode 100644
+index 0000000..60f33ce
+--- /dev/null
++++ b/debian/patches/605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch
+@@ -0,0 +1,52 @@
++Description: In Types.h, don't use STL internals on libc++.
++Author: Clemens Lang &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">cal at macports.org</A>&gt;
++Abstract:
++ The nx-libs-lite package does not compile on OS X Mavericks because
++ Apple's clang compilers now default to compiling against the libc++ STL
++ rather than (their outdated copy of) libstdc++.
++ .
++ While the compiler still allows changing that, we should not rely on
++ this being possible forever.
++ .
++ The compiler chokes in Types.h, specifically the clear() methods in
++ subclasses of vectors that use implementation details of the GNU STL.
++ The attached patch fixes these compilation issues by not overriding the
++ clear() method when compiling against libc++, since the libc++ headers
++ seem to do essentially the same as the overriden method.
++--- a/nxcomp/Types.h	2013-11-05 01:35:22.000000000 +0100
+++++ b/nxcomp/Types.h	2013-11-05 01:37:30.000000000 +0100
++@@ -55,6 +55,9 @@
++     return &amp;*(vector &lt; unsigned char &gt;::begin());
++   }
++ 
+++  // Avoid overriding clear() when using libc++. Fiddling with STL internals
+++  // doesn't really seem like a good idea to me anyway.
+++  #ifndef _LIBCPP_VECTOR
++   void clear()
++   {
++     #if defined(__STL_USE_STD_ALLOCATORS) || defined(__GLIBCPP_INTERNAL_VECTOR_H)
++@@ -95,12 +98,16 @@
++ 
++     #endif  /* #if defined(__STL_USE_STD_ALLOCATORS) || defined(__GLIBCPP_INTERNAL_VECTOR_H) */
++   }
+++  #endif /* #ifdef _LIBCPP_VECTOR */
++ };
++ 
++ class T_messages : public vector &lt; Message * &gt;
++ {
++   public:
++ 
+++  // Avoid overriding clear() when using libc++. Fiddling with STL internals
+++  // doesn't really seem like a good idea to me anyway.
+++  #ifndef _LIBCPP_VECTOR
++   void clear()
++   {
++     #if defined(__STL_USE_STD_ALLOCATORS) || defined(__GLIBCPP_INTERNAL_VECTOR_H)
++@@ -141,6 +148,7 @@
++ 
++     #endif /* #if defined(__STL_USE_STD_ALLOCATORS) || defined(__GLIBCPP_INTERNAL_VECTOR_H) */
++   }
+++  #endif /* #ifndef _LIBCPP_VECTOR */
++ };
++ 
++ typedef md5_byte_t * T_checksum;
+diff --git a/debian/patches/series b/debian/patches/series
+index 9e49395..ce5237f 100644
+--- a/debian/patches/series
++++ b/debian/patches/series
+@@ -50,6 +50,7 @@
+ 602_nx-X11_initgroups.full.patch
+ 603_nx-X11_compilation_warnings.full.patch
+ 604_nx-X11_recent-freetype-API.full.patch
++605_nxcomp_Types.h-dont-use-STL-internals-on-libc++.full.patch
+ 999_nxagent_unbrand-nxagent-brand-x2goagent.full.patch
+ 016_nx-X11_install-location.debian.patch
+ 102_xserver-xext_set-securitypolicy-path.debian.patch
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020053.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-6-g2382d88
+</A></li>
+	<LI>Next message: <A HREF="020058.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21-8-gb413799
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20056">[ date ]</a>
+              <a href="thread.html#20056">[ thread ]</a>
+              <a href="subject.html#20056">[ subject ]</a>
+              <a href="author.html#20056">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

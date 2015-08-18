@@ -1,0 +1,1116 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-37-g8314a25
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-37-g8314a25&In-Reply-To=%3C20140103195310.B52A25DB46%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019724.html">
+   <LINK REL="Next"  HREF="019921.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-37-g8314a25</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-37-g8314a25&In-Reply-To=%3C20140103195310.B52A25DB46%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-37-g8314a25">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:53:10 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019724.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-35-g48bba82
+</A></li>
+        <LI>Next message: <A HREF="019921.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-32-gd34d365
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19752">[ date ]</a>
+              <a href="thread.html#19752">[ thread ]</a>
+              <a href="subject.html#19752">[ subject ]</a>
+              <a href="author.html#19752">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  8314a25a7d51a0d5d4d7b5c8c17ad30f2eec0cca (commit)
+      from  9ecd656786072f85d444523ef3954889f69900b2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server/DB.pm            |  311 +++-----------------------
+ X2Go/Server/DB/PostgreSQL.pm |  494 ++++++++++++++++++++++++++++++++++++++++++
+ debian/changelog             |    1 +
+ 3 files changed, 530 insertions(+), 276 deletions(-)
+ create mode 100644 X2Go/Server/DB/PostgreSQL.pm
+
+The diff of changes is:
+diff --git a/X2Go/Server/DB.pm b/X2Go/Server/DB.pm
+index 42a3453..45f1ec9 100644
+--- a/X2Go/Server/DB.pm
++++ b/X2Go/Server/DB.pm
+@@ -37,6 +37,7 @@ use POSIX;
+ use Sys::Syslog qw( :standard :macros );
+ 
+ use X2Go::Log qw(loglevel);
++use X2Go::Server::DB::PostgreSQL;
+ 
+ setlogmask( LOG_UPTO(loglevel()) );
+ 
+@@ -60,40 +61,6 @@ if ($backend ne 'postgres' &amp;&amp; $backend ne 'sqlite')
+ 	die &quot;unknown backend $backend&quot;;
+ }
+ 
+-if ($backend eq 'postgres')
+-{
+-	$host=$Config-&gt;param(&quot;postgres.host&quot;);
+-	$port=$Config-&gt;param(&quot;postgres.port&quot;);
+-	if (!$host)
+-	{
+-		$host='localhost';
+-	}
+-	if (!$port)
+-	{
+-		$port='5432';
+-	}
+-	my $passfile;
+-	if ($uname eq 'root')
+-	{
+-		$dbuser='x2godbuser';
+-		$passfile=&quot;/etc/x2go/x2gosql/passwords/x2goadmin&quot;;
+-	}
+-	else
+-	{
+-		$dbuser=&quot;x2gouser_$uname&quot;;
+-		$passfile=&quot;$homedir/.x2go/sqlpass&quot;;
+-	}
+-	$sslmode=$Config-&gt;param(&quot;postgres.ssl&quot;);
+-	if (!$sslmode)
+-	{
+-		$sslmode=&quot;prefer&quot;;
+-	}
+-	open (FL,&quot;&lt; $passfile&quot;) or die &quot;Can't read password file $passfile&lt;br&gt;&lt;b&gt;Use x2godbadmin on server to configure database access for user $uname&lt;/b&gt;&lt;br&gt;&quot;;
+-	$dbpass=&lt;FL&gt;;
+-	close(FL);
+-	chomp($dbpass);
+-}
+-
+ use base 'Exporter';
+ 
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
+@@ -107,13 +74,7 @@ sub dbsys_rmsessionsroot
+ 	dbsys_deletemounts($sid);
+ 	if($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
+-		                     &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-
+-		my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id='$sid'&quot;);
+-		$sth-&gt;execute() or die;
+-		$sth=$dbh-&gt;prepare(&quot;delete from used_ports where session_id='$sid'&quot;);
+-		$sth-&gt;execute() or die;
++		X2Go::Server::DB::PostgreSQL::dbsys_rmsessionsroot($sid);
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+@@ -123,20 +84,16 @@ sub dbsys_rmsessionsroot
+ 
+ sub dbsys_deletemounts
+ {
+-        my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-        if ($backend eq 'postgres')
+-        {
+-                my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-                my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id='$sid'&quot;);
+-                $sth-&gt;execute();
+-                $sth-&gt;finish();
+-                $dbh-&gt;disconnect();
+-        }
+-        if ($backend eq 'sqlite')
+-        {
+-                `$x2go_lib_path/libx2go-server-db-sqlite3-wrapper deletemounts $sid`;
+-        }
+-        syslog('debug', &quot;dbsys_deletemounts called, session ID: $sid&quot;);
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	if ($backend eq 'postgres')
++	{
++		X2Go::Server::DB::PostgreSQL::dbsys_deletemounts($sid);
++	}
++	if ($backend eq 'sqlite')
++	{
++		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper deletemounts $sid`;
++	}
++	syslog('debug', &quot;dbsys_deletemounts called, session ID: $sid&quot;);
+ }
+ 
+ sub dbsys_listsessionsroot
+@@ -144,25 +101,7 @@ sub dbsys_listsessionsroot
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
+-		                     &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-
+-		my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+-		                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'),cookie,client,gr_port,
+-		                      sound_port,to_char(last_time,'YYYY-MM-DDTHH24:MI:SS'),uname,
+-		                      to_char(now()-init_time,'SSSS'),fs_port  from  sessions
+-		                      where server='$server'  order by status desc&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		return @strings;
++		return X2Go::Server::DB::PostgreSQL::dbsys_listsessionsroot($server);
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+@@ -174,23 +113,7 @@ sub dbsys_listsessionsroot_all
+ {
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+-		                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'),cookie,client,gr_port,
+-		                      sound_port,to_char(last_time,'YYYY-MM-DDTHH24:MI:SS'),uname,
+-		                      to_char(now()-init_time,'SSSS'),fs_port  from  sessions
+-		                      order by status desc&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		return @strings;
++		return X2Go::Server::DB::PostgreSQL::dbsys_listsessionsroot_all();
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -204,19 +127,7 @@ sub dbsys_getmounts
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join(&quot;|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		@mounts = @strings;
++		@mounts = X2Go::Server::DB::PostgreSQL::dbsys_getmounts($sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -233,19 +144,7 @@ sub db_getmounts
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts_view where session_id='$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join(&quot;|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		@mounts = @strings;
++		@mounts = X2Go::Server::DB::PostgreSQL::db_getmounts($sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -262,11 +161,7 @@ sub db_deletemount
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;delete from mounts_view where session_id='$sid' and path='$path'&quot;);
+-		$sth-&gt;execute();
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_deletemount($sid, $path);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -283,15 +178,7 @@ sub db_insertmount
+ 	my $res_ok=0;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  ('$sid','$path','$client')&quot;);
+-		$sth-&gt;execute();
+-		if (!$sth-&gt;err())
+-		{
+-			$res_ok=1;
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		$res_ok = X2Go::Server::DB::PostgreSQL::db_insertmount($sid, $path, $client);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -311,11 +198,7 @@ sub db_insertsession
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$uname','$sid')&quot;);
+-		$sth-&gt;execute()or die $_;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_insertsession($display, $server, $sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -339,13 +222,7 @@ sub db_createsession
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;update sessions_view set status='R',last_time=now(),
+-		                      cookie='$cookie',agent_pid='$pid',client='$client',gr_port='$gr_port',
+-		                      sound_port='$snd_port',fs_port='$fs_port' where session_id='$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_createsession($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -365,11 +242,7 @@ sub db_insertport
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
+-		$sth-&gt;execute()or die;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_insertport($server, $sid, $sshport);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -385,11 +258,7 @@ sub db_rmport
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server='$server' and session_id='$sid' and port='$sshport'&quot;);
+-		$sth-&gt;execute()or die;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_rmport($server, $sid, $sshport);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -403,22 +272,17 @@ sub db_resume
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $gr_port=shift or die &quot;argument \&quot;gr_port\&quot; missed&quot;;
+-	my $sound_port=shift or die &quot;argument \&quot;sound_port\&quot; missed&quot;;
++	my $snd_port=shift or die &quot;argument \&quot;snd_port\&quot; missed&quot;;
+ 	my $fs_port=shift or die &quot;argument \&quot;fs_port\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='R',client='$client',gr_port='$gr_port',
+-			sound_port='$sound_port',fs_port='$fs_port' where session_id = '$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_resume($client, $sid, $gr_port, $snd_port, $fs_port);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper resume $client $sid $gr_port $sound_port $fs_port`;
++		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper resume $client $sid $gr_port $snd_port $fs_port`;
+ 	}
+-	syslog('debug', &quot;db_resume called, session ID: $sid, client: $client, gr_port: $gr_port, sound_port: $sound_port, fs_port: $fs_port&quot;);
++	syslog('debug', &quot;db_resume called, session ID: $sid, client: $client, gr_port: $gr_port, sound_port: $snd_port, fs_port: $fs_port&quot;);
+ }
+ 
+ sub db_changestatus
+@@ -427,11 +291,7 @@ sub db_changestatus
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='$status' where session_id = '$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		X2Go::Server::DB::PostgreSQL::db_changestatus($status, $sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -446,16 +306,7 @@ sub db_getstatus
+ 	my $status='';
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select status from sessions_view where session_id = '$sid'&quot;);
+-		$sth-&gt;execute($sid) or die;
+-		my @data;
+-		if (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			$status=@data[0];
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		$status = X2Go::Server::DB::PostgreSQL::db_getstatus($sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -472,19 +323,7 @@ sub db_getdisplays
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select display from servers_view&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]='|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[0].'|';
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		@displays = @strings;
++		@displays = X2Go::Server::DB::PostgreSQL::db_getdisplays($server);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -502,19 +341,7 @@ sub db_getports
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select port from ports_view&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]='|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[0].'|';
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		@ports = @strings;
++		@ports = X2Go::Server::DB::PostgreSQL::db_getports($server);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -530,19 +357,7 @@ sub db_getservers
+ 	my @servers;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select server,count(*) from servers_view where status != 'F' group by server&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=@data[0].&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[1];
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		@servers = @strings;
++		@servers = X2Go::Server::DB::PostgreSQL::db_getservers();
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -559,18 +374,7 @@ sub db_getagent
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions_view
+-		                      where session_id ='$sid'&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		if (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			$agent=@data[0];
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		$agent = X2Go::Server::DB::PostgreSQL::db_getagent($sid);
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+@@ -586,18 +390,7 @@ sub db_getdisplay
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select display from sessions_view
+-		                      where session_id ='$sid'&quot;);
+-		$sth-&gt;execute() or die;
+-		my @data;
+-		my $i=0;
+-		if (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			$display=@data[0];
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
++		$display = X2Go::Server::DB::PostgreSQL::db_getdisplay($sid);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -612,24 +405,7 @@ sub db_listsessions
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+-		                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
+-		                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
+-		                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
+-		                      where status !='F' and server='$server' and  
+-		                      (session_id not like '%XSHAD%') order by status desc&quot;);
+-		$sth-&gt;execute() or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		return @strings;
++		return X2Go::Server::DB::PostgreSQL::db_listsessions($server);
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+@@ -641,24 +417,7 @@ sub db_listsessions_all
+ {
+ 	if($backend eq 'postgres')
+ 	{
+-		my @strings;
+-		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+-		my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+-		                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
+-		                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
+-		                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
+-		                      where status !='F'  and  
+-		                      (session_id not like '%XSHAD%') order by status desc&quot;);
+-		$sth-&gt;execute()or die;
+-		my @data;
+-		my $i=0;
+-		while (@data = $sth-&gt;fetchrow_array) 
+-		{
+-			@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
+-		}
+-		$sth-&gt;finish();
+-		$dbh-&gt;disconnect();
+-		return @strings;
++		return X2Go::Server::DB::PostgreSQL::db_listsessions_all();
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+diff --git a/X2Go/Server/DB/PostgreSQL.pm b/X2Go/Server/DB/PostgreSQL.pm
+new file mode 100644
+index 0000000..db28f5e
+--- /dev/null
++++ b/X2Go/Server/DB/PostgreSQL.pm
+@@ -0,0 +1,494 @@
++# Copyright (C) 2007-2012 X2Go Project - <A HREF="http://wiki.x2go.org">http://wiki.x2go.org</A>
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++#
++# Copyright (C) 2007-2012  Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2007-2012  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++
++package X2Go::Server::DB::PostgreSQL;
++
++=head1 NAME
++
++X2Go::Server::DB::PostgreSQL - X2Go Session Database package for Perl (PostgreSQL backend)
++
++=head1 DESCRIPTION
++
++X2Go::Server::DB::PostgreSQL Perl package for X2Go::Server.
++
++=cut
++
++use strict;
++use Config::Simple;
++use DBI;
++use POSIX;
++use Sys::Syslog qw( :standard :macros );
++
++use X2Go::Log qw(loglevel);
++
++setlogmask( LOG_UPTO(loglevel()) );
++
++use base 'Exporter';
++
++our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
++             'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount', 
++             'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot', 
++             'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts');
++
++my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
++
++my $host;
++my $port;
++my $db=&quot;x2go_sessions&quot;;
++my $dbpass;
++my $dbuser;
++my $sslmode;
++
++sub init_db
++{
++	if ( ! ( $dbuser and $dbpass ) )
++	{
++		my $Config = new Config::Simple(syntax=&gt;'ini');
++		my $x2go_lib_path=`echo -n \$(x2gobasepath)/lib/x2go`;
++
++		$Config-&gt;read('/etc/x2go/x2gosql/sql' ) or die &quot;Can't read config file /etc/x2go/x2gosql/sql&quot;;
++		my $backend=$Config-&gt;param(&quot;backend&quot;);
++		if ( $backend ne &quot;postgres&quot; )
++		{
++			die &quot;X2Go server is not configured to use the PostgreSQL session db backend&quot;;
++		}
++
++		$host=$Config-&gt;param(&quot;postgres.host&quot;);
++		$port=$Config-&gt;param(&quot;postgres.port&quot;);
++		if (!$host)
++		{
++			$host='localhost';
++		}
++		if (!$port)
++		{
++			$port='5432';
++		}
++		my $passfile;
++		if ($uname eq 'root')
++		{
++			$dbuser='x2godbuser';
++			$passfile=&quot;/etc/x2go/x2gosql/passwords/x2goadmin&quot;;
++		}
++		else
++		{
++			$dbuser=&quot;x2gouser_$uname&quot;;
++			$passfile=&quot;$homedir/.x2go/sqlpass&quot;;
++		}
++		$sslmode=$Config-&gt;param(&quot;postgres.ssl&quot;);
++		if (!$sslmode)
++		{
++			$sslmode=&quot;prefer&quot;;
++		}
++		open (FL,&quot;&lt; $passfile&quot;) or die &quot;Can't read password file $passfile&lt;br&gt;&lt;b&gt;Use x2godbadmin on server to configure database access for user $uname&lt;/b&gt;&lt;br&gt;&quot;;
++		$dbpass=&lt;FL&gt;;
++		close(FL);
++		chomp($dbpass);
++	}
++}
++
++sub dbsys_rmsessionsroot
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
++	                     &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id='$sid'&quot;);
++	$sth-&gt;execute() or die;
++	$sth=$dbh-&gt;prepare(&quot;delete from used_ports where session_id='$sid'&quot;);
++	$sth-&gt;execute() or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub dbsys_deletemounts
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id='$sid'&quot;);
++	$sth-&gt;execute();
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub dbsys_listsessionsroot
++{
++	init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my @strings;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, 
++	                     &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'),cookie,client,gr_port,
++	                      sound_port,to_char(last_time,'YYYY-MM-DDTHH24:MI:SS'),uname,
++	                      to_char(now()-init_time,'SSSS'),fs_port  from  sessions
++	                      where server='$server'  order by status desc&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @strings;
++}
++
++sub dbsys_listsessionsroot_all
++{
++	init_db();
++	my @strings;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'),cookie,client,gr_port,
++	                      sound_port,to_char(last_time,'YYYY-MM-DDTHH24:MI:SS'),uname,
++	                      to_char(now()-init_time,'SSSS'),fs_port  from  sessions
++	                      order by status desc&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@strings[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @strings;
++}
++
++sub dbsys_getmounts
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my @mounts;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@mounts[$i++]=join(&quot;|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @mounts;
++}
++
++sub db_getmounts
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my @mounts;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts_view where session_id='$sid'&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@mounts[$i++]=join(&quot;|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @mounts;
++}
++
++sub db_deletemount
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;delete from mounts_view where session_id='$sid' and path='$path'&quot;);
++	$sth-&gt;execute();
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_insertmount
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
++	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
++	my $res_ok=0;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  ('$sid','$path','$client')&quot;);
++	$sth-&gt;execute();
++	if (!$sth-&gt;err())
++	{
++		$res_ok = 1;
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return $res_ok;
++}
++
++sub db_insertsession
++{
++	init_db();
++	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$uname','$sid')&quot;);
++	$sth-&gt;execute()or die $_;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_createsession
++{
++	init_db();
++	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
++	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
++	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set status='R',last_time=now(),
++	                      cookie='$cookie',agent_pid='$pid',client='$client',gr_port='$gr_port',
++	                      sound_port='$snd_port',fs_port='$fs_port' where session_id='$sid'&quot;);
++	$sth-&gt;execute()or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_insertport
++{
++	init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
++	$sth-&gt;execute()or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_rmport
++{
++	init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server='$server' and session_id='$sid' and port='$sshport'&quot;);
++	$sth-&gt;execute()or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_resume
++{
++	init_db();
++	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $gr_port=shift or die &quot;argument \&quot;gr_port\&quot; missed&quot;;
++	my $sound_port=shift or die &quot;argument \&quot;sound_port\&quot; missed&quot;;
++	my $fs_port=shift or die &quot;argument \&quot;fs_port\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='R',client='$client',gr_port='$gr_port',
++	                       sound_port='$sound_port',fs_port='$fs_port' where session_id = '$sid'&quot;);
++	$sth-&gt;execute()or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_changestatus
++{
++	init_db();
++	my $status=shift or die &quot;argument \&quot;status\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='$status' where session_id = '$sid'&quot;);
++	$sth-&gt;execute()or die;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
++sub db_getstatus
++{
++	init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $status='';
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select status from sessions_view where session_id = '$sid'&quot;);
++	$sth-&gt;execute($sid) or die;
++	my @data;
++	if (@data = $sth-&gt;fetchrow_array) 
++	{
++		$status=@data[0];
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return $status;
++}
++
++sub db_getdisplays
++{
++	init_db();
++	#ignore $server
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my @displays;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select display from servers_view&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@displays[$i++]='|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[0].'|';
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @displays;
++}
++
++sub db_getports
++{
++	init_db();
++	my @ports;
++	#ignore $server
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select port from ports_view&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@ports[$i++]='|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[0].'|';
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @ports;
++}
++
++sub db_getservers
++{
++	init_db();
++	my @servers;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select server,count(*) from servers_view where status != 'F' group by server&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@servers[$i++]=@data[0].&quot; &quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">. at data</A>[1];
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @servers;
++}
++
++sub db_getagent
++{
++	init_db();
++	my $agent;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions_view
++	                      where session_id ='$sid'&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	if (@data = $sth-&gt;fetchrow_array) 
++	{
++		$agent=@data[0];
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return $agent;
++}
++
++sub db_getdisplay
++{
++	init_db();
++	my $display;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select display from sessions_view
++	                      where session_id ='$sid'&quot;);
++	$sth-&gt;execute() or die;
++	my @data;
++	my $i=0;
++	if (@data = $sth-&gt;fetchrow_array) 
++	{
++		$display=@data[0];
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return $display;
++}
++
++sub db_listsessions
++{
++	init_db();
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my @sessions;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
++	                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
++	                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
++	                      where status !='F' and server='$server' and  
++	                      (session_id not like '%XSHAD%') order by status desc&quot;);
++	$sth-&gt;execute() or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@sessions[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
++
++sub db_listsessions_all
++{
++	init_db();
++	my @sessions;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
++	                      to_char(init_time,'YYYY-MM-DDTHH24:MI:SS'), cookie, client, gr_port,
++	                      sound_port, to_char( last_time, 'YYYY-MM-DDTHH24:MI:SS'), uname,
++	                      to_char(now()- init_time,'SSSS'), fs_port from  sessions_view
++	                      where status !='F'  and  
++	                      (session_id not like '%XSHAD%') order by status desc&quot;);
++	$sth-&gt;execute()or die;
++	my @data;
++	my $i=0;
++	while (@data = $sth-&gt;fetchrow_array) 
++	{
++		@sessions[$i++]=join('|'<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at data</A>);
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return @sessions;
++}
+diff --git a/debian/changelog b/debian/changelog
+index de93abb..ce4942e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -23,6 +23,7 @@ x2goserver (3.2.0.0-0~x2go1) UNRELEASED; urgency=low
+       SQLite3 into Perl package X2Go::Server::DB::SQLite3.
+     - Move x2gosqlitewrapper into package X2Go::Server::DB::SQLite3 Perl
+       package.
++    - Move PostgreSQL DB code into Perl package X2Go::Server::DB::PostgreSQL.
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+     + Depend on nx-libs (&gt;=3.5.0.15-0~) which has the Xrandr symlinks folder.
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019724.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-35-g48bba82
+</A></li>
+	<LI>Next message: <A HREF="019921.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-32-gd34d365
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19752">[ date ]</a>
+              <a href="thread.html#19752">[ thread ]</a>
+              <a href="subject.html#19752">[ subject ]</a>
+              <a href="author.html#19752">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

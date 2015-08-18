@@ -1,0 +1,971 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-136-g53a9d5c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.1.0.10-136-g53a9d5c&In-Reply-To=%3C20130827112210.4FAD75DB41%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010772.html">
+   <LINK REL="Next"  HREF="010781.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-136-g53a9d5c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.1.0.10-136-g53a9d5c&In-Reply-To=%3C20130827112210.4FAD75DB41%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-136-g53a9d5c">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:22:10 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010772.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-134-gb582768
+</A></li>
+        <LI>Next message: <A HREF="010781.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-141-g062d9b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10773">[ date ]</a>
+              <a href="thread.html#10773">[ thread ]</a>
+              <a href="subject.html#10773">[ subject ]</a>
+              <a href="author.html#10773">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  53a9d5c9ea81eb1cd903f31aa9d9c1821097bd97 (commit)
+      from  eb73a2ac865c600edfd2aa22c4c17a10ef0333c9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py       |  147 ++++++++-------
+ pyhoca/wxgui/menus_taskbar.py  |  389 ++++++++++++++++++++++------------------
+ pyhoca/wxgui/profilemanager.py |   14 +-
+ 3 files changed, 312 insertions(+), 238 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 1231e2c..18e636c 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -178,7 +178,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         wx.App.__init__(self, redirect=False, clearSigInt=False)
+ 
+-        SetExitHandler(self._exit_handler)
++        #SetExitHandler(self._exit_handler)
+ 
+         if not self.args.disable_splash:
+             splash.PyHocaGUI_SplashScreen()
+@@ -224,11 +224,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         &quot;&quot;&quot;
+         # cmd line options
++        self.auto_connect = self.args.auto_connect
+         self.start_on_connect = self.args.start_on_connect
+         self.resume_newest_on_connect = self.args.resume_newest_on_connect
+         self.resume_oldest_on_connect = self.args.resume_oldest_on_connect
+         self.resume_all_on_connect = self.args.resume_all_on_connect
+-        self.exit_on_disconnect = self.args.exit_on_disconnect or self.args.single_session_profile
++        self.exit_on_disconnect = self.args.exit_on_disconnect
+         self.disconnect_on_suspend = self.args.disconnect_on_suspend
+         self.disconnect_on_terminate = self.args.disconnect_on_terminate
+         self.show_profile_metatypes = self.args.show_profile_metatypes
+@@ -278,41 +279,51 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         if self.args.session_profile:
+             for profile_name in self.args.session_profile.split(','):
+-                _dummy_id = wx.NewId()
+-                self._eventid_profilenames_map[_dummy_id] = profile_name
+-                evt = wx.CommandEvent()
+-                evt.SetId(_dummy_id)
+                 self.start_on_connect = True
+                 self.resume_newest_on_connect = True
++                if not self.args.single_session_profile:
++                    self.auto_connect = True
+                 self._pyhoca_logger('opening default session profile %s' % profile_name, loglevel=x2go.log.loglevel_NOTICE)
+-                self.OnSessionAuthenticate(evt)
++                self._X2goClient__register_session(profile_name=profile_name, auto_connect=True)
+ 
+-        if self.args.auto_connect or self.args.single_session_profile:
++        if self.auto_connect:
+             gevent.spawn(self._auto_connect)
+ 
+-
+     def _auto_connect(self):
+ 
+         # wait for splash to appear
+         if not self.args.disable_splash:
+             gevent.sleep(1)
+-        if not self.args.single_session_profile:
++        if not self.args.session_profile:
+             self._X2goClient__register_all_session_profiles()
+ 
+     def session_auto_connect(self, session_uuid):
+ 
+         # override X2goClient method
+-        if self.args.auto_connect and self._X2goClient__session_can_auto_connect(session_uuid):
+-            self._X2goClient__session_auto_connect(session_uuid)
++        if self.auto_connect:
++            self.HOOK_profile_auto_connect(self.get_session_profile_name(session_uuid))
++
++    def HOOK_profile_auto_connect(self, profile_name):
++
++        session_uuids = self.client_registered_sessions_of_profile_name(profile_name=profile_name)
++        if session_uuids:
++            session_uuid = session_uuids[0]
++
++            _dummy_id = wx.NewId()
++            self._eventid_profilenames_map[_dummy_id] = profile_name
++            evt = wx.CommandEvent()
++            evt.SetId(_dummy_id)
++
++            self.OnSessionAuthenticate(evt, session_uuid=session_uuid)
+ 
+     def session_auto_start_or_resume(self, session_uuid, newest=True, oldest=False, all_suspended=False):
+ 
+         if self.resume_newest_on_connect:
+             self._X2goClient__session_auto_start_or_resume(session_uuid, newest=True, start=self.start_on_connect)
+         elif self.resume_oldest_on_connect:
+-            self._X2goClient__session_auto_start_or_resume(session_uuid, oldest=True, start=self.start_on_connect)
++            self._X2goClient__session_auto_start_or_resume(session_uuid, newest=False, oldest=True, start=self.start_on_connect)
+         elif self.resume_all_on_connect:
+-            self._X2goClient__session_auto_start_or_resume(session_uuid, all_suspended=True, start=self.start_on_connect)
++            self._X2goClient__session_auto_start_or_resume(session_uuid, newest=False, all_suspended=True, start=self.start_on_connect)
+ 
+     def _exit_handler(self, *args):
+         self.WakeUpIdle()
+@@ -332,9 +343,8 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             if not self._hide_notifications_map.has_key(profile_name):
+                 self._hide_notifications_map[profile_name] = []
+             self._hide_notifications_map[profile_name].append(session_obj.get_session_name())
+-            gevent.spawn(session_obj.suspend)
++            session_obj.suspend()
+         x2go.x2go_cleanup()
+-
+         self.about.Close()
+         self.taskbar.Close()
+ 
+@@ -348,21 +358,18 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         if self.args.single_session_profile:
+             if not x2go.defaults.X2GOCLIENT_OS == 'Windows':
+                 if self.client_running_sessions_of_profile_name(self.args.session_profile):
+-                    self.notifier.send(self.args.session_profile, _('Suspending sessions and exiting...'), icon='application-exit', timeout=10000)
++                    self.notifier.send(self.appname, _('Suspending sessions and exiting application...'), icon='application-exit', timeout=10000)
+                 else:
+                     if self.is_profile_connected(profile_name=self.args.session_profile):
+-                        self.notifier.send(self.args.session_profile, _('Disconnecting and exiting...'), icon='application-exit', timeout=10000)
++                        self.notifier.send(self.appname, _('Disconnecting %s and exiting application ...') % self.args.session_profile, icon='application-exit', timeout=10000)
+                     else:
+-                        self.notifier.send(self.args.session_profile, _('Exiting...'), icon='application-exit', timeout=10000)
++                        self.notifier.send(self.appname, _('Exiting application...'), icon='application-exit', timeout=10000)
+             self._eventid_profilenames_map[evt.GetId()] = self.args.session_profile
+-            self.OnServerDisconnect(evt)
+         self.WakeUpIdle()
+         self.ExitMainLoop()
+ 
+     def _init_pubapp_session(self, session_uuid=None, profile_name=None):
+ 
+-        session_list = self._X2goClient__list_sessions(session_uuid=session_uuid, profile_name=profile_name, refresh_cache=True, update_sessionregistry=True)
+-
+         if profile_name is None and session_uuid:
+             profile_name = self._X2goClient__get_session_profile_name(session_uuid)
+ 
+@@ -370,52 +377,70 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             session_uuid = self._X2goClient__client_connected_sessions_of_profile_name(profile_name, return_objects=False)[0]
+ 
+         connected_session = self._X2goClient__get_session(session_uuid)
+-        if connected_session.has_server_feature('X2GO_PUBLISHED_APPLICATIONS'):
++        if connected_session.has_server_feature('X2GO_PUBLISHED_APPLICATIONS') and self.get_profile_config(profile_name)['published']:
++
++            if len(self.client_pubapp_sessions_of_profile_name(profile_name=profile_name)):
++                return False
+ 
+             if profile_name not in self._temp_launching_pubapp_profiles:
+                 self._temp_launching_pubapp_profiles.append(profile_name)
+ 
+-            pubapp_sessions = self._X2goClient__client_pubapp_sessions_of_profile_name(profile_name, return_objects=True)
+             pubapp_session_started = False
+             pubapp_session_resumed = False
+-            pubapp_session_running = (len([ _pas for _pas in pubapp_sessions if _pas.is_running() ]) &gt;= 1)
+-            if not pubapp_session_running:
+-                for session_name in [_sn for _sn in session_list.keys() if session_list[_sn].is_suspended() ]:
+-
+-                    if session_list[session_name].is_published_applications_provider() and not pubapp_session_resumed:
+-                        # resume sessions in published applications mode immediately
+-                        pubapp_session = self._X2goClient__register_session(profile_name=profile_name,
+-                                                                            published_applications=True,
+-                                                                            cmd='PUBLISHED',
+-                                                                            session_type='published',
+-                                                                            session_name=session_name,
+-                                                                            published_applications_no_submenus=self.args.published_applications_no_submenus,
+-                                                                            return_object=True
+-                                                                           )
+-                        pubapp_session.resume()
+-                        pubapp_session_resumed = True
+-                    elif session_list[session_name].is_published_applications_provider() and pubapp_session_resumed:
+-                        # if there are more then one (in suspended state, of course), terminate them now...
+-                        self._X2goClient__get_session_of_session_name(session_name, return_object=True).terminate()
+ 
+-                if not pubapp_session_resumed:
++            ### PyHoca-GUI does not support more than one session in published applications mode...
++
++            # suspend any running session that is in published applications mode (unless we are already associated with it)
++            session_list = self._X2goClient__list_sessions(session_uuid=session_uuid, profile_name=profile_name, refresh_cache=True, update_sessionregistry=True)
++            pubapp_sessions_running = [ _sn for _sn in session_list.keys() if session_list[_sn].is_running() and session_list[_sn].is_published_applications_provider() ]
++            for session_name in pubapp_sessions_running:
++
++                self.suspend_session(session_uuid=connected_session(), session_name=session_name)
++
++            # resume first available session in published applications mode... (from PyHoca-GUI's perspective there should only
++            # be one)
++            session_list = self._X2goClient__list_sessions(session_uuid=session_uuid, profile_name=profile_name, refresh_cache=True, update_sessionregistry=True)
++            pubapp_sessions_suspended = [ _sn for _sn in session_list.keys() if session_list[_sn].is_suspended() and session_list[_sn].is_published_applications_provider() ]
+ 
++            for session_name in pubapp_sessions_suspended:
++
++                if not pubapp_session_resumed:
++                    # resume one single session in published applications mode immediately, if available
+                     pubapp_session = self._X2goClient__register_session(profile_name=profile_name,
+                                                                         published_applications=True,
+                                                                         cmd='PUBLISHED',
+                                                                         session_type='published',
++                                                                        session_name=session_name,
+                                                                         published_applications_no_submenus=self.args.published_applications_no_submenus,
+                                                                         return_object=True
+                                                                        )
+-                    pubapp_session.start()
+-                    pubapp_session_started = True
++                    pubapp_session_resumed = pubapp_session.resume()
++                elif session_list[session_name].is_published_applications_provider() and pubapp_session_resumed:
++
++                    # if there are more then one published applications mode sessions (in suspended state), terminate them now...
++
++                    connected_session.terminate(session_name=session_name)
++
++            if not pubapp_session_resumed:
++
++                pubapp_session = self._X2goClient__register_session(profile_name=profile_name,
++                                                                    published_applications=True,
++                                                                    cmd='PUBLISHED',
++                                                                    session_type='published',
++                                                                    published_applications_no_submenus=self.args.published_applications_no_submenus,
++                                                                    return_object=True
++                                                                   )
++                pubapp_session.start()
++                pubapp_session_started = True
+ 
+             if profile_name in self._temp_launching_pubapp_profiles:
+                 self._temp_launching_pubapp_profiles.remove(profile_name)
+ 
+             return pubapp_session_started | pubapp_session_resumed
+ 
+-        self.notifier.send(_(u'%s - server warning') % profile_name, _(u'The X2Go Server does not publish an application menu.'), icon='session_warning', timeout=10000)
++        elif not connected_session.has_server_feature('X2GO_PUBLISHED_APPLICATIONS'):
++            self.notifier.send(_(u'%s - server warning') % profile_name, _(u'The X2Go Server does not publish an application menu.'), icon='session_warning', timeout=10000)
++
+         return None
+ 
+     def _post_authenticate(self, evt, session_uuid):
+@@ -424,11 +449,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+             profile_name = self.get_session(session_uuid).get_profile_name()
+             self._hide_notifications_map[profile_name] = []
+-            if self._X2goClient__get_profile_config(profile_name)['published']:
+-                if self.args.single_session_profile:
+-                    self._init_pubapp_session(session_uuid=session_uuid)
+-                else:
+-                    gevent.spawn(self._init_pubapp_session, session_uuid=session_uuid)
++            gevent.spawn(self._init_pubapp_session, session_uuid)
+ 
+         except x2go.X2goSessionRegistryException:
+             # there might have been a disconnect event inbetween...
+@@ -543,26 +564,28 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             if os.environ.has_key('PYHOCAGUI_DEVELOPMENT') and os.environ['PYHOCAGUI_DEVELOPMENT'] == '1': 
+                 raise
+ 
+-
+         if connect_failed and self.exit_on_disconnect:
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+ 
+         self.taskbar.SetIconIdle()
+ 
+-    def OnSessionAuthenticate(self, evt):
++    def OnSessionAuthenticate(self, evt, session_uuid=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         self.current_profile_name = self._eventid_profilenames_map[evt.GetId()]
+         self.taskbar.SetIconConnecting(self.current_profile_name)
+-        session_uuid = self._X2goClient__register_session(profile_name=self.current_profile_name)
++        if session_uuid is None:
++            session_uuid = self._X2goClient__register_session(profile_name=self.current_profile_name)
+         if session_uuid:
+             self._temp_disabled_profile_names.append(self.current_profile_name)
+             gevent.spawn(self._do_authenticate, evt, session_uuid)
+         elif self.args.session_profile:
+-            self.notifier.send(_('Unknown Session Profile'), _(u'Unknown session profile %s') % self.current_profile_name, icon='profile_warning', timeout=10000)
++            self.notifier.send(self.current_profile_name, _(u'Unknown session profile, configure before using it...'), icon='profile_warning', timeout=10000)
++            if not self.is_session_profile(self.current_profile_name):
++                profilemanager.PyHocaGUI_ProfileManager(self, 'ADD_EXPLICITLY', profile_name=self.current_profile_name)
+ 
+     def OnSessionStart(self, evt):
+         &quot;&quot;&quot;\
+@@ -704,13 +727,13 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         gevent.spawn(self._X2goClient__disconnect_profile, self.current_profile_name)
+ 
+-        if not self.args.single_session_profile:
+-            self.notifier.send(_(u'%s - disconnect') % self.current_profile_name, _(u'X2Go Profile is now disconnected.'), icon='auth_disconnect', timeout=4000)
+-
+         if self.exit_on_disconnect:
+             self._pyhoca_logger('Exiting %s because %s got disconnected.' % (self.appname, self.current_profile_name), loglevel=x2go.loglevel_NOTICE)
+             self.WakeUpIdle()
+             self.ExitMainLoop()
++        else:
++            self.notifier.send(_(u'%s - disconnect') % self.current_profile_name, _(u'X2Go Profile is now disconnected.'), icon='auth_disconnect', timeout=4000)
++
+         try:
+             del self._temp_disabled_session_names[self.current_profile_name]
+         except KeyError:
+@@ -731,7 +754,11 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         &quot;&quot;&quot;
+         self.current_profile_name = self._eventid_profilenames_map[evt.GetId()]
+         self._pyhoca_logger('editing session profile %s' % self.current_profile_name, loglevel=x2go.log.loglevel_INFO, )
+-        profilemanager.PyHocaGUI_ProfileManager(self, 'EDIT', profile_name=self.current_profile_name)
++        if self.args.single_session_profile:
++            _edit_action = &quot;EDIT_EXPLICITLY&quot;
++        else:
++            _edit_action = &quot;EDIT&quot;
++        profilemanager.PyHocaGUI_ProfileManager(self, _edit_action, profile_name=self.current_profile_name)
+ 
+     def OnProfileCopy(self, evt):
+         &quot;&quot;&quot;\
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 126de26..aecaa19 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -66,9 +66,10 @@ class PyHocaGUI_Menu_TaskbarManageProfile(wx.Menu):
+             self._PyHocaGUI._eventid_profilenames_map[ID_DELETEPROFILE] = profile_name
+ 
+         self.Append(text=_(u&quot;Edit Profile&quot;), id=ID_EDITPROFILE)
+-        self.AppendSeparator()
+-        self.Append(text=_(u&quot;Use as Template for New Profile&quot;), id=ID_COPYPROFILE)
+-        self.Append(text=_(u&quot;Delete Profile&quot;), id=ID_DELETEPROFILE)
++        if not self._PyHocaGUI.args.single_session_profile:
++            self.AppendSeparator()
++            self.Append(text=_(u&quot;Use as Template for New Profile&quot;), id=ID_COPYPROFILE)
++            self.Append(text=_(u&quot;Delete Profile&quot;), id=ID_DELETEPROFILE)
+ 
+         self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileEdit, id=ID_EDITPROFILE)
+         self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileCopy, id=ID_COPYPROFILE)
+@@ -120,6 +121,9 @@ class PyHocaGUI_Menu_TaskbarOptionsManager(wx.Menu):
+                                                          text=_(u'Manage Session Profile'),
+                                                          submenu=PyHocaGUI_Menu_TaskbarManageProfile(self._PyHocaGUI, caller=self, profile_name=self._PyHocaGUI.args.session_profile),
+                                                         )
++                if self._PyHocaGUI.args.session_profile in self._PyHocaGUI.client_connected_profiles(return_profile_names=True):
++                    _maintain_profile_item.Enable(False)
++
+             self.AppendSeparator()
+ 
+             ID_PRINTINGPREFS = wx.NewId()
+@@ -146,7 +150,7 @@ class PyHocaGUI_Menu_TaskbarSessionActions(wx.Menu):
+     STILL UNDOCUMENTED
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, caller=None, profile_name=None, session_name=None, status=None):
++    def __init__(self, _PyHocaGUI, caller=None, profile_name=None, session_name=None, session_info=None, status=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+@@ -182,24 +186,32 @@ class PyHocaGUI_Menu_TaskbarSessionActions(wx.Menu):
+             self._PyHocaGUI._eventid_sessionnames_map[ID_TERMINATESESSION] = session_name
+ 
+         _s = self._PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
++        _session_status = status
++        if session_info is not None:
++            _session_status = session_info.get_status()
++        elif _s.get_session_info() is not None:
++            _session_status = _s.get_session_info().get_status()
+ 
+         if _s is not None and \
+-           _s.get_session_cmd() in x2go.defaults.X2GO_DESKTOPSESSIONS and \
+-           status == 'R' and \
+-           not _s.is_published_applications_provider():
++            _s.get_session_cmd() in x2go.defaults.X2GO_DESKTOPSESSIONS and \
++            _session_status == 'R' and \
++            not _s.is_published_applications_provider():
+ 
+             _title = self.Append(text=_(&quot;Window title&quot;) + &quot;: &quot; + _s.get_session_title(), id=wx.NewId())
+             self.AppendSeparator()
+ 
+-        if status == 'S':
++        if _session_status == 'S':
+ 
+             if _s is not None and _s.is_color_depth_ok():
+-                self.Append(text=_(&quot;Resume Session&quot;), id=ID_RESUMESESSION)
++                _rs = self.Append(text=_(&quot;Resume Session&quot;), id=ID_RESUMESESSION)
+             else:
+                 _rs = self.Append(text=_(u&quot;Resume Session (not possible)&quot;), id=ID_RESUMESESSION_DISABLED)
+                 _rs.Enable(False)
+ 
+-        elif status == 'R':
++            if session_info is not None and session_info.is_published_applications_provider() and not self._PyHocaGUI.get_profile_config(profile_name)['published']:
++                _rs.Enable(False)
++
++        elif _session_status == 'R':
+ 
+             if not session_name in self._PyHocaGUI.client_associated_sessions_of_profile_name(profile_name, return_session_names=True):
+ 
+@@ -209,14 +221,17 @@ class PyHocaGUI_Menu_TaskbarSessionActions(wx.Menu):
+                     _ts = self.Append(text=_(u&quot;Transfer Session (not possible)&quot;), id=ID_TRANSFERSESSION_DISABLED)
+                     _ts.Enable(False)
+ 
+-            self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
++            _ss = self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
+ 
++            if _s.is_published_applications_provider() and not self._PyHocaGUI.get_profile_config(profile_name)['published']:
++                _ss.Enable(False)
+ 
+         self.Append(text=_(u&quot;Terminate Session&quot;), id=ID_TERMINATESESSION)
+ 
+         if _s is not None and \
+            _s.get_session_cmd() in x2go.defaults.X2GO_DESKTOPSESSIONS and \
+-           status == 'R' and \
++           not _s.is_published_applications_provider() and \
++           _session_status == 'R' and \
+            _s in self._PyHocaGUI.client_associated_sessions_of_profile_name(profile_name, return_objects=True):
+ 
+             self.AppendSeparator()
+@@ -340,8 +355,8 @@ def _generate_Menu_PublishedApplications(_PyHocaGUI, caller=None, profile_name=N
+ 
+     &quot;&quot;&quot;
+     _lang = _PyHocaGUI.lang
+-    _pub_app_session = _PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
+-    menu_map = _pub_app_session.get_published_applications(lang=_lang, max_no_submenus=_PyHocaGUI.args.published_applications_no_submenus)
++    _pubapp_session = _PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
++    menu_map = _pubapp_session.get_published_applications(lang=_lang, max_no_submenus=_PyHocaGUI.args.published_applications_no_submenus)
+     if not menu_map.has_key(_lang):
+         return {}
+ 
+@@ -428,102 +443,52 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+         ID_SHARELOCALFOLDER = wx.NewId()
+         ID_UNSHAREFOLDERS = wx.NewId()
+ 
+-        current_profile_config = self._PyHocaGUI.get_profile_config(profile_name)
+-
+-        if profile_name in self._PyHocaGUI._temp_disabled_profile_names:
+-            _connecting_info = self.Append(wx.NewId(), text=_(u'Currently connecting...'))
+-            _connecting_info.Enable(False)
+-
+-        elif self._PyHocaGUI.args.single_session_profile and not self._PyHocaGUI.is_profile_connected(profile_name=profile_name):
+-            self._PyHocaGUI._eventid_profilenames_map[ID_CONNECT] = profile_name
+-            self.Append(id=ID_CONNECT, text=_(u'Connect %s') % profile_name)
+-            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionAuthenticate, id=ID_CONNECT)
++        _foldersharing_disabled = False
+ 
++        if self._PyHocaGUI.args.single_session_profile and not self._PyHocaGUI.is_session_profile(profile_name):
++            connect = self.Append(id=ID_CONNECT, text=_(u'Connect %s') % profile_name)
++            connect.Enable(False)
+         else:
++            current_profile_config = self._PyHocaGUI.get_profile_config(profile_name)
+ 
+-            self._PyHocaGUI._eventid_profilenames_map[ID_SESSIONSTART] = profile_name
+-
+-            if current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS:
+-                self.Append(id=ID_SESSIONSTART, text='%s (%s)' % (_(u&quot;Start &amp;new Desktop Session&quot;), current_profile_config['command']))
+-                self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionStart, id=ID_SESSIONSTART)
+-            elif current_profile_config['command'] == '' and current_profile_config['published']:
+-                if profile_name in self._PyHocaGUI._temp_launching_pubapp_profiles:
+-                    _pub_app_start_item = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieving Application Menu...&quot;))
+-                    _pub_app_start_item.Enable(False)
+-                else:
+-                    self._PyHocaGUI._eventid_profilenames_map[ID_PUBAPPSESSIONSTART] = profile_name
+-                    _pub_app_start_item = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieve Application Menu&quot;))
+-                self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnPubAppSessionStart, id=ID_PUBAPPSESSIONSTART)
+-            else:
+-                self.Append(id=ID_SESSIONSTART, text=_(u&quot;Start &amp;new Session&quot;))
+-                self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionStart, id=ID_SESSIONSTART)
++            if profile_name in self._PyHocaGUI._temp_disabled_profile_names:
++                _connecting_info = self.Append(wx.NewId(), text=_(u'Currently connecting...'))
++                _connecting_info.Enable(False)
+ 
+-            self.AppendSeparator()
+-
+-            if current_profile_config['command'] == '' and current_profile_config['published']:
+-
+-                _pub_app_sessions = [ _pas for _pas in self._PyHocaGUI.client_pubapp_sessions_of_profile_name(profile_name, return_objects=True) if _pas.is_running() ]
+-                if _pub_app_sessions:
+-                    _pub_app_session = _pub_app_sessions[0]
+-                    _pub_app_start_item.Enable(False)
+-                    _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pub_app_session.get_session_name())
+-                    _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name())
+-                    _category_names = _category_map.keys()
+-                    _category_names.sort()
+-                    for cat_name in [ _cn for _cn in _category_names if _cn != 'NO_SUBMENUS' ]:
+-                        _submenu = self.AppendMenu(id=wx.NewId(), text=cat_name, submenu=_category_map[cat_name][0])
+-                        _submenu.SetBitmap(wx.Bitmap(_category_map[cat_name][1]))
+-                        if _session_name_disabled:
+-                            _submenu.Enable(False)
+-                    if 'NO_SUBMENUS' in _category_names:
+-                        for _menu_item in _category_map['NO_SUBMENUS'][0].GetMenuItems():
+-                            _item = self.AppendItem(item=_menu_item)
+-                            if _session_name_disabled:
+-                                _item.Enable(False)
+-                    self.AppendSeparator()
+-
+-                    ID_RESUMESESSION = wx.NewId()
+-                    ID_SUSPENDSESSION = wx.NewId()
+-                    ID_TERMINATESESSION = wx.NewId()
+-                    self._PyHocaGUI._eventid_profilenames_map[ID_RESUMESESSION] = \
+-                        self._PyHocaGUI._eventid_profilenames_map[ID_SUSPENDSESSION] = \
+-                        self._PyHocaGUI._eventid_profilenames_map[ID_TERMINATESESSION] = profile_name
+-                    self._PyHocaGUI._eventid_sessionnames_map[ID_RESUMESESSION] = \
+-                        self._PyHocaGUI._eventid_sessionnames_map[ID_SUSPENDSESSION] = \
+-                        self._PyHocaGUI._eventid_sessionnames_map[ID_TERMINATESESSION] = _pub_app_session.get_session_name()
+-
+-                    if _pub_app_session.is_running():
+-                        self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
+-                    elif _pub_app_session.is_suspended():
+-                        self.Append(text=_(u&quot;Resume Session&quot;), id=ID_RESUMESESSION)
+-                    self.Append(text=_(u&quot;Terminate Session&quot;), id=ID_TERMINATESESSION)
+-                    self.AppendSeparator()
+-
+-                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionResume, id=ID_RESUMESESSION)
+-                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionSuspend, id=ID_SUSPENDSESSION)
+-                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionTerminate, id=ID_TERMINATESESSION)
++            elif self._PyHocaGUI.args.single_session_profile and \
++                 not self._PyHocaGUI.is_profile_connected(profile_name=profile_name):
++                    self._PyHocaGUI._eventid_profilenames_map[ID_CONNECT] = profile_name
++                    self.Append(id=ID_CONNECT, text=_(u'Connect %s') % profile_name)
++                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionAuthenticate, id=ID_CONNECT)
+ 
+             else:
+ 
+-                # preparing profile_name information for the main PyHocaGUI instance
+-                self._PyHocaGUI._eventid_profilenames_map[ID_LAUNCHAPPLICATION] = \
+-                    self._PyHocaGUI._eventid_profilenames_map[ID_CLEANSESSIONS] = profile_name
++                self._PyHocaGUI._eventid_profilenames_map[ID_SESSIONSTART] = profile_name
+ 
+-                if current_profile_config['applications'] and current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS and not current_profile_config['published']:
+-                    self.AppendMenu(id=ID_LAUNCHAPPLICATION, text=_(u&quot;Launch Single Application&quot;),
+-                                    submenu=PyHocaGUI_Menu_LaunchSingleApplication(self._PyHocaGUI, caller=self, profile_name=profile_name)
+-                                   )
+-                    self.AppendSeparator()
++                if current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS:
++                    self.Append(id=ID_SESSIONSTART, text='%s (%s)' % (_(u&quot;Start &amp;new Desktop Session&quot;), current_profile_config['command']))
++                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionStart, id=ID_SESSIONSTART)
++                elif current_profile_config['command'] == '' and current_profile_config['published']:
++                    if profile_name in self._PyHocaGUI._temp_launching_pubapp_profiles:
++                        _pub_app_start_item = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieving Application Menu...&quot;))
++                        _pub_app_start_item.Enable(False)
++                    else:
++                        self._PyHocaGUI._eventid_profilenames_map[ID_PUBAPPSESSIONSTART] = profile_name
++                        _pub_app_start_item = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieve Application Menu&quot;))
++                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnPubAppSessionStart, id=ID_PUBAPPSESSIONSTART)
++                else:
++                    self.Append(id=ID_SESSIONSTART, text=_(u&quot;Start &amp;new Session&quot;))
++                    self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionStart, id=ID_SESSIONSTART)
+ 
+-                if current_profile_config['published']:
++                if current_profile_config['command'] == '' and current_profile_config['published']:
+ 
+-                    _pub_app_session = None
+-                    _pub_app_sessions = [ _pas for _pas in self._PyHocaGUI.client_pubapp_sessions_of_profile_name(profile_name, return_objects=True) if _pas.is_running() ]
+-                    if _pub_app_sessions:
+-                        _pub_app_session = _pub_app_sessions[0]
+-                    if _pub_app_session and _pub_app_session.is_running():
+-                        _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pub_app_session.get_session_name())
+-                        _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name())
++                    self.AppendSeparator()
++                    _pubapp_sessions = [ _pas for _pas in self._PyHocaGUI.client_pubapp_sessions_of_profile_name(profile_name, return_objects=True) if _pas.is_running() ]
++                    if _pubapp_sessions:
++                        _pubapp_session = _pubapp_sessions[0]
++                        _pub_app_start_item.Enable(False)
++                        _foldersharing_disabled = _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pubapp_session.get_session_name())
++                        _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pubapp_session.get_session_name())
+                         _category_names = _category_map.keys()
+                         _category_names.sort()
+                         for cat_name in [ _cn for _cn in _category_names if _cn != 'NO_SUBMENUS' ]:
+@@ -536,102 +501,180 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+                                 _item = self.AppendItem(item=_menu_item)
+                                 if _session_name_disabled:
+                                     _item.Enable(False)
+-
+                         self.AppendSeparator()
+ 
+-                        _marker = ''
+-                        _status = None
+-                        if _pub_app_session.is_master_session(): _marker = '(*)'
+-                        if _pub_app_session.is_running(): _status = 'R'
+-                        elif _pub_app_session.is_suspended(): _status = 'S'
+-
+-                        if _status:
+-                            _submenu = self.AppendMenu(id=wx.NewId(), text=_(u'Manage Application Menu')+' %s' % _marker,
+-                                                       submenu=PyHocaGUI_Menu_TaskbarSessionActions(self._PyHocaGUI, caller=self,
+-                                                                                                    profile_name=profile_name,
+-                                                                                                    session_name=_pub_app_session.get_session_name(),
+-                                                                                                    status=_status,
+-                                                                                                   )
+-                                                  )
++                        ID_RESUMESESSION = wx.NewId()
++                        ID_SUSPENDSESSION = wx.NewId()
++                        ID_TERMINATESESSION = wx.NewId()
++                        self._PyHocaGUI._eventid_profilenames_map[ID_RESUMESESSION] = \
++                            self._PyHocaGUI._eventid_profilenames_map[ID_SUSPENDSESSION] = \
++                            self._PyHocaGUI._eventid_profilenames_map[ID_TERMINATESESSION] = profile_name
++                        self._PyHocaGUI._eventid_sessionnames_map[ID_RESUMESESSION] = \
++                            self._PyHocaGUI._eventid_sessionnames_map[ID_SUSPENDSESSION] = \
++                            self._PyHocaGUI._eventid_sessionnames_map[ID_TERMINATESESSION] = _pubapp_session.get_session_name()
++
++                        if _pubapp_session.is_running():
++                            _suspend_item = self.Append(text=_(u&quot;Suspend Session&quot;), id=ID_SUSPENDSESSION)
+                             if _session_name_disabled:
+-                                _submenu.Enable(False)
++                                _suspend_item.Enable(False)
++                        elif _pubapp_session.is_suspended():
++                            _resume_item = self.Append(text=_(u&quot;Resume Session&quot;), id=ID_RESUMESESSION)
++                            if _session_name_disabled:
++                                _resume_item.Enable(False)
++                        _terminate_item = self.Append(text=_(u&quot;Terminate Session&quot;), id=ID_TERMINATESESSION)
++                        if _session_name_disabled:
++                            _terminate_item.Enable(False)
++
++                        self.AppendSeparator()
++
++                        self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionResume, id=ID_RESUMESESSION)
++                        self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionSuspend, id=ID_SUSPENDSESSION)
++                        self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionTerminate, id=ID_TERMINATESESSION)
++
++                else:
++
++                    # preparing profile_name information for the main PyHocaGUI instance
++                    self._PyHocaGUI._eventid_profilenames_map[ID_LAUNCHAPPLICATION] = \
++                        self._PyHocaGUI._eventid_profilenames_map[ID_CLEANSESSIONS] = profile_name
++
++                    if current_profile_config['applications'] and current_profile_config['command'] in x2go.defaults.X2GO_DESKTOPSESSIONS and not current_profile_config['published']:
++                        self.AppendSeparator()
++                        self.AppendMenu(id=ID_LAUNCHAPPLICATION, text=_(u&quot;Launch Single Application&quot;),
++                                        submenu=PyHocaGUI_Menu_LaunchSingleApplication(self._PyHocaGUI, caller=self, profile_name=profile_name)
++                                       )
++
++                    if current_profile_config['published']:
++
++                        self.AppendSeparator()
++
++                        _pubapp_session = None
++                        _pubapp_sessions = [ _pas for _pas in self._PyHocaGUI.client_pubapp_sessions_of_profile_name(profile_name, return_objects=True) if _pas.is_running() ]
++                        if _pubapp_sessions:
++                            _pubapp_session = _pubapp_sessions[0]
++                        if _pubapp_session and _pubapp_session.is_running():
++                            _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pubapp_session.get_session_name())
++                            _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pubapp_session.get_session_name())
++                            _category_names = _category_map.keys()
++                            _category_names.sort()
++                            for cat_name in [ _cn for _cn in _category_names if _cn != 'NO_SUBMENUS' ]:
++                                _submenu = self.AppendMenu(id=wx.NewId(), text=cat_name, submenu=_category_map[cat_name][0])
++                                _submenu.SetBitmap(wx.Bitmap(_category_map[cat_name][1]))
++                                if _session_name_disabled:
++                                    _submenu.Enable(False)
++                            if 'NO_SUBMENUS' in _category_names:
++                                for _menu_item in _category_map['NO_SUBMENUS'][0].GetMenuItems():
++                                    _item = self.AppendItem(item=_menu_item)
++                                    if _session_name_disabled:
++                                        _item.Enable(False)
++
+                             self.AppendSeparator()
+-                    else:
+-                        self._PyHocaGUI._eventid_profilenames_map[ID_PUBAPPSESSIONSTART] = profile_name
+-                        if profile_name in self._PyHocaGUI._temp_launching_pubapp_profiles:
+-                            _ram = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieving Application Menu...&quot;))
+-                            _ram.Enable(False)
++
++                            _marker = ''
++                            _status = None
++                            if _pubapp_session.is_master_session(): _marker = '(*)'
++                            if _pubapp_session.is_running(): _status = 'R'
++                            elif _pubapp_session.is_suspended(): _status = 'S'
++
++                            if _status:
++                                _submenu = self.AppendMenu(id=wx.NewId(), text=_(u'Manage Application Menu')+' %s' % _marker,
++                                                           submenu=PyHocaGUI_Menu_TaskbarSessionActions(self._PyHocaGUI, caller=self,
++                                                                                                        profile_name=profile_name,
++                                                                                                        session_name=_pubapp_session.get_session_name(),
++                                                                                                        status=_status,
++                                                                                                       )
++                                                      )
++                                if _session_name_disabled:
++                                    _submenu.Enable(False)
++
+                         else:
+-                            self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieve Application Menu&quot;))
+-                        self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnPubAppSessionStart, id=ID_PUBAPPSESSIONSTART)
++                            self._PyHocaGUI._eventid_profilenames_map[ID_PUBAPPSESSIONSTART] = profile_name
++                            if profile_name in self._PyHocaGUI._temp_launching_pubapp_profiles:
++                                _ram = self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieving Application Menu...&quot;))
++                                _ram.Enable(False)
++                            else:
++                                self.Append(id=ID_PUBAPPSESSIONSTART, text=_(u&quot;Retrieve Application Menu&quot;))
++                            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnPubAppSessionStart, id=ID_PUBAPPSESSIONSTART)
++
++                    _query_session_uuid = self._PyHocaGUI.client_connected_sessions_of_profile_name(profile_name, return_objects=False)[0]
++                    _session_list = self._PyHocaGUI.list_sessions(_query_session_uuid)
++
++                    _session_list_names = []
++                    if _session_list:
++
+                         self.AppendSeparator()
+ 
+-                _query_session_uuid = self._PyHocaGUI.client_connected_sessions_of_profile_name(profile_name, return_objects=False)[0]
+-                _session_list = self._PyHocaGUI.list_sessions(_query_session_uuid)
+-
+-                if _session_list:
+-
+-                    # newest sessions at the top
+-                    _session_list_names = [ _s_name for _s_name in _session_list.keys() if not _session_list[_s_name].is_published_applications_provider() ]
+-                    _session_list_names.reverse()
+-                    for session_name in _session_list_names:
+-
+-                        session = self._PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
+-
+-                        _s_id = wx.NewId()
+-
+-                        if _session_list[session_name].status == 'R':
+-                            state = _(u'Running')
+-                        elif _session_list[session_name].status == 'S':
+-                            state = _(u'Suspended')
+-                        _marker = ''
+-                        if session and session.is_master_session():
+-                            _marker = '(*)'
+-                        if session:
+-                            session_submenu = self.AppendMenu(id=_s_id, text=u'%s: &#187;%s&#171; %s' % (state, session_name, _marker),
+-                                                              submenu=PyHocaGUI_Menu_TaskbarSessionActions(self._PyHocaGUI, caller=self,
+-                                                                                                           profile_name=profile_name,
+-                                                                                                           session_name=session_name,
+-                                                                                                           status=_session_list[session_name].status,
+-                                                                                                          )
+-                                                         )
+-                            if self._PyHocaGUI._temp_disabled_session_names.has_key(profile_name) and session_name in self._PyHocaGUI._temp_disabled_session_names[profile_name]:
+-                                session_submenu.Enable(False)
++                        # newest sessions at the top
++                        if current_profile_config['published']:
++                            _session_list_names = [ _s_name for _s_name in _session_list.keys() if not _session_list[_s_name].is_published_applications_provider() ]
++                        else:
++                            _session_list_names = _session_list.keys()
++                        _session_list_names.reverse()
+ 
+                     if _session_list_names:
+-                        self.Append(id=ID_CLEANSESSIONS, text=_(u&quot;&amp;Clean all sessions&quot;))
+-                        self.AppendSeparator()
+ 
+-                self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnCleanSessions, id=ID_CLEANSESSIONS)
++                        for session_name in _session_list_names:
++
++                            session = self._PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
++
++                            _s_id = wx.NewId()
+ 
+-            self._PyHocaGUI._eventid_profilenames_map[ID_EDITPROFILEWHILECONNECTED] = \
+-                self._PyHocaGUI._eventid_profilenames_map[ID_SHARELOCALFOLDER] = \
+-                self._PyHocaGUI._eventid_profilenames_map[ID_UNSHAREFOLDERS] = profile_name
++                            if _session_list[session_name].get_status() == 'R':
++                                state = _(u'Running')
++                            elif _session_list[session_name].get_status() == 'S':
++                                state = _(u'Suspended')
++                            _marker = ''
++                            if session and session.is_master_session():
++                                _marker = '(*)'
++                            if session:
++                                session_submenu = self.AppendMenu(id=_s_id, text=u'%s: &#187;%s&#171; %s' % (state, session_name, _marker),
++                                                                  submenu=PyHocaGUI_Menu_TaskbarSessionActions(self._PyHocaGUI, caller=self,
++                                                                                                               profile_name=profile_name,
++                                                                                                               session_name=session_name,
++                                                                                                               session_info=_session_list[session_name],
++                                                                                                              )
++                                                                 )
++                                if self._PyHocaGUI._temp_disabled_session_names.has_key(profile_name) and session_name in self._PyHocaGUI._temp_disabled_session_names[profile_name]:
++                                    session_submenu.Enable(False)
+ 
+-            self.Append(id=ID_EDITPROFILEWHILECONNECTED, text=_(u&quot;Customize &amp;profile&quot;))
+-            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileEditWhileConnected, id=ID_EDITPROFILEWHILECONNECTED)
++                        # redefine list of session names to decide if the clean all session menu item is not be shown
++                        _session_list_names = [ _s_name for _s_name in _session_list.keys() if not _session_list[_s_name].is_published_applications_provider() ]
+ 
+-            if current_profile_config['useexports'] and self._PyHocaGUI._X2goClient__profile_is_folder_sharing_available(profile_name=profile_name):
++                        if _session_list_names:
++                            self.Append(id=ID_CLEANSESSIONS, text=_(u&quot;&amp;Clean all sessions&quot;))
++                            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnCleanSessions, id=ID_CLEANSESSIONS)
+ 
+-                _shared_folders = self.AppendMenu(id=ID_SHARELOCALFOLDER, text=_(u&quot;Shared &amp;folders&quot;),
+-                                                  submenu=PyHocaGUI_Menu_TaskbarProfileSharedFolders(self._PyHocaGUI, caller=self,
+-                                                  profile_name=profile_name)
+-                                                 )
+-                if not self._PyHocaGUI._X2goClient__client_associated_sessions_of_profile_name(profile_name=profile_name, return_objects=False):
+-                    _shared_folders.Enable(False)
++                        if _session_list_names:
++
++                            self.AppendSeparator()
++
++                self._PyHocaGUI._eventid_profilenames_map[ID_EDITPROFILEWHILECONNECTED] = \
++                    self._PyHocaGUI._eventid_profilenames_map[ID_SHARELOCALFOLDER] = \
++                    self._PyHocaGUI._eventid_profilenames_map[ID_UNSHAREFOLDERS] = profile_name
++
++                self.Append(id=ID_EDITPROFILEWHILECONNECTED, text=_(u&quot;Customize &amp;profile&quot;))
++                self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileEditWhileConnected, id=ID_EDITPROFILEWHILECONNECTED)
++
++                if current_profile_config['useexports'] and self._PyHocaGUI._X2goClient__profile_is_folder_sharing_available(profile_name=profile_name):
++
++                    _shared_folders = self.AppendMenu(id=ID_SHARELOCALFOLDER, text=_(u&quot;Shared &amp;folders&quot;),
++                                                      submenu=PyHocaGUI_Menu_TaskbarProfileSharedFolders(self._PyHocaGUI, caller=self,
++                                                      profile_name=profile_name)
++                                                     )
++                    if not self._PyHocaGUI._X2goClient__client_associated_sessions_of_profile_name(profile_name=profile_name, return_objects=False) or _foldersharing_disabled:
++                        _shared_folders.Enable(False)
+ 
+         self.AppendSeparator()
+ 
+-        if not self._PyHocaGUI.args.single_session_profile:
++        if profile_name in self._PyHocaGUI.client_connected_profiles(return_profile_names=True):
+             ID_DISCONNECT = wx.NewId()
+             self._PyHocaGUI._eventid_profilenames_map[ID_DISCONNECT] = profile_name
+             self.Append(id=ID_DISCONNECT, text=_(u&quot;&amp;Disconnect from Server&quot;))
+             self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnServerDisconnect, id=ID_DISCONNECT)
+-        else:
++        if self._PyHocaGUI.args.single_session_profile:
+             ID_EXIT = wx.NewId()
+-            if self._PyHocaGUI.client_running_sessions_of_profile_name(profile_name=self._PyHocaGUI.args.session_profile):
++            if self._PyHocaGUI.client_running_sessions_of_profile_name(profile_name=self._PyHocaGUI.args.session_profile) and self._PyHocaGUI.args.exit_on_disconnect:
+                 self.Append(id=ID_EXIT, text=_(u&quot;Suspend Sessions and E&amp;xit&quot;))
+-            elif self._PyHocaGUI.is_profile_connected(profile_name=self._PyHocaGUI.args.session_profile):
++            elif self._PyHocaGUI.is_profile_connected(profile_name=self._PyHocaGUI.args.session_profile) and self._PyHocaGUI.args.exit_on_disconnect:
+                 self.Append(id=ID_EXIT, text=_(u&quot;Disconnect and E&amp;xit&quot;))
+             else:
+                 self.Append(id=ID_EXIT, text=_(u&quot;E&amp;xit&quot;))
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 4ed854e..fac17b5 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -120,25 +120,24 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         if profile_id is not None:
+             self.profile_id = profile_id
+-        elif profile_name is not None and self.action in ('EDIT', 'EDIT_CONNECTED', 'COPY'):
++        elif profile_name is not None and self.action in ('EDIT', 'EDIT_CONNECTED', 'EDIT_EXPLICITLY', 'COPY'):
+             self.profile_id = self.session_profiles.to_profile_id(profile_name)
+         else:
+             self.profile_id = None
+ 
+-        if self.action in ('EDIT', 'EDIT_CONNECTED') and self.profile_id:
++        if self.action in ('EDIT', 'EDIT_CONNECTED', 'EDIT_EXPLICITLY') and self.profile_id:
+             self.profile_name = self.session_profiles.to_profile_name(self.profile_id)
+             self.profile_config = self.session_profiles.get_profile_config(self.profile_id)
+         elif self.action == 'COPY' and self.profile_id:
+             self.profile_name = self.session_profiles.to_profile_name(self.profile_id)
+             self.profile_config = self.session_profiles.get_profile_config(self.profile_id)
+             self.profile_name = self.profile_config['name'] = '%s %s' % (_('settings derived from '), self.profile_name)
+-        else:
+-            # if self.action == 'ADD' ...
++        elif self.action in (&quot;ADD&quot;, &quot;ADD_EXPLICITLY&quot;):
+             self.profile_config = self.session_profiles.default_profile_config()
+             # allow localization of the default keyboard settings
+             self.profile_config['layout'] = _(u'us')
+             self.profile_config['type'] = _(u'pc105/us')
+-            self.profile_name = self.profile_config['name'] = '%s' %_('new session profile')
++            self.profile_name = self.profile_config['name'] = profile_name
+ 
+         # we create a backup dict of our profile_config immediately (for being able to reset erroneously made changes)
+         self.profile_config_bak = copy.deepcopy(self.profile_config)
+@@ -169,6 +168,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         ###
+         self.ProfileNameLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Name&quot;)+&quot;:&quot;)
+         self.ProfileName = wx.TextCtrl(self.tab_Profile, -1, &quot;&quot;)
++
++        if self.action in (&quot;EDIT_EXPLICITLY&quot;, &quot;EDIT_EXPLICITLY&quot;):
++            self.ProfileNameLabel.Enable(False)
++            self.ProfileName.Enable(False)
++
+         self.SetSessionWindowTitle = wx.CheckBox(self.tab_Profile, -1, _(u&quot;Set session window title&quot;))
+         self.UseDefaultSessionWindowTitle = wx.CheckBox(self.tab_Profile, -1, _(u&quot;Use a default session window title&quot;))
+         self.CustomSessionWindowTitleLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Custom session window title&quot;) + &quot;:&quot;)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010772.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-134-gb582768
+</A></li>
+	<LI>Next message: <A HREF="010781.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-141-g062d9b0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10773">[ date ]</a>
+              <a href="thread.html#10773">[ thread ]</a>
+              <a href="subject.html#10773">[ subject ]</a>
+              <a href="author.html#10773">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

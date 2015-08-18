@@ -1,0 +1,289 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-153-g29bbb94
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-153-g29bbb94&In-Reply-To=%3C20140109111008.0C18D5DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026046.html">
+   <LINK REL="Next"  HREF="026048.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-153-g29bbb94</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-153-g29bbb94&In-Reply-To=%3C20140109111008.0C18D5DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-153-g29bbb94">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Jan  9 12:10:06 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026046.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-152-g73378f1
+</A></li>
+        <LI>Next message: <A HREF="026048.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-154-g22eceb7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26047">[ date ]</a>
+              <a href="thread.html#26047">[ thread ]</a>
+              <a href="subject.html#26047">[ subject ]</a>
+              <a href="author.html#26047">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  29bbb9453f9605646a9b5b1ad06dfa9e75daa57c (commit)
+      from  73378f1689341cbc22fea9a004e00d2e2c131a2a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 29bbb9453f9605646a9b5b1ad06dfa9e75daa57c
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Jan 9 12:10:01 2014 +0100
+
+    Add JSON WebUI backend for X2Go Session Broker.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/x2gobroker                       |    2 ++
+ debian/changelog                     |    1 +
+ debian/control                       |    2 ++
+ etc/x2gobroker.conf                  |    3 ++
+ x2gobroker/defaults.py               |    3 +-
+ x2gobroker/uccsjson.py               |    3 +-
+ x2gobroker/web/{plain.py =&gt; json.py} |   53 ++++++++++++++--------------------
+ 7 files changed, 32 insertions(+), 35 deletions(-)
+ copy x2gobroker/web/{plain.py =&gt; json.py} (75%)
+
+The diff of changes is:
+diff --git a/bin/x2gobroker b/bin/x2gobroker
+index 2de8954..90d4714 100755
+--- a/bin/x2gobroker
++++ b/bin/x2gobroker
+@@ -49,11 +49,13 @@ def prep_http_mode():
+ 
+     # import classes serving the different web.py URLs
+     import x2gobroker.web.plain
++    import x2gobroker.web.json
+     import x2gobroker.web.uccs
+     import x2gobroker.web.extras
+ 
+     # define the web.py URLs
+     urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
++             ('/json/(.*)', x2gobroker.web.json.X2GoBrokerWeb,),
+              ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
+              ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
+              ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
+diff --git a/debian/changelog b/debian/changelog
+index 538f550..acab3e1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -79,6 +79,7 @@ x2gobroker (0.0.3.0-0x2go1) UNRELEASED; urgency=low
+     - Makefile: Clean up x2gobroker-agent binary.
+     - Be more precise in Debian et al. init scripts when checking if the service
+       is already running.
++    - Add JSON WebUI backend for X2Go Session Broker.
+   * debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+     + Fix SYNOPSIS texts.
+diff --git a/debian/control b/debian/control
+index b1a9fa8..4cdcc17 100644
+--- a/debian/control
++++ b/debian/control
+@@ -29,6 +29,8 @@ Depends:
+  python-netaddr,
+  python-tornado,
+  python-paramiko,
++Recommends:
++ python-simplejson,
+ Description: X2Go Session Broker (Python modules)
+  X2Go is a server based computing environment with
+     - session resuming
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index 342ff50..bfa66d7 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -46,6 +46,9 @@
+ # enable {base_url}/plain/
+ #enable-plain-output = true
+ 
++# enable {base_url}/json/
++#enable-json-output = true
++
+ # enable {base_url}/uccs/
+ #enable-uccs-output = false
+ 
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 064acdb..61e026c 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -125,10 +125,9 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'use-static-cookie': True,
+         u'my-cookie': uuid.uuid4(),
+         u'enable-plain-output': True,
++        u'enable-json-output': True,
+         u'enable-uccs-output': False,
+         u'my-uccs-url-base': '<A HREF="http://localhost:8080/">http://localhost:8080/</A>',
+-        u'enable-json-output': False,
+-        u'enable-html-output':  False,
+         u'default-auth-mech': u'pam',
+         u'default-user-db': u'libnss',
+         u'default-group-db': u'libnss',
+diff --git a/x2gobroker/uccsjson.py b/x2gobroker/uccsjson.py
+index 0f81039..564a7ae 100644
+--- a/x2gobroker/uccsjson.py
++++ b/x2gobroker/uccsjson.py
+@@ -19,7 +19,8 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-import json
++try: import simplejson as json
++except ImportError: import json
+ 
+ def convert_to_builtin_type(obj):
+     &quot;&quot;&quot;\
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/json.py
+similarity index 75%
+copy from x2gobroker/web/plain.py
+copy to x2gobroker/web/json.py
+index 5c28901..40b9f96 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/web/json.py
+@@ -25,6 +25,10 @@ import types
+ import tornado.web
+ from tornado.escape import native_str, parse_qs_bytes
+ 
++# load JSON support
++try: import simplejson as json
++except ImportError: import json
++
+ # Python X2Go Broker modules
+ import x2gobroker.defaults
+ 
+@@ -80,8 +84,8 @@ class X2GoBrokerWeb(_RequestHandler):
+         global_config = broker_backend.get_global_config()
+ 
+         # throw a 404 if the WebUI is not enabled
+-        if not global_config['enable-plain-output']:
+-            logger_error.error('The WebUI \'plain\' is not enabled in the global broker configuration')
++        if not global_config['enable-json-output']:
++            logger_error.error('The WebUI \'json\' is not enabled in the global broker configuration')
+             raise tornado.web.HTTPError(404)
+ 
+         # if the broker backend is disabled in the configuration, pretend to have nothing on offer
+@@ -127,7 +131,6 @@ class X2GoBrokerWeb(_RequestHandler):
+                 #output += &quot;AUTHID: {authid}&lt;br /&gt;&quot;.format(authid=broker_backend.get_next_authid(username=data.user))
+                 pass
+ 
+-            output += &quot;Access granted\n&quot;
+             ###
+             ### X2GO BROKER TASKS
+             ###
+@@ -139,49 +142,35 @@ class X2GoBrokerWeb(_RequestHandler):
+                 ### TEST THE CONNECTION
+                 ###
+ 
+-                self.write(broker_backend.test_connection())
++                ### FIXME: connections tests are not yet supported...
++                #self.write(broker_backend.test_connection())
+                 return
+ 
+             if task == 'listsessions':
+ 
+                 profiles = broker_backend.list_profiles(username)
+-                if profiles:
+-                    output += &quot;START_USER_SESSIONS\n\n&quot;
+-                    profile_ids = profiles.keys()
+-                    profile_ids.sort()
+-                    for profile_id in profile_ids:
+-                        output += &quot;[{profile_id}]\n&quot;.format(profile_id=profile_id)
+-                        for key in profiles[profile_id].keys():
+-                            if key == u'user' and not profiles[profile_id][key]:
+-                                profiles[profile_id][key] = username
+-                            if type(profiles[profile_id][key]) in (types.UnicodeType, types.StringType):
+-                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(profiles[profile_id][key]))
+-                            elif type(profiles[profile_id][key]) in (types.ListType, types.TupleType):
+-                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(&quot;,&quot;.join(profiles[profile_id][key])))
+-                            else:
+-                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(int(profiles[profile_id][key])))
+-
+-                            output += &quot;\n&quot;
+-                        output += &quot;\n&quot;
+-
+-                    output += &quot;END_USER_SESSIONS\n&quot;
++                output += json.dumps(profiles, indent=4, sort_keys=True)
+ 
+             elif task == 'selectsession':
+ 
+                 if profile_id:
+ 
++                    selected_session = {}
++
+                     profile_info = broker_backend.select_session(profile_id=profile_id, username=username)
+                     if profile_info.has_key('server'):
+-                        output += &quot;SERVER:&quot;
+-                        output += profile_info['server']
+-                        if profile_info.has_key('port'):
+-                            output += &quot;:{port}&quot;.format(port=profile_info['port'])
+-                        output += &quot;\n&quot;
++                        if profile_info.has_key('server') and profile_info.has_key('port'):
++                            selected_session['server'] = &quot;{server}:{port}&quot;.format(server=profile_info['server'], port=profile_info['port'])
++                        else:
++                            selected_session['server'] = &quot;{server}&quot;.format(server=profile_info['server'])
++
+                         if profile_info.has_key('authentication_privkey'):
+-                            output += profile_info['authentication_privkey']
++                            selected_session['key'] = profile_info['authentication_privkey']
++
+                         if profile_info.has_key('session_info'):
+-                            output += &quot;SESSION_INFO:&quot;
+-                            output += profile_info['session_info'] + &quot;\n&quot;
++                            selected_session['session_info'] = profile_info['session_info']
++
++                        output += json.dumps(selected_session, indent=4, sort_keys=True)
+ 
+             self.write(output)
+             return
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026046.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-152-g73378f1
+</A></li>
+	<LI>Next message: <A HREF="026048.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-154-g22eceb7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26047">[ date ]</a>
+              <a href="thread.html#26047">[ thread ]</a>
+              <a href="subject.html#26047">[ subject ]</a>
+              <a href="author.html#26047">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

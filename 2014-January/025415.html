@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.1-9-gcf525d5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.1-9-gcf525d5&In-Reply-To=%3C20140108142913.7FB915DBE0%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025414.html">
+   <LINK REL="Next"  HREF="025422.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.1-9-gcf525d5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.1-9-gcf525d5&In-Reply-To=%3C20140108142913.7FB915DBE0%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.1-9-gcf525d5">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:13 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025414.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.2
+</A></li>
+        <LI>Next message: <A HREF="025422.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9f02d57f47f047e6b4055e257396549b87d363ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25415">[ date ]</a>
+              <a href="thread.html#25415">[ thread ]</a>
+              <a href="subject.html#25415">[ subject ]</a>
+              <a href="author.html#25415">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  cf525d5c61ed6c238174ab3a5141f72758883766 (commit)
+      from  a58f12c5bbe45b817fd0b7a2e7105e3dcf5017c2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   10 ++++++++++
+ x2go/session.py                  |   18 ++++++++++++++++++
+ 3 files changed, 29 insertions(+)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 8c59458..385fa78 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,7 @@ python-x2go (0.2.0.2-0~x2go1) UNRELEASED; urgency=low
+     - Add support to X2goSession class to launch sessions for the Python
+       command line in five steps.
+     - Mark sessions as dead whenever an X2goControlSessionException occurs.
++    - Catch control session deaths when querying X2goSession.is_alive().
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 30 May 2012 00:27:03 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 2ec995f..6b1677e 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -909,6 +909,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self.session_died = True
+         return False
+ 
++    def session_died(self):
++        &quot;&quot;&quot;\
++        Test if the connection to the remote X2Go server died on the way.
++
++        @return: C{True} if the connection has died, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.session_died
++
+     def get_published_applications(self, lang=None, refresh=False, raw=False, very_raw=False, max_no_submenus=defaults.PUBAPP_MAX_NO_SUBMENUS):
+         &quot;&quot;&quot;\
+         Retrieve the menu tree of published applications from the remote X2Go server.
+diff --git a/x2go/session.py b/x2go/session.py
+index 17d3350..14e9513 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -358,6 +358,19 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         return self.client_instance
+ 
++    def HOOK_on_control_session_death(self):
++        &quot;&quot;&quot;\
++        HOOK method: called if a control session (server connection) has unexpectedly encountered a failure.
++
++        @param profile_name: profile name of session that called this hook method
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
++        if self.client_instance:
++            self.client_instance.HOOK_on_control_session_death(profile_name=self.profile_name)
++        else:
++            self.logger('HOOK_on_control_session_death: the control session of profile %s has died unexpectedly' % self.profile_name, loglevel=log.loglevel_WARN)
++
+     def HOOK_auto_connect(self):
+         &quot;&quot;&quot;\
+         HOOK method: called if the session demands to auto connect.
+@@ -1240,6 +1253,8 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         self.connected = self.control_session.is_alive()
++        if self.control_session.session_died():
++            self.HOOK_on_control_session_death()
+         if not self.connected:
+             self._X2goSession__disconnect()
+         return self.connected
+@@ -1281,6 +1296,7 @@ class X2goSession(object):
+         try:
+             return self.control_session.list_sessions(raw=raw)
+         except x2go_exceptions.X2goControlSessionException:
++            self.HOOK_on_control_session_death()
+             self._X2goSession__disconnect()
+             return None
+     __list_sessions = list_sessions
+@@ -1300,6 +1316,7 @@ class X2goSession(object):
+         try:
+             return self.control_session.list_desktops(raw=raw)
+         except x2go_exceptions.X2goControlSessionException:
++            self.HOOK_on_control_session_death()
+             self._X2goSession__disconnect()
+             return None
+     __list_desktops = list_desktops
+@@ -1320,6 +1337,7 @@ class X2goSession(object):
+         try:
+             return self.control_session.list_mounts(self.session_name, raw=raw)
+         except x2go_exceptions.X2goControlSessionException:
++            self.HOOK_on_control_session_death()
+             self._X2goSession__disconnect()
+             return None
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025414.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.2
+</A></li>
+	<LI>Next message: <A HREF="025422.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9f02d57f47f047e6b4055e257396549b87d363ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25415">[ date ]</a>
+              <a href="thread.html#25415">[ thread ]</a>
+              <a href="subject.html#25415">[ subject ]</a>
+              <a href="author.html#25415">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

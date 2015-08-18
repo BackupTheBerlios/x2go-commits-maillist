@@ -1,0 +1,1309 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%0966a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e&In-Reply-To=%3C20130914135410.23F6C5DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012283.html">
+   <LINK REL="Next"  HREF="012288.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%0966a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e&In-Reply-To=%3C20130914135410.23F6C5DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:10 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012283.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	ca778d094c8e95177f2ac87b06b522413d95c79a
+</A></li>
+        <LI>Next message: <A HREF="012288.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12284">[ date ]</a>
+              <a href="thread.html#12284">[ thread ]</a>
+              <a href="subject.html#12284">[ subject ]</a>
+              <a href="author.html#12284">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e (commit)
+      from  04ed83455e600017764b185eeb5eda65220b9432 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ SessionProfile.py |  251 ++++++++++++++++++++++++++++
+ pyhoca-gui.py     |  145 +++++++++++++++++
+ pyx2go_client.py  |  313 +++++++++++++++++++++++++++++++++++
+ x2go              |    1 +
+ x2goLogon.py      |  471 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 1181 insertions(+)
+ create mode 100644 SessionProfile.py
+ create mode 100644 pyhoca-gui.py
+ create mode 100644 pyx2go_client.py
+ create mode 120000 x2go
+ create mode 100644 x2goLogon.py
+
+The diff of changes is:
+diff --git a/SessionProfile.py b/SessionProfile.py
+new file mode 100644
+index 0000000..48e2844
+--- /dev/null
++++ b/SessionProfile.py
+@@ -0,0 +1,251 @@
++# -*- coding: utf-8 -*-
++#-----------------------------------------------------------------------------
++# Name:        SessionProfile.py
++# Purpose:     Define the session info coming from an ini file
++#
++# Author:      Dick Kniep
++#
++# Created:     2010/10/21
++# RCS-ID:      $Id: SessionProfile.py,v 1.2 2010/10/21 20:07:56 dick Exp $
++# Copyright:   (c) 2010 Lindix
++#-----------------------------------------------------------------------------
++
++import os
++import ConfigParser
++from types import *
++
++class processINI:
++    &quot;&quot;&quot;
++    Base class to process the different ini files used in x2go.
++    Primarily used to standardize the content of the
++    ini file.
++    If entries are omitted in the file, they are filled with
++    default values, so the resulting objects always contain
++    the same fields
++    &quot;&quot;&quot;
++    def __init__(self, fileName):
++        self.writeconfig = False
++        self.iniConfig = ConfigParser.SafeConfigParser()
++        if fileName and os.path.exists(fileName):
++            self.iniConfig.read(fileName)
++
++
++    def fillDefaultsSection(self):
++        for section, sectionvalue in self.defaultValues.items():
++            for key, value in sectionvalue.items():
++                if self.iniConfig.has_option(section,key): continue
++                if not self.iniConfig.has_section(section):
++                    self.iniConfig.add_section(section)
++                self.storeValueTypes(section, key, value)
++
++    def updValue(self, section, key, value):
++        if not self.iniConfig.has_section(section):
++            self.iniConfig.add_section(section)
++        self.storeValueTypes(section, key, value)
++        self.writeconfig = True
++
++    def storeValueTypes(self, section, key, value):
++        if type(value) is StringType:
++            self.iniConfig.set(section,key,value)
++        elif type(value) is BooleanType:
++            if value:
++                self.iniConfig.set(section,key,'1')
++            else:
++                self.iniConfig.set(section,key,'0')
++        else:
++            self.iniConfig.set(section,key,str(value))
++
++    def writeIni(self):
++        if self.writeconfig:
++            fd = open(self.fileName, 'wb')
++            self.iniConfig.write(fd)
++            fd.close()
++            self.writeconfig = False
++
++    def getValue(self, section, key, getType=None):
++        if self.iniConfig.has_option(section, key):
++            if getType is None:
++                return self.iniConfig.get(section, key)
++            elif getType is BooleanType:
++                return self.iniConfig.getboolean(section, key)
++            elif getType is IntType:
++                return self.iniConfig.getint(section, key)
++
++    def bldSessionObj(self):
++        &quot;&quot;&quot;
++        This routine flattens the items making them simple
++        object members
++
++        Note, it assumes the option is unique within the config!
++        &quot;&quot;&quot;
++        for section in self.iniConfig.sections():
++            for option in self.iniConfig.options(section):
++                if section in self.defaultValues and option in self.defaultValues[section]:
++                    setattr(self, option, self.getValue(section, option, type(self.defaultValues[section][option])))
++                else:
++                    setattr(self, option, self.getValue(section, option))
++
++class Settings(processINI):
++    &quot;&quot;&quot;
++    Settings object that  contains all data that is generally necessary
++    &quot;&quot;&quot;
++    defaultValues = {       'LDAP':{'useldap':False,'port':389,'server':'localhost','port1':0,'port2':0}, \
++                                'General':{'clientport':22,'autoresume':True}, \
++                                'Authorization': {'newprofile':True,'suspend':True,'editprofile':True,'resume':True}
++                        }
++    def __init__(self, fileName=None):
++        if fileName is None:
++            fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/settings'))
++        processINI.__init__(self, fileName)
++        self.fillDefaultsSection()
++        self.bldSessionObj()
++
++class Printing(processINI):
++    &quot;&quot;&quot;
++    Printing object that  contains all data that is necessary for printing
++    &quot;&quot;&quot;
++    defaultValues = {       'General':  {'showdialog':False,'pdfview':False}, \
++                                'print':    {'startcmd':False,'command':'lpr','stdin':False,'ps':False}, \
++                                'view':     {'open':True,'command':'xpdf'}, \
++                                'CUPS':     {'defaultprinter':None, 'options':'@Invalid()'}
++                        }
++    def __init__(self, fileName=None):
++
++        if fileName is None:
++            fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/printing'))
++        processINI.__init__(self, fileName)
++        self.fillDefaultsSection()
++        self.bldSessionObj()
++
++
++class SessionProfiles(processINI):
++    &quot;&quot;&quot;
++    Session object that contains several sessionProfiles that contain all data necessary to open the connection with
++    an x2go server
++    &quot;&quot;&quot;
++    defaultValues = \
++         {'speed':2,'pack':'16m-jpeg','quality':9,'fstunnel':True,'export':'&quot;/home/dick/Documenten:1;&quot;','fullscreen':False,'width':800,'height':600,'dpi':96,
++                   'setdpi':False,'usekbd':True,'layout':'us','type':'pc105/us','sound':False,'soundsystem':'pulse','startsoundsystem':True,'soundtunnel':True,
++                   'defsndport':True,'sndport':4713, 'printing':True,'name':None,'icon':':icons/128x128/x2gosession.png','host':None,'user':None, 'key':None,
++                   'sshport':22,'rootless':True,'applications':'dummy, WWWBROWSER, MAILCLIENT, OFFICE, TERMINAL','command':'dummy','rdpoptions':None,
++                   'rdpserver':None,'default':False,'connected':False}
++    def __init__(self, fileName=None):
++        if fileName is None:
++            fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/sessions'))
++        processINI.__init__(self, fileName)
++        self.SessionProfiles = self.iniConfig.sections()
++        for section in self.SessionProfiles:
++            for key, sectionvalue in self.defaultValues.items():
++                if not self.iniConfig.has_option(section,key):
++                    self.storeValueTypes(section, key, sectionvalue)
++
++    def getSection(self, section):
++        return self.iniConfig.items(section)
++
++
++class SingleProfile:
++    def __init__(self, prof, profiles):
++        self.prof = prof
++        self.profiles = profiles
++        self.session_uuid = None
++        self.showConfigScreen = False
++        self.bldSessionObj()
++        if self.host is None:
++            self.showConfigScreen = True
++
++    def bldSessionObj(self):
++        for option in self.profiles.iniConfig.options(self.prof):
++            if self.prof in self.profiles.defaultValues and option in self.profiles.defaultValues[self.prof]:
++                setattr(self, option, self.profiles.getValue(self.prof, option, type(self.profiles.defaultValues[self.prof][option])))
++            else:
++                setattr(self, option, self.profiles.getValue(self.prof, option))
++
++    def updConfig(self):
++        for key, retType in self.fieldList:
++            self.updValue(self.prof, key, self.__dict__[key])
++
++    def Connect(self, parent, printing):
++        geometry = str(self.width) + 'x' + str(self.height)
++        self.c = x2go.X2goClient(logger=parent.liblogger)
++        self.session_uuid = c.register_session(self.host, port=self.sshport,
++                                                        username=self.user,
++                                                        password=self.password,
++                                                        key_filename=self.key,
++                                                        add_to_known_hosts=self.add_to_known_hosts,
++                                                        profile_name = self.name,
++                                                        session_type=self.session_type,
++                                                        link=self.link,
++                                                        geometry=geometry,
++                                                        pack=self.pack,
++                                                        cache_type=self.cache_type,
++                                                        kblayout=self.layout,
++                                                        kbtype=self.type,
++                                                        snd_system=self.sound,
++                                                        printing=self.printing,
++                                                        print_action=printing.print_action,
++                                                        print_action_args=printing.print_action_args,
++                                                        cmd=printing.command)
++        self.c.session_start(session_uid)
++        self.profiles.updValue(self.prof, 'connected', True)
++        self.connected = True
++        self.profiles.writeIni()
++
++    def Resume(self, parent, printing):
++        pass
++
++    def DisConnect(self):
++        self.profiles.updValue(self.prof, 'connected', True)
++        self.connected = False
++        self.profiles.writeIni()
++
++    def isAlive(self):
++        return True
++
++class x2goProfiles:
++    def __init__(self):
++        self.x2goprofs = []
++        self.there_is_a_default = 0
++        self.profiles = SessionProfiles()
++        for prof in self.profiles.SessionProfiles:
++            newSession = SingleProfile(prof, self.profiles)
++            if newSession.default:
++                self.x2goprofs.insert(0,newSession)
++                self.there_is_a_default += 1
++            else:
++                self.x2goprofs.append(newSession)
++        if len(self.profiles.SessionProfiles):
++            self.current_profile = self.x2goprofs[0]
++
++    def append(self, name):
++        self.x2goprofs.append(SingleProfile(name))
++
++    def writeIni(self):
++        for s in self.x2goprofs:
++            s.updConfig()
++        self.profiles.writeIni()
++
++    def defaultAvailable(self):
++        return self.there_is_a_default == 1
++
++    def profileExists(self, name):
++        for profile in self.x2goprofs:
++            if profile.prof == name or profile.name == name:
++                self.current_profile = profile
++                return True
++        return False
++
++    def runningSessions(self):
++        running = []
++        for idx, profs in enumerate(self.profiles.iniConfig.sections()):
++            connected = self.profiles.getValue(profs, 'connected', getType='bool')
++            if running:
++                running.append(x2goprofs[idx])
++        return running
++
++    def suspendedSessions(self):
++        running = self.runningSessions()
++        suspended = []
++        for idx, run in enumerate(running):
++            if running.isAlive(): continue
++            suspended.appended(run)
++        return suspended
+\ No newline at end of file
+diff --git a/pyhoca-gui.py b/pyhoca-gui.py
+new file mode 100644
+index 0000000..67c1e70
+--- /dev/null
++++ b/pyhoca-gui.py
+@@ -0,0 +1,145 @@
++#-----------------------------------------------------------------------------
++# Name:        pyhoca-gui.py
++# Purpose:     Main program to start the python x2go gui
++#
++# Author:      Dick Kniep
++#
++# Created:     2010/10/25
++# RCS-ID:      $Id: PyApp1.py $
++# Copyright:   (c) 2010 Lindix
++#-----------------------------------------------------------------------------
++#!/usr/bin/env python
++#Boa:PyApp:main
++
++modules ={}
++
++try:
++    import wxversion
++    wxversion.select('2.8')
++except: pass
++import wx
++import x2go
++import x2goLogon
++import argparse
++import os.path
++import os
++import sys
++import platform
++import exceptions
++
++class notsupportedError(exceptions.StandardError): pass
++
++# version information
++PROG_NAME = os.path.basename(sys.argv[0])
++PROG_PID  = os.getpid()
++VERSION=&quot;0.0.1&quot;
++VERSION_TEXT=&quot;&quot;&quot;
++%s[%s] - an X2go GUI client written in Python
++----------------------------------------------------------------------
++developed by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++VERSION: %s
++
++&quot;&quot;&quot; % (PROG_NAME, PROG_PID, VERSION)
++
++__author__ = &quot;Dick J. Kniep&quot;
++__version__ = &quot;$Id$&quot;
++
++class pyhocagui(wx.App):
++    def __init__(self, args, logger, liblogger):
++        self.args = args
++        self.logger = logger
++        self.liblogger = liblogger
++        wx.App.__init__(self)
++
++    def OnInit(self):
++        wx.BeginBusyCursor()
++        self.SetAppName('pyhoca, GUI Client of X2Go')
++        self.SetVendorName('Lindix BV. Almere (c) 2010')
++        x2goLogon.startX2Go(self)
++        wx.EndBusyCursor()
++        return True
++
++    def OnExit(self):
++        pass
++
++# debug options...
++debug_options =  [
++                   {'args':['-d','--debug'], 'default': False, 'action': 'store_true', 'help': 'enable application debugging code', },
++                   {'args':['--libdebug'], 'default': False, 'action': 'store_true', 'help': 'enable debugging code of the underlying Python X2go module', },
++                   {'args':['--libdebug-sftpxfer'], 'default': False, 'action': 'store_true', 'help': 'enable debugging code of Python X2go\'s sFTP server code (very verbose, and even promiscuous)', },
++                   {'args':['-V', '--version'], 'default': False, 'action': 'store_true', 'help': 'print version number and exit', },
++                 ]
++x2go_gui_options = [
++                   {'args':['-m','--minimized'], 'default':False, 'action': 'store_true', 'help': 'start x2go gui minimized on the taskbar',} ,
++                   {'args':['-u','--username'], 'default': None, 'help': 'username for the session (default: current user)', },
++                   {'args':['-p','--password'], 'default': None, 'help': 'user password (not recommended from the command line, default: not set)', },
++                   {'args':['-s','--profile'], 'default': None, 'help': 'The name of the sessionprofile to be used to make the connection', }
++                 ]
++
++def parseargs():
++
++    global DEBUG
++    global print_action_args
++
++    p = argparse.ArgumentParser(description='X2go Gui client implemented in (wx)Python.',\
++                                epilog=&quot;&quot;&quot;Possible values for the --pack NX option are:&quot;&quot;&quot;, \
++                                formatter_class=argparse.RawDescriptionHelpFormatter, \
++                                add_help=True, argument_default=None)
++    p_debugopts = p.add_argument_group('debug options')
++    p_guiopts = p.add_argument_group('PyHoca Gui options')
++
++    for (p_group, opts) in ((p_guiopts, x2go_gui_options), (p_debugopts, debug_options)):
++        required = False
++        for opt in opts:
++
++            args = opt['args']
++            del opt['args']
++            p_group.add_argument(*args, **opt)
++
++    a = p.parse_args()
++
++    logger = x2go.X2goLogger(tag='MAIN')
++    liblogger = x2go.X2goLogger()
++
++    if a.debug:
++        logger.set_loglevel_debug()
++
++    if a.libdebug:
++        liblogger.set_loglevel_debug()
++
++    if a.libdebug_sftpxfer:
++        liblogger.enable_debug_sftpxfer()
++
++    if a.version:
++        version()
++
++    if a.username is None:
++        if platform.system() == 'Windows':
++            import win32api
++            a.username = win32api.GetUserName()
++        elif platform.system() == 'Linux':
++            import getpass
++            a.username = getpass.getuser()
++        elif platform.system() == 'Mac':
++            import getpass
++            a.username = getpass.getuser()
++        else:
++            raise notsupportedError('Platform %s is not supported' % platform.system())
++
++    return a, logger, liblogger
++
++# print version text and exit
++def version():
++
++    sys.stderr.write (&quot;%s\n&quot; % VERSION_TEXT)
++    sys.exit(0)
++
++
++def main():
++    args, logger, liblogger = parseargs()
++    pgui = pyhocagui(args, logger, liblogger)
++    pgui.MainLoop()
++
++if __name__ == '__main__':
++    main()
+diff --git a/pyx2go_client.py b/pyx2go_client.py
+new file mode 100644
+index 0000000..e4028d1
+--- /dev/null
++++ b/pyx2go_client.py
+@@ -0,0 +1,313 @@
++#!/usr/bin/python
++# -*- coding: utf-8 -*-
++
++&quot;&quot;&quot;
++    Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program; if not, write to the
++    Free Software Foundation, Inc.,
++    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
++
++    Contributors to the code of this programme:
++        J&#246;rg Sawatzki &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">joerg.sawatzki at web.de</A>&gt;
++        Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++
++
++&quot;&quot;&quot;
++
++
++###
++### module section
++###
++
++import sys, os
++import time
++import argparse
++import getpass
++import x2go
++import paramiko
++from types import *
++import SessionProfile
++
++# for debugging
++import pprint
++
++# Python X2go provides the current local username (OS independent)
++from x2go.utils import CURRENT_LOCAL_USER as current_user
++
++# version information
++PROG_NAME = os.path.basename(sys.argv[0])
++PROG_PID  = os.getpid()
++VERSION=&quot;0.0.14&quot;
++VERSION_TEXT=&quot;&quot;&quot;
++%s[%s] - an X2go client written in Python
++----------------------------------------------------------------------
++developed by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++and Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++VERSION: %s
++
++&quot;&quot;&quot; % (PROG_NAME, PROG_PID, VERSION)
++
++class X2GoConnection:
++    def __init__(self):
++
++        self.x2goSession = SessionProfile.x2goSession()
++
++        # ,,constants'' needed for debugging
++        self.logger = x2go.X2goLogger(tag='MAIN')
++        self.liblogger = x2go.X2goLogger()
++        x2go_session_hash = ''
++
++        # use current_home as user home dir
++        current_home = os.path.expanduser(&quot;~&quot;)
++
++        # define and create known_hosts file (if not there)
++        ssh_known_hosts_filename = os.path.join(current_home, '.ssh', 'known_hosts')
++        if not os.path.isfile(ssh_known_hosts_filename):
++            self._touch_file(ssh_known_hosts_filename)
++        # define and create ssh_config file (if not there)
++        ssh_config_filename = os.path.join(current_home, '.ssh', 'config')
++        if not os.path.isfile(ssh_config_filename):
++            self._touch_file(ssh_config_filename)
++            
++
++    ###
++    ### beginning of code
++    ###
++
++    def _touch_file(self, filename):
++
++        if not os.path.isfile(filename):
++            f = open(filename, 'w')
++            f.close()
++
++
++    # print version text and exit
++    def version(self):
++
++        sys.stderr.write (&quot;%s\n&quot; % VERSION_TEXT)
++        sys.exit(0)
++
++
++    # sometimes we have to fail...
++    def runtime_error(self, m, parser=None, exitcode=-1):
++        if parser is not None:
++            parser.print_usage()
++        sys.stderr.write (&quot;%s: error: %s\n&quot; % (PROG_NAME, m))
++        sys.exit(exitcode)
++
++
++    def makeConnection(self):
++        
++        self.logger('preparing requested X2go session', x2go.loglevel_NOTICE, )
++        
++        x2goclient = x2go.X2goClient(logger=self.liblogger)
++        x2go_session_hash = x2goclient.register_session(self.x2goSession.server, port=int(self.x2goSession.remote_ssh_port), 
++                                                        username=self.x2goSession.username, 
++                                                        password=self.x2goSession.password,
++                                                        key_filename=self.x2goSession.ssh_privkey,
++                                                        add_to_known_hosts=self.x2goSession.add_to_known_hosts,
++                                                        profile_name = 'Pyhoca-Client_Session',
++                                                        session_type=self.x2goSession.session_type,
++                                                        link=self.x2goSession.link,
++                                                        geometry=self.x2goSession.geometry,
++                                                        pack=self.x2goSession.pack,
++                                                        cache_type='unix-kde',
++                                                        kblayout=self.x2goSession.kbd_layout,
++                                                        kbtype=self.x2goSession.kbd_type,
++                                                        snd_system=self.x2goSession.sound,
++                                                        printing=self.x2goSession.printing,
++                                                        cmd=self.x2goSession.command)
++
++        x2goclient.with_session(x2go_session_hash).load_host_keys(ssh_known_hosts_filename)
++        self.connected = False
++        force_password_auth = False
++        x2goclient.connect_session(x2go_session_hash, password=self.x2goSession.password, force_password_auth=force_password_auth)
++        self.connected = True
++
++    def checkSSHConfig(self)
++        ###
++        ### initialize SSH context
++        ###
++        # check if SERVER is in .ssh/config file, extract information from there...
++        ssh_config = paramiko.SSHConfig()
++        ssh_config_fileobj = open(ssh_config_filename)
++        ssh_config.parse(ssh_config_fileobj)
++        ssh_host = ssh_config.lookup(a.server)
++        if ssh_host:
++            if 'hostname' in ssh_host.keys():
++                a.server = ssh_host['hostname']
++            if 'port' in ssh_host.keys():
++                a.remote_ssh_port = ssh_host['port']
++        ssh_config_fileobj.close()
++        # check if ssh priv key exists
++        if a.ssh_privkey and not os.path.isfile(a.ssh_privkey):
++            runtime_error(&quot;SSH private key %s file does not exist.&quot; % a.ssh_privkey, parser=p, exitcode=30)
++        if not a.ssh_privkey and os.path.isfile('%s/.ssh/id_rsa' % current_home):
++            a.ssh_privkey = '%s/.ssh/id_rsa' % current_home
++        if not a.ssh_privkey and os.path.isfile('%s/.ssh/id_dsa' % current_home):
++            a.ssh_privkey = '%s/.ssh/id_dsa' % current_home
++
++        return p, a
++
++
++    def list_sessions(self, cli, s_hash):
++        # retrieve a session list
++        print
++        print &quot;Available runing/suspended X2go sessions&quot;
++        print &quot;========================================&quot;
++        print &quot;Hostname: [%s]:%s&quot; % cli.get_server(s_hash)
++        print &quot;Username: %s&quot; % cli.get_username(s_hash)
++        print 
++        session_infos = cli.list_sessions(s_hash)
++        for session_info in session_infos.values():
++            print &quot;Session Name: %s&quot; % session_info
++            print &quot;-------------&quot;
++            print &quot;cookie: %s&quot; % session_info.cookie
++            print &quot;agent PID: %s&quot; % session_info.agent_pid
++            print &quot;display: %s&quot; % session_info.display
++            print &quot;status: %s&quot; % session_info.status
++            print &quot;graphic port: %s&quot; % session_info.graphics_port
++            print &quot;snd port: %s&quot; % session_info.snd_port
++            print &quot;sshfs port: %s&quot; % session_info.sshfs_port
++            print &quot;username: %s&quot; % session_info.username
++            print &quot;hostname: %s&quot; % session_info.hostname
++            # TODO: turn into datetime object
++            print &quot;create date: %s&quot; % session_info.date_created
++            # TODO: turn into datetime object
++            print &quot;suspended since: %s&quot; % session_info.date_suspended
++            print
++
++
++    def clean_sessions(self, cli, s_hash):
++        # clean all sessions from X2go server
++        logger('cleaning up all running sessions from X2go server: %s' % self.x2goSession.server, x2go.loglevel_NOTICE, )
++        cli.clean_sessions(s_hash)
++
++
++    def new_session(self, cli, s_hash):
++        # start a new session and run a command
++        logger('starting a new X2go session', x2go.loglevel_INFO, )
++        logger('Command for new session is: %s' % self.x2goSession.command, x2go.loglevel_DEBUG, )
++        cli.start_session(s_hash)
++
++
++    def resume_session(self, cli, s_hash):
++        # resume a running session
++        logger('resuming X2go session: %s' % self.x2goSession.resume, x2go.loglevel_INFO, )
++        available_sessions = cli.list_sessions(s_hash)
++        if self.x2goSession.resume in available_sessions.keys():
++            cli.resume_session(s_hash, self.x2goSession.resume)
++        else:
++            runtime_error('requested session not available on X2go server [%s]:%s.' % (self.x2goSession.server, self.x2goSession.remote_ssh_port), exitcode=20)
++
++
++    def suspend_session(self, cli, s_hash):
++        # send a suspend request to a session
++        logger('requesting X2go session suspend of session: %s' % self.x2goSession.suspend, x2go.loglevel_INFO, )
++        available_sessions = cli.list_sessions(s_hash)
++        if self.x2goSession.suspend in available_sessions.keys():
++            cli.suspend_session(s_hash, self.x2goSession.suspend)
++        else:
++            runtime_error('requested session not available on X2go server [%s]:%s.' % (self.x2goSession.server, self.x2goSession.remote_ssh_port), exitcode=21)
++
++    def terminate_session(self, cli, s_hash):
++        # send a terminate request to a session
++        logger('requesting X2go session terminate of session: %s' % self.x2goSession.terminate, x2go.loglevel_INFO, )
++        available_sessions = cli.list_sessions(s_hash)
++        if self.x2goSession.terminate in available_sessions.keys():
++            cli.terminate_session(s_hash, self.x2goSession.terminate)
++        else:
++            runtime_error('requested session not available on X2go server [%s]:%s.' % (self.x2goSession.server, self.x2goSession.remote_ssh_port), exitcode=22)
++
++
++if __name__ == '__main__':
++
++
++        if self.x2goSession.clean_sessions:
++            clean_sessions(x2goclient, x2go_session_hash)
++
++        # go through the possible X2go client modes
++        if self.x2goSession.list_sessions:
++            # print a beautified session list for the user
++            list_sessions(x2goclient, x2go_session_hash)
++            sys.exit(0)
++
++        if args.resume:
++            resume_session(x2goclient, x2go_session_hash)
++
++        elif args.suspend:
++            suspend_session(x2goclient, x2go_session_hash)
++
++        elif args.terminate:
++            terminate_session(x2goclient, x2go_session_hash)
++
++        elif args.new:
++            new_session(x2goclient, x2go_session_hash)
++
++
++        if args.new or args.resume:
++            # give the session some time to come up...
++            # no CTRL-C is allowed during this phase...
++            i=0
++            logger(&quot;give the X2go session some time to come up...&quot;, x2go.loglevel_NOTICE, )
++            while i &lt; args.time_to_wait:
++                time.sleep(1)
++                i+=1
++
++            if x2goclient.session_ok(x2go_session_hash):
++
++                profile_name = x2goclient.get_profile_name(x2go_session_hash)
++                session_name = x2goclient.get_session_name(x2go_session_hash)
++                logger(&quot;X2go session is now running, the X2go client's profile name is: %s.&quot; % profile_name, x2go.loglevel_INFO, )
++                logger(&quot;X2go session name is: %s.&quot; % session_name, x2go.loglevel_INFO, )
++                logger(&quot;Press CTRL+C to suspend the running session.&quot;, x2go.loglevel_NOTICE, )
++                try:
++
++                    session_duration = 0
++                    mounted = False
++                    while x2goclient.session_ok(x2go_session_hash):
++                        time.sleep(2)
++                        session_duration +=2
++
++                        if session_duration &gt; 2 and not mounted and args.share_local_folders is not None:
++                            if x2goclient.with_session(x2go_session_hash).get_transport().reverse_tunnels['sshfs'][1] is not None:
++                                for _folder in args.share_local_folders:
++                                    x2goclient.share_local_folder(x2go_session_hash, _folder)
++                                mounted = True
++
++                    # wait a little longer before telling the user what had happened
++                    time.sleep(2)
++
++                    if x2goclient.has_terminated(x2go_session_hash):
++                        logger(&quot;X2go session %s has terminated.&quot; % session_name, x2go.loglevel_NOTICE, )
++                    elif x2goclient.is_suspended(x2go_session_hash):
++                        logger(&quot;X2go session %s has been suspended.&quot; % session_name, x2go.loglevel_NOTICE, )
++                    elif x2goclient.is_running(x2go_session_hash):
++                        logger(&quot;X2go session %s has been moved to a different screen.&quot; % session_name, x2go.loglevel_NOTICE, )
++
++                except KeyboardInterrupt:
++                    logger(&quot;Suspending X2go session %s.&quot; % session_name, x2go.loglevel_INFO, )
++                    x2goclient.suspend_session(x2go_session_hash)
++                    # giving nxproxy's SSH tunnel some time to settle
++                    time.sleep(2)
++                    logger(&quot;X2go session %s has been suspended.&quot; % session_name, x2go.loglevel_NOTICE, )
++
++        sys.exit(0)
++
++    except (KeyboardInterrupt, SystemExit), e:
++        x2go.x2go_cleanup(e)
++
+diff --git a/x2go b/x2go
+new file mode 120000
+index 0000000..3e76290
+--- /dev/null
++++ b/x2go
+@@ -0,0 +1 @@
++../../python/python-x2go/trunk/x2go
+\ No newline at end of file
+diff --git a/x2goLogon.py b/x2goLogon.py
+new file mode 100644
+index 0000000..b5f28a6
+--- /dev/null
++++ b/x2goLogon.py
+@@ -0,0 +1,471 @@
++# -*- coding: utf-8 -*-
++#-----------------------------------------------------------------------------
++# Name:        x2goLogon.py
++# Purpose:     display the Logon screen for x2go
++#
++# Author:      Dick Kniep
++#
++# Created:     2010/10/21
++# Copyright:   (c) Lindix BV 2010
++#-----------------------------------------------------------------------------
++
++
++import wx
++import time
++import sys
++import wx.lib.scrolledpanel as scrolled
++import SessionProfile
++import x2go
++try:
++    from agw import knobctrl as KC
++    knobctrlavailable = True
++except ImportError: # if it's not there locally, try the wxPython lib.
++    try:
++        import wx.lib.agw.knobctrl as KC
++        knobctrlavailable = True
++    except ImportError:
++        knobctrlavailable = False
++
++import wx.lib.sized_controls as sc
++
++class menuActions(wx.Menu):
++    def __init__(self, parent, settingsProfile, SessionProfiles):
++        OPENNEWMENUTXT = &quot;Open new Session&quot;
++        RUNNINGMENUTXT = &quot;Running sessions&quot;
++        SUSPENDMENUTXT = &quot;Suspend session&quot;
++        RESUMEMENUTXT = &quot;Resume suspended session&quot;
++        UPDATEPROFMNUTEXT = &quot;Update Profile&quot;
++        EXITMENUTXT = &quot;E&amp;xit sessions&quot;
++        MENU_NEWSESSION = wx.NewId()
++        MENU_LISTSESSIONS = wx.NewId()
++        MENU_SUSPEND = wx.NewId()
++        MENU_RESUME = wx.NewId()
++        MENU_EDITSESSION = wx.NewId()
++        MENU_EXIT = wx.NewId()
++        wx.Menu.__init__(self)
++        parent.logger('settingsProfile.newProfile %s' % dir(settingsProfile), x2go.loglevel_INFO, )
++        if settingsProfile.newprofile:
++            self.Append(MENU_NEWSESSION, OPENNEWMENUTXT)
++            self.Bind(wx.EVT_MENU, self.OnNewSession, id=MENU_NEWSESSION)
++        if SessionProfiles.runningSessions():
++            self.Append(MENU_LISTSESSIONS, RUNNINGMENUTXT)
++            self.Bind(wx.EVT_MENU, self.OnListSessions, id=MENU_LISTSESSIONS)
++            self.Append(MENU_SUSPEND, SUSPENDMENUTXT)
++            self.Bind(wx.EVT_MENU, self.OnSuspend, id=MENU_SUSPEND)
++        if SessionProfiles.suspendedSessions() and settingsProfile.resume:
++            self.Append(MENU_RESUME, RESUMEMENUTXT)
++            self.Bind(wx.EVT_MENU, self.OnResume, id=MENU_RESUME)
++        if settingsProfile.editprofile:
++            self.AppendSeparator()
++            self.Append(MENU_EDITSESSION, UPDATEPROFMNUTEXT)
++            self.Bind(wx.EVT_MENU, self.OnUpdateProfile, id=MENU_EDITSESSION)
++        self.AppendSeparator()
++        self.Bind(wx.EVT_CLOSE, self.OnClose)
++        self.Bind(wx.EVT_MENU, self.OnExit, id=MENU_EXIT)
++
++    def OnNewSession(self, evt):
++        pass
++
++    def OnListSessions(self, evt):
++        pass
++
++    def OnSuspend(self, evt):
++        pass
++
++    def OnResume(self, evt):
++        pass
++
++    def OnUpdateProfile(self, evt):
++        pass
++
++    def OnExit(self, evt):
++        self.Close(True)
++
++    def OnClose(self, evt):
++        self.parent.env.exitAllChildren()
++        self.Destroy()
++
++class LogonStatusBar(wx.StatusBar):
++    def __init__(self, parent):
++        wx.StatusBar.__init__(self, parent, -1)
++        font = self.GetFont()
++        font.SetPointSize(7)
++        self.SetFont(font)
++        self.SetFieldsCount(2)
++        self.SetStatusWidths([-1,200])
++        self.parent = parent
++
++        self.timer = wx.PyTimer(self.Notify)
++        self.timer.Start(1000)
++        self.Notify()
++
++    def Notify(self):
++        self.SetStatusText(self.parent.Environment, 0)
++        self.SetStatusText(self.parent.StatusText, 1)
++        t = time.localtime(time.time())
++
++class X2GoResumeSessions(sc.SizedFrame):
++    def __init__(self, parent, SessionProfiles, settingsProfile, printProfile, Iconize):
++        sc.SizedFrame.__init__(self, None, -1, &quot;X2go Password entry&quot;,
++                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
++
++class X2GoPasswordScrn(sc.SizedFrame):
++    def __init__(self, parent, SessionProfiles, settingsProfile, printProfile, Iconize):
++        &quot;&quot;&quot;
++        Screen to enter the userid and password for the session
++
++        if the screen is iconized, but an error occurs, the screen is displayed
++        and the user can enter another userid/password
++        &quot;&quot;&quot;
++        sc.SizedFrame.__init__(self, None, -1, &quot;X2go Password entry&quot;,
++                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
++        self.CentreOnScreen()
++
++        self.SetSize((350,250))
++
++        self.settingsProfile = settingsProfile
++        self.SessionProfiles = SessionProfiles
++        self.current_profile = SessionProfiles.current_profile
++        self.parent = parent
++        parent.logger('Password entry screen started', x2go.loglevel_INFO, )
++        pane = self.GetContentsPane()
++        pane.SetSizerType(&quot;form&quot;)
++        pwScrn = self.passwordScrn(pane)
++        self.Main_MenuBar = wx.MenuBar()
++        self.SetMenuBar(self.Main_MenuBar)
++        self.Main_MenuBar.Append(menuActions(parent, settingsProfile, SessionProfiles), '&amp;Connection')
++        self.tb = X2GoLogonTaskBarIcon(self)
++        if Iconize:
++            if self.IsIconized():
++                self.Iconize(True)
++            if parent.args.password and parent.args.username and parent.args.profile and SessionProfiles.profileExists(parent.args.profile):
++                self.onConnect()
++            else:
++                Message(self, 'Not all credentials are available')
++                self.Iconize(False)
++        else:
++            self.Show(True)
++
++    def passwordScrn(self, pnl):
++        wx.StaticText(pnl, -1, 'User'),
++        self.username_ctl = wx.TextCtrl(pnl, -1)
++        self.username_ctl.SetSizerProps(expand=True)
++        if hasattr(self.current_profile,'username'):
++            self.username_ctl.SetValue(self.SessionProfile.username)
++        else:
++            self.username_ctl.SetValue(self.parent.args.username)
++
++        wx.StaticText(pnl, -1, 'Password'),
++        self.passwd_ctl = wx.TextCtrl(pnl, -1, style=wx.TE_PASSWORD)
++
++        self.ConnectButton = wx.Button(pnl, -1, &quot;Connect&quot;)
++        self.ConnectButton.Bind(wx.EVT_BUTTON, self.OnOK)
++
++        self.CancelButton = wx.Button(pnl, -1, &quot;Cancel&quot;)
++        self.CancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
++        #self.SetButtonSizer(self.CreateStdDialogButtonSizer(self.ConnectButton | self.CancelButton))
++        #self.SetButtonSizer(self.CreateStdDialogButtonSizer(wx.OK| wx.CANCEL))
++
++    def OnOK(self, evt):
++        username = self.username_ctl.GetValue()
++        password = self.passwd_ctl.GetValue()
++        if len(username) == 0:
++            self.Message(self,'Userid is invalid')
++            return
++        if len(password) == 0:
++            self.Message(self,'Password is required')
++            return
++        self.current_profile.updValue('server','username',username)
++        self.current_profile.password = password
++        self.onConnect()
++
++    def onConnect(self):
++        set_iconize = False
++        try:
++            connection = x2goConnect.X2GoConnection(self.current_profile)
++            connection.makeConnection(self.session, self.StatusText)
++            set_iconize = True
++        except x2go.AuthenticationException:
++            self.Message(self,'Userid/Password verification failed')
++        except x2go.BadHostKeyException:
++            self.Message(self,'SSH host key verification for remote host [%s]:%s failed' % (self.current_profile.host, self.current_profile.ssh_port ))
++        except x2go.SSHException, e:
++            self.Message(self,'Problem with ssh tunnel for host [%s]:%s failed' % (self.current_profile.host, self.current_profile.ssh_port ))
++        if (set_iconize and not self.IsIconized()) or (self.IsIconized() and not set_iconize):
++            self.Iconize(set_iconize)
++        return
++
++    def OnCancel(self, evt):
++        self.Close
++
++
++class Message:
++    def __init__(self, parent, message, extraCaption='', msgtype='error'):
++        if msgtype == 'warning':
++            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
++            caption = 'Warning '
++        elif msgtype == 'error':
++            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
++            caption = 'Error '
++        else:
++            msgstyle = wx.ICON_INFORMATION|wx.STAY_ON_TOP
++            caption = 'Information '
++        caption += extraCaption
++        md = wx.MessageDialog(parent, message, caption=caption, style=msgstyle)
++        result = md.ShowModal()
++        self.retValue = False
++        if result == wx.OK:
++            self.retValue = True
++        md.Destroy()
++
++class X2GoChooseSessionScrn(sc.SizedDialog):
++    def __init__(self, parent, settingsProfile, printProfile):
++        parent.logger('Choose Session screen started', x2go.loglevel_INFO, )
++        pass
++
++class X2GoSessionDefScrn(sc.SizedDialog):
++    SESSIONNOTEBOOK = wx.NewId()
++    TypeList = ['GNOME','LXDE','Connect to Windows terminal server','Custom desktop','Server security','Single application']
++    CommandList = ['Internet Browser','Email client','OpenOffice','Terminal']
++    ConnectList = ['Modem','ISDN','ADSL','WAN','LAN']
++    CommpressionList = ['nopack','64k','256k','2m','256-rdp','32k-rdp','64k-rdp','16m-rdp','16m-rdp-compressed','64k-tight','2m-tight','4k-jpeg','16m-jpeg','64k-png-jpeg','16m-png-jpeg','64k-png','16m-png','16m-rgb','16m-rle']
++    def __init__(self, parent, SessionProfiles, settingsProfile, printProfile):
++
++        parent.logger('Session definition screen started', x2go.loglevel_INFO, )
++        self.pnl = wx.Panel(self, -1)
++        if self.current_profile and self.current_profile.connected:
++            self.StatusText = self.current_profile.StatusText
++            self.Environment = self.current_profile.Environment
++        else:
++            self.StatusText = 'Not Connected'
++            self.Environment = ''
++        self.sb = LogonStatusBar(self)
++        self.SetStatusBar(self.sb)
++
++        self.Main_MenuBar = wx.MenuBar()
++        self.SetMenuBar(self.Main_MenuBar)
++
++        if self.current_profile and self.current_profile.showConfigScreen is False:
++            self.passwordScrn(self.pnl)
++        else:
++            self.defineSessionScrn(self.pnl)
++
++    def defineSessionScrn(self, pnl, session):
++        self.SessionDefinition = wx.Notebook(id = SESSIONNOTEBOOK, name = 'SessionNoteBook', parent = pnl, pos = wx.Point(0, 0), style = 0)
++        self.SessionDefinition.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged, id=SESSIONNOTEBOOK)
++        self.HostPanel = wx.Panel(self.SessionDefinition, -1)
++        self.SessionDefinition.AddPage(self.HostPanel, 'Host')
++        self.ConnectionPanel = wx.Panel(self.SessionDefinition, -1)
++        self.SessionDefinition.AddPage(self.ConnectionPanel, 'Connection')
++        self.SessionPanel = wx.Panel(self.SessionDefinition, -1)
++        self.SessionDefinition.AddPage(self.SessionPanel, 'Session')
++        self.SharedFilesPanel = wx.Panel(self.SessionDefinition, -1)
++        self.SessionDefinition.AddPage(self.SharedFilesPanel, 'Shared Files')
++
++        self.bldHostPanel(self.HostPanel)
++        self.bldConnPanel(self.ConnectionPanel)
++        self.bldSessionPanel(self.SessionPanel)
++        self.bldSharedFilesPanel(self.SharedFilesPanel)
++
++    def bldHostPanel(self, pnl):
++        self.hostgbs = wx.GridBagSizer(6, 4)
++        self.hostgbs.Add((0,0), (1,1))
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Session Name'),
++                 (1,0), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.ctl_sessionName = wx.TextCtrl(pnl, -1)
++        self.ctl_sessionName.SetValue(self.current_profile.username)
++        self.hostgbs.Add(self.ctl_sessionName, (3,0))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Server address'),
++                 (1,1), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.ctl_serverName = wx.TextCtrl(pnl, -1)
++        self.ctl_serverName.SetValue(self.current_profile.servername)
++        self.hostgbs.Add(self.ctl_serverName, (3,1))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Server port'),
++                 (1,2), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.ctl_remote_ssh_port = wx.TextCtrl(pnl, -1)
++        self.ctl_remote_ssh_port.SetValue(self.current_profile.remote_ssh_port)
++        self.hostgbs.Add(self.ctl_remote_ssh_port, (3,2))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Login'),
++                 (1,3), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.ctl_username = wx.TextCtrl(pnl, -1)
++        self.ctl_username.SetValue(self.current_profile.username)
++        self.hostgbs.Add(self.ctl_username, (3,3))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Use RSA/DSA key for connection'),
++                 (1,4), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.ctl_username = wx.TextCtrl(pnl, -1)
++        self.ctl_username.SetValue(self.current_profile.username)
++        self.hostgbs.Add(self.ctl_username, (3,4))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Session type'),
++                 (1,5), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.cb = wx.ComboBox(self, 500, &quot;KDE&quot;, (90, 50), (160, -1), self.TypeList, wx.CB_DROPDOWN|wx.CB_READONLY)
++        self.hostgbs.Add(self.cb, (3,5))
++
++        self.hostgbs.Add( wx.StaticText(pnl, -1, 'Command'),
++                 (1,6), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.cmdcb = wx.ComboBox(self, 500, &quot;Path to executable&quot;, (90, 50), (160, -1), self.CommandList, wx.CB_DROPDOWN)
++        self.Bind(wx.EVT_TEXT_ENTER, self.onCommandEntered, self.cmdcb)
++        self.hostgbs.Add(self.cmdcb, (3,6))
++
++
++    def bldConnectionPanel(self, pnl):
++        lefttopsizer_staticbox = wx.StaticBox(self.panel, -1, &quot;Connection Speed&quot;)
++        mainsizer = wx.BoxSizer(wx.VERTICAL)
++        panelsizer = wx.BoxSizer(wx.HORIZONTAL)
++        rightsizer = wx.FlexGridSizer(6, 2, 10, 10)
++        leftsizer = wx.BoxSizer(wx.VERTICAL)
++        lefttopsizer = wx.StaticBoxSizer(lefttopsizer_staticbox, wx.VERTICAL)
++
++        self.knob1 = KC.KnobCtrl(pnl, -1, size=(100, 100))
++        self.knob1.SetTags(range(0, 4, 1))
++        self.knob1.SetAngularRange(-45, 225)
++        knobValue = self.__findConnection(self.current_profile.link)
++        self.knob1.SetValue(knobValue)
++        self.knobtracker1 = wx.StaticText(self.panel, -1, self.ConnectList[knobValue])
++        lefttopsizer.Add(self.knob1, 1, wx.ALL|wx.EXPAND, 5)
++        lefttopsizer.Add(self.knobtracker1, 0, wx.ALL)
++        leftbottomsizer_staticbox = wx.StaticBox(self.panel, -1, &quot;Compression&quot;)
++
++        self.conngbs = wx.GridBagSizer(6, 4)
++        self.conngbs.Add((0,0), (1,1))
++        self.conngbs.Add( wx.StaticText(pnl, -1, 'Method'),
++                 (1,0), flag=wx.ALIGN_LEFT | wx.ALL)
++        self.cbComp = wx.ComboBox(self, 500, &quot;16m-jpeg-9&quot;, (90, 50), (160, -1), self.CommpressionList, wx.CB_DROPDOWN|wx.CB_READONLY)
++        self.conngbs.Add(self.cbComp, (3,4))
++
++    def bldSessionPanel(self, pnl):
++        self.sessgbs = wx.GridBagSizer(6, 4)
++        lefttopsizer_staticbox = wx.StaticBox(self.panel, -1, &quot;Display&quot;)
++
++    def bldSharedFilesPanel(self, pnl):
++        pass
++
++
++    def __findConnection(self, value):
++        for idx, c in enumerate(self.ConnectList):
++            if c.lower() == value.lower(): break
++        return idx
++
++    def onCommandEntered(self, evt):
++        pass
++
++    def getSession(self):
++        pass
++
++    def OnUpdateProfile(self, evt):
++        pass
++
++class X2GoLogonTaskBarIcon(wx.TaskBarIcon):
++
++    def __init__(self, frame=None):
++        wx.TaskBarIcon.__init__(self)
++        self.frame = frame
++        self.frame.parent.logger('Start TaskBarIcon', x2go.loglevel_INFO, )
++        img = wx.Image('/usr/share/icons/hicolor/32x32/apps/x2goclient.png')
++        icon = self.MakeIcon(img)
++        self.SetIcon(icon, &quot;x2go connect&quot;)
++        self.imgidx = 1
++
++    def CreatePopupMenu(self):
++        &quot;&quot;&quot;
++        This method is called by the base class when it needs to popup
++        the menu for the default EVT_RIGHT_DOWN event.  Just create
++        the menu how you want it and return it from this function,
++        the base class takes care of the rest.
++        &quot;&quot;&quot;
++        menu = menuActions(self.frame.parent, self.frame.settingsProfile, self.frame.SessionProfiles)
++        return menu
++
++    def MakeIcon(self, img):
++        &quot;&quot;&quot;
++        The various platforms have different requirements for the
++        icon size...
++        &quot;&quot;&quot;
++        if &quot;wxMSW&quot; in wx.PlatformInfo:
++            img = img.Scale(16, 16)
++        elif &quot;wxGTK&quot; in wx.PlatformInfo:
++            img = img.Scale(22, 22)
++        # wxMac can be any size upto 128x128, so leave the source img alone....
++        icon = wx.IconFromBitmap(img.ConvertToBitmap() )
++        return icon
++
++    def OnTaskBarEditSession(self, evt):
++        if self.frame:
++            if self.frame.IsIconized():
++                self.frame.Iconize(False)
++            if not self.frame.IsShown():
++                self.frame.Show(True)
++            self.frame.Raise()
++
++
++    def OnTaskBarExitSessions(self, evt):
++        if self.frame:
++            wx.CallAfter(self.frame.Close)
++
++
++    def OnTaskBarResumeSession(self, evt):
++        names = [ &quot;WXPdemo&quot;, &quot;Mondrian&quot;, &quot;Pencil&quot;, &quot;Carrot&quot; ]
++        name = names[self.imgidx]
++
++        eImg = getattr(images, name)
++        self.imgidx += 1
++        if self.imgidx &gt;= len(names):
++            self.imgidx = 0
++
++        icon = self.MakeIcon(eImg.Image)
++        self.SetIcon(icon, &quot;This is a new icon: &quot; + name)
++
++
++    def OnTaskBarNewSession(self, evt):
++        self.RemoveIcon()
++
++
++def checkArgs(parent, args, SessionProfiles):
++    if args.profile and not SessionProfiles.profileExists(args.profile):
++        Message(parent, 'Profile is entered, but is not known')
++        exit(0)
++
++
++def startX2Go(parent):
++    &quot;&quot;&quot;
++    This routine starts processing
++
++    If there is only one profile available, or if there is one (1) single
++    profile that has the default switch, the logon screen
++    can be shown immediately
++    &quot;&quot;&quot;
++    parent.logger('starting a new X2go GUI session', x2go.loglevel_INFO, )
++
++    printProfile = SessionProfile.Printing()
++    settingsProfile = SessionProfile.Settings()
++    SessionProfiles = SessionProfile.x2goProfiles()
++    noSessionsDefined = len(SessionProfiles.x2goprofs) == 0
++    moreSessionsDefined = len(SessionProfiles.x2goprofs) &gt; 1
++
++    checkArgs(parent, parent.args, SessionProfiles)
++    sessionsSuspended = SessionProfiles.suspendedSessions()
++    if len(sessionsSuspended) and settingsProfile.autoresume:
++        parent.logger('autoresume sessionsSuspended %s' % sessionsSuspended, x2go.loglevel_INFO, )
++        for suspended in sessionsSuspended:
++            suspended.Resume()
++    elif len(sessionsSuspended):
++        parent.logger('Choose SuspendedSessions %s' % sessionsSuspended, x2go.loglevel_INFO, )
++        X2GoResumeSessions(parent, sessionsSuspended, settingsProfile, printProfile)
++    else:
++        if parent.args.minimized:
++            parent.logger('Start minimized', x2go.loglevel_INFO, )
++            pwScrn = X2GoPasswordScrn(parent, SessionProfiles, settingsProfile, printProfile, Iconize=True)
++        else:
++            if not noSessionsDefined and (not moreSessionsDefined or SessionProfiles.defaultAvailable()):
++                parent.logger('Start password entry normally', x2go.loglevel_INFO, )
++                pwScrn = X2GoPasswordScrn(parent, SessionProfiles, settingsProfile, printProfile)
++            elif noSessionsDefined:
++                parent.logger('Start Profile Definition', x2go.loglevel_INFO, )
++                defScrn = X2GoSessionDefScrn(parent, SessionProfiles, settingsProfile, printProfile)
++            else:
++                parent.logger('Start Profile choice', x2go.loglevel_INFO, )
++                choiceScrn = X2GoChooseSessionScrn(parent, settingsProfile, printProfile)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012283.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	ca778d094c8e95177f2ac87b06b522413d95c79a
+</A></li>
+	<LI>Next message: <A HREF="012288.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12284">[ date ]</a>
+              <a href="thread.html#12284">[ thread ]</a>
+              <a href="subject.html#12284">[ subject ]</a>
+              <a href="author.html#12284">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

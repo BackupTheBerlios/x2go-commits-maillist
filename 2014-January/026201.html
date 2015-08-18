@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [x2goclient] 01/01: - Set modmap timer timeout to 10 sec on Mac. - Fix running xmodmap if X2Go Client not started from terminal. - Setting keyboard modifiers with xmodmap.
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2001/01%3A%20-%20Set%20modmap%20timer%20timeout%20to%2010%0A%20sec%20on%20Mac.%20-%20Fix%20running%20xmodmap%20if%20X2Go%20Client%20not%20started%20from%20terminal.%0A%20-%20Setting%20keyboard%20modifiers%20with%20xmodmap.&In-Reply-To=%3C20140131135439.E72565DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026200.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [x2goclient] 01/01: - Set modmap timer timeout to 10 sec on Mac. - Fix running xmodmap if X2Go Client not started from terminal. - Setting keyboard modifiers with xmodmap.</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2001/01%3A%20-%20Set%20modmap%20timer%20timeout%20to%2010%0A%20sec%20on%20Mac.%20-%20Fix%20running%20xmodmap%20if%20X2Go%20Client%20not%20started%20from%20terminal.%0A%20-%20Setting%20keyboard%20modifiers%20with%20xmodmap.&In-Reply-To=%3C20140131135439.E72565DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] [x2goclient] 01/01: - Set modmap timer timeout to 10 sec on Mac. - Fix running xmodmap if X2Go Client not started from terminal. - Setting keyboard modifiers with xmodmap.">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan 31 14:54:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026200.html">[X2Go-Commits] [x2goclient] branch master updated (9b14b3a -&gt;	71979ab)
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26201">[ date ]</a>
+              <a href="thread.html#26201">[ thread ]</a>
+              <a href="subject.html#26201">[ subject ]</a>
+              <a href="author.html#26201">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch master
+in repository x2goclient.
+
+commit 71979ab36f6c275bbab178881a4e0ab1769323a3
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Fri Jan 31 14:54:32 2014 +0100
+
+      - Set modmap timer timeout to 10 sec on Mac.
+      - Fix running xmodmap if X2Go Client not started from terminal.
+      - Setting keyboard modifiers with xmodmap.
+---
+ debian/changelog |    3 +++
+ onmainwindow.cpp |   32 +++++++++++++++++++++++++++++---
+ 2 files changed, 32 insertions(+), 3 deletions(-)
+
+diff --git a/debian/changelog b/debian/changelog
+index 4534fd4..b597a28 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,9 @@ x2goclient (4.0.2.0-0x2go1) UNRELEASED; urgency=low
+     - Revrite SSH Classes to support libssh fix.
+     - Add Class HelpDialog to show options in scroll area. 
+     - Fix authentication on SSH Broker with key + passphrase.
++    - Set modmap timer timeout to 10 sec on Mac.
++    - Fix running xmodmap if X2Go Client not started from terminal.
++    - Setting keyboard modifiers with xmodmap.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 22 Jan 2014 09:20:08 +0100
+ 
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 3e50ad9..fd19e32 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -5477,11 +5477,36 @@ void ONMainWindow::slotSetModMap()
+     }
+     if(kbMap.length()&lt;=0)
+     {
+-        x2goDebug&lt;&lt;&quot;get keyboard map&quot;;
+         QProcess pr(this);
+-        pr.start(&quot;xmodmap -pke&quot;);
++        pr.setProcessEnvironment(QProcessEnvironment::systemEnvironment());
++        pr.start(&quot;/opt/X11/bin/xmodmap -pke&quot;);
+         pr.waitForFinished();
+         kbMap=pr.readAllStandardOutput();
++        pr.start(&quot;/opt/X11/bin/xmodmap -pm&quot;);
++        pr.waitForFinished();
++        QString modifiers=pr.readAllStandardOutput();
++        x2goDebug&lt;&lt;&quot;modifiers: &quot;&lt;&lt;modifiers;
++        kbMap+=&quot;clear shift\nclear lock\nclear control\nclear mod1\nclear mod2\nclear mod3\nclear mod4\nclear mod5\n&quot;;
++        QStringList lines=modifiers.split(&quot;\n&quot;,QString::SkipEmptyParts);
++        for(int i=0; i&lt;lines.count(); ++i)
++        {
++            QStringList parts=lines[i].split(&quot; &quot;,QString::SkipEmptyParts);
++            if(parts.count()&lt;2)
++            {
++                continue;
++            }
++            QString mod=parts[0];
++            if(mod == &quot;shift&quot; || mod==&quot;lock&quot; || mod==&quot;control&quot; || mod==&quot;mod1&quot;|| mod==&quot;mod2&quot;|| mod==&quot;mod3&quot;|| mod==&quot;mod4&quot;|| mod==&quot;mod5&quot;)
++            {
++                for(int j=1; j&lt;parts.count(); ++j)
++                {
++                    if(parts[j].indexOf(&quot;(&quot;)==-1)
++                    {
++                        kbMap+=&quot;add &quot;+mod+&quot; = &quot;+parts[j]+&quot;\n&quot;;
++                    }
++                }
++            }
++        }
+     }
+     if(sshConnection-&gt;useKerberos())
+     {
+@@ -5754,7 +5779,7 @@ void ONMainWindow::slotProxyStderr()
+ #ifdef Q_OS_DARWIN
+         modMapTimer=new QTimer(this);
+         connect(modMapTimer, SIGNAL(timeout()), this, SLOT (slotSetModMap()));
+-        modMapTimer-&gt;start(30000);
++        modMapTimer-&gt;start(10000);
+         slotSetModMap();
+ #endif
+         if ( newSession )
+@@ -11491,6 +11516,7 @@ long ONMainWindow::findWindow ( QString text )
+ #ifdef Q_OS_WIN
+     return ( long ) wapiFindWindow ( 0,text.utf16() );
+ #endif
++    return 0;
+ }
+ 
+ //////////////////////////plugin stuff//////////////
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/x2goclient.git
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026200.html">[X2Go-Commits] [x2goclient] branch master updated (9b14b3a -&gt;	71979ab)
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26201">[ date ]</a>
+              <a href="thread.html#26201">[ thread ]</a>
+              <a href="subject.html#26201">[ subject ]</a>
+              <a href="author.html#26201">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

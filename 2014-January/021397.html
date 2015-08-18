@@ -1,0 +1,1192 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	b76266a559f5a8aad7470cd5abc7c38b94bdbf70
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%09b76266a559f5a8aad7470cd5abc7c38b94bdbf70&In-Reply-To=%3C20140107151944.6450F5DF2E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021393.html">
+   <LINK REL="Next"  HREF="021401.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	b76266a559f5a8aad7470cd5abc7c38b94bdbf70</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%09b76266a559f5a8aad7470cd5abc7c38b94bdbf70&In-Reply-To=%3C20140107151944.6450F5DF2E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	b76266a559f5a8aad7470cd5abc7c38b94bdbf70">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:19:44 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021393.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	e3fa36a46adeb8516579f9e38c6d0d5aa00d1415
+</A></li>
+        <LI>Next message: <A HREF="021401.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21397">[ date ]</a>
+              <a href="thread.html#21397">[ thread ]</a>
+              <a href="subject.html#21397">[ subject ]</a>
+              <a href="author.html#21397">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  b76266a559f5a8aad7470cd5abc7c38b94bdbf70 (commit)
+      from  e3fa36a46adeb8516579f9e38c6d0d5aa00d1415 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/terminal/_stdout.py |   49 ++++++-
+ x2go/client.py                    |   11 +-
+ x2go/defaults.py                  |   20 ++-
+ x2go/dropbox.py                   |  258 +++++++++++++++++++++++++++++++++++
+ x2go/dropboxactions.py            |  266 +++++++++++++++++++++++++++++++++++++
+ x2go/printactions.py              |   44 +++---
+ x2go/printqueue.py                |    7 +-
+ x2go/registry.py                  |   23 ----
+ x2go/session.py                   |   40 +++++-
+ x2go/utils.py                     |   17 +--
+ 10 files changed, 669 insertions(+), 66 deletions(-)
+ create mode 100644 x2go/dropbox.py
+ create mode 100644 x2go/dropboxactions.py
+
+The diff of changes is:
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 03d83d1..000980e 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -40,6 +40,7 @@ import copy
+ import x2go.rforward as rforward
+ import x2go.sftpserver as sftpserver
+ import x2go.printqueue as printqueue
++import x2go.dropbox as dropbox
+ import x2go.log as log
+ import x2go.defaults as defaults
+ import x2go.utils as utils
+@@ -487,7 +488,6 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;
+         self.print_queue.set_print_action(print_action, logger=self.logger, **kwargs)
+ 
+-
+     def stop_printing(self):
+         &quot;&quot;&quot;\
+         Shutdown (pause) the X2go Print Queue thread.
+@@ -496,6 +496,41 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.print_queue is not None:
+             self.print_queue.pause()
+ 
++    def start_dropbox(self, dropbox_extensions=[], dropbox_action=None):
++        &quot;&quot;&quot;\
++        Initialize X2go dropbox handling.
++
++        &quot;&quot;&quot;
++        dropbox_dir = os.path.join(self.session_info.local_container, 'dropbox')
++        if not os.path.exists(dropbox_dir):
++            os.mkdir(dropbox_dir)
++        self.share_local_folder(folder_name=dropbox_dir, folder_type='dropbox')
++        self.dropbox_queue = dropbox.X2goDropboxQueue(profile_name=self.profile_name,
++                                                      session_name=self.session_info.name,
++                                                      dropbox_dir=dropbox_dir,
++                                                      dropbox_extensions=dropbox_extensions,
++                                                      dropbox_action=dropbox_action,
++                                                      client_instance=self.client_instance,
++                                                      logger=self.logger,
++                                                     )
++        self.dropbox_queue.start()
++        self.active_threads.append(self.dropbox_queue)
++
++    def set_dropbox_action(self, dropbox_action, **kwargs):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self.dropbox_queue.set_dropbox_action(dropbox_action, logger=self.logger, **kwargs)
++
++    def stop_dropbox(self):
++        &quot;&quot;&quot;\
++        Shutdown (pause) the X2go Dropbox Queue thread.
++
++        &quot;&quot;&quot;
++        if self.dropbox_queue is not None:
++            self.dropbox_queue.pause()
++
+     def share_local_folder(self, folder_name=None, folder_type='disk'):
+         &quot;&quot;&quot;\
+         Share a local folder with the X2go session.
+@@ -583,6 +618,18 @@ class X2goTerminalSessionSTDOUT(object):
+                          'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
+                        ]
+ 
++        elif folder_type is 'dropbox':
++
++            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
++                         'x2gomountdirs', 
++                         'dir',
++                         str(self.session_info.name), 
++                         _CURRENT_LOCAL_USER,
++                         _x2go_key_fname,
++                         '%s__REVERSESSH_PORT__%s; ' % (folder_name, self.session_info.sshfs_port),
++                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
++                       ]
++
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+         self.logger('x2gomountdirs output is : %s' % stdout.read().split('\n'), log.loglevel_NOTICE)
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index a9fb1b3..f1db57a 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -277,6 +277,8 @@ class X2goClient(object):
+         self.logger('the Python X2go module could not find any usable XServer application, you will not be able to start X2go sessions without XServer', loglevel=log.loglevel_WARN)
+     def HOOK_open_print_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_open_print_dialog: incoming print job ,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
++    def HOOK_open_dropbox_saveas_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_open_dropbox_saveas_dialog: incoming dropbox job ,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
+     def HOOK_printaction_error(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN', err_msg='GENERIC_ERROR'):
+         self.logger('HOOK_printaction_error: incoming print job ,, %s'' caused error: %s' % (filename, err_msg), loglevel=log.loglevel_ERROR)
+     def HOOK_on_control_session_death(self, profile_name):
+@@ -437,9 +439,11 @@ class X2goClient(object):
+         return sessions
+ 
+     def register_session(self, server=None, profile_id=None, profile_name=None, session_name=None,
+-                         printing=False, allow_share_local_folders=False, share_local_folders=[], return_object=False,
++                         allow_printing=False, 
++                         allow_share_local_folders=False, share_local_folders=[], 
++                         allow_dropbox=False, dropbox_extensions=[], dropbox_action='OPEN',
+                          add_to_known_hosts=False, known_hosts=None, 
+-                         force=False, **kwargs):
++                         return_object=False, **kwargs):
+         &quot;&quot;&quot;\
+         Register a new X2go client session. Within one X2goClient 
+         instance you can manage several sessions on serveral
+@@ -529,6 +533,9 @@ class X2goClient(object):
+             _params['printing'] = printing
+             _params['allow_share_local_folders'] = allow_share_local_folders
+             _params['share_local_folders'] = share_local_folders
++            _params['allow_dropbox'] = allow_dropbox
++            _params['dropbox_extensions'] = dropbox_extensions
++            _params['dropbox_action'] = dropbox_action
+             _params['client_instance'] = self
+ 
+         session_uuid = self.session_registry.register(server=server,
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index dd567fe..959d7c0 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -48,10 +48,11 @@ if X2GOCLIENT_OS == &quot;Windows&quot;:
+     import win32api
+     CURRENT_LOCAL_USER = win32api.GetUserName()
+     X2GO_SSH_ROOTDIR = '.ssh'
+-    SUPPORTED_SOUND = False
++    SUPPORTED_SOUND = True
+     SUPPORTED_PRINTING = True
+     SUPPORTED_FOLDERSHARING = True
+-    
++    SUPPORTED_DROPBOX = True
++
+ elif X2GOCLIENT_OS == &quot;Linux&quot;:
+     ROOT_DIR = '/'
+     ETC_DIR = os.path.join(ROOT_DIR, 'etc', 'x2goclient')
+@@ -61,6 +62,7 @@ elif X2GOCLIENT_OS == &quot;Linux&quot;:
+     SUPPORTED_SOUND = True
+     SUPPORTED_PRINTING = True
+     SUPPORTED_FOLDERSHARING = True
++    SUPPORTED_DROPBOX = True
+ 
+ elif X2GOCLIENT_OS == &quot;Mac&quot;:
+     ROOT_DIR = '/'
+@@ -71,6 +73,7 @@ elif X2GOCLIENT_OS == &quot;Mac&quot;:
+     SUPPORTED_SOUND = True
+     SUPPORTED_PRINTING = True
+     SUPPORTED_FOLDERSHARING = True
++    SUPPORTED_DROPBOX = True
+ 
+ else:
+     import exceptions
+@@ -235,9 +238,8 @@ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'speed': 2, 'pack': '16m-jpeg', 'quality': 9, 'link':'ADSL',
+     'iconvto': 'UTF-8', 'iconvfrom': 'UTF-8', 'useiconv': False,
+     'usesshproxy': False, 'sshproxyhost': '', 'sshproxyuser': '', 'sshproxytunnel': '', 'sshproxykeyfile': '',
+-    'useexports': True,
+-    'fstunnel': True,
+-    'export': '',
++    'useexports': True, 'fstunnel': True, 'export': '',
++    'usedropbox': False, 'dropboxextensions': '', 'dropboxaction': 'OPEN',
+     'fullscreen': False,
+     'width': 800,'height': 600,'dpi': 96,'setdpi': False,
+     'usekbd':True, 'layout': 'us', 'type': 'pc105/us',
+@@ -340,3 +342,11 @@ DEFAULT_PDFSAVE_LOCATION = '~/PDF'
+ &quot;&quot;&quot;Default location for saving PDF files (PDFSAVE print action).&quot;&quot;&quot;
+ DEFAULT_PRINTCMD_CMD = 'lpr'
+ &quot;&quot;&quot;Default command for the PRINTCMD print action.&quot;&quot;&quot;
++
++X2GO_DROPBOX_ACTIONS = {
++    'OPEN': 'X2goDropboxActionOPEN',
++    'OPENWITH': 'X2goDropboxActionOPENWITH',
++    'SAVEAS': 'X2goDropboxActionSAVEAS',
++}
++&quot;&quot;&quot;Relating dropbox action names and classes.&quot;&quot;&quot;
++
+diff --git a/x2go/dropbox.py b/x2go/dropbox.py
+new file mode 100644
+index 0000000..858fcaa
+--- /dev/null
++++ b/x2go/dropbox.py
+@@ -0,0 +1,258 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++L{X2goDropboxQueue} sets up a thread that listens for incoming files that
++shall be opened locally on the client.
++
++For each file that gets dropped in the drop-box an individual 
++thread is started (L{X2goDropboxJob}) that handles the processing 
++of the incoming file.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2godropboxqueue-pylib'
++
++# modules
++import os
++import copy
++import types
++import threading
++import gevent
++
++# Python X2go modules
++import defaults
++import utils
++import log
++import dropboxactions
++
++if defaults.X2GOCLIENT_OS != 'Windows':
++    from x2go_exceptions import WindowsError
++
++
++class X2goDropboxQueue(threading.Thread):
++    &quot;&quot;&quot;\
++    If the X2go drop-box is supported in a particaluar L{X2goSession} instance
++    this class provides a sub-thread for handling incoming files in the drop-box
++    directory. The actual handling of a dropped file is handled by the classes
++    L{X2goDropboxActionOPEN}, L{X2goDropboxActionOPENWITH} and L{X2goDropboxActionSAVEAS}.
++
++    &quot;&quot;&quot;
++    dropbox_action = None
++
++    dropbox = None
++    active_jobs = {}
++    dropbox_history = []
++
++    def __init__(self, profile_name='UNKNOWN', session_name='UNKNOWN', 
++                       dropbox_dir=None, dropbox_action=None, dropbox_extensions=[],
++                       client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        @param profile_name: name of the session profile this print queue belongs to
++        @type profile_name: C{str}
++        @param dropbox_dir: local directory for incoming dropbox files
++        @type dropbox_dir: C{str}
++        @param dropbox_action: name or instance of either of the possible X2go print action classes
++        @type dropbox_action: C{str} or instance
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goPrintQueue} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        self.profile_name = profile_name
++        self.session_name = session_name
++        self.dropbox_dir = dropbox_dir
++        self.dropbox_extensions = dropbox_extensions
++        self.client_instance = client_instance
++        self.client_rootdir = client_instance.get_client_rootdir()
++
++        if dropbox_action is None:
++            dropbox_action = dropbox_actions.X2goDropboxActionOPEN(client_instance=self.client_instance, logger=self.logger, **dropbox_action_args)
++        elif type(dropbox_action) is types.StringType:
++            dropbox_action = self.set_dropbox_action(dropbox_action)
++        else:
++            # hope it's already an instance...
++            self.dropbox_action = dropbox_action
++
++        threading.Thread.__init__(self)
++        self.daemon = True
++        self._accept_jobs = True
++
++    def __del__(self):
++        self.stop_thread()
++
++    def pause(self):
++        &quot;&quot;&quot;\
++        Prevent acceptance of new incoming files. The processing of dropbox jobs that 
++        are currently still active will be completed, though.
++
++        &quot;&quot;&quot;
++        if self._accept_jobs == True:
++            self._accept_jobs = False
++            self.logger('paused thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
++
++    def resume(self):
++        &quot;&quot;&quot;\
++        Resume operation of the X2go dropbox queue and continue accepting new incoming 
++        files.
++
++        &quot;&quot;&quot;
++        if self._accept_jobs == False:
++            self._accept_jobs = True
++            self.logger('resumed thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
++
++    def stop_thread(self):
++        &quot;&quot;&quot;\
++        Stops this L{X2goDropboxQueue} thread completely.
++
++        &quot;&quot;&quot;
++        self.pause()
++        self._keepalive = False
++        self.logger('stopping thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
++
++    @property
++    def _incoming_dropbox_jobs(self):
++        l = os.listdir(self.dropbox_dir)
++        dropbox_jobs = []
++        for _ext in self.dropbox_extensions:
++            dropbox_jobs.extend([ dj for dj in l if dj.upper().endswith(_ext.upper()) ])
++        else:
++            dropbox_jobs = l
++        return [ dj for dj in dropbox_jobs if dj not in self.active_jobs.keys() ]
++
++    def set_dropbox_action(self, dropbox_action, **kwargs):
++        &quot;&quot;&quot;\
++        Modify the dropbox action of this L{X2goDropboxQueue} thread during runtime. The 
++        change of the dropbox action will be valid for the next incoming file in the dropbox
++        directory.
++
++        &quot;&quot;&quot;
++        if dropbox_action in defaults.X2GO_DROPBOX_ACTIONS.keys():
++            dropbox_action = defaults.X2GO_DROPBOX_ACTIONS[dropbox_action]
++
++        if dropbox_action in defaults.X2GO_DROPBOX_ACTIONS.values():
++            self.dropbox_action = eval ('dropboxactions.%s(**kwargs)' % dropbox_action)
++
++    def run(self):
++        &quot;&quot;&quot;\
++        Start this L{X2goDropboxQueue} thread...
++
++        &quot;&quot;&quot;
++        self.logger('starting dropbox queue thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
++
++        self._keepalive = True
++        while self._keepalive:
++
++            while self._accept_jobs:
++
++                if self._incoming_dropbox_jobs:
++
++                    for _job in self._incoming_dropbox_jobs:
++                        self.logger('processing incoming X2go dropbox job: %s' % _job, loglevel=log.loglevel_NOTICE)
++                        _new_dropboxjob_thread = X2goDropboxJob(target=x2go_dropboxjob_handler,
++                                                                kwargs={ 
++                                                                  'dropbox_file': _job,
++                                                                  'dropbox_extensions': self.dropbox_extensions,
++                                                                  'dropbox_action': self.dropbox_action,
++                                                                  'parent_thread': self, 
++                                                                  'logger': self.logger, 
++                                                                }
++                                                               )
++                        self.active_jobs['%s' % _job] = _new_dropboxjob_thread
++                        _new_dropboxjob_thread.start()
++
++                gevent.sleep(3)
++
++            gevent.sleep(1)
++
++
++def x2go_dropboxjob_handler(dropbox_file=None, 
++                            dropbox_extensions=[],
++                            dropbox_action=None,
++                            parent_thread=None, logger=None, ):
++    &quot;&quot;&quot;\
++    This function is called as a handler function for each incoming X2go print job 
++    represented by the class L{X2goPrintJob}.
++
++    @param dropbox_file: PDF file name as placed in to the X2go spool directory
++    @type dropbox_file: C{str}
++    @param dropbox_action: an instance of either of the possible C{X2goPrintActionXXX} classes
++    @type dropbox_action: C{X2goPrintActionXXX} nstance
++    @param parent_thread: the L{X2goPrintQueue} thread that actually created this handler's L{X2goPrintJob} instance
++    @type parent_thread: C{instance}
++    @param logger: the L{X2goPrintQueue}'s logging instance
++    @type logger: C{instance}
++
++    &quot;&quot;&quot;
++    dropbox_action.profile_name = parent_thread.profile_name
++    dropbox_action.session_name = parent_thread.session_name
++
++    logger('action for printing is: %s' % dropbox_action, loglevel=log.loglevel_DEBUG)
++
++    _really_process = bool((not dropbox_extensions) or [ ext for ext in dropbox_extensions if dropbox_file.upper().endswith('.%s' % ext.upper()) ])
++    if _really_process: 
++        dropbox_action.do_process(dropbox_file=dropbox_file,
++                                  dropbox_dir=parent_thread.dropbox_dir,
++                                 )
++    else:
++        logger('file extension of dropbox file %s is prohibited by session profile configuration' % dropbox_file, loglevel=log.loglevel_WARN)
++
++    logger('removing dropbox file %s' % dropbox_file, loglevel=log.loglevel_DEBUG)
++
++    utils.patiently_remove_file(parent_thread.dropbox_dir, dropbox_file)
++    logger('removed print job file %s' % dropbox_file, loglevel=log.loglevel_DEBUG)
++
++    del parent_thread.active_jobs['%s' % dropbox_file]
++    parent_thread.dropbox_history.append(dropbox_file)
++    # in case we do a lot of dropbox file exports we do not want to risk an
++    # endlessly growing dropbox job history
++    if len(parent_thread.dropbox_history) &gt; 100:
++        parent_thread.dropbox_history = parent_thread.dropbox_history[-100:]
++
++
++class X2goDropboxJob(threading.Thread):
++    &quot;&quot;&quot;\
++    For each X2go dropbox job we create a sub-thread that let's 
++    the dropbox job be processed in the background.
++
++    As a handler for this class the function L{x2go_dropboxjob_handler()} 
++    is used.
++
++    &quot;&quot;&quot;
++    def __init__(self, **kwargs):
++        &quot;&quot;&quot;\
++        Construct the X2go dropbox job thread...
++
++        All parameters (**kwargs) are passed through to the constructor
++        of C{threading.Thread()}.
++
++        &quot;&quot;&quot;
++        threading.Thread.__init__(self, **kwargs)
++        self.daemon = True
+diff --git a/x2go/dropboxactions.py b/x2go/dropboxactions.py
+new file mode 100644
+index 0000000..2fb149b
+--- /dev/null
++++ b/x2go/dropboxactions.py
+@@ -0,0 +1,266 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++For dropbox jobs there are currently two handling actions available:
++L{X2goDropboxActionOPEN}, L{X2goDropboxActionOPENWITH} and L{X2goDropboxActionSAVEAS}.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2godropboxactions-pylib'
++
++# modules
++import os
++import sys
++import shutil
++import copy
++import types
++import threading
++import time
++
++from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
++if _X2GOCLIENT_OS in (&quot;Windows&quot;):
++    import subprocess
++    import win32api
++else:
++    import gevent_subprocess as subprocess
++
++# Python X2go modules
++import log
++import defaults
++# we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
++import utils
++import x2go_exceptions
++
++_DROPBOX_ENV = os.environ.copy()
++
++
++class X2goDropboxAction(object):
++
++    __name__ = 'NAME'
++    __description__ = 'DESCRIPTION'
++
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        This is a meta class and has no functionality as such. It is used as parent 
++        class by &#187;real&#171; X2go dropbox actions.
++
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goDropboxAction} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        # these get set from within the X2goDropboxQueue class
++        self.profile_name = 'UNKNOWN'
++        self.session_name = 'UNKNOWN'
++
++        self.client_instance = client_instance
++
++    @property
++    def name():
++        &quot;&quot;&quot;\
++        Return the X2go dropbox action's name.
++
++        &quot;&quot;&quot;
++        return self.__name__
++
++    @property
++    def description():
++        &quot;&quot;&quot;\
++        Return the X2go dropbox action's description text.
++
++        &quot;&quot;&quot;
++        return self.__description__
++
++    def do_process(self, dropbox_file, dropbox_dir, ):
++        &quot;&quot;&quot;\
++        Perform the defined dropbox action (doing nothing in L{X2goDropboxAction} parent class).
++
++        @param dropbox_file: file name as placed in to the X2go dropbox directory
++        @type dropbox_file: C{str}
++        @param dropbox_dir: location of the X2go sessions's dropbox directory
++        @type dropbox_dir: C{str}
++
++        &quot;&quot;&quot;
++        pass
++
++
++class X2goDropboxActionOPEN(X2goDropboxAction):
++    &quot;&quot;&quot;\
++    Dropbox action that opens incoming files in the default application.
++
++    &quot;&quot;&quot;
++    __name__= 'OPEN'
++    __decription__= 'Open incoming file with local system\'s default application.'
++
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goDropboxActionOPEN} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        self.client_instance = client_instance
++        X2goDropboxAction.__init__(self, logger=logger, loglevel=loglevel)
++
++    def do_process(self, dropbox_file, dropbox_dir, ):
++        &quot;&quot;&quot;\
++        Open an incoming dropbox file in the system's default application.
++
++        @param dropbox_file: file name as placed in to the dropbox directory
++        @type dropbox_file: C{str}
++        @param dropbox_dir: location of the X2go session's dropbox directory
++        @type dropbox_dir: C{str}
++
++        &quot;&quot;&quot;
++        if _X2GOCLIENT_OS == &quot;Windows&quot;:
++            self.logger('opening incoming dropbox file with Python\'s os.startfile() command: %s' % dropbox_file, loglevel=log.loglevel_DEBUG)
++            try:
++                os.startfile(os.path.join(dropbox_dir, dropbox_file))
++            except WindowsError, win_err:
++                if self.client_instance:
++                    self.client_instance.HOOK_dropboxaction_error(dropbox_file,
++                                                                  profile_name=self.profile_name,
++                                                                  session_name=self.session_name,
++                                                                  err_msg=str(win_err)
++                                                                 )
++                else:
++                    self.logger('Encountered WindowsError: %s' % str(win_err), loglevel=log.loglevel_ERROR)
++            time.sleep(20)
++        else:
++            cmd_line = [ 'xdg-open', os.path.join(dropbox_dir, dropbox_file), ]
++            self.logger('opening dropbox file with command: %s' % ' '.join(cmd_line), loglevel=log.loglevel_DEBUG)
++            p = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=_DROPBOX_ENV)
++            time.sleep(20)
++
++
++class X2goDropboxActionOPENWITH(X2goDropboxAction):
++    &quot;&quot;&quot;\
++    Dropbox action that calls the system's ,,Open with...'' dialog on incoming files. Currently only
++    properly implementable on Windows platforms.
++
++    &quot;&quot;&quot;
++    __name__= 'OPENWITH'
++    __decription__= 'Evoke ,,Open with...\'\' dialog on incoming dropbox files.'
++
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goDropboxActionOPENWITH} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        self.client_instance = client_instance
++        X2goDropboxAction.__init__(self, logger=logger, loglevel=loglevel)
++
++    def do_process(self, dropbox_file, dropbox_dir, ):
++        &quot;&quot;&quot;\
++        Open an incoming dropbox file in the system's default application.
++
++        @param dropbox_file: file name as placed in to the dropbox directory
++        @type dropbox_file: C{str}
++        @param dropbox_dir: location of the X2go session's dropbox directory
++        @type dropbox_dir: C{str}
++
++        &quot;&quot;&quot;
++        if _X2GOCLIENT_OS == &quot;Windows&quot;:
++            self.logger('evoking Open-with dialog on incoming dropbox file: %s' % dropbox_file, loglevel=log.loglevel_DEBUG)
++            win32api.ShellExecute (
++                  0,
++                  &quot;open&quot;,
++                  &quot;rundll32.exe&quot;,
++                  &quot;shell32.dll,OpenAs_RunDLL %s&quot; % os.path.join(dropbox_dir, dropbox_file),
++                  None,
++                  0,
++            )
++            time.sleep(20)
++        else:
++            self.logger('the evocation of the Open-with dialog box is currently not available on Linux, falling back to dropbox action OPEN', loglevel=log.loglevel_WARN)
++            cmd_line = [ 'xdg-open', os.path.join(dropbox_dir, dropbox_file), ]
++            self.logger('opening dropbox file with command: %s' % ' '.join(cmd_line), loglevel=log.loglevel_DEBUG)
++            p = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=_DROPBOX_ENV)
++            time.sleep(20)
++
++
++class X2goDropboxActionSAVEAS(X2goDropboxAction):
++    &quot;&quot;&quot;\
++    Dropbox action that allows saving incoming dropbox files to a local folder. What this 
++    dropbox actually does is calling a hook method in the L{X2goClient} instance that
++    can be hi-jacked by one of your application's methods which then can handle the ,,Save as...''
++    request.
++
++    &quot;&quot;&quot;
++    __name__ = 'SAVEAS'
++    __decription__= 'Save incoming file as...'
++
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        @param client_instance: an L{X2goClient} instance, within your customized L{X2goClient} make sure 
++            you have a C{HOOK_open_dropbox_saveas_dialog(filename=&lt;str&gt;)} method defined that will actually
++            handle the incoming dropbox file.
++        @type client_instance: C{instance}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goDropboxActionSAVEAS} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        if client_instance is None:
++            raise x2go_exceptions.X2goDropboxActionException('the SAVEAS dropbox action needs to know the X2goClient instance (client=&lt;instance&gt;)')
++        X2goDropboxAction.__init__(self, client_instance=client_instance, logger=logger, loglevel=loglevel)
++
++    def do_process(self, dropbox_file, dropbox_dir):
++        &quot;&quot;&quot;\
++        Call an L{X2goClient} hook method (C{HOOK_open_dropbox_saveas_dialog}) that
++        can handle the dropbox's SAVEAS action.
++
++        @param dropbox_file: file name as placed in to the dropbox directory
++        @type dropbox_file: C{str}
++        @param dropbox_dir: location of the X2go session's dropbox directory
++        @type dropbox_dir: C{str}
++        @param dropbox_file: PDF file name as placed in to the X2go spool directory
++
++        &quot;&quot;&quot;
++        self.logger('Session %s (%s) is calling X2goClient class hook method &lt;client_instance&gt;.HOOK_open_dropbox_saveas_dialog(%s)' % (self.session_name, self.profile_name, self.dropbox_file), loglevel=log.loglevel_NOTICE)
++        self.client_instance.HOOK_open_dropbox_saveas_dialog(os.path.join(dropbox_dir, dropbox_file), profile_name=self.profile_name, session_name=self.session_name)
++        time.sleep(60)
++
+diff --git a/x2go/printactions.py b/x2go/printactions.py
+index 4b8c66b..3f084e5 100644
+--- a/x2go/printactions.py
++++ b/x2go/printactions.py
+@@ -59,11 +59,13 @@ class X2goPrintAction(object):
+     __name__ = 'NAME'
+     __description__ = 'DESCRIPTION'
+ 
+-    def __init__(self, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        This is a meta class has no functionality. It is used as parent class by &#187;real&#171;
+-        X2go print actions.
++        This is a meta class and has no functionality as such. It is used as parent 
++        class by &#187;real&#171; X2go print actions.
+ 
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintAction} constructor
+         @type logger: C{instance}
+@@ -82,6 +84,8 @@ class X2goPrintAction(object):
+         self.profile_name = 'UNKNOWN'
+         self.session_name = 'UNKNOWN'
+ 
++        self.client_instance = client_instance
++
+     @property
+     def name():
+         &quot;&quot;&quot;\
+@@ -139,6 +143,8 @@ class X2goPrintActionPDFVIEW(X2goPrintAction):
+ 
+     def __init__(self, client_instance=None, pdfview_cmd=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
+         @param pdfview_cmd: command that starts the external PDF viewer application
+         @type pdfview_cmd: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+@@ -152,8 +158,7 @@ class X2goPrintActionPDFVIEW(X2goPrintAction):
+         if pdfview_cmd is None:
+             pdfview_cmd = defaults.DEFAULT_PDFVIEW_CMD
+         self.pdfview_cmd = pdfview_cmd
+-        self.client_instance = client_instance
+-        X2goPrintAction.__init__(self, logger=logger, loglevel=loglevel)
++        X2goPrintAction.__init__(self, client_instance=client_instance, logger=logger, loglevel=loglevel)
+ 
+     def do_print(self, pdf_file, job_title, spool_dir, ):
+         &quot;&quot;&quot;\
+@@ -204,6 +209,8 @@ class X2goPrintActionPDFSAVE(X2goPrintAction):
+ 
+     def __init__(self, client_instance=None, save_to_folder=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
+         @param save_to_folder: saving location for incoming print jobs (PDF files)
+         @type save_to_folder: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+@@ -217,8 +224,7 @@ class X2goPrintActionPDFSAVE(X2goPrintAction):
+         if save_to_folder is None:
+             save_to_folder = os.path.expanduser(defaults.DEFAULT_PDFSAVE_LOCATION)
+         self.save_to_folder = save_to_folder
+-        self.client_instance = client_instance
+-        X2goPrintAction.__init__(self, logger=None, loglevel=loglevel)
++        X2goPrintAction.__init__(self, client_instance=client_instance, logger=None, loglevel=loglevel)
+ 
+     def do_print(self, pdf_file, job_title, spool_dir):
+         &quot;&quot;&quot;\
+@@ -252,10 +258,12 @@ class X2goPrintActionPRINT(X2goPrintAction):
+ 
+     def __init__(self, client_instance=None, printer=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
+         @param printer: name of the preferred printer, if C{None} the system's/user's default printer will be used
+         @type printer: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goPrintAction} constructor
++            L{X2goPrintActionPRINT} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+@@ -263,8 +271,7 @@ class X2goPrintActionPRINT(X2goPrintAction):
+ 
+         &quot;&quot;&quot;
+         self.printer = printer
+-        self.client_instance = client_instance
+-        X2goPrintAction.__init__(self, logger=logger, loglevel=loglevel)
++        X2goPrintAction.__init__(self, client_instance=client_instance, logger=logger, loglevel=loglevel)
+ 
+     def do_print(self, pdf_file, job_title, spool_dir, ):
+         &quot;&quot;&quot;\
+@@ -331,10 +338,12 @@ class X2goPrintActionPRINTCMD(X2goPrintAction):
+ 
+     def __init__(self, client_instance=None, print_cmd=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
++        @param client_instance: the underlying L{X2goClient} instance
++        @type client_instance: C{instance}
+         @param print_cmd: external command to be called on incoming print jobs
+         @type print_cmd: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goPrintAction} constructor
++            L{X2goPrintActionPRINTCMD} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+@@ -343,9 +352,8 @@ class X2goPrintActionPRINTCMD(X2goPrintAction):
+         &quot;&quot;&quot;
+         if print_cmd is None:
+             print_cmd = defaults.DEFAULT_PRINTCMD_CMD
+-        self.client_instance = client_instance
+         self.print_cmd = print_cmd
+-        X2goPrintAction.__init__(self, logger=logger, loglevel=loglevel)
++        X2goPrintAction.__init__(self, client_instance=client_instance, logger=logger, loglevel=loglevel)
+ 
+     def do_print(self, pdf_file, job_title, spool_dir):
+         &quot;&quot;&quot;\
+@@ -392,18 +400,16 @@ class X2goPrintActionDIALOG(X2goPrintAction):
+             open the print dialog.
+         @type client_instance: C{instance}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goPrintAction} constructor
++            L{X2goPrintActionDIALOG} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+-        if client_instance is not None:
+-            self.client_instance = client_instance
+-        else:
+-            raise x2go_exceptions.X2goPrintActionException('the DIALOG print actions needs to know the X2goClient instance (client=&lt;instance&gt;)')
+-        X2goPrintAction.__init__(self, logger=logger, loglevel=loglevel)
++        if client_instance is None:
++            raise x2go_exceptions.X2goPrintActionException('the DIALOG print action needs to know the X2goClient instance (client=&lt;instance&gt;)')
++        X2goPrintAction.__init__(self, client_instance=client_instance, logger=logger, loglevel=loglevel)
+ 
+     def do_print(self, pdf_file, job_title, spool_dir):
+         &quot;&quot;&quot;\
+diff --git a/x2go/printqueue.py b/x2go/printqueue.py
+index 647f879..f479760 100644
+--- a/x2go/printqueue.py
++++ b/x2go/printqueue.py
+@@ -29,7 +29,8 @@ of the incoming print job.
+ __NAME__ = 'x2goprintqueue-pylib'
+ 
+ # modules
+-import os, copy
++import os
++import copy
+ import threading
+ import gevent
+ 
+@@ -37,6 +38,8 @@ import gevent
+ import defaults
+ import utils
+ import log
++import printactions
++
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+@@ -159,7 +162,7 @@ class X2goPrintQueue(threading.Thread):
+             print_action = defaults.X2GO_PRINT_ACTIONS[print_action]
+ 
+         if print_action in defaults.X2GO_PRINT_ACTIONS.values():
+-            self.print_action = eval ('%s(**kwargs)' % print_action)
++            self.print_action = eval ('printactions.%s(**kwargs)' % print_action)
+ 
+     def run(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 3f0a423..6ba4e6b 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -283,19 +283,7 @@ class X2goSessionRegistry(object):
+             session_uuid = _virgin_sessions[0].get_uuid()
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+ 
+-            try: del _params['server'] 
+-            except: pass
+-            try: del _params['printing'] 
+-            except: pass
+-            try: del _params['share_local_folders'] 
+-            except: pass
+-            try: del _params['profile_name']
+-            except: pass
+-            try: del _params['profile_id'] 
+-            except: pass
+-
+             self(session_uuid).update_params(_params)
+-
+             self.logger('using already initially-registered yet-unused session %s' % session_uuid, log.loglevel_NOTICE)
+             return session_uuid
+ 
+@@ -303,17 +291,6 @@ class X2goSessionRegistry(object):
+             session_uuid = self.get_session_of_session_name(session_name)
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+ 
+-            try: del _params['server'] 
+-            except: pass
+-            try: del _params['printing'] 
+-            except: pass
+-            try: del _params['share_local_folders'] 
+-            except: pass
+-            try: del _params['profile_name']
+-            except: pass
+-            try: del _params['profile_id'] 
+-            except: pass
+-
+             self(session_uuid).update_params(_params)
+             self.logger('using already registered-by-session-name session %s' % session_uuid, log.loglevel_NOTICE)
+             return session_uuid
+diff --git a/x2go/session.py b/x2go/session.py
+index 5356acb..64937a2 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -49,7 +49,7 @@ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+ from defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+-from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARING
++from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARING, SUPPORTED_DROPBOX
+ 
+ # options of the paramiko.SSHClient().connect()
+ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+@@ -77,6 +77,9 @@ class X2goSession(object):
+                  profile_id=None, profile_name='UNKNOWN',
+                  session_name=None,
+                  printing=False,
++                 allow_dropbox=False,
++                 dropbox_extensions=[],
++                 dropbox_action='OPEN',
+                  allow_share_local_folders=False,
+                  share_local_folders=[],
+                  control_backend=_X2goControlSession,
+@@ -129,6 +132,9 @@ class X2goSession(object):
+         self.printing = printing
+         self.allow_share_local_folders = allow_share_local_folders
+         self.share_local_folders = share_local_folders
++        self.allow_dropbox = allow_dropbox
++        self.dropbox_extensions = dropbox_extensions
++        self.dropbox_action = dropbox_action
+         self._control_backend = control_backend
+         self._terminal_backend = terminal_backend
+         self._info_backend = info_backend
+@@ -237,6 +243,27 @@ class X2goSession(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
++        try: del params['server'] 
++        except KeyError: pass
++        try: del params['profile_name']
++        except KeyError: pass
++        try: del params['profile_id'] 
++        except KeyError: pass
++        try: del params['printing'] 
++        except KeyError: pass
++        try: del params['allow_share_local_folders']
++        except KeyError: pass
++        try: del params['share_local_folders'] 
++        except KeyError: pass
++        try: del params['allow_dropbox']
++        except KeyError: pass
++        try: del params['dropbox_extensions']
++        except KeyError: pass
++        try: del params['dropbox_action']
++        except KeyError: pass
++        try: del params['use_sshproxy']
++        except KeyError: pass
++
+         _terminal_params = copy.deepcopy(params)
+         _control_params = copy.deepcopy(params)
+         _sshproxy_params = copy.deepcopy(params)
+@@ -250,10 +277,6 @@ class X2goSession(object):
+             else:
+                 del _sshproxy_params[p]
+                 del _terminal_params[p]
+-        try: del _sshproxy_params['use_sshproxy']
+-        except KeyError: pass
+-        try: del _control_params['allow_share_local_folders']
+-        except KeyError: pass
+ 
+         self.control_params.update(_control_params)
+         self.terminal_params.update(_terminal_params)
+@@ -563,7 +586,9 @@ class X2goSession(object):
+                     _terminal.start_sound()
+ 
+ 
+-                if (SUPPORTED_PRINTING and self.printing) or (SUPPORTED_FOLDERSHARING and self.allow_share_local_folders and self.share_local_folders):
++                if (SUPPORTED_PRINTING and self.printing) or \
++                   (SUPPORTED_DROPBOX and self.allow_dropbox) or \
++                   (SUPPORTED_FOLDERSHARING and self.allow_share_local_folders and self.share_local_folders):
+                     _terminal.start_sshfs()
+ 
+                 try:
+@@ -572,6 +597,9 @@ class X2goSession(object):
+                 except X2goUserException:
+                     pass
+ 
++                if SUPPORTED_DROPBOX and self.allow_dropbox:
++                        _terminal.start_dropbox(dropbox_extensions=self.dropbox_extensions, dropbox_action=self.dropbox_action)
++
+                 if SUPPORTED_FOLDERSHARING and self.share_local_folders:
+                     if _control.get_transport().reverse_tunnels[_terminal.get_session_name()]['sshfs'][1] is not None:
+                         for _folder in self.share_local_folders:
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 37eca39..389127c 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -33,6 +33,7 @@ import paramiko
+ # Python X2go modules
+ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ from defaults import X2GO_SESSIONPROFILE_DEFAULTS as _X2GO_SESSIONPROFILE_DEFAULTS
++from defaults import X2GO_DROPBOX_ACTIONS as _X2GO_DROPBOX_ACTIONS
+ from defaults import _pack_methods_nx3
+ 
+ def is_in_nx3packmethods(method):
+@@ -126,6 +127,9 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sshport': 'port',
+             'useexports': 'allow_share_local_folders',
+             'export': 'share_local_folders',
++            'usedropbox': 'allow_dropbox',
++            'dropboxextensions': 'dropbox_extensions',
++            'dropboxaction': 'dropbox_action',
+             'print': 'printing',
+             'name': 'profile_name',
+             'key': 'key_filename',
+@@ -168,18 +172,12 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+                 _params['link'] = val
+ 
+             # share_local_folders is a list
+-            if opt == 'share_local_folders':
++            if opt in ('share_local_folders', 'dropbox_extensions'):
+                 if type(val) is types.StringType:
+                     if val:
+-                        _params[opt] = _params[opt].split(',')
++                        _params[opt] = val.split(',')
+                     else:
+                         _params[opt] = []
+-                    #del _params['export']
+-                    if not _options['fstunnel']:
+-                        _params[opt] = None
+-
+-            if not val:
+-                val = None
+ 
+         # append value for quality to value for pack method
+         if _params['quality']:
+@@ -206,6 +204,9 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             _params['session_type'] = 'desktop'
+         del _params['rootless']
+ 
++        if _params['dropbox_action'] not in _X2GO_DROPBOX_ACTIONS.keys():
++            _params['dropbox_action'] = 'OPEN'
++
+         # currently known but ignored in Python X2go
+         _ignored_options = [
+             'dpi',
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021393.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	e3fa36a46adeb8516579f9e38c6d0d5aa00d1415
+</A></li>
+	<LI>Next message: <A HREF="021401.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21397">[ date ]</a>
+              <a href="thread.html#21397">[ thread ]</a>
+              <a href="subject.html#21397">[ subject ]</a>
+              <a href="author.html#21397">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

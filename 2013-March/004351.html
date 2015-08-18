@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-67-gaa84ed4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20tornado%20%28branch%29%20updated%3A%0A%090.0.0.5-67-gaa84ed4&In-Reply-To=%3C20130306091806.B0A415DB14%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004350.html">
+   <LINK REL="Next"  HREF="004352.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-67-gaa84ed4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20tornado%20%28branch%29%20updated%3A%0A%090.0.0.5-67-gaa84ed4&In-Reply-To=%3C20130306091806.B0A415DB14%40ymir%3E"
+       TITLE="[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-67-gaa84ed4">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Mar  6 10:18:06 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004350.html">[X2go-Commits] python-tornado.git - master (branch) updated:	debian/2.3-2-3-gb4e7402
+</A></li>
+        <LI>Next message: <A HREF="004352.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-69-g620cf77
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4351">[ date ]</a>
+              <a href="thread.html#4351">[ thread ]</a>
+              <a href="subject.html#4351">[ subject ]</a>
+              <a href="author.html#4351">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, tornado has been updated
+       via  aa84ed46e7d201c60b72b70b2be26c02bdbcecee (commit)
+      from  d1b123d29807d11997c79697ac7b998264ed2fea (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit aa84ed46e7d201c60b72b70b2be26c02bdbcecee
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Mar 6 10:17:22 2013 +0100
+
+    Add workaround to handle bug #138 in x2goclient.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    1 +
+ x2gobroker/web/plain.py |    9 +++++++++
+ 2 files changed, 10 insertions(+)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 4d452a2..58fad73 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -10,6 +10,7 @@ x2gobroker (0.0.0.6-0~x2go1) UNRELEASED; urgency=low
+       runs as super-user root).
+     - Switch from webpy to using tornado as http engine.
+     - Divert tornado log requests into the broker's logger instances.
++    - Add workaround to handle bug #138 in x2goclient.
+   * /debian/*.default:
+     - Be more explanatory about the X2GOBROKER_DEBUG option and allow
+       to enable debug mode for the different services independently.
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/plain.py
+index 006a539..0505573 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/web/plain.py
+@@ -22,6 +22,7 @@
+ 
+ # modules
+ import tornado.web
++from tornado.escape import native_str, parse_qs_bytes
+ import types
+ 
+ # Python X2Go Broker modules
+@@ -41,6 +42,8 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+         for http_header_item in self.http_header_items.keys():
+             self.add_header(http_header_item, self.http_header_items[http_header_item])
+ 
++    def initialize(self, **kwargs):
++
+     def get(self, backend):
+         if x2gobroker.defaults.X2GOBROKER_DEBUG:
+             self._gen_http_header()
+@@ -66,6 +69,12 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+         if not broker_backend.is_enabled():
+             raise tornado.web.HTTPError(404)
+ 
++        # FIXME: this is to work around a bug in X2Go Client (<A HREF="http://bugs.x2go.org/138">http://bugs.x2go.org/138</A>)
++        content_type = self.request.headers.get(&quot;Content-Type&quot;, &quot;&quot;)
++        if not content_type.startswith(&quot;application/x-www-form-urlencoded&quot;):
++            for name, values in parse_qs_bytes(native_str(self.request.body)).iteritems():
++                self.request.arguments.setdefault(name, []).extend(values)
++
+         # set the client address for the broker backend
+         ip = self.request.remote_ip
+         if ip:
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004350.html">[X2go-Commits] python-tornado.git - master (branch) updated:	debian/2.3-2-3-gb4e7402
+</A></li>
+	<LI>Next message: <A HREF="004352.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-69-g620cf77
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4351">[ date ]</a>
+              <a href="thread.html#4351">[ thread ]</a>
+              <a href="subject.html#4351">[ subject ]</a>
+              <a href="author.html#4351">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

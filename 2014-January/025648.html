@@ -1,0 +1,543 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-9-gf7d6e95
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-9-gf7d6e95&In-Reply-To=%3C20140108143116.146E25DC25%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025634.html">
+   <LINK REL="Next"  HREF="025730.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-9-gf7d6e95</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-9-gf7d6e95&In-Reply-To=%3C20140108143116.146E25DC25%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-9-gf7d6e95">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:31:16 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025634.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-12-g53ef903
+</A></li>
+        <LI>Next message: <A HREF="025730.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-18-gcf9e6e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25648">[ date ]</a>
+              <a href="thread.html#25648">[ thread ]</a>
+              <a href="subject.html#25648">[ subject ]</a>
+              <a href="author.html#25648">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  f7d6e9545fd25b055a80d5442f94916d676f2e3f (commit)
+      from  feac4d0816d71ffe3fb3bf46c5dd0b9b919917ea (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    2 ++
+ x2go/client.py   |   11 ++++++++++
+ x2go/defaults.py |    4 ++--
+ x2go/session.py  |   59 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+ x2go/utils.py    |   10 +++++++--
+ 5 files changed, 77 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index dd87a28..c942d7b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,8 @@ python-x2go (0.2.0.11-0~x2go1) UNRELEASED; urgency=low
+     - Prepare for staying compatible with new SSH proxy feature
+       in X2Go Client.
+     - Add sshproxy_port option to session (SSH proxy) options.
++    - Implementation of session profile parameters ,,sshproxysameuser''
++      and ,,sshproxysameauth''.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index e52b535..8098270 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1197,6 +1197,17 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).check_host()
+     __check_session_host = check_session_host
+ 
++    def session_reuses_sshproxy_authinfo(self, session_uuid):
++        &quot;&quot;&quot;\
++        Check if session with unique identifier &lt;session_uuid&gt; is configured to re-use the X2Go session's
++        password / key for proxy authentication, as well.
++
++        @return: returns C{True} if the session is configured to re-use session password / key for proxy authentication
++        @rtype: C{bool}
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).reuses_sshproxy_authinfo()
++    __session_reuses_sshproxy_authinfo = session_reuses_sshproxy_authinfo
++
+     def session_uses_sshproxy(self, session_uuid):
+         &quot;&quot;&quot;\
+         Check if session with unique identifier &lt;session_uuid&gt; is configured to use an
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 61022c3..d08f146 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -295,7 +295,7 @@ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'autologin': False, 'autostart': False, 'setsessiontitle': False, 'sessiontitle': &quot;&quot;,
+     'speed': 2, 'pack': '16m-jpeg', 'quality': 9,
+     'iconvto': 'UTF-8', 'iconvfrom': 'UTF-8', 'useiconv': False,
+-    'usesshproxy': False, 'sshproxyhost': '', 'sshproxyport': 22, 'sshproxyuser': '', 'sshproxytunnel': '', 'sshproxykeyfile': '',
++    'usesshproxy': False, 'sshproxyhost': 'proxyhost.mydomain', 'sshproxyport': 22, 'sshproxyuser': '', 'sshproxytunnel': 'localhost:44444:server.mydomain.private:22', 'sshproxykeyfile': '',
+     'sshproxytype': 'SSH', 'sshproxysameuser': False, 'sshproxysamepass': False, 'sshproxyautologin': False,
+     'useexports': True, 'fstunnel': True, 'export': '',
+     'usemimebox': False, 'mimeboxextensions': '', 'mimeboxaction': 'OPEN',
+@@ -304,7 +304,7 @@ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'usekbd': True, 'layout': 'us', 'type': 'pc105/us', 'variant': '',
+     'sound': False, 'soundsystem': 'pulse', 'startsoundsystem': False, 'soundtunnel':True, 'defsndport':True, 'sndport':4713,
+     'name': 'NEW_PROFILE', 'icon': ':icons/128x128/x2gosession.png',
+-    'host': '', 'user': CURRENT_LOCAL_USER, 'key': '', 'sshport': 22, 'krblogin': False,
++    'host': 'server.mydomain', 'user': CURRENT_LOCAL_USER, 'key': '', 'sshport': 22, 'krblogin': False,
+     'rootless': True, 'applications': X2GO_GENERIC_APPLICATIONS, 'command':'TERMINAL', 'published': False,
+     'directrdp': False, 'directrdpsettings': '', 'rdpclient': 'rdesktop', 'rdpport': 3389,
+     'rdpoptions': '-u X2GO_USER -p X2GO_PASSWORD', 'rdpserver': '',
+diff --git a/x2go/session.py b/x2go/session.py
+index 8609cbe..228c4bc 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -83,7 +83,8 @@ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+ from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARING, SUPPORTED_MIMEBOX
+ 
+-_X2GO_SESSION_PARAMS = ('use_sshproxy', 'profile_id', 'session_name',
++_X2GO_SESSION_PARAMS = ('use_sshproxy', 'sshproxy_reuse_authinfo',
++                        'profile_id', 'session_name',
+                         'auto_start_or_resume', 'auto_connect',
+                         'printing', 'allow_mimebox',
+                         'mimebox_extensions', 'mimebox_action',
+@@ -130,6 +131,7 @@ class X2goSession(object):
+     &quot;&quot;&quot;
+     def __init__(self, server=None, port=22, control_session=None,
+                  use_sshproxy=False,
++                 sshproxy_reuse_authinfo=False,
+                  profile_id=None, profile_name='UNKNOWN',
+                  session_name=None,
+                  auto_start_or_resume=False,
+@@ -164,6 +166,8 @@ class X2goSession(object):
+         @type control_session: C{X2goControlSession*} instance
+         @param use_sshproxy: for communication with X2Go server use an SSH proxy host
+         @type use_sshproxy: C{bool}
++        @param sshproxy_reuse_authinfo: for proxy authentication re-use the X2Go sessions password / key file
++        @type sshproxy_reuse_authinfo: C{bool}
+         @param profile_id: profile ID
+         @type profile_id: C{str}
+         @param profile_name: profile name
+@@ -296,6 +300,9 @@ class X2goSession(object):
+             if not re.match('.*_stRPUBLISHED_.*',self.session_name):
+                 self.published_applications = params['published_applications'] = False
+ 
++        self.use_sshproxy = use_sshproxy
++        self.sshproxy_reuse_authinfo = sshproxy_reuse_authinfo
++
+         self.control_params = {}
+         self.terminal_params = {}
+         self.sshproxy_params = {}
+@@ -323,7 +330,6 @@ class X2goSession(object):
+ 
+         self.add_to_known_hosts = add_to_known_hosts
+         self.known_hosts = known_hosts
+-        self.use_sshproxy = use_sshproxy
+ 
+         self._current_status = {
+             'timestamp': time.time(),
+@@ -717,6 +723,10 @@ class X2goSession(object):
+             del params['use_sshproxy']
+         except KeyError: pass
+         try:
++            self.sshproxy_reuse_authinfo = params['sshproxy_reuse_authinfo']
++            del params['sshproxy_reuse_authinfo']
++        except KeyError: pass
++        try:
+             self.auto_connect = params['auto_connect']
+             del params['auto_connect']
+         except KeyError: pass
+@@ -725,6 +735,14 @@ class X2goSession(object):
+             del params['auto_start_or_resume']
+         except KeyError: pass
+ 
++        if self.sshproxy_reuse_authinfo:
++            if params.has_key('key_filename'):
++                params['sshproxy_key_filename'] = params['key_filename']
++            if params.has_key('pkey'):
++                params['sshproxy_pkey'] = params['pkey']
++            if params.has_key('password'):
++                params['sshproxy_password'] = params['password']
++
+         _terminal_params = copy.deepcopy(params)
+         _control_params = copy.deepcopy(params)
+         _sshproxy_params = copy.deepcopy(params)
+@@ -992,6 +1010,18 @@ class X2goSession(object):
+         return self.use_sshproxy
+     __uses_sshproxy = uses_sshproxy
+ 
++    def reuses_sshproxy_authinfo(self):
++        &quot;&quot;&quot;\
++        Check if a session is configured to re-use the X2Go session's password / key for
++        proxy authentication, as well.
++
++        @return: returns C{True} if the session is configured to re-use session password / key for proxy authentication
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.sshproxy_reuse_authinfo
++    __reuses_sshproxy_authinfo = reuses_sshproxy_authinfo
++
+     def can_sshproxy_auto_connect(self):
+         &quot;&quot;&quot;\
+         Check if a session's SSH proxy (if used) is configured adequately to be able to auto-connect
+@@ -1065,7 +1095,7 @@ class X2goSession(object):
+     __do_auto_connect = do_auto_connect
+ 
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False,
+-                use_sshproxy=False, sshproxy_user='', sshproxy_password=''):
++                use_sshproxy=None, sshproxy_reuse_authinfo=False, sshproxy_user='', sshproxy_password=''):
+         &quot;&quot;&quot;\
+         Connects to the L{X2goSession}'s server host. This method basically wraps around 
+         the C{X2goControlSession*.connect()} method.
+@@ -1085,6 +1115,8 @@ class X2goSession(object):
+         @type force_password_auth: C{bool}
+         @param use_sshproxy: use an SSH proxy host for connecting the target X2Go server
+         @type use_sshproxy: C{bool}
++        @param sshproxy_reuse_authinfo: for proxy authentication re-use the X2Go sessions password / key file
++        @type sshproxy_reuse_authinfo: C{bool}
+         @param sshproxy_user: username for authentication against the SSH proxy host
+         @type sshproxy_user: C{str}
+         @param sshproxy_password: password for authentication against the SSH proxy host
+@@ -1102,6 +1134,13 @@ class X2goSession(object):
+             self.logger('control session is already connected, skipping authentication', loglevel=log.loglevel_DEBUG)
+             self.connected = True
+         else:
++
++            if use_sshproxy is not None:
++                self.use_sshproxy = use_sshproxy
++
++            if sshproxy_reuse_authinfo is not None:
++                self.sshproxy_reuse_authinfo = sshproxy_reuse_authinfo
++
+             if username:
+                 self.control_params['username'] = username
+             if add_to_known_hosts is not None:
+@@ -1110,10 +1149,20 @@ class X2goSession(object):
+                 self.control_params['force_password_auth'] = force_password_auth
+             if sshproxy_user:
+                 self.sshproxy_params['sshproxy_user'] = sshproxy_user
++
+             if sshproxy_password:
+                 self.sshproxy_params['sshproxy_password'] = sshproxy_password
++
+             self.control_params['password'] = password
+ 
++            if self.sshproxy_reuse_authinfo:
++                if self.control_params.has_key('key_filename'):
++                    self.sshproxy_params['sshproxy_key_filename'] = self.control_params['key_filename']
++                if _params.has_key('pkey'):
++                    self.sshproxy_params['sshproxy_pkey'] = self.control_params['pkey']
++                if params.has_key('password'):
++                    self.sshproxy_params['sshproxy_password'] = self.control_params['password']
++
+             _params = {}
+             _params.update(self.control_params)
+             _params.update(self.sshproxy_params)
+@@ -1123,8 +1172,8 @@ class X2goSession(object):
+ 
+             try:
+                 self.connected = self.control_session.connect(self.server,
+-                                                              use_sshproxy=self.use_sshproxy, 
+-                                                              session_instance=self, 
++                                                              use_sshproxy=self.use_sshproxy,
++                                                              session_instance=self,
+                                                               **_params)
+             except x2go_exceptions.X2goControlSessionException, e:
+                 raise x2go_exceptions.X2goSessionException(str(e))
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 4e8d468..6e2fd05 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -307,6 +307,14 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+         del _params['dpi']
+     del _params['setdpi']
+ 
++    if options['sshproxysameuser']:
++        _params['sshproxy_user'] = _params['username']
++    del _params['sshproxysameuser']
++    if options['sshproxysamepass']:
++        _params['sshproxy_reuse_authinfo'] = True
++        _params['sshproxy_key_filename'] = _params['key_filename']
++    del _params['sshproxysamepass']
++
+     # currently known but ignored in Python X2go
+     _ignored_options = [
+             'startsoundsystem',
+@@ -321,8 +329,6 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+             'rdpclient',
+             'rdpport',
+             'sshproxytype',
+-            'sshproxysameuser',
+-            'sshproxysamepass',
+             'sshproxyautologin',
+     ]
+     for i in _ignored_options:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025634.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-12-g53ef903
+</A></li>
+	<LI>Next message: <A HREF="025730.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-18-gcf9e6e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25648">[ date ]</a>
+              <a href="thread.html#25648">[ thread ]</a>
+              <a href="subject.html#25648">[ subject ]</a>
+              <a href="author.html#25648">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

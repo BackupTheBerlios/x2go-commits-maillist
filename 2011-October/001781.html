@@ -1,0 +1,170 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] nx-libs.git - test (branch) updated:	bb837ff692544d6fdec677b67420bd29e6f20c51
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20test%20%28branch%29%20updated%3A%0A%09bb837ff692544d6fdec677b67420bd29e6f20c51&In-Reply-To=%3C20111025071846.452E65DD11%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001780.html">
+   <LINK REL="Next"  HREF="001782.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] nx-libs.git - test (branch) updated:	bb837ff692544d6fdec677b67420bd29e6f20c51</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20test%20%28branch%29%20updated%3A%0A%09bb837ff692544d6fdec677b67420bd29e6f20c51&In-Reply-To=%3C20111025071846.452E65DD11%40ymir%3E"
+       TITLE="[X2go-Commits] nx-libs.git - test (branch) updated:	bb837ff692544d6fdec677b67420bd29e6f20c51">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Oct 25 09:18:46 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001780.html">[X2go-Commits] nx-libs.git - test (branch) updated:	0d9f994509a26a5230a3ed68134a0f7e1adef64f
+</A></li>
+        <LI>Next message: <A HREF="001782.html">[X2go-Commits] nx-libs.git - test (branch) updated:	a2674ead27db49a0330e93854dcb350695df53be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1781">[ date ]</a>
+              <a href="thread.html#1781">[ thread ]</a>
+              <a href="subject.html#1781">[ subject ]</a>
+              <a href="author.html#1781">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, test has been updated
+       via  bb837ff692544d6fdec677b67420bd29e6f20c51 (commit)
+      from  0d9f994509a26a5230a3ed68134a0f7e1adef64f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bb837ff692544d6fdec677b67420bd29e6f20c51
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Oct 25 09:18:42 2011 +0200
+
+    Create composition of lib+include files that need to be packaged in Debian package.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/libnx-x11-dev.install |    2 +-
+ debian/libnx-x11.install     |    4 +---
+ debian/post-build-nx.sh      |   23 +++++++++++++++++++++++
+ debian/pre-build-nx.sh       |    3 +++
+ debian/rules                 |    4 ++++
+ 5 files changed, 32 insertions(+), 4 deletions(-)
+ create mode 100755 debian/post-build-nx.sh
+ create mode 100755 debian/pre-build-nx.sh
+
+The diff of changes is:
+diff --git a/debian/libnx-x11-dev.install b/debian/libnx-x11-dev.install
+index 6ed62c5..3a29fcb 100644
+--- a/debian/libnx-x11-dev.install
++++ b/debian/libnx-x11-dev.install
+@@ -1,2 +1,2 @@
+-nx-X11/exports/include/*           usr/include/nx/X11
++nx-X11/.build-exports/include/*           usr/include/nx/X11
+ 
+diff --git a/debian/libnx-x11.install b/debian/libnx-x11.install
+index bc60adb..9dda743 100644
+--- a/debian/libnx-x11.install
++++ b/debian/libnx-x11.install
+@@ -1,4 +1,2 @@
+-nx-X11/lib/X11/lib*                usr/lib/nx/X11
+-nx-X11/lib/Xext/lib*               usr/lib/nx/X11
+-nx-X11/lib/Xrender/lib*            usr/lib/nx/X11
++nx-X11/.build-exports/lib/*        usr/lib/nx/X11
+ 
+diff --git a/debian/post-build-nx.sh b/debian/post-build-nx.sh
+new file mode 100755
+index 0000000..4c94956
+--- /dev/null
++++ b/debian/post-build-nx.sh
+@@ -0,0 +1,23 @@
++#!/bin/bash
++
++set -ex
++
++# create nx-X11/.build-exports
++mkdir -p nx-X11/.build-exports/include
++mkdir -p nx-X11/.build-exports/lib
++
++# copy headers (libnx-x11-dev)
++cp -aL nx-X11/exports/include/* nx-X11/.build-exports/include
++
++# copy libs (libnx-x11)
++find nx-X11/exports/lib/ | egrep &quot;^.*\.so$&quot; | while read libpath; do
++    libfile=$(basename $libpath)
++    libdir=$(dirname $libpath)
++    mkdir -p ${libdir//exports/.build-exports}
++    cp -L $libpath ${libdir//exports/.build-exports}
++    find $libdir/$libfile.* | while read symlink; do
++        ln -s $libfile ${libdir//exports/.build-exports}/$(basename $symlink)
++    done
++done
++
++exit 0
+\ No newline at end of file
+diff --git a/debian/pre-build-nx.sh b/debian/pre-build-nx.sh
+new file mode 100755
+index 0000000..92b94c4
+--- /dev/null
++++ b/debian/pre-build-nx.sh
+@@ -0,0 +1,3 @@
++#!/bin/sh
++
++exit 0
+\ No newline at end of file
+diff --git a/debian/rules b/debian/rules
+index faaa775..cb9ecd0 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -13,3 +13,7 @@ endif
+ 
+ override_dh_auto_install:
+ 
++override_dh_auto_build:
++	debian/pre-build-nx.sh
++	dh_auto_build
++	debian/post-build-nx.sh
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX libraries)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX libraries).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001780.html">[X2go-Commits] nx-libs.git - test (branch) updated:	0d9f994509a26a5230a3ed68134a0f7e1adef64f
+</A></li>
+	<LI>Next message: <A HREF="001782.html">[X2go-Commits] nx-libs.git - test (branch) updated:	a2674ead27db49a0330e93854dcb350695df53be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1781">[ date ]</a>
+              <a href="thread.html#1781">[ thread ]</a>
+              <a href="subject.html#1781">[ subject ]</a>
+              <a href="author.html#1781">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

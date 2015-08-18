@@ -1,0 +1,276 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	5164340eef38804b80c55d4ea075260904ce9ab9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%095164340eef38804b80c55d4ea075260904ce9ab9&In-Reply-To=%3C20140108142922.7A35A5DB72%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025470.html">
+   <LINK REL="Next"  HREF="025472.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	5164340eef38804b80c55d4ea075260904ce9ab9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%095164340eef38804b80c55d4ea075260904ce9ab9&In-Reply-To=%3C20140108142922.7A35A5DB72%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	5164340eef38804b80c55d4ea075260904ce9ab9">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:22 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025470.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-14-g1b4e804
+</A></li>
+        <LI>Next message: <A HREF="025472.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-16-gd71817b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25471">[ date ]</a>
+              <a href="thread.html#25471">[ thread ]</a>
+              <a href="subject.html#25471">[ subject ]</a>
+              <a href="author.html#25471">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  5164340eef38804b80c55d4ea075260904ce9ab9 (commit)
+      from  829d095ecba176e184989299c0b221167b56f5ab (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/profiles/sessions_file.py |   46 +++++++++++++++++++++++++------
+ x2go/backends/terminal/stdout.py        |    8 +++---
+ x2go/client.py                          |   13 +++++++++
+ x2go/defaults.py                        |    2 +-
+ 4 files changed, 56 insertions(+), 13 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/profiles/sessions_file.py b/x2go/backends/profiles/sessions_file.py
+index fe2c457..c9a1888 100644
+--- a/x2go/backends/profiles/sessions_file.py
++++ b/x2go/backends/profiles/sessions_file.py
+@@ -29,8 +29,9 @@ __NAME__ = 'x2gosessionprofiles-pylib'
+ import copy
+ 
+ # Python X2go modules
+-from x2go.defaults import X2GO_SESSIONPROFILES_CONFIGFILES
+-from x2go.defaults import X2GO_SESSIONPROFILE_DEFAULTS
++from x2go.defaults import X2GO_SESSIONPROFILES_CONFIGFILES as _X2GO_SESSIONPROFILES_CONFIGFILES
++from x2go.defaults import X2GO_SESSIONPROFILE_DEFAULTS as _X2GO_SESSIONPROFILE_DEFAULTS
++from x2go.defaults import X2GO_DESKTOPSESSIONS as _X2GO_DESKTOPSESSIONS
+ import x2go.inifiles as inifiles
+ import x2go.log as log
+ import x2go.utils as utils
+@@ -39,15 +40,17 @@ from x2go.x2go_exceptions import X2goProfileException
+ 
+ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+-    defaultSessionProfile = X2GO_SESSIONPROFILE_DEFAULTS
++    defaultSessionProfile = _X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-    def __init__(self, config_files=X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++
++    def __init__(self, config_files=_X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         self.defaultValues = {}
++        self._profile_metatypes = {}
+ 
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+@@ -62,8 +65,9 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         if utils._checkSessionProfileDefaults(session_profile_defaults):
+             self.defaultSessionProfile = session_profile_defaults
+ 
+-        self.session_profiles = self.iniConfig.sections()
++        self.session_profiles = [ p for p in self.iniConfig.sections() if p not in self._non_profile_sections ]
+         for session_profile in self.session_profiles:
++            self.get_profile_metatype(session_profile)
+             for key, default_value in self.defaultSessionProfile.iteritems():
+                 if not self.iniConfig.has_option(session_profile, key):
+                     self._storeValue(session_profile, key, default_value)
+@@ -77,6 +81,32 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         _profile_id = check_profile_id_or_name(self, profile_id_or_name)
+         return self.get_profile_config(_profile_id)
+ 
++    def get_profile_metatype(self, profile_id_or_name, force=False):
++
++        _profile_id = self.check_profile_id_or_name(profile_id_or_name)
++        if not self._profile_metatypes.has_key(_profile_id) or force:
++            _config = self.get_profile_config(_profile_id)
++            if _config['host']:
++                if _config['rdpserver'] and _config['command'] == 'RDP':
++                    _metatype = 'RDP/proxy'
++                elif _config['rootless']:
++                    _metatype = 'Single Applications'
++                else:
++                    if _config['command'] in _X2GO_DESKTOPSESSIONS.keys():
++                        _metatype = '%s Desktop' % _config['command']
++                    elif _config['command'] in _X2GO_DESKTOPSESSIONS.values():
++                        _metatype = '%s Desktop' % [ s for s in _X2GO_DESKTOPSESSIONS.keys() if _config['command'] == _X2GO_DESKTOPSESSIONS[s] ][0]
++                    else:
++                        _metatype = 'CUSTOM Desktop'
++            else:
++                if _config['rdpserver'] and _config['command'] == 'RDP':
++                    _metatype = 'RDP/direct'
++                else:
++                    _metatype = 'not supported'
++            self._profile_metatypes[_profile_id] = _metatype
++        else:
++            return self._profile_metatypes[_profile_id]
++
+     def get_profile_option_type(self, option):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -93,7 +123,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         _profile_config = {}
+         for option in self.iniConfig.options(_profile_id):
+             _profile_config[option] = self.get(_profile_id, option, key_type=self.get_profile_option_type(option))
+-        return _profile_config or None
++        return _profile_config
+ 
+     def has_profile(self, profile_id_or_name):
+         try:
+@@ -192,8 +222,8 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         elif self.has_profile_name(profile_id_or_name):
+             # we were given a sesion profile name...
+             _profile_id = self.to_profile_id(profile_id_or_name)
+-        if not _profile_id:
+-            raise X2goProfileException('No session profile with id or name %s exists.' % profile_id_or_name)
++        else:
++            raise X2goProfileException('No session profile with id or name ,,%s\'\' exists.' % profile_id_or_name)
+         return _profile_id
+ 
+     def to_session_params(self, profile_id_or_name):
+diff --git a/x2go/backends/terminal/stdout.py b/x2go/backends/terminal/stdout.py
+index 1f260ae..deb5ba5 100644
+--- a/x2go/backends/terminal/stdout.py
++++ b/x2go/backends/terminal/stdout.py
+@@ -62,8 +62,8 @@ def _rewrite_cmd(cmd, params=None):
+     cmd = cmd or ''
+ 
+     # find window manager commands
+-    if cmd in defaults.window_managers.keys():
+-        cmd = defaults.window_managers[cmd]
++    if cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
++        cmd = defaults.X2GO_DESKTOPSESSIONS[cmd]
+ 
+     if (cmd == 'RDP') and (type(params) == X2goSessionParams):
+         if params.geometry == 'fullscreen':
+@@ -116,10 +116,10 @@ class X2goSessionParams(object):
+             if cmd.startswith('rdesktop'):
+                 self.session_type = 'R'
+                 return
+-            elif cmd in defaults.window_managers.keys():
++            elif cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
+                 self.session_type = 'D'
+                 return
+-            elif os.path.basename(cmd) in defaults.window_managers.values():
++            elif os.path.basename(cmd) in defaults.X2GO_DESKTOPSESSIONS.values():
+                 self.session_type = 'D'
+                 return
+         self.session_type = 'R'
+diff --git a/x2go/client.py b/x2go/client.py
+index a63d669..3728439 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1124,6 +1124,19 @@ class X2goClient(object):
+         return self.session_profiles.to_profile_name(profile_id)
+     __to_profile_name = to_profile_name
+ 
++    def get_profile_metatype(self, profile_name):
++        &quot;&quot;&quot;\
++        Evaluate a session profile and return a human readable meta type
++        (classification) for the session profile C{profile_name}.
++
++        @param profile_name: a profile name
++        @type profile_name: C{str}
++
++        @return: the profile's meta type
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        return self.session_profiles.get_profile_metatype(profile_name)
++
+     def connected_profiles(self, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 6a2af2e..bea94b6 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -246,7 +246,7 @@ for meth in [ m for m in pack_methods_nx3 if &quot;%&quot; in m ]:
+ ## X2go session defaults
+ ##
+ 
+-window_managers={
++X2GO_DESKTOPSESSIONS={
+     'KDE': 'startkde',
+     'GNOME': 'gnome-session',
+     'LXDE': 'startlxde',
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025470.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-14-g1b4e804
+</A></li>
+	<LI>Next message: <A HREF="025472.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-16-gd71817b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25471">[ date ]</a>
+              <a href="thread.html#25471">[ thread ]</a>
+              <a href="subject.html#25471">[ subject ]</a>
+              <a href="author.html#25471">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,1275 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	3e9bd013e07df85ae426e58bc3c177cbb4f61977
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%093e9bd013e07df85ae426e58bc3c177cbb4f61977&In-Reply-To=%3C20130914135540.345CF5DB76%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012962.html">
+   <LINK REL="Next"  HREF="012971.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	3e9bd013e07df85ae426e58bc3c177cbb4f61977</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%093e9bd013e07df85ae426e58bc3c177cbb4f61977&In-Reply-To=%3C20130914135540.345CF5DB76%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	3e9bd013e07df85ae426e58bc3c177cbb4f61977">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:39 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012962.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-79-g614c2ab
+</A></li>
+        <LI>Next message: <A HREF="012971.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	eb792d5a5e1b2ba800f031ac6395c846cb6a5846
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12964">[ date ]</a>
+              <a href="thread.html#12964">[ thread ]</a>
+              <a href="subject.html#12964">[ subject ]</a>
+              <a href="author.html#12964">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  3e9bd013e07df85ae426e58bc3c177cbb4f61977 (commit)
+      from  eb792d5a5e1b2ba800f031ac6395c846cb6a5846 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ Makefile.pre-debuild                   |    2 +-
+ x2go/__init__.py                       |    2 +-
+ x2go/backends/control/_stdout.py       |    4 +
+ x2go/backends/printing/_file.py        |   23 ++-
+ x2go/backends/printing/_gconf.py       |   10 +-
+ x2go/backends/printing/_httpsbroker.py |   10 +-
+ x2go/backends/printing/_winreg.py      |   10 +-
+ x2go/backends/terminal/_stdout.py      |   22 ++-
+ x2go/client.py                         |   24 ++-
+ x2go/defaults.py                       |    5 +-
+ x2go/{printing.py =&gt; printactions.py}  |  305 +++++---------------------------
+ x2go/{mime_export.py =&gt; printqueue.py} |  131 ++++++--------
+ x2go/registry.py                       |    6 +
+ x2go/session.py                        |   48 +++--
+ x2go/x2go_exceptions.py                |    4 +-
+ 15 files changed, 206 insertions(+), 400 deletions(-)
+ rename x2go/{printing.py =&gt; printactions.py} (54%)
+ copy x2go/{mime_export.py =&gt; printqueue.py} (68%)
+
+The diff of changes is:
+diff --git a/Makefile.pre-debuild b/Makefile.pre-debuild
+index ab52ff4..b68def9 100644
+--- a/Makefile.pre-debuild
++++ b/Makefile.pre-debuild
+@@ -2,7 +2,7 @@
+ # Makefile.pre-debuild file - for python-x2go
+ # Copyright 2010 by Mike Gabriel, GPLv3 applies to this file
+ 
+-VERSION=0.0.25
++VERSION=0.0.26
+ DOC_HOST=packages.das-netzwerkteam.de
+ DOC_PATH=/srv/sites/das-netzwerkteam.de/packages/doc/python-x2go
+ DOC_USER=mike
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index a2c5c82..effdd92 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -153,7 +153,7 @@ Contact
+ &quot;&quot;&quot;
+ 
+ __NAME__    = 'python-x2go'
+-__VERSION__ = '0.0.25'
++__VERSION__ = '0.0.26'
+ 
+ from gevent import monkey
+ monkey.patch_all()
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 1d0a2f6..f3a3030 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -73,6 +73,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     associated_terminals = None
+ 
+     def __init__(self,
++                 profile_name='UNKNOWN',
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+@@ -88,6 +89,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.associated_terminals = {}
+         self.terminated_terminals = []
+ 
++        self.profile_name = profile_name
++
+         self._session_auth_rsakey = None
+         self._remote_home = None
+         self._remote_group = {}
+@@ -360,6 +363,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             session_info = None
+ 
+         _terminal = self._terminal_backend(self,
++                                           profile_name=self.profile_name,
+                                            session_info=session_info,
+                                            info_backend=self._info_backend,
+                                            list_backend=self._list_backend,
+diff --git a/x2go/backends/printing/_file.py b/x2go/backends/printing/_file.py
+index a17a84d..2497520 100644
+--- a/x2go/backends/printing/_file.py
++++ b/x2go/backends/printing/_file.py
+@@ -26,7 +26,7 @@ Use this class in your Python X2go based applications to access the &#187;printing&#171;
+ configuration of your X2go client application.
+ 
+ &quot;&quot;&quot;
+-__NAME__ = 'x2goprint-pylib'
++__NAME__ = 'x2goprinting-pylib'
+ 
+ # modules
+ import types
+@@ -34,7 +34,7 @@ import ConfigParser
+ 
+ # Python X2go modules
+ import x2go.log as log
+-import x2go.printing as printing
++import x2go.printactions as printactions
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+ from x2go.defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+@@ -57,7 +57,7 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+     _print_action = None
+     defaultValues = _X2GO_CLIENTPRINTING_DEFAULTS
+ 
+-    def __init__(self, config_files=_X2GO_PRINTING_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, config_files=_X2GO_PRINTING_CONFIGFILES, defaults=None, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param config_files: a list of configuration files names (e.g. a global filename and a user's home 
+             directory filename)
+@@ -73,6 +73,7 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+         @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
++        self.client_instance = client_instance
+         inifiles.X2goIniFile.__init__(self, config_files, defaults=defaults, logger=logger, loglevel=loglevel)
+ 
+         self._detect_print_action()
+@@ -87,26 +88,30 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+         _general_pdfview = self.get('General', 'pdfview', key_type=types.BooleanType)
+         _view_open = self.get('view', 'open', key_type=types.BooleanType)
+         _print_startcmd = self.get('print', 'startcmd', key_type=types.BooleanType)
++        _show_dialog = self.get('General', 'showdialog', key_type=types.BooleanType)
+ 
+-        if _general_pdfview and _view_open:
++        if _show_dialog and self.client_instance is not None:
++            self._print_action = printactions.X2goPrintActionDIALOG(client_instance=self.client_instance, logger=self.logger)
++
++        elif _general_pdfview and _view_open:
+             _view_command = self.get('view', 'command')
+-            self._print_action = printing.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
+ 
+         elif _general_pdfview and not _view_open:
+-            self._print_action = printing.X2goPrintActionPDFSAVE(logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFSAVE(logger=self.logger)
+ 
+         elif not _general_pdfview and not _print_startcmd:
+             _cups_defaultprinter = self.get('CUPS', 'defaultprinter')
+-            self._print_action = printing.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
+ 
+         elif not _general_pdfview and _print_startcmd:
+             _print_command = self.get('print', 'command')
+-            self._print_action = printing.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
+ 
+     @property
+     def print_action(self):
+         &quot;&quot;&quot;\
+-        Return the print action described by the &#187;printing&#171; configuration file.
++        Return the print action described by the &#187;Bprinting&#171; configuration file.
+ 
+         &quot;&quot;&quot;
+         return self._print_action
+diff --git a/x2go/backends/printing/_gconf.py b/x2go/backends/printing/_gconf.py
+index e869423..89d72f4 100644
+--- a/x2go/backends/printing/_gconf.py
++++ b/x2go/backends/printing/_gconf.py
+@@ -34,7 +34,7 @@ import ConfigParser
+ 
+ # Python X2go modules
+ import x2go.log as log
+-import x2go.printing as printing
++import x2go.printactions as printactions
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+ from x2go.defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+@@ -90,18 +90,18 @@ class X2goClientPrintingGCONF(inifiles.X2goIniFile):
+ 
+         if _general_pdfview and _view_open:
+             _view_command = self.get('view', 'command')
+-            self._print_action = printing.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
+ 
+         elif _general_pdfview and not _view_open:
+-            self._print_action = printing.X2goPrintActionPDFSAVE(logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFSAVE(logger=self.logger)
+ 
+         elif not _general_pdfview and not _print_startcmd:
+             _cups_defaultprinter = self.get('CUPS', 'defaultprinter')
+-            self._print_action = printing.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
+ 
+         elif not _general_pdfview and _print_startcmd:
+             _print_command = self.get('print', 'command')
+-            self._print_action = printing.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
+ 
+     @property
+     def print_action(self):
+diff --git a/x2go/backends/printing/_httpsbroker.py b/x2go/backends/printing/_httpsbroker.py
+index 830f134..fd6ad97 100644
+--- a/x2go/backends/printing/_httpsbroker.py
++++ b/x2go/backends/printing/_httpsbroker.py
+@@ -34,7 +34,7 @@ import ConfigParser
+ 
+ # Python X2go modules
+ import x2go.log as log
+-import x2go.printing as printing
++import x2go.printactions as printactions
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+ from x2go.defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+@@ -90,18 +90,18 @@ class X2goClientPrintingWINREG(inifiles.X2goIniFile):
+ 
+         if _general_pdfview and _view_open:
+             _view_command = self.get('view', 'command')
+-            self._print_action = printing.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
+ 
+         elif _general_pdfview and not _view_open:
+-            self._print_action = printing.X2goPrintActionPDFSAVE(logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFSAVE(logger=self.logger)
+ 
+         elif not _general_pdfview and not _print_startcmd:
+             _cups_defaultprinter = self.get('CUPS', 'defaultprinter')
+-            self._print_action = printing.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
+ 
+         elif not _general_pdfview and _print_startcmd:
+             _print_command = self.get('print', 'command')
+-            self._print_action = printing.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
+ 
+     @property
+     def print_action(self):
+diff --git a/x2go/backends/printing/_winreg.py b/x2go/backends/printing/_winreg.py
+index 1ced8ef..fd6ad97 100644
+--- a/x2go/backends/printing/_winreg.py
++++ b/x2go/backends/printing/_winreg.py
+@@ -34,7 +34,7 @@ import ConfigParser
+ 
+ # Python X2go modules
+ import x2go.log as log
+-import x2go.printing as printingB
++import x2go.printactions as printactions
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+ from x2go.defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+@@ -90,18 +90,18 @@ class X2goClientPrintingWINREG(inifiles.X2goIniFile):
+ 
+         if _general_pdfview and _view_open:
+             _view_command = self.get('view', 'command')
+-            self._print_action = printing.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
+ 
+         elif _general_pdfview and not _view_open:
+-            self._print_action = printing.X2goPrintActionPDFSAVE(logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPDFSAVE(logger=self.logger)
+ 
+         elif not _general_pdfview and not _print_startcmd:
+             _cups_defaultprinter = self.get('CUPS', 'defaultprinter')
+-            self._print_action = printing.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
+ 
+         elif not _general_pdfview and _print_startcmd:
+             _print_command = self.get('print', 'command')
+-            self._print_action = printing.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
++            self._print_action = printactions.X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
+ 
+     @property
+     def print_action(self):
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 679c83c..d199f3d 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -39,7 +39,7 @@ import copy
+ # Python X2go modules
+ import x2go.rforward as rforward
+ import x2go.sftpserver as sftpserver
+-import x2go.printing as printing
++import x2go.printqueue as printqueue
+ import x2go.log as log
+ import x2go.defaults as defaults
+ import x2go.utils as utils
+@@ -55,6 +55,7 @@ from x2go.defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+ from x2go.backends.proxy import X2goProxy as _X2goProxy
++from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+ def _rewrite_cmd(cmd, params=None):
+ 
+@@ -222,6 +223,8 @@ class X2goTerminalSessionSTDOUT(object):
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+                  proxy_backend=_X2goProxy,
++                 printing_backend=_X2goClientPrinting,
++                 client_instance=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         Initialize an X2go session. With the L{X2goTerminalSessionSTDOUT} class you can start
+@@ -265,10 +268,13 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or os.path.join(_LOCAL_HOME,_X2GO_SESSION_ROOTDIR)
+         self.params.update()
+ 
++        self.profile_name = profile_name
+         self.proxy_class = proxy_backend
+ 
+         self.print_action = print_action
+         self.print_action_args = print_action_args
++        self.printing_backend = printing_backend
++        self.client_instance = client_instance
+ 
+         self._mk_session_rootdir(self.params.rootdir)
+ 
+@@ -442,11 +448,15 @@ class X2goTerminalSessionSTDOUT(object):
+         if not os.path.exists(spool_dir):
+             os.mkdir(spool_dir)
+         self.share_local_folder(folder_name=spool_dir, folder_type='spool')
+-        self.print_queue = printing.X2goPrintQueue(spool_dir=spool_dir,
+-                                                   print_action=self.print_action, 
+-                                                   print_action_args=self.print_action_args, 
+-                                                   logger=self.logger,
+-                                                  )
++        self.print_queue = printqueue.X2goPrintQueue(profile_name=self.profile_name,
++                                                     session_name=self.session_info.name,
++                                                     spool_dir=spool_dir,
++                                                     print_action=self.print_action, 
++                                                     print_action_args=self.print_action_args,
++                                                     client_instance=self.client_instance,
++                                                     printing_backend=self.printing_backend,
++                                                     logger=self.logger,
++                                                    )
+         self.print_queue.start()
+         self.active_threads.append(self.print_queue)
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index de19c04..1f43f3f 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -194,10 +194,14 @@ class X2goClient(object):
+         self.info_backend = info_backend
+         self.list_backend = list_backend
+         self.proxy_backend = proxy_backend
++        self.settings_backend = settings_backend
++        self.printing_backend = printing_backend
+ 
+         if _X2GOCLIENT_OS == 'Windows' and start_xserver:
+             self.client_xconfig = X2goClientXConfig(logger=self.logger)
+-            if not self.client_xconfig.running_xservers:
++            if not self.client_xconfig.known_server:
++                self.HOOK_no_known_xserver_found()
++            elif not self.client_xconfig.running_xservers:
+                 if  type(start_xserver) is types.BooleanType:
+                     p_xs = self.client_xconfig.preferred_xserver
+                 elif type(start_xserver) is types.StringType:
+@@ -216,11 +220,15 @@ class X2goClient(object):
+         if use_cache:
+             self.listsessions_cache = X2goListSessionsCache(self, logger=self.logger)
+         self.client_settings = settings_backend(logger=self.logger)
+-        self.client_printing = printing_backend(logger=self.logger)
++        self.client_printing = printing_backend(client_instance=self, logger=self.logger)
+ 
+         self.use_cache = use_cache
+ 
+-    # user hooks for detecting/notifying what happened with this session 
++    # user hooks for detecting/notifying what happened during application runtime
++    def HOOK_no_known_xserver_found(self):
++        self.logger('the Python X2go module could not find any usable XServer application, you will not be able to start X2go sessions without XServer', loglevel=log.loglevel_WARN)
++    def HOOK_open_print_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('incoming print job,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
+     def HOOK_on_control_session_death(self, profile_name):
+         self.logger('the control session of profile %s has died unexpectedly' % profile_name, loglevel=log.loglevel_WARN)
+     def HOOK_on_session_got_suspended_from_within(self, session_uuid):
+@@ -351,6 +359,7 @@ class X2goClient(object):
+ 
+             server = _params['server']
+             del _params['server']
++            _params['client_instance'] = self
+ 
+         else:
+             if server is None:
+@@ -360,15 +369,18 @@ class X2goClient(object):
+             _params = kwargs
+             _params['printing'] = printing
+             _params['share_local_folders'] = share_local_folders
++            _params['client_instance'] = self
+ 
+-        session_uuid = self.session_registry.register(server=server, 
++        session_uuid = self.session_registry.register(server=server,
+                                                       profile_id=_profile_id, profile_name=_profile_name,
+                                                       control_backend=self.control_backend,
+                                                       terminal_backend=self.terminal_backend,
+                                                       info_backend=self.info_backend,
+                                                       list_backend=self.list_backend,
+                                                       proxy_backend=self.proxy_backend,
+-                                                      **_params )
++                                                      settings_backend=self.settings_backend,
++                                                      printing_backend=self.printing_backend,
++                                                      **_params)
+ 
+         self.logger('initializing X2go session...', log.loglevel_NOTICE, tag=self._logger_tag)
+         if return_object:
+@@ -528,6 +540,8 @@ class X2goClient(object):
+             - B{PRINTCMD} L{X2goPrintActionPRINTCMD}: on each incoming spool job execute an 
+               external command that lets the client user handle the further processing of the 
+               print job (PDF) file
++            - B{DIALOG} (L{X2goPrintActionDIALOG}): on each incoming spool job this print action 
++              will call L{X2goClient.HOOK_open_print_dialog()}
+ 
+         Each of the print action classes accepts different print action arguments. For detail
+         information on these print action arguments please refer to the constructor methods of 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index b7df25d..24b606e 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -42,7 +42,7 @@ X2GO_CLIENT_ROOTDIR = '.x2goclient'
+ if X2GOCLIENT_OS == &quot;Windows&quot;:
+     import win32api
+     CURRENT_LOCAL_USER = win32api.GetUserName()
+-    X2GO_SSH_ROOTDIR = os.path.join('.x2go','.ssh')
++    X2GO_SSH_ROOTDIR = '.ssh'
+     SUPPORTED_SOUND = False
+     SUPPORTED_PRINTING = True
+     SUPPORTED_FOLDERSHARING = True
+@@ -165,7 +165,7 @@ X2GO_CLIENTSETTINGS_DEFAULTS = {
+     }
+ X2GO_CLIENTPRINTING_DEFAULTS = {
+     'General': {
+-        # ignored in Python X2go
++        # showdialog will result in a print action that allows opening a print dialog box
+         'showdialog': False,
+         # if true, open a PDF viewer (or save as PDF file). If false, print via CUPS or print command
+         'pdfview': True,
+@@ -315,6 +315,7 @@ X2GO_PRINT_ACTIONS = {
+     'PDFSAVE': 'X2goPrintActionPDFSAVE',
+     'PRINT': 'X2goPrintActionPRINT',
+     'PRINTCMD': 'X2goPrintActionPRINTCMD',
++    'DIALOG': 'X2goPrintActionDIALOG',
+ }
+ &quot;&quot;&quot;Relating print action names and classes.&quot;&quot;&quot;
+ 
+diff --git a/x2go/printing.py b/x2go/printactions.py
+similarity index 54%
+rename from x2go/printing.py
+rename to x2go/printactions.py
+index de19d68..40e4740 100644
+--- a/x2go/printing.py
++++ b/x2go/printactions.py
+@@ -19,34 +19,23 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ &quot;&quot;&quot;\
+-X2go printing sets up a thread that listens for incoming print jobs (L{X2goPrintQueue}).
+-
+-For each incoming print job in an X2go session's spool directory an 
+-individual thread is started (L{X2goPrintJob}) that handles the processing 
+-of the incoming print job.
+-
+ Print jobs can either be sent to any of the local print queues (CUPS, Win32API),
+ be opened in an external PDF viewer, be saved to a local folder or be handed 
+ over to a custom (print) command. This is defined by four print action classes
+ (X2goPrintActionPDFVIEW, X2goPrintActionPDFSAVE, X2goPrintActionPRINT and 
+ X2goPrintActionPRINTCMD).
+ 
+-Especially the L{X2goClientPrinting} class in this file is one of Python X2go's 
+-public API classes. Retrieve an instance of this class from your L{X2goClient} instance.
+-Use this class in your Python X2go based applications to access the &#187;printing&#171; 
+-configuration file of your X2go client application.
+-
+ &quot;&quot;&quot;
+-__NAME__ = 'x2goprint-pylib'
++__NAME__ = 'x2goprintactions-pylib'
+ 
+ # modules
+-import sys, os, shutil, copy
++import os
++import sys
++import shutil
++import copy
+ import types
+ import threading
+ import gevent
+-import inifiles
+-import cStringIO
+-import ConfigParser
+ 
+ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ if _X2GOCLIENT_OS in (&quot;Windows&quot;):
+@@ -61,84 +50,11 @@ import defaults
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from defaults import LOCAL_HOME as _LOCAL_HOME
+ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+-from defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+ import utils
+-import inifiles
++import x2go_exceptions
+ 
+ _PRINT_ENV = os.environ.copy()
+ 
+-class X2goClientPrinting(inifiles.X2goIniFile):
+-    &quot;&quot;&quot;\
+-    L{X2goClientPrinting} provides access to the X2go ini-like file
+-    &#187;printing&#171; as stored in C{~/.x2goclient/printing} resp. globally
+-    C{/etc/x2goclient/printing}.
+-
+-    An instance of L{X2goClientPrinting} is created on each incoming
+-    print job. This facilitates that on every print job the print action
+-    for this job is derived from the &#187;printing&#171; configuration file.
+-
+-    Thus, changes on the file are active for the next incoming print job.
+-
+-    &quot;&quot;&quot;
+-    config_files = []
+-    _print_action = None
+-    defaultValues = _X2GO_CLIENTPRINTING_DEFAULTS
+-
+-    def __init__(self, config_files=_X2GO_PRINTING_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+-        &quot;&quot;&quot;\
+-        @param config_files: a list of configuration files names (e.g. a global filename and a user's home 
+-            directory filename)
+-        @type config_files: C{list}
+-        @param defaults: a cascaded Python dicitionary structure with ini file defaults (to override 
+-            Python X2go's hard coded defaults in L{defaults}
+-        @type defaults: C{dict}
+-        @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goPrintAction} constructor
+-        @type logger: C{instance}
+-        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+-            constructed with the given loglevel
+-        @type loglevel: C{int}
+-
+-        &quot;&quot;&quot;
+-        inifiles.X2goIniFile.__init__(self, config_files, defaults=defaults, logger=logger, loglevel=loglevel)
+-
+-        self._detect_print_action()
+-
+-
+-    def _detect_print_action(self):
+-        &quot;&quot;&quot;\
+-        Derive a print action from sections, keys and their values in a typical
+-        X2go client &#187;printing&#171; configuration file.
+-
+-        &quot;&quot;&quot;
+-        _general_pdfview = self.get('General', 'pdfview', key_type=types.BooleanType)
+-        _view_open = self.get('view', 'open', key_type=types.BooleanType)
+-        _print_startcmd = self.get('print', 'startcmd', key_type=types.BooleanType)
+-
+-        if _general_pdfview and _view_open:
+-            _view_command = self.get('view', 'command')
+-            self._print_action = X2goPrintActionPDFVIEW(pdfview_cmd=_view_command, logger=self.logger)
+-
+-        elif _general_pdfview and not _view_open:
+-            self._print_action = X2goPrintActionPDFSAVE(logger=self.logger)
+-
+-        elif not _general_pdfview and not _print_startcmd:
+-            _cups_defaultprinter = self.get('CUPS', 'defaultprinter')
+-            self._print_action = X2goPrintActionPRINT(printer=_cups_defaultprinter, logger=self.logger)
+-
+-        elif not _general_pdfview and _print_startcmd:
+-            _print_command = self.get('print', 'command')
+-            self._print_action = X2goPrintActionPRINTCMD(print_cmd=_print_command, logger=self.logger)
+-
+-    @property
+-    def print_action(self):
+-        &quot;&quot;&quot;\
+-        Return the print action described by the &#187;printing&#171; configuration file.
+-
+-        &quot;&quot;&quot;
+-        return self._print_action
+-
+ 
+ class X2goPrintAction(object):
+ 
+@@ -164,6 +80,9 @@ class X2goPrintAction(object):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
++        self.profile_name = 'UNKNOWN'
++        self.session_name = 'UNKNOWN'
++
+     @property
+     def name():
+         &quot;&quot;&quot;\
+@@ -307,7 +226,6 @@ class X2goPrintActionPDFSAVE(X2goPrintAction):
+         # this is nasty!!!!
+         self.logger('copying incomig PDF file %s to %s' % (pdf_file, dest_file) , loglevel=log.loglevel_DEBUG)
+         gevent.sleep(20)
+-        os.remove(_hr_filename)
+ 
+ 
+ class X2goPrintActionPRINT(X2goPrintAction):
+@@ -433,197 +351,56 @@ class X2goPrintActionPRINTCMD(X2goPrintAction):
+         gevent.sleep(20)
+ 
+ 
+-class X2goPrintQueue(threading.Thread):
++class X2goPrintActionDIALOG(X2goPrintAction):
+     &quot;&quot;&quot;\
+-    If X2go printing is supported in a particaluar L{X2goSession} instance
+-    this class provides a sub-thread for handling incoming X2go print jobs.
++    Print action that mediates opening a print dialog window. This class is rather empty,
++    the actual print dialog box must be implemented in our GUI application (with the application's
++    L{X2goClient} instance.
+ 
+     &quot;&quot;&quot;
+-    print_action = None
+-
+-    spooldir = None
+-    active_jobs = {}
+-    job_history = []
++    __name__      = 'DIALOG'
++    __decription__= 'Open a print dialog box'
+ 
+-    def __init__(self, spool_dir=None, print_action=None, print_action_args={}, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        @param spool_dir: local spool directory for incoming print job files
+-        @type spool_dir: C{str}
+-        @param print_action: name or instance of either of the possible X2go print action classes
+-        @type print_action: C{str} or instance
+-        @param print_action_args: depending of the chosen C{print_action} this dictionary may contain different
+-            values; the C{print_action_args} will be passed on to the X2go print action instance constructor, so 
+-            refer to either of these: L{X2goPrintActionPDFVIEW.__init__()}, L{X2goPrintActionPRINT.__init__()} et al.
++        @param client: an L{X2goClient} instance, within your customized L{X2goClient} make sure 
++            you have a C{HOOK_open_print_dialog(filename=&lt;str&gt;)} method defined that will actually
++            open the print dialog.
++        @type client: C{instance}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goPrintQueue} constructor
++            L{X2goPrintAction} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+-        if logger is None:
+-            self.logger = log.X2goLogger(loglevel=loglevel)
++        if client_instance is not None:
++            self.client_instance = client_instance
+         else:
+-            self.logger = copy.deepcopy(logger)
+-        self.logger.tag = __NAME__
+-
+-        self.spool_dir = spool_dir
+-        if print_action is not None:
+-            self.set_print_action(print_action, logger=logger, **print_action_args)
+-        threading.Thread.__init__(self)
+-        self.daemon = True
+-        self._accept_jobs = True
+-
+-    def __del__(self):
+-        self.stop_thread()
+-
+-    def pause(self):
+-        &quot;&quot;&quot;\
+-        Prevent acceptance of new incoming print jobs. The processing of print jobs that 
+-        are currently still active will be completed, though.
+-
+-        &quot;&quot;&quot;
+-        if self._accept_jobs == True:
+-            self._accept_jobs = False
+-            self.logger('paused thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
+-
+-    def resume(self):
+-        &quot;&quot;&quot;\
+-        Resume operation of the X2go print spooler and continue accepting new incoming 
+-        print jobs.
+-
+-        &quot;&quot;&quot;
+-        if self._accept_jobs == False:
+-            self._accept_jobs = True
+-            self.logger('resumed thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
+-
+-    def stop_thread(self):
+-        &quot;&quot;&quot;\
+-        Stops this L{X2goPrintQueue} thread completely.
+-
+-        &quot;&quot;&quot;
+-        self.pause()
+-        self._keepalive = False
+-        self.logger('stopping thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
++            raise x2go_exceptions.X2goPrintActionException('the DIALOG print actions needs to know the X2goClient instance (client=&lt;instance&gt;)')
++        X2goPrintAction.__init__(self, logger=logger, loglevel=loglevel)
+ 
+-    @property
+-    def _incoming_print_jobs(self):
+-
+-        l = os.listdir(self.spool_dir)
+-        job_files = [ jf for jf in l if jf.endswith('.ready') ]
+-        jobs = []
+-        for _job_file in job_files:
+-            j = open(os.path.join(self.spool_dir, _job_file), 'r')
+-            content = j.read()
+-            (pdf_filename, job_title) = content.split('\n')[0:2]
+-            j.close()
+-            jobs.append((_job_file, pdf_filename, job_title))
+-        return [ j for j in jobs if j[1] not in self.active_jobs.keys() ]
+-
+-    def set_print_action(self, print_action, **kwargs):
++    def do_print(self, pdf_file, job_title, spool_dir):
+         &quot;&quot;&quot;\
+-        Modify the print action of this L{X2goPrintQueue} thread during runtime. The 
+-        change of print action will be valid for the next incoming print job.
+-
+-        &quot;&quot;&quot;
+-        if print_action in defaults.X2GO_PRINT_ACTIONS.keys():
+-            print_action = defaults.X2GO_PRINT_ACTIONS[print_action]
+-
+-        if print_action in defaults.X2GO_PRINT_ACTIONS.values():
+-            self.print_action = eval ('%s(**kwargs)' % print_action)
++        Execute an external command that has been defined on construction 
++        of this L{X2goPrintActionPRINTCMD} instance.
+ 
+-    def run(self):
+-        &quot;&quot;&quot;\
+-        Start this L{X2goPrintQueue} thread...
++        @param pdf_file: PDF file name as placed in to the X2go spool directory
++        @type pdf_file: C{str}
++        @param job_title: human readable print job title
++        @type job_title: C{str}
++        @param spool_dir: location of the X2go client's spool directory
++        @type spool_dir: C{str}
+ 
+         &quot;&quot;&quot;
+-        self.logger('starting print queue thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
+-
+-        self._keepalive = True
+-        while self._keepalive:
+-
+-            while self._accept_jobs:
+-
+-                if self._incoming_print_jobs:
+-
+-                    for _job in self._incoming_print_jobs:
+-                        self.logger('processing incoming X2go print job: %s' % _job[1], loglevel=log.loglevel_NOTICE)
+-                        _new_printjob_thread = X2goPrintJob(target=x2go_printjob_handler,
+-                                                            kwargs={ 
+-                                                            'job_file': _job[0],
+-                                                            'pdf_file': _job[1],
+-                                                            'job_title': _job[2],
+-                                                            'print_action': self.print_action,
+-                                                            'parent_thread': self, 
+-                                                            'logger': self.logger, 
+-                                                          }
+-                                                  )
+-                        self.active_jobs['%s' % _job[1]] = _new_printjob_thread
+-                        _new_printjob_thread.start()
+-
+-                gevent.sleep(3)
+-
+-            gevent.sleep(1)
+-
+-
+-def x2go_printjob_handler(job_file=None, pdf_file=None, job_title=None, print_action=None, parent_thread=None, logger=None, ):
+-    &quot;&quot;&quot;\
+-    This function is called as a handler function for each incoming X2go print job 
+-    represented by the class L{X2goPrintJob}.
+-
+-    The handler function will (re-)read the &#187;printing&#171; configuration file (if no
+-    explicit C{print_action} is passed to this function...). It then will
+-    execute the C{&lt;print_action&gt;.do_print()} command.
+-
+-    @param pdf_file: PDF file name as placed in to the X2go spool directory
+-    @type pdf_file: C{str}
+-    @param job_title: human readable print job title
+-    @type job_title: C{str}
+-    @param print_action: an instance of either of the possible C{X2goPrintActionXXX} classes
+-    @type print_action: C{X2goPrintActionXXX} nstance
+-    @param parent_thread: the L{X2goPrintQueue} thread that actually created this handler's L{X2goPrintJob} instance
+-    @type parent_thread: C{instance}
+-    @param logger: the L{X2goPrintQueue}'s logging instance
+-    @type logger: C{instance}
+-
+-    &quot;&quot;&quot;
+-    if print_action is None:
+-        _printing = X2goClientPrinting(logger=logger)
+-        print_action = _printing.print_action
+-
+-    logger('action for printing is: %s' % print_action, loglevel=log.loglevel_DEBUG)
+-    print_action.do_print(pdf_file=os.path.join(parent_thread.spool_dir, pdf_file),
+-                          job_title=job_title,
+-                          spool_dir=parent_thread.spool_dir,
+-                         )
+-
+-    logger('removing print job files for %s' % pdf_file, loglevel=log.loglevel_DEBUG)
+-    os.remove(os.path.join(parent_thread.spool_dir, job_file))
+-    os.remove(os.path.join(parent_thread.spool_dir, pdf_file))
+-
+-    del parent_thread.active_jobs['%s' % pdf_file]
+-    parent_thread.job_history.append(pdf_file)
+-
+-
+-class X2goPrintJob(threading.Thread):
+-    &quot;&quot;&quot;\
+-    For each X2go print job we create a sub-thread that let's 
+-    the print job be processed in the background.
+-
+-    As a handler for this class the function L{x2go_printjob_handler()} 
+-    is used.
+-
+-    &quot;&quot;&quot;
+-    def __init__(self, **kwargs):
+-        &quot;&quot;&quot;\
+-        Construct the X2go print job thread...
+-
+-        All parameters (**kwargs) are passed through to the constructor
+-        of C{threading.Thread()}.
++        _hr_filename = self._humanreadable_filename(pdf_file, job_title, spool_dir)
++        shutil.copy2(pdf_file, _hr_filename)
++        self.logger('Session %s (%s) is calling X2goClient class hook method &lt;client_instance&gt;.HOOK_open_print_dialog(%s)' % (self.session_name, self.profile_name, _hr_filename), loglevel=log.loglevel_NOTICE)
++        self.client_instance.HOOK_open_print_dialog(_hr_filename,profile_name=self.profile_name, session_name=self.session_name)
+ 
+-        &quot;&quot;&quot;
+-        threading.Thread.__init__(self, **kwargs)
+-        self.daemon = True
++        # this is nasty!!!!
++        gevent.sleep(20)
++        os.remove(_hr_filename)
+ 
+ 
+diff --git a/x2go/mime_export.py b/x2go/printqueue.py
+similarity index 68%
+copy from x2go/mime_export.py
+copy to x2go/printqueue.py
+index 8e5a864..bff0892 100644
+--- a/x2go/mime_export.py
++++ b/x2go/printqueue.py
+@@ -19,24 +19,19 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ &quot;&quot;&quot;\
+-STILL UNDOCUMENTED
++L{X2goPrintQueue} sets up a thread that listens for incoming print jobs.
++
++For each incoming print job in an X2go session's spool directory an 
++individual thread is started (L{X2goPrintJob}) that handles the processing 
++of the incoming print job.
+ 
+ &quot;&quot;&quot;
+-__NAME__ = 'x2gomimetypes-pylib'
++__NAME__ = 'x2goprintqueue-pylib'
+ 
+ # modules
+-import sys, os, shutil, copy
+-import subprocess
+-import types
++import os, copy
+ import threading
+ import gevent
+-import inifiles
+-import cStringIO
+-import ConfigParser
+-
+-if sys.platform == 'win32':
+-    import win32api
+-
+ 
+ # Python X2go modules
+ import log
+@@ -44,60 +39,13 @@ import defaults
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from defaults import LOCAL_HOME as _LOCAL_HOME
+ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from defaults import X2GO_CLIENTPRINTING_DEFAULTS as _X2GO_CLIENTPRINTING_DEFAULTS
+-from defaults import X2GO_PRINTING_CONFIGFILES as _X2GO_PRINTING_CONFIGFILES
+-import utils
+-import inifiles
+-
+-class X2goMimeExportAction(object):
++from backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+-    __name__ = 'MIME'
+-    __description__ = 'Execute a command depending on an incoming file\'s MIME type'
+ 
+-    def __init__(self, logger=None, loglevel=log.loglevel_DEFAULT):
+-        &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
+-
+-        @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goMimeExportAction} constructor
+-        @type logger: C{instance}
+-        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+-            constructed with the given loglevel
+-        @type loglevel: C{int}
+-
+-        &quot;&quot;&quot;
+-        if logger is None:
+-            self.logger = log.X2goLogger(loglevel=loglevel)
+-        else:
+-            self.logger = copy.deepcopy(logger)
+-        self.logger.tag = __NAME__
+-
+-    def do_execute(self, mime_file, mime_type_dir, ):
+-        &quot;&quot;&quot;\
+-        Perform the defined print action (doing nothing in L{X2goPrintAction} parent class).
+-
+-        @param mime_file: name of the incoming file
+-        @type mime_file: C{str}
+-        @param mime_type_dir: location of the X2go client's spool directory for incoming MIME files
+-        @type mime_type_dir: C{str}
+-
+-        &quot;&quot;&quot;
+-        if sys.platform == &quot;win32&quot;:
+-            self.logger('processing an incoming MIME file with Python\'s os.startfile(): %s' % mime_file, loglevel=log.loglevel_DEBUG)
+-            os.startfile(mime_file)
+-        else:
+-            cmd_line = [ 'xdg-open', mime_file, ]
+-            self.logger('processing an incoming MIME file with command: %s' % ' '.join(cmd_line), loglevel=log.loglevel_DEBUG)
+-            p = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=_PRINT_ENV)
+-            # this is nasty!!!!
+-            self.logger('giving PDF viewer 20s to get the PDF file %s loaded' % _hr_filename, loglevel=log.loglevel_DEBUG)
+-            gevent.sleep(20)
+-        os.remove(mime_file)
+-
+-
+-class X2goMimeExportQueue(threading.Thread):
++class X2goPrintQueue(threading.Thread):
+     &quot;&quot;&quot;\
+-    STILL UNDOCUMENTED
++    If X2go printing is supported in a particaluar L{X2goSession} instance
++    this class provides a sub-thread for handling incoming X2go print jobs.
+ 
+     &quot;&quot;&quot;
+     print_action = None
+@@ -106,12 +54,21 @@ class X2goMimeExportQueue(threading.Thread):
+     active_jobs = {}
+     job_history = []
+ 
+-    def __init__(self, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, profile_name='UNKNOWN', session_name='UNKNOWN', spool_dir=None, print_action=None, print_action_args={}, client_instance=None, printing_backend=_X2goClientPrinting, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
+-
++        @param profile_name: name of the session profile this print queue belongs to
++        @type profile_name: C{str}
++        @param spool_dir: local spool directory for incoming print job files
++        @type spool_dir: C{str}
++        @param print_action: name or instance of either of the possible X2go print action classes
++        @type print_action: C{str} or instance
++        @param print_action_args: depending of the chosen C{print_action} this dictionary may contain different
++            values; the C{print_action_args} will be passed on to the X2go print action instance constructor, so 
++            refer to either of these: L{X2goPrintActionPDFVIEW.__init__()}, L{X2goPrintActionPRINT.__init__()} et al.
++        @param printing_backend: the client printing configuration backend class
++        @type printing_backend: C{instance}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goMimeExportQueue} constructor
++            L{X2goPrintQueue} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+@@ -124,6 +81,13 @@ class X2goMimeExportQueue(threading.Thread):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
++        self.profile_name = profile_name
++        self.session_name = session_name
++        self.spool_dir = spool_dir
++        self.client_instance = client_instance
++        self.printing_backend = printing_backend
++        if print_action is not None:
++            self.set_print_action(print_action, logger=logger, **print_action_args)
+         threading.Thread.__init__(self)
+         self.daemon = True
+         self._accept_jobs = True
+@@ -133,8 +97,8 @@ class X2goMimeExportQueue(threading.Thread):
+ 
+     def pause(self):
+         &quot;&quot;&quot;\
+-        Prevent acceptance of new incoming MIME type files. The processing of MIME type files
+-        that are currently still active will be completed, though.
++        Prevent acceptance of new incoming print jobs. The processing of print jobs that 
++        are currently still active will be completed, though.
+ 
+         &quot;&quot;&quot;
+         if self._accept_jobs == True:
+@@ -143,8 +107,8 @@ class X2goMimeExportQueue(threading.Thread):
+ 
+     def resume(self):
+         &quot;&quot;&quot;\
+-        Resume operation of the X2go MIME type thread and continue accepting new incoming 
+-        MIME type files.
++        Resume operation of the X2go print spooler and continue accepting new incoming 
++        print jobs.
+ 
+         &quot;&quot;&quot;
+         if self._accept_jobs == False:
+@@ -153,7 +117,7 @@ class X2goMimeExportQueue(threading.Thread):
+ 
+     def stop_thread(self):
+         &quot;&quot;&quot;\
+-        Stops this L{X2goMimeExportQueue} thread completely.
++        Stops this L{X2goPrintQueue} thread completely.
+ 
+         &quot;&quot;&quot;
+         self.pause()
+@@ -161,14 +125,19 @@ class X2goMimeExportQueue(threading.Thread):
+         self.logger('stopping thread: %s' % repr(self), loglevel=log.loglevel_DEBUG)
+ 
+     @property
+-    def _incoming_mime_files(self):
++    def _incoming_print_jobs(self):
+ 
+-        l = os.listdir(self.mime_type_dir)
+-        mime_files = []
++        l = os.listdir(self.spool_dir)
++        job_files = [ jf for jf in l if jf.endswith('.ready') ]
++        jobs = []
+         for _job_file in job_files:
+             j = open(os.path.join(self.spool_dir, _job_file), 'r')
+             content = j.read()
+-            (pdf_filename, job_title) = content.split('\n')[0:2]
++            try:
++                (pdf_filename, job_title) = content.split('\n')[0:2]
++            except ValueError:
++                pdf_filename = content
++                job_title = 'X2go Print Job'
+             j.close()
+             jobs.append((_job_file, pdf_filename, job_title))
+         return [ j for j in jobs if j[1] not in self.active_jobs.keys() ]
+@@ -183,7 +152,7 @@ class X2goMimeExportQueue(threading.Thread):
+             print_action = defaults.X2GO_PRINT_ACTIONS[print_action]
+ 
+         if print_action in defaults.X2GO_PRINT_ACTIONS.values():
+-            self.print_action = print_action(**kwargs)
++            self.print_action = eval ('%s(**kwargs)' % print_action)
+ 
+     def run(self):
+         &quot;&quot;&quot;\
+@@ -200,7 +169,7 @@ class X2goMimeExportQueue(threading.Thread):
+                 if self._incoming_print_jobs:
+ 
+                     for _job in self._incoming_print_jobs:
+-                        self.logger('incoming print job: %s' % _job[1], loglevel=log.loglevel_DEBUG)
++                        self.logger('processing incoming X2go print job: %s' % _job[1], loglevel=log.loglevel_NOTICE)
+                         _new_printjob_thread = X2goPrintJob(target=x2go_printjob_handler,
+                                                             kwargs={ 
+                                                             'job_file': _job[0],
+@@ -241,8 +210,10 @@ def x2go_printjob_handler(job_file=None, pdf_file=None, job_title=None, print_ac
+ 
+     &quot;&quot;&quot;
+     if print_action is None:
+-        _printing = X2goClientPrinting(logger=logger)
++        _printing = parent_thread.printing_backend(client_instance=parent_thread.client_instance, logger=logger)
+         print_action = _printing.print_action
++        print_action.profile_name = parent_thread.profile_name
++        print_action.session_name = parent_thread.session_name
+ 
+     logger('action for printing is: %s' % print_action, loglevel=log.loglevel_DEBUG)
+     print_action.do_print(pdf_file=os.path.join(parent_thread.spool_dir, pdf_file),
+@@ -277,5 +248,3 @@ class X2goPrintJob(threading.Thread):
+         &quot;&quot;&quot;
+         threading.Thread.__init__(self, **kwargs)
+         self.daemon = True
+-
+-
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 619cf56..3b03b31 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -40,6 +40,8 @@ from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+ from x2go.backends.proxy import X2goProxy as _X2goProxy
++from x2go.backends.settings import X2goClientSettings as _X2goClientSettings
++from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+ class X2goSessionRegistry(object):
+     &quot;&quot;&quot;\
+@@ -123,6 +125,8 @@ class X2goSessionRegistry(object):
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+                  proxy_backend=_X2goProxy,
++                 settings_backend=_X2goClientSettings,
++                 printing_backend=_X2goClientPrinting,
+                  **kwargs):
+ 
+         control_session = None
+@@ -136,6 +140,8 @@ class X2goSessionRegistry(object):
+                                 info_backend=info_backend,
+                                 list_backend=list_backend,
+                                 proxy_backend=proxy_backend,
++                                settings_backend=settings_backend,
++                                printing_backend=printing_backend,
+                                 logger=self.logger, **kwargs)
+ 
+         session_uuid = s._X2goSession__get_uuid()
+diff --git a/x2go/session.py b/x2go/session.py
+index 03d25a1..da8a3bc 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -34,12 +34,14 @@ import utils
+ import session
+ from x2go_exceptions import *
+ 
+-from x2go.backends.control import X2goControlSession
+-from x2go.backends.terminal import X2goTerminalSession
+-from x2go.backends.info import X2goServerSessionInfo
+-from x2go.backends.info import X2goServerSessionList
+-from x2go.backends.proxy import X2goProxy
+-from x2go.backends.profiles import X2goSessionProfiles
++from x2go.backends.control import X2goControlSession as _X2goControlSession
++from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
++from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
++from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
++from x2go.backends.proxy import X2goProxy as _X2goProxy
++from x2go.backends.profiles import X2goSessionProfiles as _X2goSessionProfiles
++from x2go.backends.settings import X2goClientSettings as _X2goClientSettings
++from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+ from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARING
+ 
+@@ -51,18 +53,23 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
+                         'proxy_class', 'logger',
++                        'control_backend', 'terminal_backend', 'proxy_backend',
++                        'profiles_backend', 'settings_backend', 'printing_backend',
++                        'client_instance',
+                        )
+ 
+ class X2goSession(object):
+ 
+     def __init__(self, server=None, control_session=None,
+-                 profile_id=None, profile_name=None,
++                 profile_id=None, profile_name='UNKNOWN',
+                  printing=None, share_local_folders=[],
+-                 control_backend=X2goControlSession,
+-                 terminal_backend=X2goTerminalSession,
+-                 info_backend=X2goServerSessionInfo,
+-                 list_backend=X2goServerSessionList,
+-                 proxy_backend=X2goProxy,
++                 control_backend=_X2goControlSession,
++                 terminal_backend=_X2goTerminalSession,
++                 info_backend=_X2goServerSessionInfo,
++                 list_backend=_X2goServerSessionList,
++                 proxy_backend=_X2goProxy,
++                 settings_backend=_X2goClientSettings,
++                 printing_backend=_X2goClientPrinting,
+                  known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  **params):
+@@ -91,15 +98,25 @@ class X2goSession(object):
+         self._info_backend = info_backend
+         self._list_backend = list_backend
+         self._proxy_backend = proxy_backend
++        self._settings_backend = settings_backend
++        self._printing_backend = printing_backend
++
++        # the client instance is not deeply copiable
++        _client_instance=None
++        if params.has_key('client_instance'):
++            _client_instance = params['client_instance']
++            del params['client_instance']
++
+         _terminal_params = copy.deepcopy(params)
+         _control_params = copy.deepcopy(params)
+-
+         for p in params.keys():
+             if p in session._X2GO_SESSION_PARAMS:
+                 del _control_params[p]
+             else:
+                 del _terminal_params[p]
+ 
++        _terminal_params['client_instance'] = _client_instance
++
+         self.logger('X2go control session parameters for profile %s:' % profile_name, log.loglevel_DEBUG)
+         for p in _control_params:
+             self.logger('    %s: %s' % (p, _control_params[p]), log.loglevel_DEBUG)
+@@ -109,10 +126,11 @@ class X2goSession(object):
+ 
+         self.control_params = _control_params
+         self.terminal_params = _terminal_params
+- 
++
+         self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+         if control_session is None:
+-            self.control_session = control_backend(terminal_backend=terminal_backend,
++            self.control_session = control_backend(profile_name=self.profile_name,
++                                                   terminal_backend=terminal_backend,
+                                                    info_backend=info_backend,
+                                                    list_backend=list_backend,
+                                                    proxy_backend=proxy_backend,
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 3b4e396..2eef4e5 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -47,4 +47,6 @@ class X2goProfileException(_X2goException): pass
+ class X2goSettingsException(_X2goException): pass
+ class X2goFwTunnelException(_X2goException): pass
+ class X2goRevFwTunnelException(_X2goException): pass
+-class X2goPrintException(_X2goException): pass
+\ No newline at end of file
++class X2goPrintException(_X2goException): pass
++class X2goPrintQueueException(_X2goException): pass
++class X2goPrintActionException(_X2goException): pass
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012962.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-79-g614c2ab
+</A></li>
+	<LI>Next message: <A HREF="012971.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	eb792d5a5e1b2ba800f031ac6395c846cb6a5846
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12964">[ date ]</a>
+              <a href="thread.html#12964">[ thread ]</a>
+              <a href="subject.html#12964">[ subject ]</a>
+              <a href="author.html#12964">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

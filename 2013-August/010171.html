@@ -1,0 +1,435 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 4d5862b911b74d8897c068370f224fc2ee70df18
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%204d5862b911b74d8897c068370f224fc2ee70df18&In-Reply-To=%3C20130827112036.BB79A5DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010162.html">
+   <LINK REL="Next"  HREF="010150.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 4d5862b911b74d8897c068370f224fc2ee70df18</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%204d5862b911b74d8897c068370f224fc2ee70df18&In-Reply-To=%3C20130827112036.BB79A5DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 4d5862b911b74d8897c068370f224fc2ee70df18">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:20:36 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010162.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 7ecb6c5befc25ed1a1d22046ea63f37e89f5032f
+</A></li>
+        <LI>Next message: <A HREF="010150.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 02e727e80432084cda021b8099ec5db13d29051f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10171">[ date ]</a>
+              <a href="thread.html#10171">[ thread ]</a>
+              <a href="subject.html#10171">[ subject ]</a>
+              <a href="author.html#10171">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  4d5862b911b74d8897c068370f224fc2ee70df18 (commit)
+      from  670fdf479ed7f837331eed42d1a01eae735cadd8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py |   44 ++++++++++--
+ pyhoca/wxgui/logon.py    |    9 ++-
+ pyhoca/wxgui/notify.py   |  175 ++++++++++++++++++++++++++++++++++++++++++++++
+ pyhoca/wxgui/taskbar.py  |    5 +-
+ 4 files changed, 225 insertions(+), 8 deletions(-)
+ create mode 100644 pyhoca/wxgui/notify.py
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 5be8778..2848ad1 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -51,7 +51,8 @@ import menus_chooser
+ import menus_taskbar
+ import profilemanager
+ import images
+-from messages import Message
++import notify
++import messages
+ 
+ try:
+     from agw import knobctrl as KC
+@@ -180,6 +181,8 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         #self._chooser_selected_profile_name = None
+         self.taskbar = taskbar.PyHocaGUI_TaskBarIcon(self)
+         self.taskbar.Bind(wx.EVT_TASKBAR_LEFT_DOWN, self.taskbar.CreateSessionManagerPopupMenu)
++        self.notifier = notify.libnotify_NotifierPopup(self)
++
+         self._sub_windows = []
+         self._eventid_profilenames_map = {}
+         self._eventid_sessionnames_map = {}
+@@ -227,9 +230,14 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+     # wx.App's OnExit method
+     def OnExit(self):
+         x2go.x2go_cleanup()
++
++        # close open password dialogs (or other remaining windows)
+         for _win in self._sub_windows:
+             _win.Destroy()
+-        self.Destroy()
++        try:
++            self.Destroy()
++        except wx._core.PyDeadObjectError:
++            pass
+ 
+     # the taskbar's OnExit method...
+     def OnTaskbarExit(self, evt):
+@@ -238,8 +246,9 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         &quot;&quot;&quot;
+         self._pyhoca_logger('Exit application', x2go.loglevel_INFO, )
+-        self.taskbar.Destroy()
+-        #self.chooser.Destroy()
++        self.taskbar.Close()
++        self.notifier.Close()
++        self.Exit()
+ 
+     def _start_on_connect(self, evt, session_uuid):
+         if not self._X2goClient__list_sessions(session_uuid):
+@@ -300,9 +309,11 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self )
+             self._sub_windows.append(_logon_window)
+         if self._X2goClient__is_session_connected(session_uuid):
+-            self._pyhoca_logger('authentication to server has been successful', x2go.loglevel_INFO, )
++            self._pyhoca_logger('public SSH key authentication to %s has been successful' % profile_name, x2go.loglevel_INFO, )
++            self.notifier.send('%s - connect' % profile_name, 'Public SSH key authentication has been successful.', timeout=4000)
+         else:
+-            self._pyhoca_logger('authentication to server has been successful', x2go.loglevel_INFO, )
++            self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', x2go.loglevel_INFO, )
++
+ 
+     def OnSessionStart(self, evt):
+         &quot;&quot;&quot;\
+@@ -313,6 +324,8 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         session_uuid = self._X2goClient__register_session(profile_name=self.current_profile_name)
+         self._pyhoca_logger('starting new X2go session', x2go.loglevel_INFO, )
+         gevent.spawn(self._X2goClient__start_session, session_uuid)
++        self.notifier.send(self.current_profile_name, 'New X2go session starting up...', timeout=10000)
++
+ 
+     def OnSessionResume(self, evt):
+         &quot;&quot;&quot;\
+@@ -324,6 +337,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+         self._pyhoca_logger('resuming X2go session %s' % session_name, x2go.loglevel_INFO, )
+         gevent.spawn(self._X2goClient__resume_session, session_uuid, session_name=session_name)
++        self.notifier.send(self.current_profile_name, 'Resuming X2go session...\nSession: %s' % session_name, timeout=10000)
+         self._eventid_sessionnames_map = {}
+ 
+     def OnSessionSuspend(self, evt):
+@@ -336,6 +350,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+         self._pyhoca_logger('suspending X2go session %s' % session_name, x2go.loglevel_INFO, )
+         gevent.spawn(self._X2goClient__suspend_session, session_uuid, session_name=session_name)
++        gevent.sleep(2)
++        if self._X2goClient__is_session_suspended(session_uuid, session_name):
++            self.notifier.send(self.current_profile_name, 'X2go session has been suspended.\nSession: %s' % session_name, timeout=8000)
++
+         self._eventid_sessionnames_map = {}
+ 
+     def OnSessionTerminate(self, evt):
+@@ -348,6 +366,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+         self._pyhoca_logger('terminating X2go session %s' % session_name, x2go.loglevel_INFO, )
+         gevent.spawn(self._X2goClient__terminate_session, session_uuid, session_name=session_name)
++        gevent.sleep(2)
++        if self._X2goClient__has_session_terminated(session_uuid, session_name):
++            self.notifier.send(self.current_profile_name, 'X2go session has terminated.\nSession: %s' % session_name, timeout=8000)
++
+         self._eventid_sessionnames_map = {}
+ 
+     def OnCleanSessions(self, evt):
+@@ -358,6 +380,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         _control_session = self._X2goClient__client_registered_sessions_of_name(self.current_profile_name)[0]
+         session_uuid = _control_session.get_uuid()
+         self._pyhoca_logger('cleaning all X2go sessions %s' % session_uuid, x2go.loglevel_INFO, )
++        session_names = self._X2goClient__server_running_sessions(session_uuid) + self._X2goClient__server_suspended_sessions(session_uuid)
++        if session_names:
++            _notify_text = 'Cleaning X2go sessions...'
++            for session_name in session_names:
++                _notify_text += '\nSession: %s' % session_name
++            self.notifier.send(self.current_profile_name, _notify_text, timeout=10000)
+         gevent.spawn(self._X2goClient__clean_sessions, session_uuid)
+ 
+     def OnSessionDisconnect(self, evt):
+@@ -371,6 +399,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         # disconnect control session
+         self._pyhoca_logger('disconnecting from X2go session %s' % session_uuid, x2go.loglevel_INFO, )
+         self._X2goClient__disconnect_session(session_uuid)
++        gevent.sleep(2)
++        if not self._X2goClient__is_session_connected(session_uuid):
++            self.notifier.send('%s - disconnect' % self.current_profile_name, 'X2go Profile is now disconnected.', timeout=4000)
++
+ 
+     def OnProfileAdd(self, evt):
+         &quot;&quot;&quot;\
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index 21e3201..8ba4df0 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -178,8 +178,15 @@ class PyHocaGUI_DialogBoxPassword(sc.SizedFrame):
+         try:
+             self._PyHocaGUI._X2goClient__connect_session(session_uuid, username=username, password=password, force_password_auth=True)
+             self._PyHocaGUI._post_authenticate(evt, session_uuid)
++            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
++                                             title='%s - connect' % self.current_profile_name, 
++                                             text='Authentication has been successful.')
+         except x2go.AuthenticationException:
+-            self._authentication_failed = True
++            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
++                                             title='%s - connect failure' % self.current_profile_name, 
++                                             text='Authentication failed!')
++
++        self._PyHocaGUI.notifier.send(self.current_profile_name, context='AUTH_%s' % self.current_profile_name, timeout=4000)
+         self.Destroy()
+ 
+     def OnCancel(self, evt):
+diff --git a/pyhoca/wxgui/notify.py b/pyhoca/wxgui/notify.py
+new file mode 100644
+index 0000000..7f7e838
+--- /dev/null
++++ b/pyhoca/wxgui/notify.py
+@@ -0,0 +1,175 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# PyHoca GUI is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# PyHoca GUI is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import wx, time, webbrowser
++import images
++import pynotify
++import exceptions
++
++class NotSupportedException(exceptions.StandardError): pass
++class PyHocaNotificationException(exceptions.StandardError): pass
++
++class libnotify_NotifierPopup(object):
++
++    title = {}
++    text = {}
++
++    def __init__(self, _PyHocaGUI):
++        self._PyHocaGUI = _PyHocaGUI
++
++        if not pynotify.init(&quot;PyHocaGUI&quot;):
++            raise NotSupportedException
++
++    def prepare(self, context, title=None, text=None):
++        if title is not None:
++            self.title[context] = title
++        if text is not None:
++            self.text[context] = text
++
++    def send(self, title=None, text=None, context=None, timeout=8000):
++        if context is not None:
++            try:
++                title = self.title[context]
++                del self.title[context]
++            except KeyError:
++                pass
++            try:
++                text = self.text[context]
++                del self.text[context]
++            except KeyError:
++                pass
++
++        n = pynotify.Notification(title, text)
++        n.set_urgency(pynotify.URGENCY_NORMAL)
++        n.set_timeout(timeout)
++
++        if not n.show():
++            raise PyHocaNotificationException('could not notify user')
++
++
++    def Close(self):
++        pass
++
++class wx_NotifierPopup(wx.Frame):
++    &quot;&quot;&quot;notifier's popup window&quot;&quot;&quot;
++
++    def __init__(self, _PyHocaGUI):
++
++        self._PyHocaGUI = _PyHocaGUI
++        wx.Frame.__init__(self, None, -1, style=wx.NO_BORDER|wx.FRAME_NO_TASKBAR)
++        self.padding = 12 # padding between edge, icon and text
++        self.popped = 0 # the time popup was opened
++        self.delay = 4 # time to leave the popup opened
++
++        # platform specific hacks
++        lines = 2
++        lineHeight = wx.MemoryDC().GetTextExtent(&quot; &quot;)[1]
++        if wx.Platform == &quot;__WXGTK__&quot;:
++            # use the popup window widget on gtk as the
++            # frame widget can't animate outside the screen
++            self.popup = wx.PopupWindow(self, -1)
++        elif wx.Platform == &quot;__WXMSW__&quot;:
++            # decrement line height on windows as the text calc below is off otherwise
++            self.popup = self
++            lineHeight -= 3
++        elif wx.Platform == &quot;__WXMAC__&quot;:
++            # untested
++            self.popup = self
++
++        self.popup.SetSize((250, (lineHeight * (lines + 1)) + (self.padding * 2)))
++        self.panel = wx.Panel(self.popup, -1, size=self.popup.GetSize())
++
++        # popup's click handler
++        self.panel.Bind(wx.EVT_LEFT_DOWN, self.click)
++
++        # popup's logo
++        self.logo = wx.BitmapFromImage(images.getx2goclientImage())
++        wx.StaticBitmap(self.panel, -1, pos=(self.padding, self.padding)).SetBitmap(self.logo)
++
++        # main timer routine
++        self.timer = wx.Timer(self, -1)
++        self.Bind(wx.EVT_TIMER, self.main, self.timer)
++        self.timer.Start(700)
++
++    def main(self, event):
++
++        if self.focused():
++            # maintain opened state if focused
++            self.popped = time.time()
++        elif self.opened() and self.popped + self.delay &lt; time.time():
++            # hide the popup once delay is reached
++            self.hide()
++
++    def click(self, event):
++        &quot;&quot;&quot;handles popup click&quot;&quot;&quot;
++
++        self.popped = 0
++        self.hide()
++
++    def send(self, title, text):
++        &quot;&quot;&quot;shows the popup&quot;&quot;&quot;
++
++        # create new text
++        if hasattr(self, &quot;text&quot;):
++            self.text.Destroy()
++        popupSize = self.popup.GetSize()
++        logoSize = self.logo.GetSize()
++        self.text = wx.StaticText(self.panel, -1, title)
++        self.text = wx.StaticText(self.panel, -1, text)
++        self.text.Bind(wx.EVT_LEFT_DOWN, self.click)
++        #self.text.Move((logoSize.width + (self.padding * 2), self.padding))
++        self.text.SetSize((
++            popupSize.width - logoSize.width - (self.padding * 3),
++            popupSize.height - (self.padding * 2)
++        ))
++
++        # animate the popup
++        screen = wx.GetClientDisplayRect()
++        self.popup.Show()
++        for i in range(1, popupSize.height + 1):
++            self.popup.Move((screen.width - popupSize.width, screen.height - i))
++            self.popup.SetTransparent(int(float(240) / popupSize.height * i))
++            self.popup.Update()
++            self.popup.Refresh()
++            time.sleep(0.01)
++        self.popped = time.time()
++
++    def hide(self):
++        &quot;&quot;&quot;hides the popup&quot;&quot;&quot;
++
++        self.popup.Hide()
++        self.popped = 0
++
++    def focused(self):
++        &quot;&quot;&quot;returns true if popup has mouse focus&quot;&quot;&quot;
++
++        mouse = wx.GetMousePosition()
++        popup = self.popup.GetScreenRect()
++        return (
++            self.popped and
++            mouse.x in range(popup.x, popup.x + popup.width)
++            and mouse.y in range(popup.y, popup.y + popup.height)
++        )
++
++    def opened(self):
++        &quot;&quot;&quot;returns true if popup is open&quot;&quot;&quot;
++
++        return self.popped != 0
++
+diff --git a/pyhoca/wxgui/taskbar.py b/pyhoca/wxgui/taskbar.py
+index b904855..3e1af8a 100644
+--- a/pyhoca/wxgui/taskbar.py
++++ b/pyhoca/wxgui/taskbar.py
+@@ -110,4 +110,7 @@ class PyHocaGUI_TaskBarIcon(wx.TaskBarIcon):
+             img = img.Scale(22, 22)
+         # wxMac can be any size upto 128x128, so leave the source img alone....
+         icon = wx.IconFromBitmap(img.ConvertToBitmap() )
+-        return icon
+\ No newline at end of file
++        return icon
++
++    def Close(self):
++        self.Destroy()
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010162.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 7ecb6c5befc25ed1a1d22046ea63f37e89f5032f
+</A></li>
+	<LI>Next message: <A HREF="010150.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 02e727e80432084cda021b8099ec5db13d29051f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10171">[ date ]</a>
+              <a href="thread.html#10171">[ thread ]</a>
+              <a href="subject.html#10171">[ subject ]</a>
+              <a href="author.html#10171">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

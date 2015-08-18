@@ -1,0 +1,230 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-69-g25d1db9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-69-g25d1db9&In-Reply-To=%3C20121017085342.3F3105DB15%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003391.html">
+   <LINK REL="Next"  HREF="003393.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-69-g25d1db9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-69-g25d1db9&In-Reply-To=%3C20121017085342.3F3105DB15%40ymir%3E"
+       TITLE="[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-69-g25d1db9">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Oct 17 10:53:42 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003391.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-58-g1da663a
+</A></li>
+        <LI>Next message: <A HREF="003393.html">[X2go-Commits] x2goserver.git - release/3.1.1.x (branch) updated:	3.1.1.4-8-ge8c4fc1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3392">[ date ]</a>
+              <a href="thread.html#3392">[ thread ]</a>
+              <a href="subject.html#3392">[ subject ]</a>
+              <a href="author.html#3392">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  25d1db94c24f593a690617969293072fcdbaa8bc (commit)
+       via  ebc2b466843dec399a96b98b49321849433e8755 (commit)
+      from  619a267ca99e024c2cbd940d51a694db823b20e6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 25d1db94c24f593a690617969293072fcdbaa8bc
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Oct 17 10:53:36 2012 +0200
+
+    move source_environment function into Perl package, use File::BaseDir for XDG_CONFIG_HOME detection
+
+commit ebc2b466843dec399a96b98b49321849433e8755
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Oct 17 10:33:35 2012 +0200
+
+    Detect i18n name of Desktop folder via XDG_DESKTOP_DIR environment variable.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server.pm               |   24 +++++++++++++++++++++---
+ X2Go/{Server.pm =&gt; Utils.pm} |   17 +++++++++++++++++
+ debian/changelog             |    2 ++
+ x2goserver/bin/x2gomountdirs |   12 +++++++++++-
+ 4 files changed, 51 insertions(+), 4 deletions(-)
+ copy X2Go/{Server.pm =&gt; Utils.pm} (75%)
+
+The diff of changes is:
+diff --git a/X2Go/Server.pm b/X2Go/Server.pm
+index 17a07cc..86ba0d7 100644
+--- a/X2Go/Server.pm
++++ b/X2Go/Server.pm
+@@ -20,19 +20,37 @@
+ # Copyright (C) 2007-2012  Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+ # Copyright (C) 2007-2012  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ 
+-package X2Go::Server;
++package X2Go::Utils;
+ 
+ =head1 NAME
+ 
+-X2Go::Server - X2Go Server package for Perl
++X2Go::Utils - X2Go utilities and helper functions for Perl
+ 
+ =head1 DESCRIPTION
+ 
+-X2Go::Server Perl package.
++X2Go::Utils Perl package.
+ 
+ =cut
+ 
+ use strict;
+ use base 'Exporter';
+ 
++OUR @EXPORT = ('source_environment');
++
++sub source_environment {
++    my $name = shift;
++
++    open my $fh, &quot;&lt;&quot;, $name
++        or die &quot;could not open $name: $!&quot;;
++
++    while (&lt;$fh&gt;) {
++        chomp;
++        my ($k, $v) = split /=/, $_, 2;
++        $v =~ s/^(['&quot;])(.*)\1/$2/; #' fix highlighter
++        $v =~ s/\$([a-zA-Z]\w*)/$ENV{$1}/g;
++        $v =~ s/`(.*?)`/`$1`/ge; #dangerous
++        $ENV{$k} = $v;
++    }
++}
++
+ 1;
+diff --git a/X2Go/Server.pm b/X2Go/Utils.pm
+similarity index 75%
+copy from X2Go/Server.pm
+copy to X2Go/Utils.pm
+index 17a07cc..fc6e92c 100644
+--- a/X2Go/Server.pm
++++ b/X2Go/Utils.pm
+@@ -35,4 +35,21 @@ X2Go::Server Perl package.
+ use strict;
+ use base 'Exporter';
+ 
++sub source_environment {
++    my $name = shift;
++
++    open my $fh, &quot;&lt;&quot;, $name
++        or die &quot;could not open $name: $!&quot;;
++
++    while (&lt;$fh&gt;) {
++        chomp;
++        my ($k, $v) = split /=/, $_, 2;
++        $v =~ s/^(['&quot;])(.*)\1/$2/; #' fix highlighter
++        $v =~ s/\$([a-zA-Z]\w*)/$ENV{$1}/g;
++        $v =~ s/`(.*?)`/`$1`/ge; #dangerous
++        $ENV{$k} = $v;
++    }
++}
++
++
+ 1;
+diff --git a/debian/changelog b/debian/changelog
+index ce793ee..5b761ef 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -15,6 +15,8 @@ x2goserver (3.2.0.0-0~x2go1) UNRELEASED; urgency=low
+       Makefile installation.
+     - Fix new SQLite3 wrapper for db_getmounts Perl call.
+     - Fix list output in new SQLite3 wrapper.
++    - Detect i18n name of Desktop folder via XDG_DESKTOP_DIR environment
++      variable.
+   * /debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+diff --git a/x2goserver/bin/x2gomountdirs b/x2goserver/bin/x2gomountdirs
+index d806a3f..f6ca8f5 100755
+--- a/x2goserver/bin/x2gomountdirs
++++ b/x2goserver/bin/x2gomountdirs
+@@ -22,8 +22,10 @@
+ 
+ use strict;
+ use Sys::Syslog qw( :standard :macros );
++use File::BaseDir qw(xdg_config_home);
+ 
+ use X2Go::Server::DB qw(db_insertmount db_deletemount);
++use X2Go::Utils qw(source_environment);
+ use X2Go::Log qw(loglevel);
+ 
+ openlog($0,'cons,pid','user');
+@@ -106,6 +108,8 @@ my $spooldir=&quot;$tmp_dir/.x2go-$ENV{'USER'}/spool&quot;;
+ my $mimeboxdir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/mimebox&quot;;
+ my $mimeboxdir=&quot;$tmp_dir/.x2go-$ENV{'USER'}/mimebox&quot;;
+ 
++source xdg_config_home(),&quot;/user-dirs.dirs&quot;;
++
+ if (! -e $mdir)
+ {
+ 	mkdir($mdir);
+@@ -267,7 +271,13 @@ for (my $i=0;$i&lt;@dirs;$i++)
+ 			if (! $printspool &amp;&amp; ! $mimeboxspool &amp;&amp; ! $useplasmoid )
+ 			{
+ 
+-				my $fname=&quot;$ENV{'HOME'}/Desktop&quot;;
++				my $fname;
++				if ( $ENV{'XDG_DESKTOP_DIR'} )
++				{
++					$fname=$ENV{'XDG_DESKTOP_DIR'};
++				} else {
++					$fname=&quot;$ENV{'HOME'}/Desktop&quot;;
++				}
+ 				my $current_desktop = &quot;NONE&quot;;
+ 				if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_GNOMEBINDINGS &gt;/dev/null&quot;) == 0)
+ 				{
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003391.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-58-g1da663a
+</A></li>
+	<LI>Next message: <A HREF="003393.html">[X2go-Commits] x2goserver.git - release/3.1.1.x (branch) updated:	3.1.1.4-8-ge8c4fc1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3392">[ date ]</a>
+              <a href="thread.html#3392">[ thread ]</a>
+              <a href="subject.html#3392">[ subject ]</a>
+              <a href="author.html#3392">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

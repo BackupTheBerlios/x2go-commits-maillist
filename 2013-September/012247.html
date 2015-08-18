@@ -1,0 +1,291 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-37-g7996b7b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.0-37-g7996b7b&In-Reply-To=%3C20130911100803.F2A9C5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012245.html">
+   <LINK REL="Next"  HREF="012239.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-37-g7996b7b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.0-37-g7996b7b&In-Reply-To=%3C20130911100803.F2A9C5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-37-g7996b7b">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 11 12:08:03 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012245.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-34-g2f8cdb2
+</A></li>
+        <LI>Next message: <A HREF="012239.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-40-g1df7b6c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12247">[ date ]</a>
+              <a href="thread.html#12247">[ thread ]</a>
+              <a href="subject.html#12247">[ subject ]</a>
+              <a href="author.html#12247">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  7996b7bf565ba8dd982909db914f984c441d1943 (commit)
+      from  e69690eb76cba79754aa8f5e5d285d6562b59b9e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ onmainwindow.cpp |   68 +++++++++++++++++++++++++++++++++++++++---------------
+ onmainwindow.h   |    2 ++
+ 3 files changed, 52 insertions(+), 19 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index c3ea41c..7ab91a9 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,7 @@ x2goclient (4.0.1.1-0~x2go1) UNRELEASED; urgency=low
+     - Use &quot;127.0.0.1&quot; instead of localhost to avoid wrong IPv6 hostname
+       resolution. (Fixes: #151).
+     - Wait for x2gocmdexitmessage to return before closing in hidden mode.
++    - Support for published applications in X2Go Plugin 
+ 
+   [ Mike Gabriel ]
+   * New upstream version (4.0.1.1):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index b707d84..fc735ab 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -105,6 +105,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     config.brokerNoAuth=false;
+     config.brokerAutologin=false;
+     config.brokerAutologoff=false;
++    config.published=false;
+     cmdAutologin=false;
+ 
+ 
+@@ -561,6 +562,9 @@ void ONMainWindow::initWidgetsEmbed()
+     act_shareFolder=new QAction ( QIcon ( &quot;:icons/32x32/file-open.png&quot; ),
+                                   tr ( &quot;Share folder...&quot; ),this );
+ 
++    act_showApps=new QAction ( QIcon ( &quot;:icons/32x32/apps.png&quot; ),
++                               tr ( &quot;Applications...&quot; ),this );
++
+     act_suspend=new QAction ( QIcon ( &quot;:icons/32x32/suspend.png&quot; ),
+                               tr ( &quot;Suspend&quot; ),this );
+ 
+@@ -582,6 +586,9 @@ void ONMainWindow::initWidgetsEmbed()
+     connect ( act_shareFolder,SIGNAL ( triggered ( bool ) ),this,
+               SLOT ( slotExportDirectory() ) );
+ 
++    connect ( act_showApps,SIGNAL ( triggered ( bool ) ),this,
++              SLOT ( slotAppDialog() ) );
++
+     connect ( act_suspend,SIGNAL ( triggered ( bool ) ),this,
+               SLOT ( slotSuspendSessFromSt() ) );
+ 
+@@ -659,6 +666,8 @@ void ONMainWindow::initWidgetsEmbed()
+         act_shareFolder-&gt;setVisible ( false );
+     }
+ 
++    act_showApps-&gt;setVisible(false);
++
+ 
+     if ( !managedMode )
+     {
+@@ -3727,6 +3736,7 @@ void ONMainWindow::startNewSession()
+             rootless= config.rootless;
+             host=config.server;
+             startEmbedded=false;
++            resumingSession.published=config.published;
+             if ( st-&gt;setting()-&gt;value ( sid+&quot;/startembed&quot;,
+                                         ( QVariant ) true ).toBool() )
+             {
+@@ -5986,6 +5996,7 @@ void ONMainWindow::runCommand()
+     {
+         command=config.command;
+         rootless=config.rootless;
++        resumingSession.published=config.published;
+     }
+     if ( rootless )
+         sessionType=&quot;R&quot;;
+@@ -6272,6 +6283,14 @@ void ONMainWindow::slotReadApplications(bool result, QString output,
+             runApplication(autostartApp);
+         }
+     }
++    else
++    {
++        if(embedMode)
++        {
++            act_showApps-&gt;setVisible(true);
++            slotAppDialog();
++        }
++    }
+ }
+ 
+ 
+@@ -7548,11 +7567,11 @@ void ONMainWindow::slotExtTimer()
+ 
+         x2goDebug&lt;&lt;&quot;Wrong permissions on &quot;&lt;&lt;readLoginsFrom &lt;&lt;&quot;:&quot;;
+         x2goDebug&lt;&lt; ( int ) ( QFile::permissions (
+-                                   readLoginsFrom+&quot;/.&quot; ) )
+-                  &lt;&lt;&quot;must be&quot;&lt;&lt; ( int ) ( QFile::ReadUser|QFile::WriteUser
+-                                          |QFile::ExeUser|QFile::ReadOwner|
+-                                          QFile::WriteOwner|
+-                                          QFile::ExeOwner ) &lt;&lt;endl;
++                                  readLoginsFrom+&quot;/.&quot; ) )
++                 &lt;&lt;&quot;must be&quot;&lt;&lt; ( int ) ( QFile::ReadUser|QFile::WriteUser
++                                         |QFile::ExeUser|QFile::ReadOwner|
++                                         QFile::WriteOwner|
++                                         QFile::ExeOwner ) &lt;&lt;endl;
+ 
+         if ( extLogin )
+             extTimer-&gt;stop();
+@@ -7624,13 +7643,13 @@ void ONMainWindow::slotExportTimer()
+     {
+ 
+         x2goDebug&lt;&lt;&quot;Wrong permissions on &quot;&lt;&lt;
+-                  readExportsFrom &lt;&lt;&quot;:&quot;&lt;&lt;endl;
++                 readExportsFrom &lt;&lt;&quot;:&quot;&lt;&lt;endl;
+         x2goDebug&lt;&lt; ( int ) ( QFile::permissions (
+-                                   readExportsFrom+&quot;/.&quot; ) )
+-                  &lt;&lt;&quot;must be&quot;&lt;&lt; ( int ) ( QFile::ReadUser|QFile::WriteUser
+-                                          |QFile::ExeUser|QFile::ReadOwner|
+-                                          QFile::WriteOwner|
+-                                          QFile::ExeOwner ) &lt;&lt;endl;
++                                  readExportsFrom+&quot;/.&quot; ) )
++                 &lt;&lt;&quot;must be&quot;&lt;&lt; ( int ) ( QFile::ReadUser|QFile::WriteUser
++                                         |QFile::ExeUser|QFile::ReadOwner|
++                                         QFile::WriteOwner|
++                                         QFile::ExeOwner ) &lt;&lt;endl;
+         exportTimer-&gt;stop();
+         return;
+     }
+@@ -9602,10 +9621,10 @@ void ONMainWindow::resizeProxyWinOnDisplay(int disp)
+     QRect geom=QApplication::desktop()-&gt;screenGeometry(disp-1);
+ 
+     QString geoStr =
+-            &quot;(x: &quot; + QString(&quot;%1&quot;).arg(geom.x()) +
+-            &quot;, y: &quot;+ QString(&quot;%1&quot;).arg(geom.y()) +
+-            &quot;, w: &quot;+ QString(&quot;%1&quot;).arg(geom.width()) +
+-            &quot;, h: &quot;+ QString(&quot;%1&quot;).arg(geom.height());
++        &quot;(x: &quot; + QString(&quot;%1&quot;).arg(geom.x()) +
++        &quot;, y: &quot;+ QString(&quot;%1&quot;).arg(geom.y()) +
++        &quot;, w: &quot;+ QString(&quot;%1&quot;).arg(geom.width()) +
++        &quot;, h: &quot;+ QString(&quot;%1&quot;).arg(geom.height());
+     x2goDebug&lt;&lt;&quot;Resizing proxy window to fit Display: &quot; + QString(&quot;%1&quot;).arg(disp) + &quot; &quot; + geoStr;
+ 
+ #ifdef Q_OS_LINUX
+@@ -9658,10 +9677,10 @@ void ONMainWindow::slotConfigXinerama()
+     lastDisplayGeometry=newGeometry;
+ 
+     QString geoStr =
+-            &quot;(x: &quot; + QString(&quot;%1&quot;).arg(lastDisplayGeometry.x()) +
+-            &quot;, y: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.y()) +
+-            &quot;, w: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.width()) +
+-            &quot;, h: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.height());
++        &quot;(x: &quot; + QString(&quot;%1&quot;).arg(lastDisplayGeometry.x()) +
++        &quot;, y: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.y()) +
++        &quot;, w: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.width()) +
++        &quot;, h: &quot;+ QString(&quot;%1&quot;).arg(lastDisplayGeometry.height());
+     x2goDebug&lt;&lt;&quot;New proxy geometry: &quot; + geoStr;
+ 
+     QDesktopWidget* root=QApplication::desktop();
+@@ -9889,6 +9908,8 @@ void ONMainWindow::slotEmbedWindow()
+ void ONMainWindow::setEmbedSessionActionsEnabled ( bool enable )
+ {
+     act_shareFolder-&gt;setEnabled ( enable );
++    if(!enable)
++       act_showApps-&gt;setVisible(enable);
+     act_suspend-&gt;setEnabled ( enable );
+     act_terminate-&gt;setEnabled ( enable );
+     act_embedContol-&gt;setEnabled ( enable );
+@@ -10018,6 +10039,14 @@ void ONMainWindow::processCfgLine ( QString line )
+             config.rootless=false;
+         return;
+     }
++    if ( lst[0]==&quot;published&quot; )
++    {
++        if ( lst[1]==&quot;true&quot; )
++            config.published=true;
++        else
++            config.published=false;
++        return;
++    }
+     if ( lst[0]==&quot;checkexitstatus&quot; )
+     {
+         if ( lst[1]==&quot;true&quot; )
+@@ -10919,6 +10948,7 @@ void ONMainWindow::initEmbedToolBar()
+     stb-&gt;addSeparator();
+     stb-&gt;setToolButtonStyle ( Qt::ToolButtonTextUnderIcon );
+     stb-&gt;addAction ( act_shareFolder );
++    stb-&gt;addAction ( act_showApps );
+     stb-&gt;addAction ( act_reconnect );
+     stb-&gt;addAction ( act_suspend );
+     stb-&gt;addAction ( act_terminate );
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 61e730f..70504d2 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -198,6 +198,7 @@ struct ConfigFile
+     //
+     bool useSnd;
+     bool useFs;
++    bool published;
+     int conSpeed;
+     QString compMet;
+     int imageQ;
+@@ -679,6 +680,7 @@ private:
+     QAction *act_abclient;
+     QAction *act_support;
+     QAction *act_shareFolder;
++    QAction *act_showApps;
+     QAction *act_suspend;
+     QAction *act_terminate;
+     QAction *act_reconnect;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012245.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-34-g2f8cdb2
+</A></li>
+	<LI>Next message: <A HREF="012239.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-40-g1df7b6c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12247">[ date ]</a>
+              <a href="thread.html#12247">[ thread ]</a>
+              <a href="subject.html#12247">[ subject ]</a>
+              <a href="author.html#12247">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

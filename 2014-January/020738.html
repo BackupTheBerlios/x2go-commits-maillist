@@ -1,0 +1,446 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-88-g3db6c39
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-88-g3db6c39&In-Reply-To=%3C20140107151735.2ABF55DD2B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020759.html">
+   <LINK REL="Next"  HREF="020740.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-88-g3db6c39</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-88-g3db6c39&In-Reply-To=%3C20140107151735.2ABF55DD2B%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-88-g3db6c39">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:34 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020759.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-79-g584c531
+</A></li>
+        <LI>Next message: <A HREF="020740.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-85-g8ea6a89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20738">[ date ]</a>
+              <a href="thread.html#20738">[ thread ]</a>
+              <a href="subject.html#20738">[ subject ]</a>
+              <a href="author.html#20738">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  3db6c3936fd436a7f78cae846b8fa41c83c5ab29 (commit)
+      from  1ea418ba168848ba287621c5ee27459ae2b4da63 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 +
+ x2go/backends/terminal/_stdout.py |   89 ++++++++++++++++++++++------
+ x2go/defaults.py                  |    3 +
+ x2go/session.py                   |    2 +
+ x2go/utils.py                     |  115 ++++++-------------------------------
+ 5 files changed, 96 insertions(+), 115 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index bef79b0..279c1ef 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -20,6 +20,8 @@ python-x2go (0.1.1.9-0-x2go1) UNRELEASED; urgency=low
+     - Allow session parameter change for already registered sessions.
+     - Add support for session window title renaming.
+     - Add support for bringing session windows on top.
++    - Terminal session now remember the X window of a terminal session in as
++      an internal property.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 12 Oct 2011 10:54:23 +0200
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 07b0be9..e07de13 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -36,6 +36,7 @@ import signal
+ import cStringIO
+ import copy
+ import shutil
++import Xlib
+ 
+ # Python X2go modules
+ import x2go.rforward as rforward
+@@ -51,6 +52,7 @@ from x2go.cleanup import x2go_cleanup
+ 
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
++from x2go.defaults import X_DISPLAY as _X_DISPLAY
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+@@ -299,6 +301,7 @@ class X2goTerminalSessionSTDOUT(object):
+         self.profile_name = profile_name
+         self.set_session_title = set_session_title
+         self.session_title = session_title
++        self.session_window = None
+         self.proxy_backend = proxy_backend
+ 
+         self.snd_port = snd_port
+@@ -751,7 +754,7 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;
+         return self.params.depth
+ 
+-    def _auto_session_window_title(self):
++    def auto_session_window_title(self):
+ 
+         _generic_title = 'X2GO-%s' % self.session_info.name
+ 
+@@ -772,8 +775,37 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.session_title != _generic_title:
+             self.set_session_window_title(title=self.session_title)
+ 
++    def find_session_window(self, timeout=30):
++        &quot;&quot;&quot;\
++        Try for &lt;timeout&gt; seconds to find the X2Go session window of this
++        terminal session.
++
++        @param timeout: try for &lt;timeout&gt; seconds to find the session window
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
++        gevent.spawn(self._find_session_window, timeout=timeout)
++
++    def _find_session_window(self, timeout=0):
++
++        self.session_window = None
++
++        # search for the window of our focus, do this in a loop till the window as been found
++        # or timeout forces us to give up...
++        timeout += 1
++        while timeout:
++
++            timeout -= 1
++
++            window = utils.find_session_window(self.session_info.name)
++
++            if window is not None:
++                self.session_window = window
++                break
+ 
+-    def set_session_window_title(self, title=''):
++            gevent.sleep(1)
++
++    def set_session_window_title(self, title, timeout=30):
+         &quot;&quot;&quot;\
+         Modify session window title. If the session ID does not occur in the
+         given title, it will be prepended, so that every X2Go session window
+@@ -781,29 +813,51 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         @param title: new title for session window
+         @type title: C{str}
++        @param timeout: try for &lt;timeout&gt; seconds to find the session window
++        @type timeout: C{int}
+ 
+         &quot;&quot;&quot;
++        gevent.spawn(self._set_session_window_title, title=title, timeout=timeout)
++
++    def _set_session_window_title(self, title, timeout=0):
++
+         self.session_title = title
+ 
+-        if self.session_info.name not in title:
+-            title = '%s (X2GO-%s)' % (title, self.session_info.name)
++        timeout += 1
++        while timeout:
++
++            timeout -= 1
++
++            if self.session_window is not None:
++                self.session_window.set_wm_name(str(self.session_title))
++                self.session_window.set_wm_icon_name(str(self.session_title))
++                _X_DISPLAY.sync()
++                break
+ 
+-        gevent.spawn(utils.set_session_window_title,
+-                     session_name=self.session_info.name,
+-                     title=title,
+-                     timeout=30,
+-                    )
++            gevent.sleep(1)
+ 
+-    def raise_session_window(self):
++    def raise_session_window(self, timeout=30):
+         &quot;&quot;&quot;\
+         Try to lift the session window above all other windows and bring
+         it to focus.
+ 
+         &quot;&quot;&quot;
+-        gevent.spawn(utils.raise_session_window,
+-                     session_name=self.session_info.name,
+-                     timeout=30,
+-                    )
++        gevent.spawn(self._raise_session_window, timeout=timeout)
++
++    def _raise_session_window(self, timeout=0):
++
++        timeout += 1
++        while timeout:
++
++            timeout -= 1
++
++            if self.session_window is not None:
++                self.session_window.set_input_focus(Xlib.X.RevertToParent, Xlib.X.CurrentTime)
++                self.session_window.configure(stack_mode=Xlib.X.Above)
++                self.session_window.circulate(Xlib.X.RaiseLowest)
++                break
++
++            gevent.sleep(1)
+ 
+     def has_command(self, cmd):
+         &quot;&quot;&quot;\
+@@ -1018,7 +1072,8 @@ class X2goTerminalSessionSTDOUT(object):
+         self.proxy_subprocess = self.proxy.start_proxy()
+         self.active_threads.append(self.proxy)
+ 
+-        self._auto_session_window_title()
++        self.find_session_window()
++        self.auto_session_window_title()
+         self.raise_session_window()
+ 
+         return self.ok()
+@@ -1067,8 +1122,10 @@ class X2goTerminalSessionSTDOUT(object):
+         # on a session resume the user name comes in as a user ID. We have to translate this...
+         self.session_info.username = self.control_session.remote_username()
+ 
+-        self._auto_session_window_title()
++        self.find_session_window()
++        self.auto_session_window_title()
+         self.raise_session_window()
++        _X_DISPLAY.sync()
+ 
+         return self.ok()
+ 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index db5b607..b6b5997 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -37,6 +37,9 @@ import utils
+ 
+ X2GOCLIENT_OS = platform.system()
+ 
++import Xlib.display
++X_DISPLAY = Xlib.display.Display()
++
+ LOCAL_HOME = os.path.expanduser('~')
+ X2GO_SESSIONS_ROOTDIR = '.x2go'
+ X2GO_CLIENT_ROOTDIR = '.x2goclient'
+diff --git a/x2go/session.py b/x2go/session.py
+index 26f812f..75eefcc 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -627,6 +627,8 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         if self.terminal_session is not None:
+             return self.terminal_session.session_title
++        else:
++            return 'X2GO-%s' % self.get_session_name()
+ 
+     def get_control_session(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/utils.py b/x2go/utils.py
+index dc74c57..46b2d95 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -35,16 +35,11 @@ import gevent
+ import string
+ import re
+ import subprocess
+-
+-from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+-if _X2GOCLIENT_OS != &quot;Windows&quot;:
+-    import Xlib
+-    import Xlib.display
+-else:
+-    import win32api
++import Xlib
+ 
+ # Python X2go modules
+ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
++from defaults import X_DISPLAY as _X_DISPLAY
+ from defaults import X2GO_SESSIONPROFILE_DEFAULTS as _X2GO_SESSIONPROFILE_DEFAULTS
+ from defaults import X2GO_MIMEBOX_ACTIONS as _X2GO_MIMEBOX_ACTIONS
+ from defaults import pack_methods_nx3
+@@ -469,106 +464,28 @@ def is_color_depth_ok(depth_session, depth_local):
+         return True;
+     return False
+ 
+-def set_session_window_title(session_name, title, timeout=0):
++def find_session_window(session_name):
+     &quot;&quot;&quot;\
+-    Modify a session window title. The current window title has to contain
+-    the X2Go session ID to be identifiable.
++    Find a session window by its X2GO session ID.
+ 
+     @param session_name: session name/ID of an X2Go session window
+     @type session_name: C{str}
+-    @param title: the new session window title to be set
+-    @type title: C{str}
+-    @param timeout: try the title renaming for &lt;timeout&gt; sec at maximum
+-    @type timeout: C{int}
+ 
+     &quot;&quot;&quot;
+     # establish connection to the win API in use...
+-    if _X2GOCLIENT_OS != 'Windows':
+-
+-        display = Xlib.display.Display()
+-        root = display.screen().root
+-
+-    else:
+-
+-        # no MS Windows support yet
+-        pass
+-
+-    # search for the window of our focus, do this in a loop till the window as been found
+-    # or timeout forces us to give up...
+-    timeout += 1
+-    while timeout:
+-
+-        timeout -= 1
+-        success = False
+-
+-        if _X2GOCLIENT_OS != 'Windows':
+-
+-            windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
+-            for windowID in windowIDs:
+-                window = display.create_resource_object('window', windowID)
+-                if session_name in window.get_wm_name():
+-                    success = True
+-                    window.set_wm_name('%s' % str(title))
+-                    window.set_wm_icon_name('%s' % str(title))
+-                    display.sync()
+-                    break
+-
+-        else:
+-            # no MS Windows support yet
+-            pass
+-
+-        if success:
++    display = _X_DISPLAY
++    root = display.screen().root
++
++    success = False
++    windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
++    for windowID in windowIDs:
++        window = display.create_resource_object('window', windowID)
++        if session_name in window.get_wm_name():
++            success = True
+             break
+ 
+-        gevent.sleep(1)
+-
+-def raise_session_window(session_name, timeout=0):
+-    &quot;&quot;&quot;\
+-    Bring a session window to foreground.
+-
+-    @param session_name: session name/ID of an X2Go session window
+-    @type session_name: C{str}
+-    @param timeout: try the title renaming for &lt;timeout&gt; sec at maximum
+-    @type timeout: C{int}
+-
+-    &quot;&quot;&quot;
+-    # establish connection to the win API in use...
+-    if _X2GOCLIENT_OS != 'Windows':
+-
+-        display = Xlib.display.Display()
+-        root = display.screen().root
+-
+-    else:
++    if success:
++        return window
+ 
+-        # no MS Windows support yet
+-        pass
+-
+-    # search for the window of our focus, do this in a loop till the window as been found
+-    # or timeout forces us to give up...
+-    timeout += 1
+-    while timeout:
+-
+-        timeout -= 1
+-        success = False
+-
+-        if _X2GOCLIENT_OS != 'Windows':
+-
+-            windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
+-            for windowID in windowIDs:
+-                window = display.create_resource_object('window', windowID)
+-                if session_name in window.get_wm_name():
+-                    success = True
+-                    window.set_input_focus(Xlib.X.RevertToParent, Xlib.X.CurrentTime)
+-                    window.configure(stack_mode=Xlib.X.Above)
+-                    window.circulate(Xlib.X.RaiseLowest)
+-                    display.sync()
+-                    break
+-
+-        else:
+-            # no MS Windows support yet
+-            pass
+-
+-        if success:
+-            break
++    return None
+ 
+-        gevent.sleep(1)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020759.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-79-g584c531
+</A></li>
+	<LI>Next message: <A HREF="020740.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-85-g8ea6a89
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20738">[ date ]</a>
+              <a href="thread.html#20738">[ thread ]</a>
+              <a href="subject.html#20738">[ subject ]</a>
+              <a href="author.html#20738">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

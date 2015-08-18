@@ -1,0 +1,1010 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-16-g0720d15
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20build-main%20%28branch%29%0A%09updated%3A%203.0.1.2-16-g0720d15&In-Reply-To=%3C20130607231323.27EA15DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="009229.html">
+   <LINK REL="Next"  HREF="009239.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-16-g0720d15</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20build-main%20%28branch%29%0A%09updated%3A%203.0.1.2-16-g0720d15&In-Reply-To=%3C20130607231323.27EA15DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-16-g0720d15">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Jun  8 01:13:23 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="009229.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-18-g91df9e9
+</A></li>
+        <LI>Next message: <A HREF="009239.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-23-g0d49dfd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9230">[ date ]</a>
+              <a href="thread.html#9230">[ thread ]</a>
+              <a href="subject.html#9230">[ subject ]</a>
+              <a href="author.html#9230">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  0720d15908712b9f3c3390e46515bdd3fcd8b550 (commit)
+      from  cf356157e83da59220ab7af3c8bb71f722b3e754 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ sharetray.cpp |  785 ++++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 391 insertions(+), 394 deletions(-)
+
+The diff of changes is:
+diff --git a/sharetray.cpp b/sharetray.cpp
+index 56a785c..9e81db8 100644
+--- a/sharetray.cpp
++++ b/sharetray.cpp
+@@ -44,132 +44,131 @@ int ShareTray::sigtermFd[2];
+ ShareTray::ShareTray()
+         : QMainWindow()
+ {
+-    serverSocket=0l;
+-    menuClose=false;
+-    current_list=BLACK;
+-
+-    ui.setupUi ( this );
+-    ui.box-&gt;setSelectionMode ( QAbstractItemView::ExtendedSelection );
+-
+-    connect ( ui.close_box,SIGNAL ( clicked ( QAbstractButton* ) ),
+-              SLOT ( slotMsgClose ( QAbstractButton* ) ) );
+-
+-    connect ( ui.ok_cancel_box,SIGNAL ( clicked ( QAbstractButton* ) ),
+-              SLOT ( slotMsgOkCancel ( QAbstractButton* ) ) );
+-
+-    connect ( ui.del,SIGNAL ( clicked() ),
+-              SLOT ( slotDelListItem() ) );
+-
+-    ui.icon-&gt;setPixmap ( QPixmap ( &quot;:icons/128x128/x2godesktopsharing.png&quot; ) );
+-
+-    ui.text-&gt;setText ( tr ( &quot;&lt;b&gt;X2GO DesktopSharing v&quot; ) +VERSION+
+-                       &quot; &lt;/b &gt;(Qt - &quot;+qVersion() +&quot;)&quot;+
+-                       ui.text-&gt;text() );
+-
+-    setWindowFlags ( Qt::Dialog );
+-    Qt::WindowFlags flags=windowFlags();
+-    flags&amp;= ~Qt::WindowTitleHint;
+-    setWindowFlags ( flags );
+-
+-    QString dispname=getenv ( &quot;DISPLAY&quot; );
+-    socketFname=QDir::tempPath() +&quot;/x2godesktopsharing_@&quot;+
+-                getenv ( &quot;LOGNAME&quot; ) +&quot;@&quot;+dispname;
+-    lockFname=QDir::tempPath() +&quot;/x2godesktopsharing.lock_&quot;+
+-              getenv ( &quot;LOGNAME&quot; ) +&quot;@&quot;+dispname;
+-    if ( QFile::exists ( lockFname ) )
+-    {
+-        QFile file ( lockFname );
+-        if ( file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
+-        {
+-            QTextStream in ( &amp;file );
+-            if ( !in.atEnd() )
+-            {
+-                QString line = in.readLine();
+-                file.close();
+-                if ( abs ( line.toUInt() -
+-                           QDateTime::currentDateTime().toTime_t() ) &lt;5 )
+-                {
+-
+-                    QString message=QString (
+-                                        tr (
+-                                            &quot;X2Go desktop sharing application &quot;
+-                                            &quot;is already active for this &quot;
+-                                            &quot;display \n&quot;
+-                                            &quot;if this application is no longer &quot;
+-                                            &quot;running, remove %1\n&quot;
+-                                            &quot;and start again&quot; ) ).arg ( lockFname );
+-                    QMessageBox::critical ( 0l,tr (
+-                                                &quot;Error&quot; ),message,
+-                                            QMessageBox::Ok,
+-                                            QMessageBox::NoButton );
+-                    exit ( -1 );
+-                }
+-            }
+-        }
+-        QFile::remove ( lockFname );
+-    }
+-    if ( QFile::exists ( socketFname ) )
+-        QFile::remove ( socketFname );
+-
+-    QTimer *lockTimer = new QTimer ( this );
+-    connect ( lockTimer, SIGNAL ( timeout() ), this, SLOT ( slotUpdateLockFile() ) );
+-    lockTimer-&gt;start ( 3000 );
+-    trayIcon=new QSystemTrayIcon ( this );
+-    setWindowIcon ( QIcon ( &quot;:icons/22x22/x2godesktopsharing.png&quot; ) );
+-    menu = new QMenu ( this );
+-    trayIcon-&gt;setContextMenu ( menu );
+-    trayIcon-&gt;setToolTip ( tr ( &quot;X2Go desktop sharing application&quot; ) );
+-
+-    menu-&gt;addSeparator();
+-
+-    actWhite = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/wlist.png&quot; ) ,
+-                                 tr ( &quot;Granted users...&quot; ) );
+-    actBlack = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/blist.png&quot; ) ,
+-                                 tr ( &quot;Banned users...&quot; ) );
+-    menu-&gt;addSeparator();
+-
+-    actStart = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/share.png&quot; ) ,
+-                                 tr ( &quot;Activate desktop sharing&quot; ) );
+-
+-    actStop = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/stop.png&quot; ) ,
+-                                tr ( &quot;Deactivate desktop sharing&quot; ) );
+-
+-    menu-&gt;addSeparator();
+-    QAction* actAbout=menu-&gt;addAction (
+-                          QIcon ( &quot;:icons/32x32/x2godesktopsharing.png&quot; ),
+-                          tr ( &quot;About X2GO Sharing&quot; ) );
+-//
+-//     QAction* actAboutQt=menu-&gt;addAction(
+-//                              tr(&quot;About Qt&quot;));
+-//     connect ( actAboutQt,SIGNAL ( triggered ( bool ) ),this,
+-//          SLOT ( slotAboutQt() ) );
+-//
+-    connect ( actAbout,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotAbout() ) );
+-
+-
+-    menu-&gt;addSeparator();
+-    QAction* actExit = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/exit.png&quot; ) ,
+-                                         tr ( &quot;&amp;Quit&quot; ) );
+-
+-    connect ( actWhite,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotWhiteList() ) );
+-    connect ( actBlack,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotBlackList() ) );
+-
+-
+-    connect ( actExit,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotMenuClose() ) );
+-
+-    connect ( actStart,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotStartSharing() ) );
+-
+-    connect ( actStop,SIGNAL ( triggered ( bool ) ),this,
+-              SLOT ( slotStopSharing() ) );
+-
+-
+-
+-    actStop-&gt;setEnabled ( false );
++	serverSocket=0l;
++	menuClose=false;
++	current_list=BLACK;
++
++	ui.setupUi ( this );
++	ui.box-&gt;setSelectionMode ( QAbstractItemView::ExtendedSelection );
++
++	connect ( ui.close_box,SIGNAL ( clicked ( QAbstractButton* ) ),
++	          SLOT ( slotMsgClose ( QAbstractButton* ) ) );
++
++	connect ( ui.ok_cancel_box,SIGNAL ( clicked ( QAbstractButton* ) ),
++	          SLOT ( slotMsgOkCancel ( QAbstractButton* ) ) );
++
++	connect ( ui.del,SIGNAL ( clicked() ),
++	          SLOT ( slotDelListItem() ) );
++
++	ui.icon-&gt;setPixmap ( QPixmap ( &quot;:icons/128x128/x2godesktopsharing.png&quot; ) );
++
++	ui.text-&gt;setText ( tr ( &quot;&lt;b&gt;X2GO DesktopSharing v&quot; ) +VERSION+
++	                   &quot; &lt;/b &gt;(Qt - &quot;+qVersion() +&quot;)&quot;+
++	                   ui.text-&gt;text() );
++
++	setWindowFlags ( Qt::Dialog );
++	Qt::WindowFlags flags=windowFlags();
++	flags&amp;= ~Qt::WindowTitleHint;
++	setWindowFlags ( flags );
++
++	QString dispname=getenv ( &quot;DISPLAY&quot; );
++	socketFname=QDir::tempPath() +&quot;/x2godesktopsharing_@&quot;+
++	            getenv ( &quot;LOGNAME&quot; ) +&quot;@&quot;+dispname;
++	lockFname=QDir::tempPath() +&quot;/x2godesktopsharing.lock_&quot;+
++	          getenv ( &quot;LOGNAME&quot; ) +&quot;@&quot;+dispname;
++	if ( QFile::exists ( lockFname ) )
++	{
++		QFile file ( lockFname );
++		if ( file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
++		{
++			QTextStream in ( &amp;file );
++			if ( !in.atEnd() )
++			{
++				QString line = in.readLine();
++				file.close();
++				if ( abs ( line.toUInt() -
++					QDateTime::currentDateTime().toTime_t() ) &lt;5 )
++					{
++
++					QString message=QString (
++					                tr (
++					                    &quot;X2Go desktop sharing application &quot;
++					                    &quot;is already active for this &quot;
++					                    &quot;display \n&quot;
++					                    &quot;if this application is no longer &quot;
++					                    &quot;running, remove %1\n&quot;
++					                    &quot;and start again&quot; ) ).arg ( lockFname );
++					QMessageBox::critical ( 0l,tr (
++					                                &quot;Error&quot; ),message,
++					                                QMessageBox::Ok,
++					                                QMessageBox::NoButton );
++					exit ( -1 );
++				}
++			}
++		}
++		QFile::remove ( lockFname );
++	}
++	if ( QFile::exists ( socketFname ) )
++		QFile::remove ( socketFname );
++
++	QTimer *lockTimer = new QTimer ( this );
++	connect ( lockTimer, SIGNAL ( timeout() ), this, SLOT ( slotUpdateLockFile() ) );
++	lockTimer-&gt;start ( 3000 );
++	trayIcon=new QSystemTrayIcon ( this );
++	setWindowIcon ( QIcon ( &quot;:icons/22x22/x2godesktopsharing.png&quot; ) );
++	menu = new QMenu ( this );
++	trayIcon-&gt;setContextMenu ( menu );
++	trayIcon-&gt;setToolTip ( tr ( &quot;X2Go desktop sharing application&quot; ) );
++
++	menu-&gt;addSeparator();
++
++	actWhite = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/wlist.png&quot; ) ,
++	                             tr ( &quot;Granted users...&quot; ) );
++	actBlack = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/blist.png&quot; ) ,
++	                             tr ( &quot;Banned users...&quot; ) );
++	menu-&gt;addSeparator();
++
++	actStart = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/share.png&quot; ) ,
++	                             tr ( &quot;Activate desktop sharing&quot; ) );
++
++	actStop = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/stop.png&quot; ) ,
++	                            tr ( &quot;Deactivate desktop sharing&quot; ) );
++
++	menu-&gt;addSeparator();
++	QAction* actAbout=menu-&gt;addAction (
++	                                    QIcon ( &quot;:icons/32x32/x2godesktopsharing.png&quot; ),
++	                                    tr ( &quot;About X2GO Sharing&quot; ) );
++	//
++	//     QAction* actAboutQt=menu-&gt;addAction(
++	//                              tr(&quot;About Qt&quot;));
++	//     connect ( actAboutQt,SIGNAL ( triggered ( bool ) ),this,
++	//          SLOT ( slotAboutQt() ) );
++	//
++	connect ( actAbout,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotAbout() ) );
++
++
++	menu-&gt;addSeparator();
++	QAction* actExit = menu-&gt;addAction ( QIcon ( &quot;:icons/32x32/exit.png&quot; ) ,
++	                                     tr ( &quot;&amp;Quit&quot; ) );
++
++	connect ( actWhite,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotWhiteList() ) );
++	connect ( actBlack,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotBlackList() ) );
++
++	connect ( actExit,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotMenuClose() ) );
++
++	connect ( actStart,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotStartSharing() ) );
++
++	connect ( actStop,SIGNAL ( triggered ( bool ) ),this,
++	          SLOT ( slotStopSharing() ) );
++
++
++
++	actStop-&gt;setEnabled ( false );
+ 
+ 	// unix signals (TERM, INT) are piped into a unix socket and will raise Qt events
+ 	if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigkeybintFd))
+@@ -183,24 +182,24 @@ ShareTray::ShareTray()
+ 	snTerm = new QSocketNotifier(sigtermFd[1], QSocketNotifier::Read, this);
+ 	connect(snTerm, SIGNAL(activated(int)), this, SLOT(handleSigTerm()));
+ 
+-    QTimer *timer = new QTimer ( this );
+-    connect ( timer, SIGNAL ( timeout() ), this, SLOT ( slotTimer() ) );
+-    timer-&gt;start ( 5000 );
+-    loadSettings();
+-    setTrayIcon();
+-    trayIcon-&gt;show();
++	QTimer *timer = new QTimer ( this );
++	connect ( timer, SIGNAL ( timeout() ), this, SLOT ( slotTimer() ) );
++	timer-&gt;start ( 5000 );
++	loadSettings();
++	setTrayIcon();
++	trayIcon-&gt;show();
+ }
+ 
+ 
+ ShareTray::~ShareTray()
+ {
+-    qDebug() &lt;&lt;&quot;stopping desktop sharing&quot;;
+-    slotStopSharing();
+-    if ( QFile::exists ( lockFname ) )
+-        QFile::remove ( lockFname );
+-        qDebug() &lt;&lt;&quot;lock file removed&quot;;
+-    saveSettings();
+-    qDebug() &lt;&lt;&quot;settings saved&quot;;
++	qDebug() &lt;&lt;&quot;stopping desktop sharing&quot;;
++	slotStopSharing();
++	if ( QFile::exists ( lockFname ) )
++		QFile::remove ( lockFname );
++		qDebug() &lt;&lt;&quot;lock file removed&quot;;
++	saveSettings();
++	qDebug() &lt;&lt;&quot;settings saved&quot;;
+ }
+ 
+ void ShareTray::handleSigKeybInt()
+@@ -241,368 +240,366 @@ void ShareTray::termSignalHandler(int)
+ 
+ void ShareTray::slotStopSharing()
+ {
+-    if ( serverSocket )
+-    {
+-        serverSocket-&gt;close();
+-        delete serverSocket;
+-        serverSocket=0l;
+-    }
+-    if ( QFile::exists ( socketFname ) )
+-        QFile::remove ( socketFname );
+-    for ( int i=menu-&gt;actions().count()-STAT_ACT_COUNT-1;i&gt;=0;--i )
+-    {
+-        slotCloseConnection ( ( AccessAction* ) ( menu-&gt;actions() [i] ) );
+-    }
+-    actStop-&gt;setEnabled ( false );
+-    actStart-&gt;setEnabled ( true );
+-    setTrayIcon();
++	if ( serverSocket )
++	{
++		serverSocket-&gt;close();
++		delete serverSocket;
++		serverSocket=0l;
++	}
++	if ( QFile::exists ( socketFname ) )
++		QFile::remove ( socketFname );
++	for ( int i=menu-&gt;actions().count()-STAT_ACT_COUNT-1;i&gt;=0;--i )
++	{
++		slotCloseConnection ( ( AccessAction* ) ( menu-&gt;actions() [i] ) );
++	}
++	actStop-&gt;setEnabled ( false );
++	actStart-&gt;setEnabled ( true );
++	setTrayIcon();
+ }
+ 
+ 
+ void ShareTray::slotStartSharing()
+ {
+-    actStop-&gt;setEnabled ( true );
+-    actStart-&gt;setEnabled ( false );
+-    if ( serverSocket )
+-        delete serverSocket;
+-    if ( QFile::exists ( socketFname ) )
+-        QFile::remove ( socketFname );
+-    serverSocket=new QLocalServer ( this );
+-    if ( serverSocket-&gt;listen ( socketFname ) )
+-    {
+-
+-        chown ( socketFname.toAscii(),getuid(),getgrnam ( &quot;x2godesktopsharing&quot; )-&gt;gr_gid );
+-        QFile::setPermissions ( socketFname,
+-                                QFile::ReadOwner|QFile::WriteOwner|QFile::ReadGroup|QFile::WriteGroup );
+-        connect ( serverSocket,SIGNAL ( newConnection() ),
+-                  this,SLOT ( slotServerConnection() ) );
+-    }
+-    else
+-    {
+-        QString message=
+-            tr (
+-                &quot;Can't listen on socket:&quot; ) + socketFname;
+-        QMessageBox::critical ( 0l,tr (
+-                                    &quot;Error&quot; ),message,
+-                                QMessageBox::Ok,
+-                                QMessageBox::NoButton );
+-        close();
+-    }
+-    setTrayIcon();
++	actStop-&gt;setEnabled ( true );
++	actStart-&gt;setEnabled ( false );
++	if ( serverSocket )
++		delete serverSocket;
++	if ( QFile::exists ( socketFname ) )
++		QFile::remove ( socketFname );
++	serverSocket=new QLocalServer ( this );
++	if ( serverSocket-&gt;listen ( socketFname ) )
++	{
++
++		chown ( socketFname.toAscii(),getuid(),getgrnam ( &quot;x2godesktopsharing&quot; )-&gt;gr_gid );
++		QFile::setPermissions ( socketFname,
++		                        QFile::ReadOwner|QFile::WriteOwner|QFile::ReadGroup|QFile::WriteGroup );
++		connect ( serverSocket,SIGNAL ( newConnection() ),
++		          this,SLOT ( slotServerConnection() ) );
++	}
++	else
++	{
++		QString message=
++		    tr (
++		        &quot;Can't listen on socket:&quot; ) + socketFname;
++		QMessageBox::critical ( 0l,tr (
++		                            &quot;Error&quot; ),message,
++		                        QMessageBox::Ok,
++		                        QMessageBox::NoButton );
++		close();
++	}
++	setTrayIcon();
+ }
+ 
+ bool ShareTray::acceptConnections()
+ {
+-    return actStop-&gt;isEnabled();
++	return actStop-&gt;isEnabled();
+ }
+ 
+ QString ShareTray::getSocketAnswer ( QString message )
+ {
+-    qDebug() &lt;&lt;&quot;message: &quot;&lt;&lt;message;
+-    QStringList lst=message.split ( ' ' );
+-    if ( lst.size() !=11 )
+-    {
+-        qDebug() &lt;&lt;&quot;wrong parameters&quot;;
+-        return &quot;DENY&quot;;
+-    }
+-    QStringList params=lst[9].split ( &quot;XSHAD&quot; );
+-    if ( params.size() !=3 )
+-    {
+-        qDebug() &lt;&lt;&quot;wrong parameters&quot;;
+-        return &quot;DENY&quot;;
+-    }
+-    QString client=lst[0];
+-    QString user=params[1];
+-    QString remote_user=lst[10];
+-    if ( getAccess ( remote_user, client ) ==QMessageBox::Yes )
+-    {
+-        trayMessage ( tr ( &quot;Access granted&quot; ),QString ( tr ( &quot;%1(%2): access granted&quot; ) ).arg (remote_user ).arg ( client ) );
+-        //start agent
+-        QProcess proc ( this );
+-        lst.removeAt ( 10 );;
+-        lst.removeAt ( 0 );;
+-        proc.start ( &quot;x2gostartagent&quot;,lst );
+-        if ( !proc.waitForFinished ( 5000 ) )
+-        {
+-            return &quot;DENY&quot;;
+-        }
+-        else
+-        {
+-            QString output=proc.readAllStandardOutput();
+-            qDebug() &lt;&lt;&quot;agent out: &quot;&lt;&lt;output;
+-            QStringList lines=output.split ( &quot;\n&quot; );
+-            QString pid=&quot;pid&quot;;
+-            if ( lines.size() &gt;3 )
+-                pid=lines[2];
+-            qDebug() &lt;&lt;&quot;agent pid: &quot;&lt;&lt;pid;
+-            AccessAction *act=new AccessAction (
+-                pid,remote_user,client,
+-                QString ( tr ( &quot;Disconnect %1(%2)&quot; ) ).arg ( remote_user ).arg ( client ),
+-                this );
+-            menu-&gt;insertAction ( menu-&gt;actions() [0],act );
+-            connect ( act,SIGNAL ( actionActivated ( AccessAction* ) ),this,
+-                      SLOT ( slotCloseConnection ( AccessAction* ) ) );
+-            trayMessage ( tr ( &quot;Remote connection&quot; ),
+-                          QString (
+-                              tr ( &quot;%1(%2) connected&quot; ) ).arg ( remote_user ).arg ( client ) );
+-            setTrayIcon();
+-            return output;
+-        }
+-    }
+-    trayMessage ( tr ( &quot;Access denied&quot; ),QString (
+-                      tr ( &quot;%1(%2): access denied&quot; ) ).arg ( remote_user ).arg ( client ) );
+-    return &quot;DENY&quot;;
++	qDebug() &lt;&lt;&quot;message: &quot;&lt;&lt;message;
++	QStringList lst=message.split ( ' ' );
++	if ( lst.size() !=11 )
++	{
++		qDebug() &lt;&lt;&quot;wrong parameters&quot;;
++		return &quot;DENY&quot;;
++	}
++	QStringList params=lst[9].split ( &quot;XSHAD&quot; );
++	if ( params.size() !=3 )
++	{
++		qDebug() &lt;&lt;&quot;wrong parameters&quot;;
++		return &quot;DENY&quot;;
++	}
++	QString client=lst[0];
++	QString user=params[1];
++	QString remote_user=lst[10];
++	if ( getAccess ( remote_user, client ) ==QMessageBox::Yes )
++	{
++		trayMessage ( tr ( &quot;Access granted&quot; ),QString ( tr ( &quot;%1(%2): access granted&quot; ) ).arg (remote_user ).arg ( client ) );
++		//start agent
++		QProcess proc ( this );
++		lst.removeAt ( 10 );;
++		lst.removeAt ( 0 );;
++		proc.start ( &quot;x2gostartagent&quot;,lst );
++		if ( !proc.waitForFinished ( 5000 ) )
++		{
++			return &quot;DENY&quot;;
++		}
++		else
++		{
++			QString output=proc.readAllStandardOutput();
++			qDebug() &lt;&lt;&quot;agent out: &quot;&lt;&lt;output;
++			QStringList lines=output.split ( &quot;\n&quot; );
++			QString pid=&quot;pid&quot;;
++			if ( lines.size() &gt;3 )
++				pid=lines[2];
++			qDebug() &lt;&lt;&quot;agent pid: &quot;&lt;&lt;pid;
++			AccessAction *act=new AccessAction (
++			    pid,remote_user,client,
++			    QString ( tr ( &quot;Disconnect %1(%2)&quot; ) ).arg ( remote_user ).arg ( client ),
++			    this );
++			menu-&gt;insertAction ( menu-&gt;actions() [0],act );
++			connect ( act,SIGNAL ( actionActivated ( AccessAction* ) ),this,
++			          SLOT ( slotCloseConnection ( AccessAction* ) ) );
++			trayMessage ( tr ( &quot;Remote connection&quot; ),
++			              QString (
++			                  tr ( &quot;%1(%2) connected&quot; ) ).arg ( remote_user ).arg ( client ) );
++			setTrayIcon();
++			return output;
++		}
++	}
++	trayMessage ( tr ( &quot;Access denied&quot; ),QString (
++	              tr ( &quot;%1(%2): access denied&quot; ) ).arg ( remote_user ).arg ( client ) );
++	return &quot;DENY&quot;;
+ }
+ 
+ void ShareTray::closeSocket ( SimpleLocalSocket* sock )
+ {
+-    qDebug() &lt;&lt;&quot;closing null socket&quot;;
+-    if ( sock )
+-    {
+-        qDebug() &lt;&lt;&quot;closing socket&quot;;
+-        delete sock;
+-        qDebug() &lt;&lt;&quot;done&quot;;
+-    }
++	qDebug() &lt;&lt;&quot;closing null socket&quot;;
++	if ( sock )
++	{
++		qDebug() &lt;&lt;&quot;closing socket&quot;;
++		delete sock;
++		qDebug() &lt;&lt;&quot;done&quot;;
++	}
+ }
+ 
+ void ShareTray::slotServerConnection()
+ {
+-    new SimpleLocalSocket ( this,serverSocket-&gt;nextPendingConnection() );
++	new SimpleLocalSocket ( this,serverSocket-&gt;nextPendingConnection() );
+ }
+ 
+ void ShareTray::slotCloseConnection ( AccessAction* action )
+ {
+-    kill ( action-&gt;pid().toUInt(),15 );
+-    menu-&gt;removeAction ( action );
+-    delete action;
+-    setTrayIcon();
++	kill ( action-&gt;pid().toUInt(),15 );
++	menu-&gt;removeAction ( action );
++	delete action;
++	setTrayIcon();
+ }
+ 
+ 
+ int ShareTray::getAccess ( QString remote_user, QString host )
+ {
+-    if ( whiteList.contains ( remote_user ) )
+-        return QMessageBox::Yes;
+-    if ( blackList.contains ( remote_user ) )
+-        return QMessageBox::No;
+-
+-    MessageBox m ( remote_user, host, this );
+-    m.activateWindow();
+-    m.raise();
+-    int res=m.exec();
+-    if ( m.isChecked() &amp;&amp;res==QMessageBox::Yes )
+-        whiteList&lt;&lt;remote_user;
+-    if ( m.isChecked() &amp;&amp;res==QMessageBox::No )
+-        blackList&lt;&lt;remote_user;
+-    actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
+-    actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
+-    return res;
++	if ( whiteList.contains ( remote_user ) )
++		return QMessageBox::Yes;
++	if ( blackList.contains ( remote_user ) )
++		return QMessageBox::No;
++
++	MessageBox m ( remote_user, host, this );
++	m.activateWindow();
++	m.raise();
++	int res=m.exec();
++	if ( m.isChecked() &amp;&amp;res==QMessageBox::Yes )
++		whiteList&lt;&lt;remote_user;
++	if ( m.isChecked() &amp;&amp;res==QMessageBox::No )
++		blackList&lt;&lt;remote_user;
++	actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
++	actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
++	return res;
+ }
+ 
+ void ShareTray::closeEvent ( QCloseEvent*  ev )
+ {
+-    if ( !menuClose )
+-    {
+-        ev-&gt;ignore();
+-        hide();
+-        return;
+-    }
+-    qDebug() &lt;&lt;&quot;stopping desktop sharing&quot;;
+-    slotStopSharing();
+-    if ( QFile::exists ( lockFname ) )
+-        QFile::remove ( lockFname );
+-        qDebug() &lt;&lt;&quot;lock file removed&quot;;
+-    saveSettings();
+-    qDebug() &lt;&lt;&quot;settings saved&quot;;
++	if ( !menuClose )
++	{
++		ev-&gt;ignore();
++		hide();
++		return;
++	}
++	qDebug() &lt;&lt;&quot;stopping desktop sharing&quot;;
++	slotStopSharing();
++	if ( QFile::exists ( lockFname ) )
++		QFile::remove ( lockFname );
++		qDebug() &lt;&lt;&quot;lock file removed&quot;;
++	saveSettings();
++	qDebug() &lt;&lt;&quot;settings saved&quot;;
+ }
+ 
+ void ShareTray::slotTimer()
+ {
+-    for ( int i=menu-&gt;actions().count()-STAT_ACT_COUNT-1;i&gt;=0;--i )
+-    {
+-        AccessAction* action= ( AccessAction* ) ( menu-&gt;actions() [i] );
+-        if ( !isProcessRunning ( action-&gt;pid() ) )
+-        {
+-            trayMessage ( tr ( &quot;User disconnected&quot; ),
+-                          QString (
+-                              tr ( &quot;%1(%2) disconnected&quot; ) ).arg (
+-                              action-&gt;user() ).arg ( action-&gt;host() ) );
+-            menu-&gt;removeAction ( action );
+-            delete action;
+-        }
+-    }
+-    setTrayIcon();
++	for ( int i=menu-&gt;actions().count()-STAT_ACT_COUNT-1;i&gt;=0;--i )
++	{
++		AccessAction* action= ( AccessAction* ) ( menu-&gt;actions() [i] );
++		if ( !isProcessRunning ( action-&gt;pid() ) )
++		{
++			trayMessage ( tr ( &quot;User disconnected&quot; ),
++			              QString (
++			                  tr ( &quot;%1(%2) disconnected&quot; ) ).arg (
++			                  action-&gt;user() ).arg ( action-&gt;host() ) );
++			menu-&gt;removeAction ( action );
++			delete action;
++		}
++	}
++	setTrayIcon();
+ }
+ 
+ void ShareTray::trayMessage ( QString title, QString text )
+ {
+-    if ( !QSystemTrayIcon::supportsMessages () )
+-        QToolTip::showText ( geometry().topLeft(),
+-                             text );
+-    else
+-        trayIcon-&gt;showMessage ( title,text );
++	if ( !QSystemTrayIcon::supportsMessages () )
++		QToolTip::showText ( geometry().topLeft(),
++		                     text );
++	else
++		trayIcon-&gt;showMessage ( title,text );
+ }
+ 
+ 
+ bool ShareTray::isProcessRunning ( QString pid )
+ {
+-    if ( kill ( pid.toInt(),SIGCONT ) ==-1 )
+-    {
+-        if ( errno==ESRCH )
+-        {
+-            return false;
+-        }
+-    }
+-    return true;
++	if ( kill ( pid.toInt(),SIGCONT ) ==-1 )
++	{
++		if ( errno==ESRCH )
++		{
++			return false;
++		}
++	}
++	return true;
+ }
+ 
+ 
+ void ShareTray::slotBlackList()
+ {
+-    current_list=BLACK;
+-    showList();
+-    setWindowTitle ( tr ( &quot;Banned users&quot; ) );
+-
++	current_list=BLACK;
++	showList();
++	setWindowTitle ( tr ( &quot;Banned users&quot; ) );
+ }
+ 
+ void ShareTray::slotWhiteList()
+ {
+-    current_list=WHITE;
+-    showList();
+-    setWindowTitle ( tr ( &quot;Granted users&quot; ) );
+-
++	current_list=WHITE;
++	showList();
++	setWindowTitle ( tr ( &quot;Granted users&quot; ) );
+ }
+ 
+ void ShareTray::showList()
+ {
+-    show();
+-    ui.ok_cancel_box-&gt;show();
+-    ui.box-&gt;show();
+-    ui.del-&gt;show();
+-
+-    ui.close_box-&gt;hide();
+-    ui.icon-&gt;hide();
+-    ui.text-&gt;hide();
+-
+-    QStringList* lst;
+-    if ( current_list==BLACK )
+-        lst=&blackList;
+-    else
+-        lst=&whiteList;
+-    lst-&gt;sort();
+-    ui.box-&gt;clear();
+-    ui.box-&gt;insertItems ( 0,*lst );
++	show();
++	ui.ok_cancel_box-&gt;show();
++	ui.box-&gt;show();
++	ui.del-&gt;show();
++
++	ui.close_box-&gt;hide();
++	ui.icon-&gt;hide();
++	ui.text-&gt;hide();
++
++	QStringList* lst;
++	if ( current_list==BLACK )
++		lst=&blackList;
++	else
++		lst=&whiteList;
++	lst-&gt;sort();
++	ui.box-&gt;clear();
++	ui.box-&gt;insertItems ( 0,*lst );
+ }
+ 
+ void ShareTray::loadSettings()
+ {
+-    QSettings st ( QDir::homePath() +&quot;/.x2godesktopsharing/settings&quot;,
+-                   QSettings::NativeFormat );
++	QSettings st ( QDir::homePath() +&quot;/.x2godesktopsharing/settings&quot;,
++	               QSettings::NativeFormat );
+ 
+-    blackList= st.value ( &quot;blacklist&quot; ).toStringList();
+-    whiteList= st.value ( &quot;whitelist&quot; ).toStringList();
++	blackList= st.value ( &quot;blacklist&quot; ).toStringList();
++	whiteList= st.value ( &quot;whitelist&quot; ).toStringList();
+ 
+-    actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
+-    actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
++	actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
++	actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
+ }
+ 
+ void ShareTray::saveSettings()
+ {
+-    QSettings st ( QDir::homePath() +&quot;/.x2godesktopsharing/settings&quot;,
+-                   QSettings::NativeFormat );
++	QSettings st ( QDir::homePath() +&quot;/.x2godesktopsharing/settings&quot;,
++	               QSettings::NativeFormat );
+ 
+-    st.setValue ( &quot;blacklist&quot;,blackList );
+-    st.setValue ( &quot;whitelist&quot;,whiteList );
++	st.setValue ( &quot;blacklist&quot;,blackList );
++	st.setValue ( &quot;whitelist&quot;,whiteList );
+ }
+ 
+ 
+ void ShareTray::setTrayIcon()
+ {
+-    if ( !acceptConnections() )
+-    {
+-        trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/discard.png&quot; ) );
+-        return;
+-    }
+-    if ( menu-&gt;actions().count() &gt;STAT_ACT_COUNT )
+-    {
+-        trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/view.png&quot; ) );
+-        return;
+-    }
+-    trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/accept.png&quot; ) );
++	if ( !acceptConnections() )
++	{
++		trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/discard.png&quot; ) );
++		return;
++	}
++	if ( menu-&gt;actions().count() &gt;STAT_ACT_COUNT )
++	{
++		trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/view.png&quot; ) );
++		return;
++	}
++	trayIcon-&gt;setIcon ( QIcon ( &quot;:icons/22x22/accept.png&quot; ) );
+ }
+ 
+ 
+ 
+ void ShareTray::slotAbout()
+ {
+-    setWindowTitle ( tr ( &quot;X2Go Desktop Sharing&quot; ) );
++	setWindowTitle ( tr ( &quot;X2Go Desktop Sharing&quot; ) );
+ 
+-    show();
+-    ui.ok_cancel_box-&gt;hide();
+-    ui.box-&gt;hide();
+-    ui.del-&gt;hide();
++	show();
++	ui.ok_cancel_box-&gt;hide();
++	ui.box-&gt;hide();
++	ui.del-&gt;hide();
+ 
+-    ui.close_box-&gt;show();
+-    ui.icon-&gt;show();
+-    ui.text-&gt;show();
++	ui.close_box-&gt;show();
++	ui.icon-&gt;show();
++	ui.text-&gt;show();
+ }
+ 
+ 
+ void ShareTray::slotAboutQt()
+ {
+-    QMessageBox::aboutQt ( 0 );
++	QMessageBox::aboutQt ( 0 );
+ }
+ 
+ void ShareTray::slotMsgOkCancel ( QAbstractButton* button )
+ {
+-    if ( ui.ok_cancel_box-&gt;buttonRole ( button ) ==QDialogButtonBox::AcceptRole )
+-    {
+-        QStringList* lst;
+-        if ( current_list==BLACK )
+-            lst=&blackList;
+-        else
+-            lst=&whiteList;
+-        lst-&gt;clear();
+-        for ( int i=ui.box-&gt;count()-1;i&gt;=0;--i )
+-        {
+-            *lst&lt;&lt;ui.box-&gt;item ( i )-&gt;text();
+-        }
+-    }
+-    actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
+-    actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
+-    hide();
++	if ( ui.ok_cancel_box-&gt;buttonRole ( button ) ==QDialogButtonBox::AcceptRole )
++	{
++		QStringList* lst;
++		if ( current_list==BLACK )
++			lst=&blackList;
++		else
++			lst=&whiteList;
++		lst-&gt;clear();
++		for ( int i=ui.box-&gt;count()-1;i&gt;=0;--i )
++		{
++			*lst&lt;&lt;ui.box-&gt;item ( i )-&gt;text();
++		}
++	}
++	actBlack-&gt;setEnabled ( blackList.size() &gt;0 );
++	actWhite-&gt;setEnabled ( whiteList.size() &gt;0 );
++	hide();
+ }
+ 
+ void ShareTray::slotMsgClose ( QAbstractButton* )
+ {
+-    hide();
++	hide();
+ }
+ 
+ void ShareTray::slotDelListItem()
+ {
+-    for ( int i=ui.box-&gt;count()-1;i&gt;=0;--i )
+-    {
+-        QListWidgetItem* it=ui.box-&gt;item ( i );
+-        if ( it-&gt;isSelected() )
+-        {
+-            ui.box-&gt;takeItem ( i );
+-            delete it;
+-        }
+-    }
++	for ( int i=ui.box-&gt;count()-1;i&gt;=0;--i )
++	{
++		QListWidgetItem* it=ui.box-&gt;item ( i );
++		if ( it-&gt;isSelected() )
++		{
++			ui.box-&gt;takeItem ( i );
++			delete it;
++		}
++	}
+ }
+ 
+ void ShareTray::slotMenuClose()
+ {
+-    menuClose=true;
+-    close();
++	menuClose=true;
++	close();
+ }
+ 
+ void ShareTray::slotUpdateLockFile()
+ {
+-    QFile file ( lockFname );
+-    if ( file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
+-    {
+-        QTextStream out ( &amp;file );
+-        out&lt;&lt;QDateTime::currentDateTime().toTime_t();
+-    }
++	QFile file ( lockFname );
++	if ( file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
++	{
++		QTextStream out ( &amp;file );
++		out&lt;&lt;QDateTime::currentDateTime().toTime_t();
++	}
+ }
+
+
+hooks/post-receive
+-- 
+x2godesktopsharing.git (Desktop Sharing for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2godesktopsharing.git&quot; (Desktop Sharing for X2Go).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="009229.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-18-g91df9e9
+</A></li>
+	<LI>Next message: <A HREF="009239.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-23-g0d49dfd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9230">[ date ]</a>
+              <a href="thread.html#9230">[ thread ]</a>
+              <a href="subject.html#9230">[ subject ]</a>
+              <a href="author.html#9230">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

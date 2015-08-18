@@ -1,0 +1,594 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.0.1-3-gec87644
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.0.1-3-gec87644&In-Reply-To=%3C20111122103333.B8DDD5DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001892.html">
+   <LINK REL="Next"  HREF="001894.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.0.1-3-gec87644</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.0.1-3-gec87644&In-Reply-To=%3C20111122103333.B8DDD5DB1C%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.0.1-3-gec87644">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Nov 22 11:33:33 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001892.html">[X2go-Commits] x2goagent.git - master (branch) updated:	3.5.0.2-19-g5e1316a
+</A></li>
+        <LI>Next message: <A HREF="001894.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.0.1-4-gabe39fc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1893">[ date ]</a>
+              <a href="thread.html#1893">[ thread ]</a>
+              <a href="subject.html#1893">[ subject ]</a>
+              <a href="author.html#1893">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  ec8764469157522d3126a69499835c75e0e81a3a (commit)
+      from  c80c9f52dcb2b45a2ab9a951695b4c66d9662192 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ec8764469157522d3126a69499835c75e0e81a3a
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at treuchtlingen.de</A>&gt;
+Date:   Tue Nov 22 11:32:26 2011 +0100
+
+    QTcpSocket working not correct with some Antiviral software ( for example Avast) under windows. Fixing this by replacing it with Winsocks
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog       |    4 +
+ onmainwindow_part2.cpp |    2 +-
+ onmainwindow_part4.cpp |  229 ++++++++++++++++++++++++++++++-----------------
+ sshprocess.cpp         |   29 ++++--
+ 4 files changed, 171 insertions(+), 93 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a938f1d..0fcd9e8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,8 +1,12 @@
+ x2goclient (3.99.0.2-0~x2go1) UNRELEASED; urgency=low
+ 
++  [ Mike Gabriel ]
+   * New upstream version (3.99.0.2):
+     - Continue development...
+ 
++  [ Oleksandr Shneyder ]
++  * QTcpSocket working not correct with some Antiviral software ( for example Avast) under windows. Fixing this by replacing it with Winsocks
++
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 13 Oct 2011 01:59:41 +0200
+ 
+ x2goclient (3.99.0.1-0~x2go1) unstable; urgency=low
+diff --git a/onmainwindow_part2.cpp b/onmainwindow_part2.cpp
+index 702c447..ac5ecd4 100644
+--- a/onmainwindow_part2.cpp
++++ b/onmainwindow_part2.cpp
+@@ -1569,7 +1569,7 @@ void ONMainWindow::slotRetResumeSess ( bool result,
+               this,SLOT ( slotTunnelOk() ) );
+ 
+     localGraphicPort=resumingSession.grPort;
+-    int iport=localGraphicPort.toInt() +1;
++    int iport=localGraphicPort.toInt() +1000;
+     while ( iport == resumingSession.sndPort.toInt() ||
+             iport == resumingSession.fsPort.toInt() ||
+             isServerRunning ( iport ) )
+diff --git a/onmainwindow_part4.cpp b/onmainwindow_part4.cpp
+index a6102d6..76fd224 100644
+--- a/onmainwindow_part4.cpp
++++ b/onmainwindow_part4.cpp
+@@ -230,9 +230,72 @@ void ONMainWindow::cleanAskPass()
+ }
+ 
+ 
++#ifdef Q_OS_WIN
++#include &lt;windows.h&gt;
++#include &lt;winsock2.h&gt;
++#include &lt;ws2tcpip.h&gt;
++#endif
++
+ 
+ bool ONMainWindow::isServerRunning ( int port )
+ {
++#ifdef Q_OS_WIN
++    SOCKET ConnectSocket = INVALID_SOCKET;
++    struct sockaddr_in saServer;
++    hostent* localHost;
++    char* localIP;
++    int iResult;
++    WSADATA wsaData;
++    
++    struct in_addr addr = { 0 };
++    
++    iResult = WSAStartup(MAKEWORD(2, 2), &amp;wsaData);
++    if (iResult != 0) 
++    {
++        x2goDebug&lt;&lt;&quot;WARNING: WSAStartup failed: &quot;&lt;&lt; iResult&lt;&lt;endl;
++        return false;
++    }
++    
++    addr.s_addr = inet_addr(&quot;127.0.0.1&quot;);
++    if (addr.s_addr == INADDR_NONE) 
++    {
++            x2goDebug&lt;&lt; &quot;WARNING:  The IPv4 address entered must be a legal address\n&quot;;
++            return false;
++    }
++    
++
++    localHost = gethostbyaddr((char*)&amp;addr,4, AF_INET);
++    if(!localHost)
++    {
++      x2goDebug&lt;&lt;&quot;WARNING: gethostbyaddr failed: &quot;&lt;&lt;WSAGetLastError()&lt;&lt;endl;
++      return false;
++    }
++    x2goDebug&lt;&lt;&quot;got localhost&quot;&lt;&lt;endl;
++    
++    localIP = inet_ntoa (*(struct in_addr *)*localHost-&gt;h_addr_list);
++
++    saServer.sin_family = AF_INET;
++    saServer.sin_addr.s_addr = inet_addr(localIP);
++    saServer.sin_port = htons(port);
++
++    ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
++    if (ConnectSocket == INVALID_SOCKET)
++    {
++        x2goDebug&lt;&lt;&quot;WARNING: socket failed with error: &quot;&lt;&lt; WSAGetLastError()&lt;&lt;endl;
++        return false;
++    }
++
++    iResult = ::connect( ConnectSocket, (SOCKADDR*) &amp;saServer, sizeof(saServer));
++    if (iResult == SOCKET_ERROR)
++    {
++        closesocket(ConnectSocket);
++        x2goDebug&lt;&lt;&quot;Port is free: &quot;&lt;&lt;port&lt;&lt;endl;
++        return false;
++    }
++    closesocket(ConnectSocket);
++    x2goDebug&lt;&lt;&quot;Port already used: &quot;&lt;&lt;port&lt;&lt;endl;
++    return true;
++#endif
+     QTcpSocket tcpSocket ( 0 );
+     tcpSocket.connectToHost ( &quot;127.0.0.1&quot;,port );
+ 
+@@ -283,16 +346,16 @@ void ONMainWindow::startXOrg ()
+ 
+     QStringList args;
+     QString exec;
+-    if(internalX==XMING)
+-       exec=appDir+&quot;\\xming\\Xming.exe&quot;;
+-    if(internalX==VCXSRV)
+-       exec=appDir+&quot;\\vcxsrv\\vcxsrv.exe&quot;;
++    if (internalX==XMING)
++        exec=appDir+&quot;\\xming\\Xming.exe&quot;;
++    if (internalX==VCXSRV)
++        exec=appDir+&quot;\\vcxsrv\\vcxsrv.exe&quot;;
+     winServersReady=false;
+     x2goDebug&lt;&lt;&quot;using internal X: &quot;&lt;&lt;useInternalX;
+ //#ifdef CFGCLIENT
+     if (!useInternalX || internalX!=XMING)
+     {
+-        if(!useInternalX)
++        if (!useInternalX)
+             exec=xorgExe;
+         QString cmdLine;
+         if (startXorgOnStart)
+@@ -307,12 +370,12 @@ void ONMainWindow::startXOrg ()
+             case SAPP:
+                 cmdLine=xorgSAppOptions;
+                 break;
+-	    case WIN:
++            case WIN:
+                 cmdLine=xorgWinOptions;
+-		x2goDebug&lt;&lt;&quot;WxH:&quot;&lt;&lt;xorgWidth&lt;&lt;&quot;x&quot;&lt;&lt;xorgHeight&lt;&lt;endl;
++                x2goDebug&lt;&lt;&quot;WxH:&quot;&lt;&lt;xorgWidth&lt;&lt;&quot;x&quot;&lt;&lt;xorgHeight&lt;&lt;endl;
+                 cmdLine.replace(&quot;%w&quot;,xorgWidth);
+                 cmdLine.replace(&quot;%h&quot;,xorgHeight);
+-		x2goDebug&lt;&lt;cmdLine&lt;&lt;endl;
++                x2goDebug&lt;&lt;cmdLine&lt;&lt;endl;
+                 break;
+             }
+         }
+@@ -328,7 +391,7 @@ void ONMainWindow::startXOrg ()
+     xorg=new QProcess ( 0 );
+     if (useInternalX &amp;&amp; (internalX==XMING))
+     {
+-      
++
+         QString workingDir=appDir+&quot;\\xming&quot;;
+         QStringList env=QProcess::systemEnvironment();
+         env&lt;&lt;&quot;GLWIN_ENABLE_DEBUG=0&quot;;
+@@ -347,7 +410,7 @@ void ONMainWindow::startXOrg ()
+         xorg-&gt;setEnvironment ( env );
+         xorg-&gt; setWorkingDirectory ( workingDir);
+     }
+-    
++
+     x2goDebug&lt;&lt;&quot;running&quot;&lt;&lt;exec&lt;&lt;&quot; &quot;&lt;&lt;args.join(&quot; &quot;);
+     xorg-&gt;start ( exec, args );
+ 
+@@ -363,9 +426,9 @@ void ONMainWindow::startXOrg ()
+ // #ifdef CFGCLIENT
+     if ( !useInternalX || internalX!= XMING)
+     {
+-	 //check connection in slot and launch setWinServerReady
+-	 waitingForX=0;
+-         QTimer::singleShot(1000, this, SLOT(slotCheckXOrgConnection()));
++        //check connection in slot and launch setWinServerReady
++        waitingForX=0;
++        QTimer::singleShot(1000, this, SLOT(slotCheckXOrgConnection()));
+     }
+ // #endif
+ }
+@@ -373,31 +436,31 @@ void ONMainWindow::startXOrg ()
+ void ONMainWindow::slotCheckXOrgConnection()
+ {
+     ++waitingForX;
+-    if(isServerRunning(6000+xDisplay))
++    if (isServerRunning(6000+xDisplay))
+     {
+-      x2goDebug&lt;&lt;&quot;X is started&quot;;
+-      slotSetWinServersReady();
++        x2goDebug&lt;&lt;&quot;X is started&quot;;
++        slotSetWinServersReady();
+     }
+     else
+     {
+-      if(waitingForX &gt; 10)
+-      {
+-         QMessageBox::critical (
+-            0,QString::null,
+-            tr ( &quot;Can't start X Server\n&quot;
+-                 &quot;Please check your installation&quot; ) );
+-         close();
+-      }
+-      else
+-      {
+-        x2goDebug&lt;&lt;&quot;waiting for X&quot;;
+-	QTimer::singleShot(1000, this, SLOT(slotCheckXOrgConnection()));	
+-      }
++        if (waitingForX &gt; 10)
++        {
++            QMessageBox::critical (
++                0,QString::null,
++                tr ( &quot;Can't start X Server\n&quot;
++                     &quot;Please check your installation&quot; ) );
++            close();
++        }
++        else
++        {
++            x2goDebug&lt;&lt;&quot;waiting for X&quot;;
++            QTimer::singleShot(1000, this, SLOT(slotCheckXOrgConnection()));
++        }
+     }
+ }
+ 
+ WinServerStarter::WinServerStarter ( daemon server, ONMainWindow * par ) :
+-QThread ( 0 )
++        QThread ( 0 )
+ {
+     mode=server;
+     parent=par;
+@@ -714,31 +777,31 @@ void ONMainWindow::xorgSettings()
+     x2goDebug&lt;&lt;&quot;getting xorg settings&quot;&lt;&lt;endl;
+ 
+     X2goSettings st ( &quot;settings&quot; );
+-    
++
+     useInternalX=(st.setting()-&gt;value(&quot;useintx&quot;,true).toBool());
+-    
++
+     xorgExe=(st.setting()-&gt;value(&quot;xexec&quot;,&quot;C:\\program files\\vcxsrv\\vcxsrv.exe&quot;).toString());
+     xorgOptions=(st.setting()-&gt;value(&quot;options&quot;,&quot;-multiwindow -notrayicon -clipboard&quot;).toString());
+     startXorgOnStart=(st.setting()-&gt;value(&quot;onstart&quot;,true).toBool());
+     xorgWinOptions=(st.setting()-&gt;value(&quot;optionswin&quot;,&quot;-screen 0 %wx%h -notrayicon -clipboard&quot;).toString());
+     xorgFSOptions=(st.setting()-&gt;value(&quot;optionsfs&quot;,&quot;-fullscreen -notrayicon -clipboard&quot;).toString());
+     xorgSAppOptions=(st.setting()-&gt;value(&quot;optionssingle&quot;,&quot;-multiwindow -notrayicon -clipboard&quot;).toString());
+-    
+-    if(QFile::exists(appDir+&quot;\\vcxsrv&quot;))
+-      internalX=VCXSRV;
+-    if(QFile::exists(appDir+&quot;\\xming&quot;))
+-      internalX=XMING;
+-    if(useInternalX)
+-    {
+-      startXorgOnStart=(internalX==XMING);
+-      xorgOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
+-      if(internalX==VCXSRV)
+-      {
++
++    if (QFile::exists(appDir+&quot;\\vcxsrv&quot;))
++        internalX=VCXSRV;
++    if (QFile::exists(appDir+&quot;\\xming&quot;))
++        internalX=XMING;
++    if (useInternalX)
++    {
++        startXorgOnStart=(internalX==XMING);
++        xorgOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
++        if (internalX==VCXSRV)
++        {
+ // 	xorgWinOptions=&quot;-screen 0 %wx%h -notrayicon -clipboard&quot;;
+-	xorgWinOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
+-        xorgFSOptions=&quot;-fullscreen -notrayicon -clipboard&quot;;
+-        xorgSAppOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
+-      }
++            xorgWinOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
++            xorgFSOptions=&quot;-fullscreen -notrayicon -clipboard&quot;;
++            xorgSAppOptions=&quot;-multiwindow -notrayicon -clipboard&quot;;
++        }
+     }
+ 
+ }
+@@ -955,7 +1018,7 @@ QString ONMainWindow::getCurrentUname()
+ 
+ QString ONMainWindow::getCurrentPass()
+ {
+-    return pass-&gt;text();   
++    return pass-&gt;text();
+ }
+ 
+ void ONMainWindow::slotDetachProxyWindow()
+@@ -1385,8 +1448,8 @@ void ONMainWindow::initPassDlg()
+ 
+     pass-&gt;hide();
+     passPrompt-&gt;hide();
+-    
+-    
++
++
+     cbLayout=new QComboBox(passForm);
+     cbLayout-&gt;addItems(defaultLayout);
+     cbLayout-&gt;setFocusPolicy(Qt::NoFocus);
+@@ -1398,15 +1461,15 @@ void ONMainWindow::initPassDlg()
+     cbLayoutLay-&gt;addWidget(cbLayout);
+     cbLayoutLay-&gt;addStretch();
+ 
+-    
++
+     ok=new QPushButton ( tr ( &quot;Ok&quot; ),passForm );
+     setWidgetStyle ( ok );
+     cancel=new QPushButton ( tr ( &quot;Cancel&quot; ),passForm );
+     setWidgetStyle ( cancel );
+     ok-&gt;hide();
+     cancel-&gt;hide();
+-    
+-    
++
++
+ 
+     pal.setColor ( QPalette::Button, QColor ( 255,255,255,0 ) );
+     pal.setColor ( QPalette::Window, QColor ( 255,255,255,255 ) );
+@@ -1414,7 +1477,7 @@ void ONMainWindow::initPassDlg()
+     cbLayout-&gt;setPalette ( pal );
+     ok-&gt;setPalette ( pal );
+     cancel-&gt;setPalette ( pal );
+-    
++
+ 
+ 
+ #ifndef Q_WS_HILDON
+@@ -1497,12 +1560,12 @@ void ONMainWindow::initPassDlg()
+         wapiWindowRect ( ok-&gt;winId(),r );
+ #endif
+     }
+-    if(defaultLayout.size()&gt;1)
++    if (defaultLayout.size()&gt;1)
+     {
+-      layoutPrompt-&gt;show();
+-      cbLayout-&gt;show();
+-      slotChangeKbdLayout(cbLayout-&gt;currentText());
+-      connect (cbLayout,SIGNAL(currentIndexChanged(QString)),this,SLOT(slotChangeKbdLayout(QString)));
++        layoutPrompt-&gt;show();
++        cbLayout-&gt;show();
++        slotChangeKbdLayout(cbLayout-&gt;currentText());
++        connect (cbLayout,SIGNAL(currentIndexChanged(QString)),this,SLOT(slotChangeKbdLayout(QString)));
+     }
+ }
+ 
+@@ -2176,31 +2239,31 @@ void ONMainWindow::slotStartBroker()
+ 
+ void ONMainWindow::slotGetBrokerSession(const QString&amp; sinfo)
+ {
+-   //x2goDebug&lt;&lt;&quot;broker session: &quot;&lt;&lt;sinfo;
+-   QStringList lst=sinfo.split(&quot;SERVER:&quot;,QString::SkipEmptyParts);
+-   int keyStartPos=sinfo.indexOf(&quot;-----BEGIN DSA PRIVATE KEY-----&quot;);
+-   QString endStr=&quot;-----END DSA PRIVATE KEY-----&quot;;
+-   int keyEndPos=sinfo.indexOf(endStr);
+-   if(keyEndPos == -1 || keyStartPos == -1 || lst.size()==0)
+-   {
+-     //throw error
+-      QMessageBox::critical (
+-                0,tr ( &quot;Error&quot; ),
+-                tr (&quot;Invalid reply from broker&quot;) +&quot;&lt;br&gt;&quot;+sinfo);
+-
+-     close();
+-     return;
+-   }
+-   config.server=(lst[1].split(&quot;\n&quot;))[0];
+-   config.key=sinfo.mid(keyStartPos, keyEndPos+endStr.length()-keyStartPos);
++    //x2goDebug&lt;&lt;&quot;broker session: &quot;&lt;&lt;sinfo;
++    QStringList lst=sinfo.split(&quot;SERVER:&quot;,QString::SkipEmptyParts);
++    int keyStartPos=sinfo.indexOf(&quot;-----BEGIN DSA PRIVATE KEY-----&quot;);
++    QString endStr=&quot;-----END DSA PRIVATE KEY-----&quot;;
++    int keyEndPos=sinfo.indexOf(endStr);
++    if (keyEndPos == -1 || keyStartPos == -1 || lst.size()==0)
++    {
++        //throw error
++        QMessageBox::critical (
++            0,tr ( &quot;Error&quot; ),
++            tr (&quot;Invalid reply from broker&quot;) +&quot;&lt;br&gt;&quot;+sinfo);
++
++        close();
++        return;
++    }
++    config.server=(lst[1].split(&quot;\n&quot;))[0];
++    config.key=sinfo.mid(keyStartPos, keyEndPos+endStr.length()-keyStartPos);
+ //    x2goDebug&lt;&lt;&quot;server: &quot;&lt;&lt;config.server&lt;&lt;endl&lt;&lt;&quot; key: &quot;&lt;&lt;config.key;
+-   if(sinfo.indexOf(&quot;SESSION_INFO&quot;)!=-1)
+-   {
++    if (sinfo.indexOf(&quot;SESSION_INFO&quot;)!=-1)
++    {
+         QStringList lst=sinfo.split(&quot;SESSION_INFO:&quot;,QString::SkipEmptyParts);
+-	config.sessiondata=(lst[1].split(&quot;\n&quot;))[0];
++        config.sessiondata=(lst[1].split(&quot;\n&quot;))[0];
+ // 	x2goDebug&lt;&lt;&quot;data: &quot;&lt;&lt;config.sessiondata;
+-   }
+-   slotSessEnter();
++    }
++    slotSessEnter();
+ }
+ 
+ void ONMainWindow::slotStartNewBrokerSession ( )
+@@ -2249,8 +2312,8 @@ void ONMainWindow::cleanPortable()
+     removeDir ( homeDir +&quot;/.ssh&quot; );
+     removeDir ( homeDir +&quot;/ssh&quot; );
+     removeDir ( homeDir+&quot;/.x2go&quot; );
+-    if(cleanAllFiles)
+-      removeDir(homeDir+&quot;/.x2goclient&quot;);
++    if (cleanAllFiles)
++        removeDir(homeDir+&quot;/.x2goclient&quot;);
+ }
+ 
+ void ONMainWindow::removeDir ( QString path )
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 41d150c..b045fd0 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -31,6 +31,7 @@
+ SshProcess::SshProcess(SshMasterConnection* master, QObject* parent): QObject(parent)
+ {
+     masterCon=master;
++    serverSocket=0;
+     connect(master,SIGNAL(stdErr(SshProcess*,QByteArray)),this,SLOT(slotStdErr(SshProcess*,QByteArray)));
+     connect(master,SIGNAL(ioErr(SshProcess*,QString,QString)),this,SLOT(slotIOerr(SshProcess*,QString,QString)));
+     tunnel=false;
+@@ -39,9 +40,19 @@ SshProcess::SshProcess(SshMasterConnection* master, QObject* parent): QObject(pa
+ 
+ SshProcess::~SshProcess()
+ {
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;ssh process destructor&quot;;
+ #endif
++    if (serverSocket&gt;0)
++    {
++#ifdef Q_OS_WIN
++        closesocket(serverSocket);
++        WSACleanup();
++
++#else
++        close(serverSocket);
++#endif
++    }
+ }
+ 
+ 
+@@ -59,12 +70,12 @@ void SshProcess::slotCheckNewConnection()
+     if (select(serverSocket+1,&amp;rfds,NULL,NULL,&amp;tv)&lt;=0)
+         return;
+ 
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;new tcp connection\n&quot;;
+ #endif
+     int tcpSocket=accept(serverSocket, (struct sockaddr*)&amp;address,&amp;addrlen);
+ 
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;new socket:&quot;&lt;&lt;tcpSocket&lt;&lt;endl;
+ #endif
+     masterCon-&gt;addChannelConnection(this, tcpSocket, forwardHost, forwardPort, localHost,
+@@ -107,7 +118,7 @@ void SshProcess::tunnelLoop()
+     connect(timer,SIGNAL(timeout()),this,SLOT(slotCheckNewConnection()));
+     timer-&gt;start(500);
+     emit sshTunnelOk();
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;Direct tunnel: waiting for connections on &quot;&lt;&lt;localHost&lt;&lt;&quot;:&quot;&lt;&lt;localPort&lt;&lt;endl;
+ #endif
+ }
+@@ -151,7 +162,7 @@ void SshProcess::slotStdErr(SshProcess* creator, QByteArray data)
+ {
+     if (creator!=this)
+         return;
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;new err data:&quot;&lt;&lt;data&lt;&lt;endl;
+ #endif
+     stdErrString+=data;
+@@ -169,7 +180,7 @@ void SshProcess::slotIOerr(SshProcess* creator, QString message, QString sshSess
+ {
+     if (creator!=this)
+         return;
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;io error:&quot;&lt;&lt;message&lt;&lt;&quot; - &quot;&lt;&lt;sshSessionErr&lt;&lt;endl;
+ #endif
+     normalExited=false;
+@@ -212,14 +223,14 @@ void SshProcess::slotChannelClosed(SshProcess* creator)
+         {
+             normalExited=false;
+             output=stdErrString;
+-#ifdef DEBUG      
++#ifdef DEBUG
+             x2goDebug&lt;&lt;&quot;have only stderr, something must be wrong&quot;&lt;&lt;endl;
+ #endif
+-	}
++        }
+         else
+             output=stdOutString;
+     }
+-#ifdef DEBUG      
++#ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;ssh finished:&quot;&lt;&lt;normalExited&lt;&lt;&quot; - &quot;&lt;&lt;output&lt;&lt;endl;
+ #endif
+     emit sshFinished(normalExited, output, this);
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2go Client).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001892.html">[X2go-Commits] x2goagent.git - master (branch) updated:	3.5.0.2-19-g5e1316a
+</A></li>
+	<LI>Next message: <A HREF="001894.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.0.1-4-gabe39fc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1893">[ date ]</a>
+              <a href="thread.html#1893">[ thread ]</a>
+              <a href="subject.html#1893">[ subject ]</a>
+              <a href="author.html#1893">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

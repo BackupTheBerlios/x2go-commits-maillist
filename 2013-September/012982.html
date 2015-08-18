@@ -1,0 +1,2173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	c4b70151df3b4f2572f1d9dc1699f29b072016b7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09c4b70151df3b4f2572f1d9dc1699f29b072016b7&In-Reply-To=%3C20130914135540.E24E35DB39%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012977.html">
+   <LINK REL="Next"  HREF="012983.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	c4b70151df3b4f2572f1d9dc1699f29b072016b7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09c4b70151df3b4f2572f1d9dc1699f29b072016b7&In-Reply-To=%3C20130914135540.E24E35DB39%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	c4b70151df3b4f2572f1d9dc1699f29b072016b7">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:40 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012977.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	926ebbbc9976ec45e3131f4dd814340ce9895933
+</A></li>
+        <LI>Next message: <A HREF="012983.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	473fd7030473f69799c491a161b5281f13599be4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12982">[ date ]</a>
+              <a href="thread.html#12982">[ thread ]</a>
+              <a href="subject.html#12982">[ subject ]</a>
+              <a href="author.html#12982">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  c4b70151df3b4f2572f1d9dc1699f29b072016b7 (commit)
+      from  f630352d855595d4aae0c03842ef7a5bd418209d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py  |   97 ++++++++---
+ x2go/backends/info/_stdout.py     |   13 ++
+ x2go/backends/profiles/_file.py   |   14 +-
+ x2go/backends/terminal/_stdout.py |   35 ++--
+ x2go/cache.py                     |   41 ++---
+ x2go/client.py                    |  292 ++++++++++++++++++++++-----------
+ x2go/defaults.py                  |   13 +-
+ x2go/guardian.py                  |   35 ++--
+ x2go/inifiles.py                  |    2 +-
+ x2go/registry.py                  |  323 ++++++++++++++++++++++++++++++-------
+ x2go/session.py                   |  270 +++++++++++++++++++++++++++----
+ x2go/utils.py                     |   12 +-
+ x2go/x2go_exceptions.py           |    2 +
+ 13 files changed, 880 insertions(+), 269 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 3377ff6..4e67d88 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -50,8 +50,12 @@ def _rerewrite_blanks(cmd):
+         cmd = cmd.replace(&quot;X2GO_SPACE_CHAR&quot;, &quot; &quot;)
+     return cmd
+ 
+-def _rewrite_password(cmd, password):
++def _rewrite_password(cmd, user=None, password=None):
+ 
++    # if there is a ,,-u X2GO_USER'' parameter in RDP options then we will replace 
++    # it by our X2go session password
++    if cmd and user:
++        cmd = cmd.replace('X2GO_USER', user)
+     # if there is a ,,-p X2GO_PASSWORD'' parameter in RDP options then we will replace 
+     # it by our X2go session password
+     if cmd and password:
+@@ -94,11 +98,15 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.terminated_terminals = []
+ 
+         self.profile_name = profile_name
++        self.hostname = None
++        self.port = None
+ 
+         self._session_auth_rsakey = None
+         self._remote_home = None
+         self._remote_group = {}
+ 
++        self.locked = False
++
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+         else:
+@@ -140,6 +148,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def _x2go_exec_command(self, cmd_line, loglevel=log.loglevel_INFO, **kwargs):
+ 
++        while self.locked:
++            gevent.sleep(.1)
++
++        self.locked = True
++        _retval = None
++
+         if type(cmd_line) == types.ListType:
+             cmd = &quot; &quot;.join(cmd_line)
+         else:
+@@ -150,7 +164,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             timeout.start()
+             try:
+                 self.logger('executing command on X2go server: %s' % _rerewrite_blanks(cmd), loglevel)
+-                return self.exec_command(_rewrite_password(cmd, self._session_password), **kwargs)
++                _retval = self.exec_command(_rewrite_password(cmd, user=self.get_transport().get_username(), password=self._session_password), **kwargs)
++                self.locked = False
+             except AttributeError:
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except EOFError:
+@@ -158,11 +173,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             except gevent.timeout.Timeout:
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session command timed out')
+             finally:
++                self.locked = False
+                 timeout.cancel()
+ 
+         else:
++            self.locked = False
+             raise x2go_exceptions.X2goControlSessionException('the X2go control session is not connected')
+-        return None
++        return _retval
+ 
+     @property
+     def _x2go_remote_home(self):
+@@ -293,6 +310,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         else:
+             raise paramiko.AuthenticationException()
+ 
++        self.hostname = hostname
++        self.port = port
++
+         # if we succeed, we immediately grab us an sFTP client session
+         self.sftp_client = self.open_sftp()
+ 
+@@ -306,12 +326,23 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         return (self.get_transport() is not None)
+ 
++    def dissociate(self, terminal_session):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        for t_name in self.associated_terminals.keys():
++            if self.associated_terminals[t_name] == terminal_session:
++                del self.associated_terminals[t_name]
++                if self.terminated_terminals.has_key(t_name):
++                    del self.terminated_terminals[t_name]
++
+     def disconnect(self):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if self.associated_terminals is not None:
++        if self.associated_terminals:
+             t_names = self.associated_terminals.keys()
+             for  t_obj in self.associated_terminals.values():
+                 try:
+@@ -320,9 +351,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     pass
+                 except x2go_exceptions.X2goControlSessionException:
+                     pass
+-                del t_obj
++                t_obj.__del__()
+             for t_name in t_names:
+-                del self.associated_terminals[t_name]
++                try:
++                    del self.associated_terminals[t_name]
++                except KeyError:
++                    pass
+ 
+         self._remote_home = None
+         self._remote_group = {}
+@@ -426,10 +460,28 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         else:
+ 
+-            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2golistsessions&quot;)
++            # this _success loop will catch errors in case the x2golistsessions output is corrupt
++            # this should not be needed and is a workaround for the current X2go server implementation
++            _success = False
++            while not _success:
+ 
+-            _stdout_read = stdout.read()
+-            _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++                (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2golistsessions&quot;)
++
++                _stdout_read = stdout.read()
++
++                try:
++                    _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++                    _success = True
++                except:
++                    gevent.sleep(1)
++
++            # update internal variables when list_sessions() is called
++            for _session_name, _session_info in self.associated_terminals.items():
++                if _session_name not in _listsessions.keys():
++                    del self.associated_terminals[_session_name]
++                    self.terminated_terminals.append(_session_name)
++                elif _session_info.is_suspended():
++                    del self.associated_terminals[_session_name]
+ 
+             return _listsessions
+ 
+@@ -439,9 +491,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         connected user on the remote X2go server and terminate them.
+ 
+         &quot;&quot;&quot;
+-        session_infos = self.list_sessions()
+-        for session_info in session_infos.values():
+-            self.terminate(session_name=session_info)
++        session_list = self.list_sessions()
++        for session_name in session_list.keys():
++            self.terminate(session_name=session_name)
+ 
+     def is_connected(self):
+         &quot;&quot;&quot;\
+@@ -469,7 +521,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         session_infos = self.list_sessions()
+         if session_name in session_infos.keys():
+             return session_infos[session_name].is_running()
+-        return False
++        return None
+ 
+     def is_suspended(self, session_name):
+         &quot;&quot;&quot;\
+@@ -483,7 +535,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         session_infos = self.list_sessions()
+         if session_name in session_infos.keys():
+             return session_infos[session_name].is_suspended()
+-        return False
++        return None
+ 
+     def has_terminated(self, session_name):
+         &quot;&quot;&quot;\
+@@ -533,8 +585,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2gosuspend-session %s&quot; % session_name, loglevel=log.loglevel_DEBUG)
+             dummy_stdout = stdout.read()
+             dummy_stderr = stderr.read()
+-            self.associated_terminals[session_name].__del__()
+-            del self.associated_terminals[session_name]
++            if self.associated_terminals.has_key(session_name):
++                if self.associated_terminals[session_name] is not None:
++                    self.associated_terminals[session_name].__del__()
++                del self.associated_terminals[session_name]
+             _ret = True
+ 
+         else:
+@@ -567,19 +621,20 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         _session_names = [ t.get_session_name() for t in self.associated_terminals.values() ]
+         if session_name in _session_names:
+ 
+-            self.logger('suspending associated session: %s' % session_name, loglevel=log.loglevel_DEBUG)
++            self.logger('terminating associated session: %s' % session_name, loglevel=log.loglevel_DEBUG)
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2goterminate-session %s&quot; % session_name, loglevel=log.loglevel_DEBUG)
+             dummy_stdout = stdout.read()
+             dummy_stderr = stderr.read()
+-            if self.associated_terminals[session_name] is not None:
+-                self.associated_terminals[session_name].__del__()
+-            del self.associated_terminals[session_name]
++            if self.associated_terminals.has_key(session_name):
++                if self.associated_terminals[session_name] is not None:
++                    self.associated_terminals[session_name].__del__()
++                del self.associated_terminals[session_name]
+             self.terminated_terminals.append(session_name)
+             _ret = True
+ 
+         else:
+ 
+-            self.logger('suspending non-associated session: %s' % session_name, loglevel=log.loglevel_DEBUG)
++            self.logger('terminating non-associated session: %s' % session_name, loglevel=log.loglevel_DEBUG)
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2goterminate-session %s&quot; % session_name, loglevel=log.loglevel_DEBUG)
+             dummy_stdout = stdout.read()
+             dummy_stderr = stderr.read()
+diff --git a/x2go/backends/info/_stdout.py b/x2go/backends/info/_stdout.py
+index a35f9b0..9abbdd1 100644
+--- a/x2go/backends/info/_stdout.py
++++ b/x2go/backends/info/_stdout.py
+@@ -66,11 +66,13 @@ class X2goServerSessionInfoSTDOUT(object):
+             print 'Encountered IndexError: %s' % str(e)
+             print 'THIS SHOULD NOT HAPPEN... HERE IS THE x2golistsessions OUTPUT THAT CAUSED THE ERROR...'
+             print x2go_output
++            raise e
+         except ValueError, e:
+             # DEBUGGING CODE
+             print 'Encountered IndexError: %s' % str(e)
+             print 'THIS SHOULD NOT HAPPEN... HERE IS THE x2golistsessions OUTPUT THAT CAUSED THE ERROR...'
+             print x2go_output
++            raise e
+ 
+     def is_running(self):
+ 
+@@ -173,4 +175,15 @@ class X2goServerSessionListSTDOUT(object):
+             s_info._parse_x2golistsessions_line(line)
+             self.sessions[s_info.name] = s_info
+ 
++    def __call__(self):
++        return self.sessions
+ 
++    def get_session_info(self, session_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        try:
++            return self.sessions[session_name]
++        except KeyError:
++            return None
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/_file.py
+index c9a1888..0c109af 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/_file.py
+@@ -125,6 +125,13 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+             _profile_config[option] = self.get(_profile_id, option, key_type=self.get_profile_option_type(option))
+         return _profile_config
+ 
++    def default_profile_config(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return copy.deepcopy(self.defaultSessionProfile)
++
+     def has_profile(self, profile_id_or_name):
+         try:
+             _profile_id = self.check_profile_id_or_name(profile_id_or_name)
+@@ -201,14 +208,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+         return profile_id
+ 
+-    def delete_profile(self, profile_id):
++    def delete_profile(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        self.iniConfig.remove_section(profile_id)
++        _profile_id = self.check_profile_id_or_name(profile_id_or_name)
++        self.iniConfig.remove_section(_profile_id)
+         self.write_user_config = True
+-        self.writeIniFile()
++        self.write()
+ 
+     def check_profile_id_or_name(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 91821d2..ce2e9e3 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -299,13 +299,16 @@ class X2goTerminalSessionSTDOUT(object):
+     def _x2go_tidy_up(self):
+ 
+         if self.proxy is not None:
+-            self.proxy.__del__()
++            self.release_proxy()
+ 
+         try:
+             if self.control_session.get_transport() is not None:
+-                for _tunnel in [ _tun[1] for _tun in self.reverse_tunnels[self.session_info.name].values() ]:
+-                    if _tunnel is not None:
+-                        _tunnel.__del__()
++                try:
++                    for _tunnel in [ _tun[1] for _tun in self.reverse_tunnels[self.session_info.name].values() ]:
++                        if _tunnel is not None:
++                            _tunnel.__del__()
++                except KeyError:
++                    pass
+ 
+             if self.print_queue is not None:
+                 self.print_queue.__del__()
+@@ -737,11 +740,8 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        self.logger('suspending terminal session: %s' % self.session_info, log.loglevel_DEBUG)
+-        (stdin, stdout, stderr) = self.control_session._x2go_exec_command(&quot;x2gosuspend-session %s&quot; % self.session_info, loglevel=log.loglevel_DEBUG)
+-        dummy_stdout = stdout.read()
+-        dummy_stderr = stderr.read()
+-        self.proxy.__del__()
++        self.control_session.suspend(session_name=self.session_info.name)
++        self.release_proxy()
+ 
+         # TODO: check if session has really suspended
+         _ret = True
+@@ -756,13 +756,20 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        self.logger('terminating terminal session: %s' % self.session_info, log.loglevel_INFO)
+-        (stdin, stdout, stderr) = self.control_session._x2go_exec_command(&quot;x2goterminate-session %s&quot; % self.session_info, loglevel=log.loglevel_DEBUG)
+-        dummy_stdout = stdout.read()
+-        dummy_stderr = stderr.read()
+-        self.proxy.__del__()
++        self.control_session.terminate(session_name=self.session_info.name)
++        self.release_proxy()
+ 
+         # TODO: check if session has really suspended
+         _ret = True
+ 
+         return _ret
++
++    def release_proxy(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        try:
++            self.proxy.__del__()
++        except:
++            pass
+diff --git a/x2go/cache.py b/x2go/cache.py
+index 2dc78cc..e0b4dfd 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -38,12 +38,10 @@ class X2goListSessionsCache(object):
+     &quot;&quot;&quot;
+     x2go_listsessions_cache = {}
+ 
+-    def __init__(self, client, refresh_interval=5, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, client_instance, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client: the L{X2goClient} instance that uses this L{X2goListSessionsCache}
+         @type client: C{instance}
+-        @param refresh_interval: refresh interval of the list sessions cache in seconds
+-        @type refresh_interval: C{int}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goListSessionsCache} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+@@ -60,49 +58,34 @@ class X2goListSessionsCache(object):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        self.client = client
+-        self.refresh_interval = refresh_interval
++        self.client_instance = client_instance
+ 
+-    def check_cache(self, seconds=None):
+-
+-        if seconds and (seconds % self.refresh_interval != 0):
+-            return
++    def check_cache(self):
+ 
+         for profile_name in self.x2go_listsessions_cache.keys():
+-            if profile_name not in self.client.connected_profiles(return_profile_names=True):
++            if profile_name not in self.client_instance.connected_profiles(return_profile_names=True):
+                 del self.x2go_listsessions_cache[profile_name]
+ 
+-    def update_all(self, seconds=None):
++    def update_all(self):
+         &quot;&quot;&quot;\
+         Update L{X2goListSessionsCache} for all connected profiles.
+ 
+-        @param seconds: time since control session is up
+-        @type seconds: C{int}
+-
+         &quot;&quot;&quot;
+-        if seconds and (seconds % self.refresh_interval != 0):
+-            return
++        for profile_name in self.client_instance.connected_profiles(return_profile_names=True):
++            self.update(profile_name)
+ 
+-        for profile_name in self.client.connected_profiles(return_profile_names=True):
+-            self.update(profile_name, seconds=seconds)
++        self.check_cache()
+ 
+-        self.check_cache(seconds=seconds)
+-
+-    def update(self, profile_name, seconds=None):
++    def update(self, profile_name):
+         &quot;&quot;&quot;\
+         Update the L{X2goListSessionsCache} for profile C{profile_name}.
+ 
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
+-        @param seconds: time since control session is up
+-        @type seconds: C{int}
+ 
+         &quot;&quot;&quot;
+-        if seconds and (seconds % self.refresh_interval != 0):
+-            return
+-
+         self.last_listsessions_cache = copy.deepcopy(self.x2go_listsessions_cache)
+-        control_session = self.client.client_control_session_of_name(profile_name)
++        control_session = self.client_instance.client_control_session_of_profile_name(profile_name)
+         try:
+             self.x2go_listsessions_cache[profile_name] = control_session.list_sessions()
+         except x2go_exceptions.X2goControlSessionException, e:
+@@ -117,7 +100,7 @@ class X2goListSessionsCache(object):
+         Retrieve the current cache content of L{X2goListSessionsCache}.
+ 
+         &quot;&quot;&quot;
+-        profile_name = self.client.get_session_profile_name(session_uuid)
++        profile_name = self.client_instance.get_session_profile_name(session_uuid)
+         if self.is_cached(session_uuid=session_uuid):
+             return self.x2go_listsessions_cache[profile_name]
+         else:
+@@ -129,5 +112,5 @@ class X2goListSessionsCache(object):
+ 
+         &quot;&quot;&quot;
+         if profile_name is None and session_uuid:
+-            profile_name = self.client.get_session_profile_name(session_uuid)
++            profile_name = self.client_instance.get_session_profile_name(session_uuid)
+         return self.x2go_listsessions_cache.has_key(profile_name)
+diff --git a/x2go/client.py b/x2go/client.py
+index bacd3ab..56c909f 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -174,7 +174,7 @@ class X2goClient(object):
+     session object etc.) and connected to it (authentication). For these two steps
+     use these methods: L{X2goClient.register_session()} and L{X2goClient.connect_session()}.
+     &quot;&quot;&quot;
+-    def __init__(self, use_cache=True, start_xserver=False,
++    def __init__(self, 
+                  control_backend=control.X2goControlSession,
+                  terminal_backend=terminal.X2goTerminalSession,
+                  info_backend=info.X2goServerSessionInfo,
+@@ -186,6 +186,12 @@ class X2goClient(object):
+                  client_rootdir=None,
+                  sessions_rootdir=None,
+                  ssh_rootdir=None,
++                 start_xserver=False,
++                 use_listsessions_cache=False, 
++                 auto_update_listsessions_cache=False,
++                 auto_update_sessionregistry=False,
++                 auto_register_sessions=False,
++                 refresh_interval=5,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param logger: you can pass an L{X2goLogger} object to the
+@@ -253,28 +259,40 @@ class X2goClient(object):
+                 # presume the running XServer listens on :0
+                 os.environ.update({'DISPLAY': 'localhost:0'})
+ 
+-        self.session_registry = X2goSessionRegistry(logger=self.logger)
+-        self.session_guardian = X2goSessionGuardian(self, enable_cache=use_cache, logger=self.logger)
+-        if use_cache:
++        self.session_registry = X2goSessionRegistry(self, logger=self.logger)
++        self.session_guardian = X2goSessionGuardian(self, auto_update_listsessions_cache=auto_update_listsessions_cache &amp; use_listsessions_cache, 
++                                                    auto_update_sessionregistry=auto_update_sessionregistry,
++                                                    auto_register_sessions=auto_register_sessions, 
++                                                    refresh_interval=refresh_interval,
++                                                    logger=self.logger
++                                                   )
++        if use_listsessions_cache:
+             self.listsessions_cache = X2goListSessionsCache(self, logger=self.logger)
+ 
+-        self.use_cache = use_cache
++        self.use_listsessions_cache = use_listsessions_cache
+ 
+     # user hooks for detecting/notifying what happened during application runtime
+     def HOOK_no_known_xserver_found(self):
+         self.logger('the Python X2go module could not find any usable XServer application, you will not be able to start X2go sessions without XServer', loglevel=log.loglevel_WARN)
+     def HOOK_open_print_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
+-        self.logger('incoming print job,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
++        self.logger('HOOK_open_print_dialog: incoming print job,, %s'' detected by X2goClient hook method' % filename, loglevel=log.loglevel_WARN)
+     def HOOK_on_control_session_death(self, profile_name):
+-        self.logger('the control session of profile %s has died unexpectedly' % profile_name, loglevel=log.loglevel_WARN)
+-    def HOOK_on_session_got_suspended_from_within(self, session_uuid):
+-        self.logger('session %s has been suspended from within the application' % self.session_registry(session_uuid).get_session_name(), loglevel=log.loglevel_WARN)
+-    def HOOK_on_session_got_terminated_from_within(self, session_uuid):
+-        self.logger('session %s has been terminated from within the application' % self.session_registry(session_uuid).get_session_name(), loglevel=log.loglevel_WARN)
++        self.logger('HOOK_on_control_session_death: the control session of profile %s has died unexpectedly' % profile_name, loglevel=log.loglevel_WARN)
++
++    def HOOK_on_session_has_started_by_me(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_started_by_me (session_uuid: %s, profile_name: %s): a new session %s has been started by this application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_session_has_started_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_started (session_uuid: %s, profile_name: %s): a new session %s has started been started by other application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_session_has_resumed_by_me(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_resumed_by_me (session_uuid: %s, profile_name: %s): suspended session %s has been resumed by this application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_session_has_resumed_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_resumed_by_other (session_uuid: %s, profile_name: %s): suspended session %s has been resumed by other application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_session_has_been_suspended(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_been_suspended (session_uuid: %s, profile_name: %s): session %s has been suspended' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_session_has_terminated(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_on_session_has_terminated (session_uuid: %s, profile_name: %s): session %s has terminated' % (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
+ 
+     def _detect_backend_classes(self):
+-
+-
+         # CONTROL session backend
+         if type(self.control_backend) is types.StringType:
+             try:
+@@ -413,7 +431,7 @@ class X2goClient(object):
+             sessions[_obj.get_profile_name()] = _obj
+         return sessions
+ 
+-    def register_session(self, server=None, profile_id=None, profile_name=None, 
++    def register_session(self, server=None, profile_id=None, profile_name=None, session_name=None,
+                          printing=False, share_local_folders=[], return_object=False, 
+                          force=False, **kwargs):
+         &quot;&quot;&quot;\
+@@ -479,20 +497,6 @@ class X2goClient(object):
+ 
+             _profile_id = self.session_profiles.check_profile_id_or_name(_p)
+             _profile_name = self.session_profiles.to_profile_name(_profile_id)
+-
+-            # detect if we are re-registering a session profile that is already been initialized
+-            # by register_all_session_profiles
+-            _profile_siblings = self.session_registry.registered_sessions_of_name(_profile_name)
+-            if (not force) and (len(_profile_siblings) == 1) and not _profile_siblings[0].has_terminal_session():
+-
+-                session_uuid = _profile_siblings[0].get_uuid()
+-                self.logger('using already initially-registered-by-profile session %s' % session_uuid, log.loglevel_NOTICE, tag=self._logger_tag)
+-
+-                if return_object:
+-                    return self.session_registry(session_uuid)
+-                else:
+-                    return session_uuid
+-
+             _params = self.session_profiles.to_session_params(_profile_id)
+             del _params['profile_name']
+ 
+@@ -517,6 +521,7 @@ class X2goClient(object):
+ 
+         session_uuid = self.session_registry.register(server=server,
+                                                       profile_id=_profile_id, profile_name=_profile_name,
++                                                      session_name=session_name,
+                                                       control_backend=self.control_backend,
+                                                       terminal_backend=self.terminal_backend,
+                                                       info_backend=self.info_backend,
+@@ -527,6 +532,7 @@ class X2goClient(object):
+                                                       client_rootdir=self.client_rootdir,
+                                                       sessions_rootdir=self.sessions_rootdir,
+                                                       ssh_rootdir=self.ssh_rootdir,
++                                                      keep_controlsession_alive=True,
+                                                       **_params)
+ 
+         self.logger('initializing X2go session...', log.loglevel_NOTICE, tag=self._logger_tag)
+@@ -566,7 +572,7 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).get_username()
+     __get_session_username = get_session_username
+ 
+-    def get_session_server(self, session_uuid):
++    def get_session_server_peername(self, session_uuid):
+         &quot;&quot;&quot;\
+         After a session has been set up you can query the 
+         hostname of the host the session is connected to (or 
+@@ -580,8 +586,8 @@ class X2goClient(object):
+         @rtype: tuple
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry(session_uuid).get_server()
+-    __get_session_server = get_session_server
++        return self.session_registry(session_uuid).get_server_peername()
++    __get_session_server_peername = get_session_server_peername
+ 
+     def get_session(self, session_uuid):
+         &quot;&quot;&quot;\
+@@ -653,8 +659,8 @@ class X2goClient(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry(session_uuid).connect(username=username, password=password, 
+-                                                           add_to_known_hosts=add_to_known_hosts, 
++        return self.session_registry(session_uuid).connect(username=username, password=password,
++                                                           add_to_known_hosts=add_to_known_hosts,
+                                                            force_password_auth=force_password_auth,
+                                                           )
+     __connect_session = connect_session
+@@ -667,7 +673,7 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         &quot;&quot;&quot;
+         self.session_registry(session_uuid).disconnect()
+-        if self.use_cache:
++        if self.use_listsessions_cache:
+             self.__update_cache_all_profiles()
+     __disconnect_session = disconnect_session
+ 
+@@ -727,7 +733,7 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).start()
+     __start_session = start_session
+ 
+-    def resume_session(self, session_uuid, session_name):
++    def resume_session(self, session_uuid=None, session_name=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2go session on a
+         remote X2go server (as specified when L{register_session} was
+@@ -742,7 +748,15 @@ class X2goClient(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry(session_uuid).resume(session_name)
++        if session_uuid is None and session_name is None:
++            raise x2go_exceptions.X2goClientException('can\'t resume a session without either session_uuid or session_name')
++        if session_name is None and self.session_registry(session_uuid).session_name is None:
++            raise x2go_exceptions.X2goClientException('don\'t know which session to resume')
++        if session_uuid is None:
++            session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False)
++            return self.session_registry(session_uuid).resume()
++        else:
++            return self.session_registry(session_uuid).resume(session_name=session_name)
+     __resume_session = resume_session
+ 
+     def suspend_session(self, session_uuid, session_name=None):
+@@ -775,7 +789,7 @@ class X2goClient(object):
+         if session_name is None:
+             return self.session_registry(session_uuid).suspend()
+         else:
+-            for session in self.session_registry.running_sessions:
++            for session in self.session_registry.running_sessions():
+                 if session_name == session.get_session_name():
+                     return session.suspend()
+         return self.session_registry(session_uuid).control_session.suspend(session_name=session_name)
+@@ -814,7 +828,7 @@ class X2goClient(object):
+         if session_name is None:
+             return self.session_registry(session_uuid).terminate()
+         else:
+-            for session in self.session_registry.running_sessions + self.session_registry.suspended_sessions:
++            for session in self.session_registry.running_sessions() + self.session_registry.suspended_sessions():
+                 if session_name == session.get_session_name():
+                     return session.terminate()
+         return self.session_registry(session_uuid).control_session.terminate(session_name=session_name)
+@@ -979,21 +993,7 @@ class X2goClient(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if return_objects:
+-            return [ obj for obj in self.session_registry.connected_sessions ]
+-        if return_profile_names:
+-            return [ obj.get_profile_name() for obj in self.session_registry.connected_sessions ]
+-        return [ obj() for obj in self.session_registry.connected_sessions ]
+-    __client_connected_sessions = client_connected_sessions
+-
+-    def client_connected_sessions_of_name(self, profile_name, return_objects=False):
+-        &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
+-
+-        &quot;&quot;&quot;
+-        if return_objects:
+-            return [ s for s in self.session_registry.connected_sessions if s.get_profile_name() == profile_name ]
+-        return [ s.get_uuid() for s in self.session_registry.connected_sessions if s.get_profile_name() == profile_name ]
++        return self.session_registry.connected_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
+     __client_connected_sessions = client_connected_sessions
+ 
+     @property
+@@ -1010,11 +1010,7 @@ class X2goClient(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if return_objects:
+-            return [ obj for obj in self.session_registry.running_sessions ]
+-        if return_profile_names:
+-            return [ obj.get_profile_name() for obj in self.session_registry.running_sessions ]
+-        return [ obj.get_uuid() for obj in self.session_registry.running_sessions ]
++        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
+     __client_running_sessions = client_running_sessions
+ 
+     @property
+@@ -1031,11 +1027,7 @@ class X2goClient(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if return_objects:
+-            return [ obj for obj in self.session_registry.suspended_sessions ]
+-        if return_profile_names:
+-            return [ obj.get_profile_name() for obj in self.session_registry.suspended_sessions ]
+-        return [ obj.get_uuid() for obj in self.session_registry.suspended_sessions ]
++        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
+     __client_suspended_sessions = client_suspended_sessions
+ 
+     @property
+@@ -1048,12 +1040,12 @@ class X2goClient(object):
+     __client_has_suspended_sessions = client_has_suspended_sessions
+ 
+     @property
+-    def client_registered_sessions(self):
++    def client_registered_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.registered_sessions
++        return self.session_registry.registered_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
+     __client_registered_sessions = client_registered_sessions
+ 
+     @property
+@@ -1065,21 +1057,45 @@ class X2goClient(object):
+         return self.session_registry.control_sessions
+     __client_control_sessions = client_control_sessions
+ 
+-    def client_control_session_of_name(self, profile_name):
++    def client_control_session_of_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.control_session_of_name(profile_name)
+-    __client_control_session_of_name = client_control_session_of_name
++        return self.session_registry.control_session_of_profile_name(profile_name)
++    __client_control_session_of_profile_name = client_control_session_of_profile_name
+ 
+-    def client_registered_sessions_of_name(self, profile_name):
++    def client_registered_session_of_name(self, session_name, return_object=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.registered_sessions_of_name(profile_name)
+-    __client_registered_sessions_of_name = client_registered_sessions_of_name
++        return self.session_registry.get_session_of_session_name(session_name, return_object=return_object)
++    __client_registered_session_of_name = client_registered_session_of_name
++
++    def client_has_registered_session_of_name(self, session_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.client_registered_session_of_name(session_name) is not None
++    __client_has_registered_session_of_name = client_registered_session_of_name
++
++    def client_registered_sessions_of_profile_name(self, profile_name, return_objects=False):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=return_objects)
++    __client_registered_sessions_of_profile_name = client_registered_sessions_of_profile_name
++
++    def client_connected_sessions_of_profile_name(self, profile_name, return_objects=False):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.session_registry.connected_sessions_of_profile_name(profile_name, return_objects=return_objects)
++    __client_connected_sessions = client_connected_sessions
+ 
+     ###
+     ### Provide access to the X2go server's sessions DB
+@@ -1129,7 +1145,7 @@ class X2goClient(object):
+             session_list = self._X2goClient__list_sessions(session_uuid)
+             return [ key for key in session_list.keys() if session_list[key].status == 'R' ]
+         else:
+-            raise X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
++            raise x2go_exceptions.X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
+     __server_running_sessions = server_running_sessions
+ 
+     @property
+@@ -1158,7 +1174,7 @@ class X2goClient(object):
+             session_list = self._X2goClient__list_sessions(session_uuid)
+             return [ key for key in session_list.keys() if session_list[key].status == 'S' ]
+         else:
+-            raise X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
++            raise x2go_exceptions.X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
+     __server_suspended_sessions = server_suspended_sessions
+ 
+     @property
+@@ -1199,7 +1215,11 @@ class X2goClient(object):
+         session.clean_sessions()
+     __clean_sessions = clean_sessions
+ 
+-    def list_sessions(self, session_uuid, no_cache=False, refresh_cache=False):
++    def list_sessions(self, session_uuid=None, 
++                      profile_name=None, profile_id=None, 
++                      no_cache=False, refresh_cache=False, 
++                      update_sessionregistry=True,
++                      register_sessions=False):
+         &quot;&quot;&quot;\
+         Use the X2go session registered under C{session_uuid} to
+         retrieve a list of running or suspended X2go sessions on the 
+@@ -1214,19 +1234,45 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+ 
+         &quot;&quot;&quot;
+-        session = self.session_registry(session_uuid)
++        if profile_id is not None:
++            profile_name = self.to_profile_name(profile_id)
++
++        if profile_name is not None:
++
++            _connected_sessions = self.client_connected_sessions_of_profile_name(profile_name, return_objects=True)
++            if _connected_sessions:
++                # it does not really matter which session to use for getting a server-side session list
++                # thus, we simply grab the first that comes in...
++                session_uuid = _connected_sessions[0].get_uuid()
++            else:
++                raise x2go_exceptions.X2goClientException('profile ,,%s\'\' is not connected' % profile_name)
+ 
+-        if not self.use_cache or no_cache:
+-            return session.list_sessions()
++        elif session_uuid is not None:
++            pass
++        else:
++            raise x2go_exceptions.X2goClientException('must either specify session UUID or profile name')
++
++        if not self.use_listsessions_cache or no_cache:
++            _session_list = self.session_registry(session_uuid).list_sessions()
+         elif refresh_cache:
+             self.update_cache_by_session_uuid(session_uuid)
+-            return self.listsessions_cache.list_sessions(session_uuid)
++            _session_list = self.listsessions_cache.list_sessions(session_uuid)
+         else:
+             # if there is no cache for this session_uuid available, make sure the cache gets updated
+             # before reading from it...
+-            if self.use_cache and (not self.listsessions_cache.is_cached(session_uuid=session_uuid)):
++            if self.use_listsessions_cache and (not self.listsessions_cache.is_cached(session_uuid=session_uuid)):
+                 self.__update_cache_by_session_uuid(session_uuid)
+-            return self.listsessions_cache.list_sessions(session_uuid)
++            _session_list = self.listsessions_cache.list_sessions(session_uuid)
++
++        if update_sessionregistry:
++            self.session_registry.update_status(profile_name=self.get_session_profile_name(session_uuid), session_list=_session_list)
++
++        if register_sessions:
++            self.session_registry.register_available_server_sessions(profile_name=self.get_session_profile_name(session_uuid),
++                                                                     session_list=_session_list, 
++                                                                     update_sessionregistry=False)
++
++        return _session_list
+     __list_sessions = list_sessions
+ 
+     ###
+@@ -1363,43 +1409,109 @@ class X2goClient(object):
+         @param profile_name: the X2go session profile name
+         @type profile_name: C{str}
+         &quot;&quot;&quot;
+-        for s in self.session_registry.registered_sessions_of_name(profile_name):
++        for s in self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=True):
+             s.disconnect()
+-        if self.use_cache:
++        if self.use_listsessions_cache:
+             self.__update_cache_all_profiles()
+     __disconnect_profile = disconnect_profile
+ 
+-    def update_cache_by_profile(self, profile_name, seconds=None):
++    def update_sessionregistry_status_by_profile_name(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        session_uuids = self.client_registered_sessions_of_profile_name(profile_name)
++        if session_uuids:
++            session_list = self.list_sessions(session_uuids[0],
++                                              update_sessionregistry=False, 
++                                              register_sessions=False,
++                                             )
++            self.session_registry.update_status(profile_name=profile_name, session_list=session_list)
++    __update_sessionregistry_status_by_profile_name = update_sessionregistry_status_by_profile_name
++
++
++    def update_sessionregistry_status_by_session_uuid(self, session_uuid):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        session_list = self.list_sessions(session_uuid, update_sessionregistry=False, register_sessions=False)
++        if session_list:
++            self.session_registry.update_status(session_uuid=session_uuid, session_list=session_list)
++    __update_sessionregistry_status_by_session_uuid = update_sessionregistry_status_by_session_uuid
++
++    def update_sessionregistry_status_all_profiles(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        for profile_name in self.connected_profiles(return_profile_names=True):
++            self.__update_sessionregistry_status_by_profile_name(profile_name)
++    __update_sessionregistry_status_all_profiles = update_sessionregistry_status_all_profiles
++
++
++    def update_cache_by_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if self.listsessions_cache is not None:
+             try:
+-                self.listsessions_cache.update(profile_name, seconds=seconds)
++                self.listsessions_cache.update(profile_name)
+             except x2go_exceptions.X2goControlSessionException:
+                 self.HOOK_on_control_session_death(profile_name)
+                 self.disconnect_profile(profile_name)
+                 return False
+-    __update_cache_by_profile = update_cache_by_profile
++    __update_cache_by_profile_name = update_cache_by_profile_name
+ 
+-    def update_cache_by_session_uuid(self, session_uuid, seconds=None):
++    def update_cache_by_session_uuid(self, session_uuid):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         profile_name = self.get_session_profile_name(session_uuid)
+-        self.__update_cache_by_profile(profile_name, seconds=seconds)
++        self.__update_cache_by_profile_name(profile_name)
+     __update_cache_by_session_uuid = update_cache_by_session_uuid
+ 
+-    def update_cache_all_profiles(self, seconds=None):
++    def update_cache_all_profiles(self):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if self.listsessions_cache is not None:
+             for profile_name in self.connected_profiles(return_profile_names=True):
+-                self.__update_cache_by_profile(profile_name, seconds=seconds)
++                self.__update_cache_by_profile_name(profile_name)
+ 
+-            self.listsessions_cache.check_cache(seconds=seconds)
++            self.listsessions_cache.check_cache()
+     __update_cache_all_profiles = update_cache_all_profiles
++
++    def register_available_server_sessions_by_profile_name(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        for profile_name in self.connected_profiles(return_profile_names=True):
++            session_list = self.list_sessions(profile_name=profile_name, 
++                                              update_sessionregistry=False,
++                                              register_sessions=False,
++                                             )
++            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list)
++    __register_available_server_sessions_by_profile_name = register_available_server_sessions_by_profile_name
++
++    def register_available_server_sessions_by_session_uuid(self, session_uuid):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        profile_name = self.get_session_profile_name(session_uuid)
++        self.__register_available_server_sessions_by_profile_name(profile_name)
++    __register_available_server_sessions_by_session_uuid = register_available_server_sessions_by_session_uuid
++
++    def register_available_server_sessions_all_profiles(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        for profile_name in self.connected_profiles(return_profile_names=True):
++            self.__register_available_server_sessions_by_profile_name(profile_name)
++    __register_available_server_sessions_all_profiles = register_available_server_sessions_all_profiles
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 69cbbbc..dd90ee2 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -234,17 +234,18 @@ else:
+ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'speed': 2, 'pack': '16m-jpeg', 'quality': 9, 'link':'ADSL',
+     'iconvto': 'UTF-8', 'iconvfrom': 'ISO-8859-15', 'useiconv': False,
++    'usesshproxy': False, 'sshproxy': '',
+     'fstunnel': True,
+     'export': '',
+     'fullscreen': False,
+     'width': 800,'height': 600,'dpi': 96,'setdpi': False,
+     'usekbd':True, 'layout': 'us', 'type': 'pc105/us',
+-    'sound':False, 'soundsystem': 'pulse', 'startsoundsystem': True, 'soundtunnel':True, 'defsndport':True, 'sndport':4713, 
+-    'name': None, 'icon': ':icons/128x128/x2gosession.png', 
+-    'host': None, 'user': None, 'key': None, 'sshport': 22, 'add_to_known_hosts': True,
+-    'rootless': True, 'applications': 'WWWBROWSER, MAILCLIENT, OFFICE, TERMINAL', 'command':'TERMINAL', 'session_type': 'application',
+-    'rdpoptions':None, 'rdpserver':None, 
+-    'print': True,
++    'sound':False, 'soundsystem': 'pulse', 'startsoundsystem': False, 'soundtunnel':True, 'defsndport':True, 'sndport':4713, 
++    'name': '', 'icon': ':icons/128x128/x2gosession.png', 
++    'host': '', 'user': CURRENT_LOCAL_USER, 'key': '', 'sshport': 22,
++    'rootless': True, 'applications': 'WWWBROWSER, MAILCLIENT, OFFICE, TERMINAL', 'command':'TERMINAL',
++    'rdpoptions': '-u X2GO_USER -p X2GO_PASSWORD', 'rdpserver': '',
++    'print': False,
+     'xdmcpserver': 'localhost',
+     }
+ &quot;&quot;&quot;L{X2goSessionProfiles} default values to fill a new session profile with.&quot;&quot;&quot;
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 27b11f4..f55dd4f 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -50,7 +50,12 @@ class X2goSessionGuardian(threading.Thread):
+ 
+     &quot;&quot;&quot;
+ 
+-    def __init__(self, client, enable_cache=True, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, client_instance, 
++                 auto_update_listsessions_cache=False, 
++                 auto_update_sessionregistry=False,
++                 auto_register_sessions=False,
++                 refresh_interval=5,
++                 logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param enable_cache: let L{X2goSessionGuardian} refresh the session list cache for all L{X2goSession} objects
+         @type enable_cache: C{bool}
+@@ -67,8 +72,12 @@ class X2goSessionGuardian(threading.Thread):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        self.client = client
+-        self.enable_cache = enable_cache
++        self.client_instance = client_instance
++        self.auto_update_listsessions_cache = auto_update_listsessions_cache
++        self.auto_update_sessionregistry = auto_update_sessionregistry
++        self.auto_register_sessions = auto_register_sessions
++        self.refresh_interval = refresh_interval
++
+         threading.Thread.__init__(self, target=self.guardian)
+         self.daemon = True
+         self.start()
+@@ -86,19 +95,21 @@ class X2goSessionGuardian(threading.Thread):
+             gevent.sleep(1)
+             seconds += 1
+ 
+-            if seconds % 5 == 0:
+-                # if no cache is used the next command acts like a ping a each session
+-                # if any of the connected servers is dead an X2goClient.disconnect_profile()
+-                # call will be executed on the respective session profile.
+-                self.client.all_servers_are_alive()
++            if seconds % self.refresh_interval == 0:
++
++                if self.auto_update_listsessions_cache:
++                    self.client_instance.update_cache_all_profiles()
++
++                if self.auto_update_sessionregistry:
++                    self.client_instance.update_sessionregistry_status_all_profiles()
+ 
+-            if self.enable_cache:
+-                self.client.update_cache_all_profiles(seconds=seconds)
++                if self.auto_register_sessions:
++                    self.client_instance.register_available_server_sessions_all_profiles()
+ 
+         self.logger('X2go session guardian thread waking up after %s seconds' % seconds, loglevel=log.loglevel_DEBUG)
+ 
+-        for session_uuid in self.client.session_registry.keys():
+-            session_summary = self.client.get_session_summary(session_uuid)
++        for session_uuid in self.client_instance.session_registry.keys():
++            session_summary = self.client_instance.get_session_summary(session_uuid)
+             self.logger('calling session cleanup on profile %s for terminal session: %s' % (session_summary['profile_name'], session_summary['session_name']), loglevel=log.loglevel_DEBUG)
+             x2go_cleanup(threads=session_summary['active_threads'])
+ 
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+index 7762005..88ca068 100644
+--- a/x2go/inifiles.py
++++ b/x2go/inifiles.py
+@@ -183,7 +183,7 @@ class X2goIniFile(object):
+             fd = open(self.user_config_file, 'wb')
+             self.iniConfig.write(fd)
+             fd.close()
+-            self.write_config = False
++            self.write_user_config = False
+ 
+     def get_type(self, section, key):
+         &quot;&quot;&quot;\
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 66f6af3..53f934f 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -54,7 +54,7 @@ class X2goSessionRegistry(object):
+     STILL UNDOCUMENTED
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, use_cache=True, 
++    def __init__(self, client_instance,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -66,6 +66,8 @@ class X2goSessionRegistry(object):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
++        self.client_instance = client_instance
++
+         self.registry = {}
+         self.control_sessions = {}
+ 
+@@ -88,44 +90,158 @@ class X2goSessionRegistry(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self(session_uid).profile.profile_id
++        return self(session_uuid).get_profile_id()
+ 
+     def get_profile_name(self, session_uuid):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self(session_uuid).profile.profile_name
++        return self(session_uuid).get_profile_name()
+ 
+-    def session_summary(self, session_uuid):
++    def session_summary(self, session_uuid, status_only=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         _session_summary = {}
+-        _session_summary['uuid'] = session_uuid
+-        _session_summary['profile_id'] = self.get_profile_id(session_uuid)
+-        _session_summary['profile_name'] = self.get_profile_name(session_uuid)
+-        _session_summary['session_name'] = self(session_uuid).get_session_name()
+-        _session_summary['control_session'] = self(session_uuid).get_control_session()
+-        _session_summary['control_params'] = self(session_uuid).control_params
+-        _session_summary['terminal_session'] = self(session_uuid).get_terminal_session()
+-        _session_summary['terminal_params'] = self(session_uuid).terminal_params
+-        _session_summary['active_threads'] = self(session_uuid).get_terminal_session().active_threads
+-        _session_summary['connected'] = self(session_uuid).connected
+-        _session_summary['running'] = self(session_uuid).running
+-        _session_summary['suspended'] = self(session_uuid).suspended
+-        _session_summary['terminated'] = self(session_uuid).terminated
+-        _session_summary['backends'] = {
+-            'control': self(session_uuid)._control_backend,
+-            'terminal': self(session_uuid)._terminal_backend,
+-            'info': self(session_uuid)._info_backend,
+-            'list': self(session_uuid)._list_backend,
+-            'proxy': self(session_uuid)._proxy_backend,
+-        }
++        _r = False
++        if session_uuid in [ s() for s in self.registered_sessions() ]:
++            _r = True
++
++        if not status_only:
++            _session_summary['uuid'] = _r and session_uuid or None
++            _session_summary['profile_id'] = _r and self.get_profile_id(session_uuid) or ''
++            _session_summary['profile_name'] = _r and self.get_profile_name(session_uuid) or ''
++            _session_summary['session_name'] = _r and self(session_uuid).get_session_name() or ''
++            _session_summary['control_session'] = _r and self(session_uuid).get_control_session() or None
++            _session_summary['control_params'] = _r and self(session_uuid).control_params or {}
++            _session_summary['terminal_session'] = _r and self(session_uuid).get_terminal_session() or None
++            _session_summary['terminal_params'] = _r and self(session_uuid).terminal_params or {}
++            _session_summary['active_threads'] = _r and self(session_uuid).get_terminal_session().active_threads or []
++            _session_summary['backends'] = {
++                'control': _r and self(session_uuid)._control_backend or None,
++                'terminal': _r and self(session_uuid)._terminal_backend or None,
++                'info': _r and self(session_uuid)._info_backend or None,
++                'list': _r and self(session_uuid)._list_backend or None,
++                'proxy': _r and self(session_uuid)._proxy_backend or None,
++            }
++
++        if _r:
++            _session_summary['virgin'] = self(session_uuid).virgin
++            _session_summary['connected'] = self(session_uuid).connected
++            _session_summary['running'] = self(session_uuid).running
++            _session_summary['suspended'] = self(session_uuid).suspended
++            _session_summary['terminated'] = self(session_uuid).terminated
++        else:
++            _session_summary['virgin'] = None
++            _session_summary['connected'] = None
++            _session_summary['running'] = None
++            _session_summary['suspended'] = None
++            _session_summary['terminated'] = None
+         return _session_summary
+ 
+-    def register(self, server, profile_id, profile_name, 
++    def update_status(self, session_uuid=None, profile_name=None, profile_id=None, session_list=None):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if session_uuid and profile_name or session_uuid and profile_id or profile_name and profile_id:
++            raise X2goSessionRegistryException('only one of the possible method parameters is allowed (session_uuid, profile_name or profile_id)')
++        elif session_uuid is None and profile_name is None and profile_id is None:
++            raise X2goSessionRegistryException('at least one of the method parameters session_uuid, profile_name or profile_id must be given')
++
++        if session_uuid:
++            session_uuids = [ session_uuid ]
++        elif profile_name:
++            session_uuids = [ s() for s in self.registered_sessions_of_profile_name(profile_name, return_objects=True) ]
++        elif profile_id:
++            session_uuids = [ s() for s in self.registered_sessions_of_profile_name(self.client_instance.to_profile_name(profile_id), return_objects=True) ]
++
++        for _session_uuid in session_uuids:
++            self(_session_uuid).update_status(session_list=session_list)
++            _last_status = copy.deepcopy(self(_session_uuid)._last_status)
++            _current_status = copy.deepcopy(self(_session_uuid)._current_status)
++
++            # at this point we hook into the X2goClient instance and call notification methods
++            # that can be used to inform an application that something has happened
++
++            _profile_name = self(_session_uuid).get_profile_name()
++            _session_name = self(_session_uuid).get_session_name()
++
++            if _last_status['running'] == False and _current_status['running'] == True:
++                # session has started
++                if self(_session_uuid).has_terminal_session():
++                    if _last_status['suspended']:
++                        # from a suspended state
++                        self.client_instance.HOOK_on_session_has_resumed_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                    else:
++                        # as a new session
++                        self.client_instance.HOOK_on_session_has_started_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                else:
++                    if _last_status['suspended']:
++                        # from a suspended state
++                        self.client_instance.HOOK_on_session_has_resumed_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                    else:
++                        # as a new session
++                        self.client_instance.HOOK_on_session_has_started_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++            elif _last_status['suspended'] == False and _current_status['suspended'] == True:
++                # session has been suspended
++                self(_session_uuid).session_cleanup()
++                self.client_instance.HOOK_on_session_has_been_suspended(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++            elif _last_status['terminated'] == False and _current_status['terminated'] == True:
++                # session has terminated
++                self.client_instance.HOOK_on_session_has_terminated(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                self(_session_uuid).session_cleanup()
++                self(_session_uuid).__del__()
++                if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
++                    del self.registry[_session_uuid]
++
++    def register_available_server_sessions(self, profile_name, session_list=None):
++
++        _connected_sessions = self.connected_sessions_of_profile_name(profile_name=profile_name, return_objects=False)
++        _registered_sessions = self.registered_sessions_of_profile_name(profile_name=profile_name, return_objects=False)
++        _session_names = [ self(s_uuid).session_name for s_uuid in _registered_sessions if self(s_uuid).session_name is not None ]
++
++        if _connected_sessions:
++            # any of the connected sessions is valuable for accessing the profile's control 
++            # session commands, so we simply take the first that comes in...
++            _ctrl_session = self(_connected_sessions[0])
++            if session_list is None:
++                session_list = _ctrl_session.list_sessions()
++            for session_name in session_list.keys():
++                if session_name not in _session_names:
++                    server = _ctrl_session.get_server_hostname()
++                    profile_id = _ctrl_session.get_profile_id()
++
++                    # reconstruct all session options of _ctrl_session to auto-register a suspended session
++                    # found on the _ctrl_session's connected server
++                    _pre_kwargs = _ctrl_session.__dict__
++                    kwargs = {}
++                    kwargs.update(_pre_kwargs['terminal_params'])
++                    kwargs.update(_pre_kwargs['control_params'])
++                    kwargs['control_backend'] = _pre_kwargs['_control_backend']
++                    kwargs['terminal_backend'] = _pre_kwargs['_terminal_backend']
++                    kwargs['proxy_backend'] = _pre_kwargs['_proxy_backend']
++                    kwargs['info_backend'] = _pre_kwargs['_info_backend']
++                    kwargs['list_backend'] = _pre_kwargs['_list_backend']
++                    kwargs['settings_backend'] = _pre_kwargs['_settings_backend']
++                    kwargs['printing_backend'] = _pre_kwargs['_printing_backend']
++                    kwargs['keep_controlsession_alive'] = _pre_kwargs['keep_controlsession_alive']
++                    kwargs['client_rootdir'] = _pre_kwargs['client_rootdir']
++                    kwargs['sessions_rootdir'] = _pre_kwargs['sessions_rootdir']
++
++                    # this if clause catches problems when x2golistsessions commands give weird results
++                    if not self.has_session_of_session_name(session_name):
++                        self.register(server, profile_id, profile_name, 
++                                      session_name=session_name,
++                                      virgin=False, running=False, suspended=True, terminated=None,
++                                      **kwargs
++                                     )
++                        self.update_status(profile_name=profile_name, session_list=session_list)
++
++    def register(self, server, profile_id, profile_name,
++                 session_name=None,
+                  control_backend=_X2goControlSession,
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+@@ -136,14 +252,36 @@ class X2goSessionRegistry(object):
+                  client_rootdir=os.path.join(_LOCAL_HOME,_X2GO_CLIENT_ROOTDIR),
+                  sessions_rootdir=os.path.join(_LOCAL_HOME,_X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(_LOCAL_HOME,_X2GO_SSH_ROOTDIR),
++                 keep_controlsession_alive=True,
+                  **kwargs):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
+ 
++        &quot;&quot;&quot;
+         control_session = None
+         if profile_id in self.control_sessions.keys():
+             control_session = self.control_sessions[profile_id]
+ 
++        # when starting a new session, we will try to use unused registered virgin sessions
++        # depending on your application layout, there shoul either be one or no such virgin session at all
++        _virgin_sessions = self.virgin_sessions_of_profile_name(profile_name, return_objects=True)
++        if _virgin_sessions and not session_name:
++
++            session_uuid = _virgin_sessions[0].get_uuid()
++            self.logger('using already initially-registered yet-unused session %s' % session_uuid, log.loglevel_NOTICE)
++            return session_uuid
++
++        try:
++            _retval = self.get_session_of_session_name(session_name)
++            self.logger('using already registered-by-session-name session %s' % session_uuid, log.loglevel_NOTICE)
++            return _retval
++        except X2goSessionException:
++            # no registered session for session_name found... FINE, go ahead!
++            pass
++
+         s = session.X2goSession(server=server, control_session=control_session,
+                                 profile_id=profile_id, profile_name=profile_name,
++                                session_name=session_name,
+                                 control_backend=control_backend,
+                                 terminal_backend=terminal_backend,
+                                 info_backend=info_backend,
+@@ -154,6 +292,7 @@ class X2goSessionRegistry(object):
+                                 client_rootdir=client_rootdir,
+                                 sessions_rootdir=sessions_rootdir,
+                                 ssh_rootdir=ssh_rootdir,
++                                keep_controlsession_alive=keep_controlsession_alive,
+                                 logger=self.logger, **kwargs)
+ 
+         session_uuid = s._X2goSession__get_uuid()
+@@ -166,48 +305,81 @@ class X2goSessionRegistry(object):
+ 
+         return session_uuid
+ 
+-    def _sessionsWithState(self, state):
+-        return [ ts for ts in self.registry.values() if eval('ts.%s' % state) ]
++    def has_session_of_session_name(self, session_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
+ 
+-    @property
+-    def connected_sessions(self):
++        &quot;&quot;&quot;
++        try:
++            _dummy = self.get_session_of_session_name(session_name)
++            return True
++        except X2goSessionException:
++            return False
++
++    def get_session_of_session_name(self, session_name, return_object=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('connected')
++        found_sessions = [ s for s in self.registered_sessions() if s.session_name == session_name and s.session_name is not None ]
++        if len(found_sessions) == 1:
++            session = found_sessions[0]
++            if return_object:
++                return session
++            else:
++                return session.get_uuid()
++        elif len(found_sessions) &gt; 1:
++            raise X2goSessionRegistryException('there should only be one registered session of name ,,%s\'\'' % session_name)
++        else:
++            raise X2goSessionException('no session of name ,,%s\'\' registered' % session_name)
++
++    def _sessionsWithState(self, state, return_objects=True, return_profile_names=False):
++        sessions = [ ts for ts in self.registry.values() if eval('ts.%s' % state) ]
++        if return_objects:
++            return sessions
++        elif return_profile_names:
++            profile_names = []
++            for session in sessions:
++                if session.profile_name not in profile_names:
++                    profile_names.append(session.profile_name)
++            return profile_names
++        else:
++            return [s.get_uuid() for s in sessions ]
+ 
+-    @property
+-    def connected_sessions(self):
++    def connected_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('connected')
++        return self._sessionsWithState('connected', return_objects=return_objects, return_profile_names=return_profile_names)
+ 
+-    @property
+-    def running_sessions(self):
++    def virgin_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('running')
++        return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names)
+ 
+-    @property
+-    def suspended_sessions(self):
++    def running_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('suspended')
++        return self._sessionsWithState('running', return_objects=return_objects, return_profile_names=return_profile_names)
+ 
+-    @property
+-    def terminated_sessions(self):
++    def suspended_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('terminated')
++        return self._sessionsWithState('suspended', return_objects=return_objects, return_profile_names=return_profile_names)
++
++    def terminated_sessions(self, return_objects=True, return_profile_names=False):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self._sessionsWithState('terminated', return_objects=return_objects, return_profile_names=return_profile_names)
+ 
+     @property
+     def has_running_sessions(self):
+@@ -215,7 +387,7 @@ class X2goSessionRegistry(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.running_sessions and len(self.running_sessions) &gt; 0
++        return self.running_sessions() and len(self.running_sessions()) &gt; 0
+ 
+     @property
+     def has_suspended_sessions(self):
+@@ -225,13 +397,21 @@ class X2goSessionRegistry(object):
+         &quot;&quot;&quot;
+         return self.suspended_sessions and len(self.suspended_sessions) &gt; 0
+ 
+-    @property
+-    def registered_sessions(self):
++    def registered_sessions(self, return_objects=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.registry.values()
++        if return_objects:
++            return self.registry.values()
++        elif return_profile_names:
++            profile_names = []
++            for session in self.registry.values():
++                if session.profile_name not in profile_names:
++                    profile_names.append(profile_name)
++            return profile_names
++        else:
++            return self.registry.keys()
+ 
+     @property
+     def non_running_sessions(self):
+@@ -239,36 +419,65 @@ class X2goSessionRegistry(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return [ s for s in self.registry.values() if s not in self.running_sessions ]
++        return [ s for s in self.registry.values() if s not in self.running_sessions() ]
++
++    def connected_sessions_of_profile_name(self, profile_name, return_objects=False):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if return_objects:
++            return self.connected_sessions() and [ s for s in self.connected_sessions() if s.profile_name == profile_name ]
++        else:
++            return self.connected_sessions() and [ s.get_uuid() for s in self.connected_sessions() if s.profile_name == profile_name ]
+ 
+-    def registered_sessions_of_name(self, profile_name):
++    def registered_sessions_of_profile_name(self, profile_name, return_objects=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.registered_sessions and [ s for s in self.registered_sessions if s.profile_name == profile_name ]
+ 
+-    def running_sessions_of_name(self, profile_name):
++        if return_objects:
++            return self.registered_sessions() and [ s for s in self.registered_sessions() if s.profile_name == profile_name ]
++        else:
++            return self.registered_sessions() and [ s.get_uuid() for s in self.registered_sessions() if s.profile_name == profile_name ]
++
++    def virgin_sessions_of_profile_name(self, profile_name, return_objects=False):
++
++        if return_objects:
++            return self.virgin_sessions() and [ s for s in self.virgin_sessions() if s.profile_name == profile_name ]
++        else:
++            return self.virgin_sessions() and [ s.get_uuid() for s in self.virgin_sessions() if s.profile_name == profile_name ]
++
++
++    def running_sessions_of_profile_name(self, profile_name, return_objects=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.running_sessions and [ s for s in self.running_sessions if s.profile_name == profile_name ]
++        if return_objects:
++            return self.running_sessions() and [ s for s in self.running_sessions() if s.profile_name == profile_name ]
++        else:
++            return self.running_sessions() and [ s.get_uuid() for s in self.running_sessions() if s.profile_name == profile_name ]
+ 
+-    def suspended_sessions_of_name(self, profile_name):
++    def suspended_sessions_of_profile_name(self, profile_name, return_objects=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+-            &quot;&quot;&quot;
+-        return self.running_sessions and [ s for s in self.running_sessions if s.profile_name == profile_name ]
++        &quot;&quot;&quot;
++        if return_objects:
++            return self.suspended_sessions() and [ s for s in self.suspended_sessions() if s.profile_name == profile_name ]
++        else:
++            return self.suspended_sessions() and [ s.get_uuid() for s in self.suspended_sessions() if s.profile_name == profile_name ]
+ 
+-    def control_session_of_name(self, profile_name):
++    def control_session_of_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if self.registered_sessions_of_name(profile_name):
+-            session = self.registered_sessions_of_name(profile_name)[0]
++        _sessions = self.registered_sessions_of_profile_name(profile_name, return_objects=True)
++        if _sessions:
++            session = _sessions[0]
+             return session.control_session
+         return None
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 08248a0..bab60b0 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -68,6 +68,7 @@ class X2goSession(object):
+ 
+     def __init__(self, server=None, control_session=None,
+                  profile_id=None, profile_name='UNKNOWN',
++                 session_name=None,
+                  printing=None, share_local_folders=[],
+                  control_backend=_X2goControlSession,
+                  terminal_backend=_X2goTerminalSession,
+@@ -80,7 +81,9 @@ class X2goSession(object):
+                  sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR),
+                  known_hosts=None,
++                 keep_controlsession_alive=False,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
++                 virgin=True, running=None, suspended=None, terminated=None,
+                  **params):
+ 
+         if logger is None:
+@@ -89,16 +92,29 @@ class X2goSession(object):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        self._keep_alive = True
++        self._keep = None
+ 
+         self.uuid = uuid.uuid1()
+         self.connected = False
+-        self.running = False
+-        self.suspended = False
+-        self.terminated = False
++
++        self.virgin = virgin
++        self.running = running
++        self.suspended = suspended
++        self.terminated = terminated
++        self.keep_controlsession_alive = keep_controlsession_alive
++
++        self._current_status = {
++            'virgin': self.virgin,
++            'connected': self.connected,
++            'running': self.running,
++            'suspended': self.suspended,
++            'terminated': self.terminated,
++        }
++        self._last_status = None
+ 
+         self.profile_id = profile_id
+         self.profile_name = profile_name
++        self.session_name = session_name
+         self.server = server
+         self.printing = printing
+         self.share_local_folders = share_local_folders
+@@ -158,6 +174,7 @@ class X2goSession(object):
+         if known_hosts:
+             self.control_session.load_host_keys(known_hosts)
+ 
++
+     def __str__(self):
+         return self.__get_uuid()
+ 
+@@ -171,6 +188,38 @@ class X2goSession(object):
+     def __call__(self):
+         return self.__get_uuid()
+ 
++    def __del__(self):
++
++        if self.has_control_session() and self.has_terminal_session():
++            self.get_control_session().dissociate(self.get_terminal_session())
++
++        if self.has_control_session():
++            if self.keep_controlsession_alive:
++                # regenerate this session instance for re-usage if this is the last session for a certain session profile
++                # and keep_controlsession_alive is set to True...
++                self.virgin = True
++                self.connected = self.is_connected()
++                self.running = None
++                self.suspended = None
++                self.terminated = None
++                self._current_status = {
++                    'virgin': self.virgin,
++                    'connected': self.connected,
++                    'running': self.running,
++                    'suspended': self.suspended,
++                    'terminated': self.terminated,
++                }
++                self._last_status = None
++                self.session_name = None
++
++            else:
++                self.get_control_session().__del__()
++                self.control_session = None
++
++        if self.has_terminal_session():
++            self.get_terminal_session().__del__()
++            self.terminal_session = None
++
+     def get_uuid(self):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -210,19 +259,39 @@ class X2goSession(object):
+         return self.control_session._session_password
+     __get_password = get_password
+ 
+-    def get_server(self):
++    def get_server_peername(self):
+         &quot;&quot;&quot;\
+         After a session has been setup up you can query the
+         hostname of the host the sessions is connected to (or
+         about to connect to).
+ 
+-        @return: the hostname of the server the X2go session is
++        @return: the address of the server the X2go session is
+             connected to (as an C{(addr,port)} tuple)
+-        @rtype: tuple
++        @rtype: C{tuple}
+ 
+         &quot;&quot;&quot;
+         return self.control_session.get_transport().getpeername()
+-    __get_server = get_server
++    __get_server_peername = get_server_peername
++
++    def get_server_hostname(self):
++        &quot;&quot;&quot;\
++        @return: the hostname of the server the X2go session is
++            connected to
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
++        return self.control_session.hostname
++    __get_server_hostname = get_server_hostname
++
++    def get_server_port(self):
++        &quot;&quot;&quot;\
++        @return: the server-side TCP port that is used by the X2go session to 
++            connect the session
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
++        return self.control_session.port
++    __get_server_port = get_server_port
+ 
+     def get_session_name(self):
+         &quot;&quot;&quot;\
+@@ -233,8 +302,7 @@ class X2goSession(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+-        if self.terminal_session is not None:
+-            return self.terminal_session.get_session_name() or None
++        return self.session_name
+     __get_session_name = get_session_name
+ 
+     def get_session_cmd(self):
+@@ -255,6 +323,14 @@ class X2goSession(object):
+         return self.control_session
+     __get_control_session = get_control_session
+ 
++    def has_control_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.control_session is not None
++    __has_control_session = has_control_session
++
+     def get_terminal_session(self):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -314,11 +390,11 @@ class X2goSession(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        self.connected = False
+-        self.running = False
+-        self.suspended = False
+-        self.terminated = False
+         self.control_session.disconnect()
++        self.connected = False
++        self.running = None
++        self.suspended = None
++        self.terminated = None
+     __disconnect = disconnect
+ 
+     def set_print_action(self, print_action, **kwargs):
+@@ -332,13 +408,21 @@ class X2goSession(object):
+     __set_print_action = set_print_action
+ 
+     def is_alive(self):
+-        _alive = self.control_session.is_alive()
+-        if not _alive:
+-            self.disconnect()
+-        return _alive
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self.connected = self.control_session.is_alive()
++        if not self.connected:
++            self._X2goSession__disconnect()
++        return self.connected
+     __is_alive = is_alive
+ 
+     def clean_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
+         if self.is_alive():
+             self.control_session.clean_sessions()
+         else:
+@@ -346,11 +430,53 @@ class X2goSession(object):
+     __clean_sessions = clean_sessions
+ 
+     def list_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
+         if not self.is_alive():
+             self._X2goSession__disconnect()
+         return self.control_session.list_sessions()
+     __list_sessions = list_sessions
+ 
++    def update_status(self, session_list=None):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._last_status = copy.deepcopy(self._current_status)
++        if session_list is None:
++            try:
++                session_list = self.control_session.list_sessions()
++                self.connected = True
++            except X2goControlSessionException:
++                self.connected = False
++                self.running = None
++                self.suspended = None
++                self.terminated = None
++        try:
++            _session_info = session_list[self.get_session_name()]
++            self.running = _session_info.is_running()
++            self.suspended = _session_info.is_suspended()
++            if not self.virgin:
++                self.terminated = not (_session_info.is_running() or _session_info.is_suspended())
++            else:
++                self.terminated = None
++        except KeyError:
++            self.running = False
++            self.suspended = False
++            if not self.virgin:
++                self.terminated = True
++
++        self._current_status = {
++            'virgin': self.virgin,
++            'connected': self.connected,
++            'running': self.running,
++            'suspended': self.suspended,
++            'terminated': self.terminated,
++        }
++    __update_status = update_status
++
+     def resume(self, session_name=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2go session on the
+@@ -360,11 +486,22 @@ class X2goSession(object):
+         @type session_name: C{str}
+ 
+         &quot;&quot;&quot;
++        _new_session = False
++        if self.session_name is None:
++            self.session_name = session_name
++
+         if self.is_alive():
+             _control = self.control_session
+-            _terminal = _control.resume(session_name=session_name, 
++            _terminal = _control.resume(session_name=self.session_name, 
+                                         logger=self.logger, **self.terminal_params)
+             self.terminal_session = _terminal
++
++            if self.session_name is None:
++                _new_session = True
++                self.session_name = self.terminal_session.session_info.name
++
++            print 'STARTING SESSION: %s'  % self.session_name
++
+             if _terminal is not None:
+ 
+                 if SUPPORTED_SOUND and _terminal.params.snd_system is not 'none':
+@@ -385,9 +522,10 @@ class X2goSession(object):
+                             _terminal.share_local_folder(_folder)
+ 
+                 # only run the session startup command if we do not resume...
+-                if session_name is None:
+-                    _terminal.run_command()
++                if _new_session:
++                    self.terminal_session.run_command()
+ 
++                self.virgin = False
+                 self.suspended = False
+                 self.running = True
+                 self.terminated = False
+@@ -404,6 +542,7 @@ class X2goSession(object):
+         Start a new X2go session on the remote X2go server.
+ 
+         &quot;&quot;&quot;
++        self.session_name = None
+         self.resume()
+     __start = start
+ 
+@@ -420,11 +559,27 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         if self.is_alive():
+-            if self.terminal_session.suspend():
++            if self.has_terminal_session():
++                if self.terminal_session.suspend():
++
++                    self.running = False
++                    self.suspended = True
++                    self.terminated = False
++                    self.session_cleanup()
++                    return True
++
++            elif self.has_control_session() and self.session_name:
++                if self.control_session.suspend(session_name=self.session_name):
++
++                    self.running = False
++                    self.suspended = True
++                    self.terminated = False
++                    self.session_cleanup()
++                    return True
++
++            else:
++                raise X2goClientException('cannot suspend session')
+ 
+-                self.running = False
+-                self.suspended = True
+-                return True
+         else:
+             self._X2goSession__disconnect()
+         return False
+@@ -443,12 +598,26 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         if self.is_alive():
+-            if self.terminal_session.terminate():
++            if self.has_terminal_session():
++                if self.terminal_session.terminate():
++
++                    self.running = False
++                    self.suspended = False
++                    self.terminated = True
++                    self.session_cleanup()
++                    return True
++
++            elif self.has_control_session() and self.session_name:
++                if self.control_session.terminate(session_name=self.session_name):
++
++                    self.running = False
++                    self.suspended = False
++                    self.terminated = True
++                    self.session_cleanup()
++                    return True
++            else:
++                raise X2goClientException('cannot terminate session')
+ 
+-                self.running = False
+-                self.suspended = False
+-                self.terminated = True
+-                return True
+         else:
+             self._X2goSession__disconnect()
+ 
+@@ -495,7 +664,6 @@ class X2goSession(object):
+         return False
+     __session_ok = session_ok
+ 
+-
+     def is_connected(self):
+         &quot;&quot;&quot;\
+         Test if this registered X2go session is connected to the 
+@@ -505,7 +673,12 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.control_session.is_connected()
++        self.connected = self.control_session.is_connected()
++        if not self.connected:
++            self.running = None
++            self.suspended = None
++            self.terminated = None
++        return self.connected
+     __is_connected = is_connected
+ 
+     def is_running(self):
+@@ -516,7 +689,14 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.is_connected() and self.control_session.is_running(self.get_session_name())
++        if self.is_connected():
++            self.running = self.control_session.is_running(self.get_session_name())
++            if self.running:
++                self.suspended = False
++                self.terminated = False
++            if self.virgin and not self.running:
++                self.running = None
++        return self.running
+     __is_running = is_running
+ 
+     def is_suspended(self):
+@@ -527,7 +707,14 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.is_connected() and self.control_session.is_suspended(self.get_session_name())
++        if self.is_connected():
++            self.suspended = self.control_session.is_suspended(self.get_session_name())
++            if self.suspended:
++                self.running = False
++                self.terminated = False
++            if self.virgin and not self.suspended:
++                self.suspended = None
++        return self.suspended
+     __is_suspended = is_suspended
+ 
+     def has_terminated(self):
+@@ -538,7 +725,14 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.is_connected() and self.control_session.has_terminated(self.get_session_name())
++        if self.is_connected():
++            self.terminated = not self.virgin and self.control_session.has_terminated(self.get_session_name())
++            if self.terminated:
++                self.running = False
++                self.suspended = False
++            if self.virgin and not self.terminated:
++                self.terminated = None
++        return self.has_terminated
+     __has_terminated = has_terminated
+ 
+     def share_local_folder(self, folder_name):
+@@ -557,4 +751,10 @@ class X2goSession(object):
+         return self.terminal_session.share_local_folder(folder_name=folder_name)
+     __share_local_folder = share_local_folder
+ 
++    def session_cleanup(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
+ 
++        &quot;&quot;&quot;
++        if self.has_terminal_session():
++            self.terminal_session.release_proxy()
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 8a2fa06..2fc705b 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -32,6 +32,7 @@ import paramiko
+ 
+ # Python X2go modules
+ from defaults import _pack_methods_nx3
++from defaults import X2GO_SESSIONPROFILE_DEFAULTS
+ 
+ 
+ def is_in_nx3packmethods(method):
+@@ -109,6 +110,12 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+ 
+         _params = copy.deepcopy(_options)
+ 
++        # get rid of unknown session profile options
++        _known_options = X2GO_SESSIONPROFILE_DEFAULTS.keys()
++        for p in _params.keys():
++            if p not in _known_options:
++                del _params[p]
++
+         _rename_dict = {
+             'host': 'server',
+             'user': 'username',
+@@ -188,7 +195,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             _params['session_type'] = 'desktop'
+         del _params['rootless']
+ 
+-        # currently ignored in Python X2go, use it for client implementations
++        # currently known but ignored in Python X2go
+         _ignored_options = [
+             'iconvto',
+             'iconvfrom',
+@@ -203,9 +210,12 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'icon',
+             'applications',
+             'xdmcpserver',
++            'usesshproxy',
++            'sshproxy',
+         ]
+         for i in _ignored_options:
+             del _params[i]
++
+         return _params
+ 
+ def session_names_by_timestamp(session_infos):
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 2eef4e5..e969875 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -39,11 +39,13 @@ SSHException = paramiko.SSHException
+ 
+ class _X2goException(exceptions.BaseException): pass
+ class X2goClientException(_X2goException): pass
++class X2goSessionException(_X2goException): pass
+ class X2goControlSessionException(_X2goException): pass
+ class X2goTerminalSessionException(_X2goException): pass
+ class X2goSessionCacheException(_X2goException): pass
+ class X2goUserException(_X2goException): pass
+ class X2goProfileException(_X2goException): pass
++class X2goSessionRegistryException(_X2goException): pass
+ class X2goSettingsException(_X2goException): pass
+ class X2goFwTunnelException(_X2goException): pass
+ class X2goRevFwTunnelException(_X2goException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012977.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	926ebbbc9976ec45e3131f4dd814340ce9895933
+</A></li>
+	<LI>Next message: <A HREF="012983.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	473fd7030473f69799c491a161b5281f13599be4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12982">[ date ]</a>
+              <a href="thread.html#12982">[ thread ]</a>
+              <a href="subject.html#12982">[ subject ]</a>
+              <a href="author.html#12982">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

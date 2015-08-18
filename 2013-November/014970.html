@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] buildscripts.git - master (branch) updated:	f681910dda5ecf219dd1a716cd2a1f45e3aa8cde
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09f681910dda5ecf219dd1a716cd2a1f45e3aa8cde&In-Reply-To=%3C20131129134449.BA8355DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014969.html">
+   <LINK REL="Next"  HREF="014971.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] buildscripts.git - master (branch) updated:	f681910dda5ecf219dd1a716cd2a1f45e3aa8cde</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09f681910dda5ecf219dd1a716cd2a1f45e3aa8cde&In-Reply-To=%3C20131129134449.BA8355DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] buildscripts.git - master (branch) updated:	f681910dda5ecf219dd1a716cd2a1f45e3aa8cde">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Nov 29 14:44:49 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014969.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	ab93627c1ffabbf292b848eca4f0dad803cf504a
+</A></li>
+        <LI>Next message: <A HREF="014971.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	ec037998ae38d2544a7a26f7f095d4b314f4498e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14970">[ date ]</a>
+              <a href="thread.html#14970">[ thread ]</a>
+              <a href="subject.html#14970">[ subject ]</a>
+              <a href="author.html#14970">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  f681910dda5ecf219dd1a716cd2a1f45e3aa8cde (commit)
+      from  ab93627c1ffabbf292b848eca4f0dad803cf504a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f681910dda5ecf219dd1a716cd2a1f45e3aa8cde
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 29 14:44:18 2013 +0100
+
+    only tar the source code once
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/build-rpm-package |   29 ++++++++++++++++++-----------
+ 1 file changed, 18 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/bin/build-rpm-package b/bin/build-rpm-package
+index 07fa84b..e70e0a3 100755
+--- a/bin/build-rpm-package
++++ b/bin/build-rpm-package
+@@ -95,6 +95,9 @@ prepare_workspace() {
+ 	# in any case remove the RPM_BUILDS_FOR file
+ 	rm -f &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot;
+ 
++	# create rpmbuild subdirectories
++	mkdir -p ~/rpmbuild/SOURCES
++
+ 	# make sure our local working copy is up to date...
+ 
+ 	if [ -d &quot;$PROJECT_DIR/.git&quot; ]; then 
+@@ -173,15 +176,26 @@ clear_pkgdist() {
+ }
+ 
+ build_packages() {
+-	# use pbuilder for building all variants of this package
++
++	# tar upstream sources from our Git clone
++	TEMP_DIR=&quot;$(mktemp -d --tmpdir=$TEMP_BASE)&quot;
++	mkdir -p &quot;$TEMP_DIR/$PROJECT&quot;
++	chmod 2770 &quot;$TEMP_DIR&quot; -Rf
++	cd &quot;$PROJECT_DIR&quot;
++	git clone --local &quot;$PROJECT_DIR&quot; &quot;$TEMP_DIR/$PROJECT/&quot;
++	cd $TEMP_DIR
++	rm -Rf &quot;$PROJECT/.git&quot;
++	mv $TEMP_DIR/$PROJECT $TEMP_DIR/$PROJECT-$UPSTREAM_VERSION
++	tar -czf ~/rpmbuild/SOURCES/$PROJECT-$UPSTREAM_VERSION.tar.gz $TEMP_DIR/$PROJECT-$UPSTREAM_VERSION
++	cp $PROJECT/$PROJECT.spec ..
++	cd &amp;&amp; rm $TEMP_DIR/$PROJECT -Rf
++
+ 	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+ 		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+ 			for l_CODENAME in $l_CODENAMES; do
+ 
+-				# in case we build a special CODENAME (squeeze, wheezy, lucid, ...) do skip
+-				# the wrong distribution here...
+ 				test -z $CODENAMES || echo $line | grep $CODENAMES || break
+ 
+ 				TEMP_DIR=&quot;$(mktemp -d --tmpdir=$TEMP_BASE)&quot;
+@@ -196,13 +210,6 @@ build_packages() {
+ 				GITREV=$(gitrevno)
+ 				UPSTREAM_VERSION=$(cat $PROJECT.spec | egrep &quot;^Version:.*&quot; | awk '{ print $2 }')
+ 
+-				# tar upstream sources from our Git clone
+-				mkdir -p ~/rpmbuild/SOURCES
+-				rm -Rf &quot;.git&quot;
+-				cd ..
+-				mv $TEMP_DIR/$PROJECT $TEMP_DIR/$PROJECT-$UPSTREAM_VERSION
+-				tar -czf ~/rpmbuild/SOURCES/$PROJECT-$UPSTREAM_VERSION $TEMP_DIR/$PROJECT-$UPSTREAM_VERSION
+-
+ 				# modify the section for non-main package builds
+ 
+ 				### TODO: How to host different builds (releases / nightlies in the same repository???)
+@@ -256,10 +263,10 @@ build_packages() {
+ 					#	DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 					#}
+ 				done
+-				rm -Rf &quot;$TEMP_DIR&quot;
+ 			done
+ 		}
+ 	done
++	rm -Rf &quot;$TEMP_DIR&quot;
+ 	return 0
+ }
+ 
+
+
+hooks/post-receive
+-- 
+buildscripts.git (X2Go packaging scripts)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;buildscripts.git&quot; (X2Go packaging scripts).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014969.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	ab93627c1ffabbf292b848eca4f0dad803cf504a
+</A></li>
+	<LI>Next message: <A HREF="014971.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	ec037998ae38d2544a7a26f7f095d4b314f4498e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14970">[ date ]</a>
+              <a href="thread.html#14970">[ thread ]</a>
+              <a href="subject.html#14970">[ subject ]</a>
+              <a href="author.html#14970">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

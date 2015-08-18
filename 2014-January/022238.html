@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-34-g1ddcfcf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-34-g1ddcfcf&In-Reply-To=%3C20140107152138.7F4195DCFF%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022223.html">
+   <LINK REL="Next"  HREF="022239.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-34-g1ddcfcf</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-34-g1ddcfcf&In-Reply-To=%3C20140107152138.7F4195DCFF%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-34-g1ddcfcf">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:38 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022223.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-31-geb0cf27
+</A></li>
+        <LI>Next message: <A HREF="022239.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-32-g3133baf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22238">[ date ]</a>
+              <a href="thread.html#22238">[ thread ]</a>
+              <a href="subject.html#22238">[ subject ]</a>
+              <a href="author.html#22238">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  1ddcfcf9bbc3ba029a697b6b7914ccbf67ba71e5 (commit)
+      from  01ea13f9b472bf7139c0640fbddb1cf4309c0861 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog              |    1 +
+ x2go/backends/info/_stdout.py |   82 +++++++++++++++++++++++++++++++++++------
+ x2go/client.py                |   29 ++++++++++++++-
+ 3 files changed, 98 insertions(+), 14 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b9c9ed2..9393787 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -27,6 +27,7 @@ python-x2go (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+       a disconnect request from the user.
+     - Improve desktop sharing code. Add code to obtain version information of
+       server-side X2Go components.
++    - Add session type filter for list of sharable desktops.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Dec 2012 08:58:44 +0100
+ 
+diff --git a/x2go/backends/info/_stdout.py b/x2go/backends/info/_stdout.py
+index 0e1a4c5..5553e85 100644
+--- a/x2go/backends/info/_stdout.py
++++ b/x2go/backends/info/_stdout.py
+@@ -90,7 +90,7 @@ class X2GoServerSessionInfoSTDOUT(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return re.match('.*_stRPUBLISHED_.*', self.name)
++        return bool(re.match('.*_stRPUBLISHED_.*', self.name))
+ 
+     def is_running(self):
+         &quot;&quot;&quot;\
+@@ -102,6 +102,34 @@ class X2GoServerSessionInfoSTDOUT(object):
+         &quot;&quot;&quot;
+         return self.status == 'R'
+ 
++    def get_session_type(self):
++        &quot;&quot;&quot;\
++        Get the session type (i.e. 'D', 'R', 'S' or 'P').
++
++        @return: session type
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        cmd = self.name.split('_')[1]
++        session_type = cmd[2]
++        if session_type == 'R' and self.is_published_applications_provider():
++            session_type = 'P'
++        return session_type
++
++    def get_share_mode(self):
++        &quot;&quot;&quot;\
++        Get the share mode of a shadow session.
++
++        @return: share mode (0: view-only, 1: full access), C{None} when used for non-desktop-sharing sessions
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
++        share_mode = None
++        cmd = self.name.split('_')[1]
++        session_type = cmd[2]
++        if session_type == 'S':
++            share_mode = cmd[3]
++        return share_mode
++
+     def is_suspended(self):
+         &quot;&quot;&quot;\
+         Is this session suspended?
+@@ -120,9 +148,7 @@ class X2GoServerSessionInfoSTDOUT(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        _desktop_sessions = defaults.X2GO_DESKTOPSESSIONS.keys()
+-        _regexp_desktop_sessions = '(%s)' % &quot;|&quot;.join(_desktop_sessions)
+-        return re.match('.*_stD%s_.*' % _regexp_desktop_sessions, self.name)
++        return self.get_session_type() == 'D'
+ 
+     def _parse_x2gostartagent_output(self, x2go_output):
+         &quot;&quot;&quot;\
+@@ -260,7 +286,7 @@ class X2GoServerSessionListSTDOUT(object):
+     C{X2GoControlSessionBACKEND.list_sessions()} call.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, x2go_output, info_backend=X2GoServerSessionInfoSTDOUT):
++    def __init__(self, x2go_output=None, info_backend=X2GoServerSessionInfoSTDOUT):
+         &quot;&quot;&quot;\
+         @param x2go_output: X2Go server's C{x2golistsessions} command output, each 
+             session separated by a newline character. Session values are separated 
+@@ -271,17 +297,25 @@ class X2GoServerSessionListSTDOUT(object):
+ 
+         &quot;&quot;&quot;
+         self.sessions = {}
+-        lines = x2go_output.split(&quot;\n&quot;)
+-        for line in lines:
+-            if not line:
+-                continue
+-            s_info = info_backend()
+-            s_info._parse_x2golistsessions_line(line)
+-            self.sessions[s_info.name] = s_info
++        if x2go_output is not None:
++            lines = x2go_output.split(&quot;\n&quot;)
++            for line in lines:
++                if not line:
++                    continue
++                s_info = info_backend()
++                s_info._parse_x2golistsessions_line(line)
++                self.sessions[s_info.name] = s_info
+ 
+     def __call__(self):
+         return self.sessions
+ 
++    def set_sessions(self, sessions):
++        &quot;&quot;&quot;\
++        Set the sessions property directly by parsing a complete data structure.
++
++        &quot;&quot;&quot;
++        self.sessions = sessions
++
+     def get_session_info(self, session_name):
+         &quot;&quot;&quot;\
+         Retrieve the session information for C{&lt;session_name&gt;}.
+@@ -297,3 +331,27 @@ class X2GoServerSessionListSTDOUT(object):
+             return self.sessions[session_name]
+         except KeyError:
+             return None
++
++    def get_session_with(self, property_name, value, hostname=None):
++        &quot;&quot;&quot;\
++        Find session with a given display number on a given host.
++
++        @param property_name: match a session based on this property name
++        @type property_name: C{str}
++        @param value: the resulting session has to match this value for C{&lt;property_name&gt;}
++        @type value: C{str}
++        @param hostname: the result has to match this hostname
++        @type hostname: C{str}
++
++        &quot;&quot;&quot;
++        if property_name == 'display':
++            value = value.lstrip(':')
++            if '.' in value: value = value.split('.')[0]
++
++        for session in self.sessions.values():
++            try:
++                if str(getattr(session, property_name)) == str(value):
++                    if hostname is None or session.hostname == hostname:
++                        return session
++            except AttributeError:
++                pass
+diff --git a/x2go/client.py b/x2go/client.py
+index b7fd646..e4ead86 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1506,7 +1506,7 @@ class X2GoClient(object):
+ 
+         &quot;&quot;&quot;
+ 
+-        # X2GoClient.list_desktops() uses caching (if enabled, so we prefer lookups here...
++        # X2GoClient.list_desktops() uses caching (if enabled, so we prefer lookups here...)
+         if desktop:
+             _desktop = desktop
+             user = None
+@@ -2639,6 +2639,7 @@ class X2GoClient(object):
+     def list_desktops(self, session_uuid=None, 
+                       profile_name=None, profile_id=None,
+                       no_cache=False, refresh_cache=False,
++                      exclude_session_types=[],
+                       raw=False):
+         &quot;&quot;&quot;\
+         Use the X2Go session registered under C{session_uuid} to
+@@ -2656,8 +2657,15 @@ class X2GoClient(object):
+         @type profile_name: C{str}
+         @param profile_id: use profile id instead of &lt;profile_name&gt; or &lt;session_uuid&gt;
+         @type profile_id: C{str}
+-        @param no_cache: do not get the session list from cache, query the X2Go server directly
++        @param no_cache: do not get the desktop list from cache, query the X2Go server directly
+         @type no_cache: C{bool}
++        @param refresh_cache: query the X2Go server directly and update the desktop list cache
++            with the new information
++        @type refresh_cache: C{bool}
++        @param excluded_session_types: session types (e.g. &quot;D&quot;, &quot;R&quot;, &quot;S&quot; or &quot;P&quot;) to be excluded from the
++            returned list of sharable desktops (this only works for sharing someone's own sessions, for
++            sharing other users' sessions, the X2Go Desktop Sharing decides on what is sharable and what not).
++        @type excluded_session_types: C{list}
+         @param raw: output the session list in X2Go's raw C{x2golistdesktops} format
+         @type raw: C{bool}
+ 
+@@ -2696,6 +2704,23 @@ class X2GoClient(object):
+                 self.__update_cache_by_session_uuid(session_uuid, update_sessions=False, update_desktops=True)
+             _desktop_list = self.listsessions_cache.list_desktops(session_uuid)
+ 
++        # attempt to exclude session types that are requested to be excluded
++        if exclude_session_types:
++
++            # create an X2GoServerSessionList* instance and operate on that
++            session_list = self.list_backend()
++            session_list.set_sessions(self._X2GoClient__list_sessions(session_uuid))
++
++            # search for a match among the listed sessions
++            for desktop in copy.deepcopy(_desktop_list):
++                user = desktop.split('@')[0]
++                if user == self.get_session_username(session_uuid):
++                    display = desktop.split('@')[1]
++                    session = session_list.get_session_with('display', display, hostname=self.get_session_server_hostname(session_uuid))
++                    if session is None: continue
++                    if session.get_session_type() in exclude_session_types:
++                        _desktop_list.remove(desktop)
++
+         return _desktop_list
+     __list_desktops = list_desktops
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022223.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-31-geb0cf27
+</A></li>
+	<LI>Next message: <A HREF="022239.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-32-g3133baf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22238">[ date ]</a>
+              <a href="thread.html#22238">[ thread ]</a>
+              <a href="subject.html#22238">[ subject ]</a>
+              <a href="author.html#22238">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

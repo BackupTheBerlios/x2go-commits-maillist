@@ -1,0 +1,394 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	2b35e46b3b90f217ed03b610a2f9ca699fe232f0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%092b35e46b3b90f217ed03b610a2f9ca699fe232f0&In-Reply-To=%3C20130604190930.0A1F25DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007915.html">
+   <LINK REL="Next"  HREF="007908.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	2b35e46b3b90f217ed03b610a2f9ca699fe232f0</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%092b35e46b3b90f217ed03b610a2f9ca699fe232f0&In-Reply-To=%3C20130604190930.0A1F25DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	2b35e46b3b90f217ed03b610a2f9ca699fe232f0">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:09:29 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007915.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	09cfdcfa2042e4bef78b091fbd4ad7fa278454e8
+</A></li>
+        <LI>Next message: <A HREF="007908.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	23f9762174258d904af10acd9f91c195c0f17881
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7919">[ date ]</a>
+              <a href="thread.html#7919">[ thread ]</a>
+              <a href="subject.html#7919">[ subject ]</a>
+              <a href="author.html#7919">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  2b35e46b3b90f217ed03b610a2f9ca699fe232f0 (commit)
+      from  a5b97c6f48336870817e6791036b51ad7070534d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker-sessionprofiles.conf      |    2 +-
+ x2gobroker/backends/base.py              |   21 ++++++++++
+ x2gobroker/backends/inifile.py           |   35 ++++++----------
+ x2gobroker/config.py                     |   37 ++++++++++++++---
+ x2gobroker/defaults.py                   |   36 ++++++++++++++++
+ x2gobroker/tests/test_backend_inifile.py |   66 ++++++++++++++++++++++++++++++
+ 6 files changed, 167 insertions(+), 30 deletions(-)
+ create mode 100644 x2gobroker/tests/test_backend_inifile.py
+
+The diff of changes is:
+diff --git a/etc/x2gobroker-sessionprofiles.conf b/etc/x2gobroker-sessionprofiles.conf
+index 75b26c4..24fd3ed 100644
+--- a/etc/x2gobroker-sessionprofiles.conf
++++ b/etc/x2gobroker-sessionprofiles.conf
+@@ -23,7 +23,7 @@
+ # X2Go Servers means securing the SSH daemon that runs on the X2Go Server.
+ 
+ 
+-[DEFAULTS]
++[DEFAULT]
+ defsndport=true
+ useiconv=false
+ iconvfrom=UTF-8
+diff --git a/x2gobroker/backends/base.py b/x2gobroker/backends/base.py
+index e08db6c..ee824f9 100644
+--- a/x2gobroker/backends/base.py
++++ b/x2gobroker/backends/base.py
+@@ -110,6 +110,27 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;
+         return self.config.get_value(backend, option)
+ 
++    def get_profile_ids(self):
++        &quot;&quot;&quot;\
++        Retrieve the complete list of session profile IDs.
++
++        @return: list of profile IDs
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return []
++
++    def get_profile_defaults(self):
++        &quot;&quot;&quot;\
++        Get the session profile defaults, i.e. profile options that all
++        configured session profiles have in common.
++
++        @return: a dictionary containing the session profile defaults
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
+     def test_connection(self):
+         #if($cgi-&gt;param('task') eq 'testcon')
+         #{
+diff --git a/x2gobroker/backends/inifile.py b/x2gobroker/backends/inifile.py
+index 6505150..b5100a8 100644
+--- a/x2gobroker/backends/inifile.py
++++ b/x2gobroker/backends/inifile.py
+@@ -40,38 +40,27 @@ class X2GoBroker(base.X2GoBroker):
+ 
+     backend_name = 'inifile'
+ 
+-    def __init__(self, profile_config=x2gobroker.defaults.X2GOBROKER_SESSIONPROFILES, **kwargs):
++    def __init__(self, profile_config_file=None, profile_config_defaults=None, **kwargs):
+         &quot;&quot;&quot;\
+-
+         @param config_file: path to the X2Go Session Broker configuration file (x2gobroker.conf)
+         @type config_file: C{unicode}
+-        @param profile_config: path to the backend's session profile configuration (x2gobroker-sessionprofiles.conf)
+-        @type profile_config: C{unicode} 
++        @param profile_config_file: path to the backend's session profile configuration (x2gobroker-sessionprofiles.conf)
++        @type profile_config_file: C{unicode} 
++
+         &quot;&quot;&quot;
+-        if kwargs.has_key('profile_config'):
+-            _profile_config = kwargs['profile_config']
+-        self.profile_config = x2gobroker.config.X2GoBrokerConfigFile(config_files=_profile_config)
++        base.X2GoBroker.__init__(self, **kwargs)
+ 
+-    def get_profile_ids(self):
+-        &quot;&quot;&quot;\
+-        Retrieve the complete list of session profile IDs.
++        if profile_config_file is None: profile_config_file = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILES
++        if profile_config_defaults is None: profile_config_defaults = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS
++        self.session_profiles = x2gobroker.config.X2GoBrokerConfigFile(config_files=profile_config_file, defaults=profile_config_defaults)
+ 
+-        @return: list of profile IDs
+-        @rtype: C{list}
++    def get_profile_ids(self):
+ 
+-        &quot;&quot;&quot;
+-        return self.profile_config.sections()
++        return self.session_profiles.list_sections()
+ 
+     def get_profile_defaults(self):
+-        &quot;&quot;&quot;\
+-        Get the session profile defaults, i.e. profile options that all
+-        configured session profiles have in common.
+ 
+-        @return: a dictionary containing the session profile defaults
+-        @rtype: C{dict}
+-
+-        &quot;&quot;&quot;
+-        return self.profile_config.get_section('DEFAULTS')
++        return self.session_profiles.get_defaults()
+ 
+     def get_profile_config(self, profile_id):
+         &quot;&quot;&quot;\
+@@ -84,7 +73,7 @@ class X2GoBroker(base.X2GoBroker):
+         @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+-        return self.profile_config.get_section(profile_id)
++        return self.session_profiles.get_section(profile_id)
+ 
+     def list_profiles(self, username):
+ 
+diff --git a/x2gobroker/config.py b/x2gobroker/config.py
+index a4c7f2f..b0ed1f8 100644
+--- a/x2gobroker/config.py
++++ b/x2gobroker/config.py
+@@ -61,7 +61,7 @@ class X2GoBrokerConfigFile(object):
+     write_user_config = False
+     user_config_file = None
+ 
+-    def __init__(self, config_files=_X2GOBROKER_CONFIG, defaults=None):
++    def __init__(self, config_files=[], defaults={}):
+         &quot;&quot;&quot;\
+         @param config_files: a list of configuration file names (e.g. a global filename and a user's home
+             directory filename)
+@@ -71,10 +71,6 @@ class X2GoBrokerConfigFile(object):
+         @type defaults: C{dict}
+ 
+         &quot;&quot;&quot;
+-        # make sure a None type gets turned into list type
+-        if not config_files:
+-            config_files = []
+-
+         # allow string/unicode objects as config_files, as well
+         if type(config_files) in (types.StringType, types.UnicodeType):
+             config_files = [config_files]
+@@ -252,7 +248,7 @@ class X2GoBrokerConfigFile(object):
+         &quot;&quot;&quot;
+         if key_type is None:
+             key_type = self.get_type(section, key)
+-        if self.iniConfig.has_option(section, key):
++        if self.iniConfig.has_option(section, key) or section == 'DEFAULT':
+             if key_type is types.BooleanType:
+                 return self.iniConfig.getboolean(section, key)
+             elif key_type is types.IntType:
+@@ -273,6 +269,25 @@ class X2GoBrokerConfigFile(object):
+     get = get_value
+     __call__ = get_value
+ 
++    def get_defaults(self):
++        &quot;&quot;&quot;\
++        Get all keys and values from the [DEFAULT] section of the configuration file.
++
++        @return: the defaults with all keys and values
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        _my_defaults = {}
++        _ini_defaults = self.iniConfig.defaults()
++        for option in _ini_defaults.keys():
++            try:
++                _my_defaults[option] = self.get('DEFAULT', option, key_type=self.get_type('DEFAULT', option))
++            except KeyError:
++                continue
++
++        return _my_defaults
++
++
+     def get_section(self, section):
+         &quot;&quot;&quot;\
+         Get all keys and values for a certain section of the config file.
+@@ -291,6 +306,16 @@ class X2GoBrokerConfigFile(object):
+ 
+         return _section_config
+ 
++    def list_sections(self):
++        &quot;&quot;&quot;\
++        Return a list of all present sections in a config file.
++
++        @return: list of sections in this config file
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return self.iniConfig.sections()
++
+     @property
+     def printable_config_file(self):
+         &quot;&quot;&quot;\
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 5a10a95..c11b36f 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -79,3 +79,39 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         'starttls': False,
+     },
+ }
++
++# defaults for X2Go Sessino Broker session profiles file
++X2GOBROKER_SESSIONPROFILE_DEFAULTS = {
++    'DEFAULT': {
++        'defsndport': True,
++        'useiconv': False,
++        'iconvfrom': 'UTF-8',
++        'height': 600,
++        'export': '',
++        'quality': 9,
++        'fullscreen': False,
++        'layout': '',
++        'useexports': True,
++        'width': 800,
++        'speed': 2,
++        'soundsystem': 'pulse',
++        'print': True,
++        'type': 'auto',
++        'sndport': 4713,
++        'xinerama': True,
++        'variant': '',
++        'usekbd': True,
++        'fstunnel': True,
++        'applications': ['TERMINAL','WWWBROWSER','MAILCLIENT','OFFICE'],
++        'multidisp': False,
++        'sshproxyport': 22,
++        'sound': True,
++        'rootless': False,
++        'iconvto': 'UTF-8',
++        'soundtunnel': True,
++        'dpi': 96,
++        'sshport': 22,
++        'setdpi': 0,
++        'pack': '16m-jpeg',
++    },
++}
+\ No newline at end of file
+diff --git a/x2gobroker/tests/test_backend_inifile.py b/x2gobroker/tests/test_backend_inifile.py
+new file mode 100644
+index 0000000..8110902
+--- /dev/null
++++ b/x2gobroker/tests/test_backend_inifile.py
+@@ -0,0 +1,66 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# 
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import unittest
++import tempfile
++
++# Python X2GoBroker modules
++import x2gobroker.backends.inifile
++import x2gobroker.defaults
++
++class TestX2GoBrokerBackendInifile(unittest.TestCase):
++
++    ### TEST SESSION PROFILES: get_profile_ids()
++
++    def test_getprofileids(self):
++        inifile_backend = x2gobroker.backends.inifile.X2GoBroker(profile_config_file='../../etc/x2gobroker-sessionprofiles.conf')
++        _profile_ids = inifile_backend.get_profile_ids()
++        self.assertEqual(len(_profile_ids), 5)
++        _expected_profile_ids = ['pool-A-server-A', 'pool-A-server-B', 'pool-A-server-C', 'pool-B-server-D-LXDE', 'pool-C-XFCE', ]
++        for _id in _profile_ids:
++            self.assertTrue( ( _id in _expected_profile_ids ) )
++        for _id in _expected_profile_ids:
++            self.assertTrue( ( _id in _profile_ids ) )
++
++    ### TEST SESSION PROFILES: get_profile_defaults()
++
++    def test_getprofiledefaults(self):
++        inifile_backend = x2gobroker.backends.inifile.X2GoBroker(profile_config_file='../../etc/x2gobroker-sessionprofiles.conf')
++        _profile_defaults = inifile_backend.get_profile_defaults()
++        _expected_profile_defaults = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS['DEFAULT']
++        for _param in _profile_defaults:
++            self.assertTrue( ( _param in _expected_profile_defaults.keys() and _profile_defaults[_param] == _expected_profile_defaults[_param] ) )
++        for _param in _expected_profile_defaults:
++            self.assertTrue( ( _param in _profile_defaults.keys() and _profile_defaults[_param] == _expected_profile_defaults[_param] ) )
++
++    ### TEST: select_profile() method
++
++#    def test_profileselection(self):
++#        _output = {
++#            'server': 'localhost:22',
++#        }
++        zeroconf_backend = x2gobroker.backends.zeroconf.X2GoBroker()
++#        self.assertEqual(zeroconf_backend.select_profile('profile_bar'), _output)
++
++
++def test_suite():
++    from unittest import TestSuite, makeSuite
++    suite = TestSuite()
++    suite.addTest(makeSuite(TestX2GoBrokerBackendInifile))
++    return suite
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007915.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	09cfdcfa2042e4bef78b091fbd4ad7fa278454e8
+</A></li>
+	<LI>Next message: <A HREF="007908.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	23f9762174258d904af10acd9f91c195c0f17881
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7919">[ date ]</a>
+              <a href="thread.html#7919">[ thread ]</a>
+              <a href="subject.html#7919">[ subject ]</a>
+              <a href="author.html#7919">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

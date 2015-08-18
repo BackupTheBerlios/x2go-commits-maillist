@@ -1,0 +1,305 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-17-g5b8164d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-17-g5b8164d&In-Reply-To=%3C20131029173641.B7B3C3BC46%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014626.html">
+   <LINK REL="Next"  HREF="014628.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-17-g5b8164d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-17-g5b8164d&In-Reply-To=%3C20131029173641.B7B3C3BC46%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-17-g5b8164d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Oct 29 18:36:41 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014626.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-15-gec8bb38
+</A></li>
+        <LI>Next message: <A HREF="014628.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-10-g7ddc496
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14627">[ date ]</a>
+              <a href="thread.html#14627">[ thread ]</a>
+              <a href="subject.html#14627">[ subject ]</a>
+              <a href="author.html#14627">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  5b8164de3596bd79e89de18e574252b2730b0916 (commit)
+      from  e92d6b6be58800bc69d030d87a5ae9637dfe3e0b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5b8164de3596bd79e89de18e574252b2730b0916
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Oct 29 18:36:06 2013 +0100
+
+    Handle echoing ~/.*shrc files gracefully via SSH client connections. Do not allow data injections via ~/.*shrc files. (Fixes: #335).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    2 ++
+ x2go/backends/control/_stdout.py |   44 ++++++++++++++++++++++++++++++++++----
+ x2go/client.py                   |   12 +++++++++++
+ x2go/session.py                  |   24 +++++++++++++++++++--
+ x2go/x2go_exceptions.py          |    1 +
+ 5 files changed, 77 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index eb4b587..cee5b48 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -19,6 +19,8 @@ python-x2go (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Implement two-factor authentication.
+     - Compat fix in _paramiko monkey patch module to also work with early Paramiko
+       versions.
++    - Handle echoing ~/.*shrc files gracefully via SSH client connections. Do not allow
++      data injections via ~/.*shrc files. (Fixes: #335).
+ 
+   [ Orion Poplawski ]
+   * debian/control:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 91e0a17..da9f9b7 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -38,6 +38,7 @@ import locale
+ import threading
+ import cStringIO
+ import base64
++import uuid
+ 
+ from gevent import socket
+ 
+@@ -272,6 +273,13 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         &quot;&quot;&quot;
+         self.disconnect()
+ 
++    def test_sftpclient(self):
++        ssh_transport = self.get_transport()
++        try:
++            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++        except paramiko.SFTPError:
++            raise x2go_exceptions.X2GoSFTPClientException('failed to initialize SFTP channel')
++
+     def _x2go_sftp_put(self, local_path, remote_path):
+         &quot;&quot;&quot;
+         Put a local file on the remote server via sFTP.
+@@ -290,7 +298,10 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+             self.logger('sFTP-put: %s -&gt; %s:%s' % (os.path.normpath(local_path), self.remote_peername(), remote_path), loglevel=log.loglevel_DEBUG)
+-            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            except paramiko.SFTPError:
++                raise x2go_exceptions.X2GoSFTPClientException('failed to initialize SFTP channel')
+             try:
+                 self.sftp_client.put(os.path.normpath(local_path), remote_path)
+             except (x2go_exceptions.SSHException, socket.error, IOError):
+@@ -319,7 +330,10 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+             self.logger('sFTP-write: opening remote file %s on host %s for writing' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
+-            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            except paramiko.SFTPError:
++                raise x2go_exceptions.X2GoSFTPClientException('failed to initialize SFTP channel')
+             try:
+                 remote_fileobj = self.sftp_client.open(remote_path, 'w')
+                 self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
+@@ -349,7 +363,10 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+             self.logger('sFTP-write: removing remote file %s on host %s' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
+-            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            except paramiko.SFTPError:
++                raise x2go_exceptions.X2GoSFTPClientException('failed to initialize SFTP channel')
+             try:
+                 self.sftp_client.remove(remote_path)
+             except (x2go_exceptions.SSHException, socket.error, IOError):
+@@ -387,7 +404,8 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         else:
+             cmd = cmd_line
+ 
+-        cmd = 'sh -c \&quot;%s\&quot;' % cmd
++        cmd_uuid = str(uuid.uuid1())
++        cmd = 'echo X2GODATABEGIN:%s; sh -c \&quot;%s\&quot;; echo X2GODATAEND:%s' % (cmd_uuid, cmd, cmd_uuid)
+ 
+         if self.session_died:
+             self.logger(&quot;control session seams to be dead, not executing command ,,%s'' on X2Go server %s&quot; % (_rerewrite_blanks(cmd), self.profile_name,), loglevel=loglevel)
+@@ -447,6 +465,24 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+             raise x2go_exceptions.X2GoControlSessionException('the X2Go control session is not connected')
+ 
+         self._transport_lock.release()
++
++        # sanitized X2Go relevant data, protect against data injection via .bashrc files
++        (_stdin, _stdout, _stderr) = _retval
++        raw_stdout = _stdout.read()
++
++        sanitized_stdout = ''
++        is_x2go_data = False
++        for line in raw_stdout.split('\n'):
++            if line.startswith('X2GODATABEGIN:'+cmd_uuid): 
++                is_x2go_data = True
++                continue
++            if not is_x2go_data: continue
++            if line.startswith('X2GODATAEND:'+cmd_uuid): break
++            sanitized_stdout += line + &quot;\n&quot;
++
++        _stdout_new = cStringIO.StringIO(sanitized_stdout)
++
++        _retval = (_stdin, _stdout_new, _stderr)
+         return _retval
+ 
+     @property
+diff --git a/x2go/client.py b/x2go/client.py
+index 21731eb..80bb160 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -501,6 +501,18 @@ class X2GoClient(object):
+ 
+         &quot;&quot;&quot;
+         self.logger('HOOK_on_control_session_death: the control session of profile %s has died unexpectedly' % profile_name, loglevel=log.loglevel_WARN)
++ 
++    def HOOK_on_failing_SFTP_client(self, profile_name, session_name):
++        &quot;&quot;&quot;\
++        HOOK method: called SFTP client support is unavailable for the session.
++
++        @param profile_name: profile name of the session that experiences failing SFTP client support
++        @type profile_name: C{str}
++        @param session_name: name of session experiencing failing SFTP client support
++        @type session_name: C{str}
++
++        &quot;&quot;&quot;
++        self.logger('HOOK_on_failing_SFTP_client: new session for profile %s will lack SFTP client support. Check your server setup. Avoid echoing ~/.bashrc files on server.' % profile_name, loglevel=log.loglevel_ERROR)
+ 
+     def HOOK_pulseaudio_not_supported_in_RDPsession(self):
+         &quot;&quot;&quot;HOOK method: called if trying to run the Pulseaudio daemon within an RDP session, which is not supported by Pulseaudio.&quot;&quot;&quot;
+diff --git a/x2go/session.py b/x2go/session.py
+index 479cdff..0febe0d 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -448,6 +448,16 @@ class X2GoSession(object):
+         else:
+             self.logger('HOOK_on_control_session_death: the control session of profile %s has died unexpectedly' % self.profile_name, loglevel=log.loglevel_WARN)
+ 
++    def HOOK_on_failing_SFTP_client(self):
++        &quot;&quot;&quot;\
++        HOOK method: called SFTP client support is unavailable for the session.
++
++        &quot;&quot;&quot;
++        if self.client_instance:
++            self.client_instance.HOOK_on_failing_SFTP_client(profile_name=self.profile_name)
++        else:
++            self.logger('HOOK_on_failing_SFTP_client: new session for profile: %s will lack SFTP client support. Check your server setup. Avoid echoing ~/.bashrc files on server.' % self.profile_name, loglevel=log.loglevel_ERROR)
++
+     def HOOK_auto_connect(self):
+         &quot;&quot;&quot;\
+         HOOK method: called if the session demands to auto connect.
+@@ -1815,6 +1825,15 @@ class X2GoSession(object):
+             # we do not have a possibility to really check if SSH has released port forwarding channels or
+             # sockets, thus  we plainly have to wait a while
+ 
++            try:
++                _control.test_sftpclient()
++            except x2go_exceptions.X2GoSFTPClientException:
++                self.HOOK_on_failing_SFTP_client()
++                self.terminal_session = None
++                self._progress_status = -1
++                progress_event.set()
++                return False
++
+             if self.is_running():
+                 try:
+ 
+@@ -1834,6 +1853,7 @@ class X2GoSession(object):
+                 except x2go_exceptions.X2GoSessionException:
+                     pass
+ 
++
+             self._progress_status = 20
+             progress_event.set()
+ 
+@@ -1911,7 +1931,7 @@ class X2GoSession(object):
+                     try:
+                         self.has_terminal_session() and not self.faulty and self.terminal_session.start_printing()
+                         self.has_terminal_session() and not self.faulty and self.session_environment.update({'X2GO_SPOOLDIR': self.terminal_session.get_printing_spooldir(), })
+-                    except x2go_exceptions.X2GoUserException, e:
++                    except (x2go_exceptions.X2GoUserException, x2go_exceptions.X2GoSFTPClientException), e:
+                         self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+                         self.HOOK_printing_not_available()
+                         self._SUPPORTED_PRINTING = False
+@@ -1923,7 +1943,7 @@ class X2GoSession(object):
+                     try:
+                         self.has_terminal_session() and not self.faulty and self.terminal_session.start_mimebox(mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
+                         self.has_terminal_session() and self.session_environment.update({'X2GO_MIMEBOX': self.terminal_session.get_mimebox_spooldir(), })
+-                    except x2go_exceptions.X2GoUserException, e:
++                    except (x2go_exceptions.X2GoUserException, x2go_exceptions.X2GoSFTPClientException), e:
+                         self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+                         self.HOOK_mimebox_not_available()
+                         self._SUPPORTED_MIMEBOX = False
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 70a5e8c..30985b2 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -45,6 +45,7 @@ class X2GoClientPrintingException(_X2GoException): pass
+ class X2GoClientSettingsException(_X2GoException): pass
+ class X2GoSessionException(_X2GoException): pass
+ class X2GoControlSessionException(_X2GoException): pass
++class X2GoSFTPClientException(_X2GoException): pass
+ class X2GoRemoteHomeException(_X2GoException): pass
+ class X2GoHostKeyException(_X2GoException): pass
+ class X2GoSSHProxyPasswordRequiredException(_X2GoException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014626.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-15-gec8bb38
+</A></li>
+	<LI>Next message: <A HREF="014628.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-10-g7ddc496
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14627">[ date ]</a>
+              <a href="thread.html#14627">[ thread ]</a>
+              <a href="subject.html#14627">[ subject ]</a>
+              <a href="author.html#14627">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

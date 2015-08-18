@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	c45da221e1643309bd6d64772b30d7ff7761618a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09c45da221e1643309bd6d64772b30d7ff7761618a&In-Reply-To=%3C20130914135431.AA1455DB46%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012421.html">
+   <LINK REL="Next"  HREF="012425.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	c45da221e1643309bd6d64772b30d7ff7761618a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09c45da221e1643309bd6d64772b30d7ff7761618a&In-Reply-To=%3C20130914135431.AA1455DB46%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	c45da221e1643309bd6d64772b30d7ff7761618a">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:31 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012421.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	8b82b4621ad74fd65d2031d83e6091069a216824
+</A></li>
+        <LI>Next message: <A HREF="012425.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2c338686b7cce3c12f8cd805950d4a597e037218
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12422">[ date ]</a>
+              <a href="thread.html#12422">[ thread ]</a>
+              <a href="subject.html#12422">[ subject ]</a>
+              <a href="author.html#12422">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  c45da221e1643309bd6d64772b30d7ff7761618a (commit)
+      from  a5e7fc0e0d950b243c3ad4e82d492d230b114883 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py      |    2 ++
+ pyhoca/wxgui/menus_taskbar.py |   18 ++++++++++++++----
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 4354b2f..9f0cb1c 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -557,6 +557,8 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         self.notifier.send('%s - resume' % profile_name, 'Resuming X2go session...\n%s' % session_name, icon='session_resume', timeout=5000)
+     def HOOK_on_session_has_resumed_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send('%s - resume' % profile_name, 'Another client resumed X2go session\n%s' % session_name, icon='session_resume', timeout=5000)
++    def HOOK_on_found_session_running_after_connect(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        gevent.spawn_later(5, self.notifier.send, '%s - running' % profile_name, 'Found already running session\n%s' %  session_name, icon='session_resume', timeout=5000)
+     def HOOK_on_session_has_been_suspended(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send('%s - suspend' % profile_name, 'X2go Session has been suspended\n%s' % session_name, icon='session_suspend', timeout=5000)
+     def HOOK_on_session_has_terminated(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index f7aae23..6d292b4 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -121,28 +121,37 @@ class PyHocaGUI_Menu_TaskbarSessionActions(wx.Menu):
+ 
+         wx.Menu.__init__(self)
+ 
++        ID_TRANSFERSESSION = wx.NewId()
+         ID_RESUMESESSION = wx.NewId()
+         ID_SUSPENDSESSION = wx.NewId()
+         ID_TERMINATESESSION = wx.NewId()
+ 
+         # preparing profile_name information for the main PyHocaGUI instance
+-        self._PyHocaGUI._eventid_profilenames_map[ID_RESUMESESSION] = \
++        self._PyHocaGUI._eventid_profilenames_map[ID_TRANSFERSESSION] = \
++            self._PyHocaGUI._eventid_profilenames_map[ID_RESUMESESSION] = \
+             self._PyHocaGUI._eventid_profilenames_map[ID_SUSPENDSESSION] = \
+             self._PyHocaGUI._eventid_profilenames_map[ID_TERMINATESESSION] = profile_name
+ 
+         # preparing session_name information for the main PyHocaGUI instance
+-        self._PyHocaGUI._eventid_sessionnames_map[ID_RESUMESESSION] = \
++        self._PyHocaGUI._eventid_sessionnames_map[ID_TRANSFERSESSION] = \
++            self._PyHocaGUI._eventid_sessionnames_map[ID_RESUMESESSION] = \
+             self._PyHocaGUI._eventid_sessionnames_map[ID_SUSPENDSESSION] = \
+             self._PyHocaGUI._eventid_sessionnames_map[ID_TERMINATESESSION] = session_name
+ 
++        print session_name, status
++
+         if status == 'S':
+             self.Append(text=&quot;Resume Session&quot;, id=ID_RESUMESESSION)
+         elif status == 'R':
++            print self._PyHocaGUI.client_associated_sessions_of_profile_name(profile_name, return_session_names=True)
++            if not session_name in self._PyHocaGUI.client_associated_sessions_of_profile_name(profile_name, return_session_names=True):
++                self.Append(text=&quot;Transfer Session&quot;, id=ID_TRANSFERSESSION)
+             self.Append(text=&quot;Suspend Session&quot;, id=ID_SUSPENDSESSION)
+ 
+         self.Append(text=&quot;Terminate Session&quot;, id=ID_TERMINATESESSION)
+ 
+         self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionResume, id=ID_RESUMESESSION)
++        self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionResume, id=ID_TRANSFERSESSION)
+         self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionSuspend, id=ID_SUSPENDSESSION)
+         self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnSessionTerminate, id=ID_TERMINATESESSION)
+ 
+@@ -180,8 +189,9 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+         self.Append(id=ID_SESSIONSTART, text=&quot;Start &amp;new Session&quot;)
+         self.AppendSeparator()
+ 
+-        _query_session_uuid = self._PyHocaGUI.client_connected_sessions_of_profile_name(profile_name)[0]
++        _query_session_uuid = self._PyHocaGUI.client_connected_sessions_of_profile_name(profile_name, return_objects=False)[0]
+         _session_list = self._PyHocaGUI.list_sessions(_query_session_uuid)
++        print self._PyHocaGUI.list_sessions(_query_session_uuid, raw=True)
+ 
+         if _session_list:
+ 
+@@ -207,7 +217,7 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+         self.Append(id=ID_EDITPROFILEWHILECONNECTED, text=&quot;Customize &amp;profile&quot;)
+         if current_profile_config['useexports']:
+             _share_folder = self.Append(id=ID_SHARELOCALFOLDER, text=&quot;Share local &amp;folder&quot;)
+-            if not self._PyHocaGUI._X2goClient__client_associated_sessions_of_profile_name(profile_name):
++            if not self._PyHocaGUI._X2goClient__client_associated_sessions_of_profile_name(profile_name, return_objects=False):
+                 _share_folder.Enable(False)
+ 
+         self.AppendSeparator()
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012421.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	8b82b4621ad74fd65d2031d83e6091069a216824
+</A></li>
+	<LI>Next message: <A HREF="012425.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2c338686b7cce3c12f8cd805950d4a597e037218
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12422">[ date ]</a>
+              <a href="thread.html#12422">[ thread ]</a>
+              <a href="subject.html#12422">[ subject ]</a>
+              <a href="author.html#12422">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,283 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2e788e1f5d16df5ee898dc4ec28422bfeefee4dd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%092e788e1f5d16df5ee898dc4ec28422bfeefee4dd&In-Reply-To=%3C20130914135435.45F805DB43%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012461.html">
+   <LINK REL="Next"  HREF="012477.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2e788e1f5d16df5ee898dc4ec28422bfeefee4dd</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%092e788e1f5d16df5ee898dc4ec28422bfeefee4dd&In-Reply-To=%3C20130914135435.45F805DB43%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2e788e1f5d16df5ee898dc4ec28422bfeefee4dd">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:35 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012461.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	25fbdae6d78efd45b70894e673ecb95380731ef4
+</A></li>
+        <LI>Next message: <A HREF="012477.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	1264677bb288cc33493d2e8ae3da14996881a801
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12466">[ date ]</a>
+              <a href="thread.html#12466">[ thread ]</a>
+              <a href="subject.html#12466">[ subject ]</a>
+              <a href="author.html#12466">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  2e788e1f5d16df5ee898dc4ec28422bfeefee4dd (commit)
+      from  442ab24da050c8733d6177614a413b21dcb76046 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/profilemanager.py |  101 ++++++++++++++++++++++------------------
+ 1 file changed, 56 insertions(+), 45 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 636383e..be674ee 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -78,6 +78,10 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             3: 'WAN',
+             4: 'LAN',
+         }
++        self.audioPorts = {
++            'esd': 16001,
++            'pulse': 4713,
++        }
+         self.dropboxactionChoices = {
+             'OPEN': _(u'Open file with system\'s default application'),
+             'OPENWITH': _(u'Open application chooser dialog'),
+@@ -209,8 +213,13 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.KeyboardModel = wx.TextCtrl(self.tab_Settings, -1, &quot;&quot;)
+         self.EnableSound = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Enable sound support&quot;))
+         self.PulseAudio = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Pulse Audio&quot;), style=wx.RB_GROUP)
+-        self.Arts = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Arts&quot;))
+-        self.esd = wx.RadioButton(self.tab_Settings, -1, _(u&quot;esd&quot;))
++
++        # Arts daemon is not supported by PyHoca-GUI / Python X2go as it is outdated.
++        # However, config files can contain an Arts configuration, so we will honour this
++        self.Arts = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Arts (not supported)&quot;))
++        self.Arts.Enable(False)
++
++        self.Esd = wx.RadioButton(self.tab_Settings, -1, _(u&quot;esd&quot;))
+         self.DefaultSoundPort = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Use default sound port&quot;))
+         self.SoundPortLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Custom sound port&quot;)+':')
+         self.SoundPort = wx.SpinCtrl(self.tab_Settings, -1, &quot;4713&quot;, min=23, max=64889)
+@@ -259,7 +268,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Bind(wx.EVT_CHECKBOX, self.OnSetDisplayDPI, self.SetDisplayDPI)
+         self.Bind(wx.EVT_CHECKBOX, self.OnKeepKeyboard, self.CurrentKeyBoard)
+         self.Bind(wx.EVT_CHECKBOX, self.OnSoundEnable, self.EnableSound)
+-        self.Bind(wx.EVT_CHECKBOX, self.OnSoundPort, self.DefaultSoundPort)
++        self.Bind(wx.EVT_CHECKBOX, self.OnDefaultSoundPort, self.DefaultSoundPort)
++        self.Bind(wx.EVT_RADIOBUTTON, self.OnPulseAudio, self.PulseAudio)
++        self.Bind(wx.EVT_RADIOBUTTON, self.OnEsd, self.Esd)
+         self.Bind(wx.EVT_BUTTON, self.OnSelectSharedFolderPath, self.SharedFolderPathBrowseButton)
+         self.Bind(wx.EVT_BUTTON, self.OnAddSharedFolderPath, self.AddSharedFolderPathButton)
+         self.Bind(wx.EVT_BUTTON, self.OnDeleteSharedFolderPath, self.DeleteSharedFolderPathButton)
+@@ -337,7 +348,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.ImageQualityLabel.SetMinSize((120, 16))
+         self.ImageQuality.SetMinSize((180, _textfield_height))
+         self.DisplayTypeFullscreen.SetMinSize((-1, _textfield_height))
+-        self.DisplayTypeCustom.SetValue(1)
+         self.ScreenWidth.SetMinSize((60, _textfield_height))
+         self.ScreenHeight.SetMinSize((60, _textfield_height))
+         self.SetDisplayDPI.SetMinSize((-1, _textfield_height))
+@@ -346,14 +356,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.KeyboardLayout.SetMinSize((120, _textfield_height))
+         self.KeyboardModelLabel.SetMinSize((120, 16))
+         self.KeyboardModel.SetMinSize((120, _textfield_height))
+-        self.EnableSound.SetValue(1)
+-        self.PulseAudio.SetMinSize((120, _textfield_height))
+-        self.PulseAudio.SetValue(1)
+-        self.Arts.SetMinSize((120, _textfield_height))
+-        self.DefaultSoundPort.SetValue(1)
+-        self.esd.SetMinSize((120, 21))
++        self.PulseAudio.SetMinSize((-1, _textfield_height))
++        self.Arts.SetMinSize((-1, _textfield_height))
++        self.Esd.SetMinSize((-1, _textfield_height))
++        self.DefaultSoundPort.SetMinSize((-1, _textfield_height))
++        self.SoundPort.SetMinSize((-1, _textfield_height))
+         self.ClientSidePrinting.SetMinSize((-1, _textfield_height))
+-        self.ClientSidePrinting.SetValue(1)
+         self.SharedFolderPath.SetMinSize((220, _textfield_height))
+         self.SharedFolderPathBrowseButton.SetSize(self.SharedFolderPathBrowseButton.GetBestSize())
+         self.SharedFoldersList.SetMinSize((-1, 180))
+@@ -528,24 +536,18 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         sizer_3_2.Add(sizer_3_2_2, 0, 0, 0)
+ 
+         sizer_3_3 = wx.StaticBoxSizer(self.staticbox_Sound, wx.VERTICAL)
+-        sizer_3_3_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_3_1.Add(self.EnableSound, 0, 0, 0)
+-        sizer_3_3_2 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_3_2_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_3_2_1.Add(self.PulseAudio, 0, 0, 0)
+-        sizer_3_3_2_1.Add(self.Arts, 0, 0, 0)
+-        sizer_3_3_2_1.Add(self.esd, 0, 0, 0)
+-        sizer_3_3_2.Add(sizer_3_3_2_1, 0, 0, 0)
+-        sizer_3_3_2_2 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_3_2_2.Add(self.DefaultSoundPort, 0, 0, 0)
+-        sizer_3_3_2_2_1 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_3_2_2_1.Add(self.SoundPortLabel, 0, wx.ALIGN_CENTRE_VERTICAL, 0)
+-        sizer_3_3_2_2_1.Add((16,0))
+-        sizer_3_3_2_2_1.Add(self.SoundPort, 0, 0, 0)
+-        sizer_3_3_2_2.Add(sizer_3_3_2_2_1, 0, 0, 0)
+-        sizer_3_3_2.Add(sizer_3_3_2_2, 0, 0, 0)
++        sizer_3_3_1 = wx.GridBagSizer(vgap=4, hgap=2)
++        sizer_3_3_1.Add(self.EnableSound, pos=(0,0), span=(1,2), border=16, )
++        sizer_3_3_1.Add(self.PulseAudio, pos=(1,0), flag=wx.RIGHT, border=16, )
++        sizer_3_3_1.Add(self.Arts, pos=(2,0), flag=wx.RIGHT, border=16, )
++        sizer_3_3_1.Add(self.Esd, pos=(3,0), flag=wx.RIGHT, border=16, )
++        sizer_3_3_1.Add(self.DefaultSoundPort, pos=(1,1), )
++        sizer_3_3_1_1 = wx.BoxSizer(wx.HORIZONTAL)
++        sizer_3_3_1_1.Add(self.SoundPortLabel, 0, wx.ALIGN_CENTRE_VERTICAL, 0)
++        sizer_3_3_1_1.Add((8, -1))
++        sizer_3_3_1_1.Add(self.SoundPort, 0, wx.ALIGN_CENTRE_VERTICAL, 0)
++        sizer_3_3_1.Add(sizer_3_3_1_1, pos=(2,1), )
+         sizer_3_3.Add(sizer_3_3_1, 0, 0, 0)
+-        sizer_3_3.Add(sizer_3_3_2, 0, 0, 0)
+ 
+         sizer_3_4 = wx.StaticBoxSizer(self.staticbox_Printing, wx.VERTICAL)
+         sizer_3_4.Add(self.ClientSidePrinting, 0, 0, 0)
+@@ -791,11 +793,10 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         elif self.profile_config['soundsystem'] == 'arts':
+             self.Arts.SetValue(True)
+         elif self.profile_config['soundsystem'] == 'esd':
+-            self.esd.SetValue(True)
++            self.Esd.SetValue(True)
+         if self.profile_config['sound']:
+             self.PulseAudio.Enable(True)
+-            self.Arts.Enable(True)
+-            self.esd.Enable(True)
++            self.Esd.Enable(True)
+             self.DefaultSoundPort.Enable(True)
+             if not self.profile_config['defsndport']:
+                 self.SoundPortLabel.Enable(True)
+@@ -805,8 +806,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+                 self.SoundPort.Enable(False)
+         else:
+             self.PulseAudio.Enable(False)
+-            self.Arts.Enable(False)
+-            self.esd.Enable(False)
++            self.Esd.Enable(False)
+             self.DefaultSoundPort.Enable(False)
+             self.SoundPortLabel.Enable(False)
+             self.SoundPort.Enable(False)
+@@ -936,7 +936,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.profile_config['soundsystem'] = 'pulse'
+         elif self.Arts.GetValue():
+             self.profile_config['soundsystem'] = 'arts'
+-        elif self.esd.GetValue():
++        elif self.Esd.GetValue():
+             self.profile_config['soundsystem'] = 'esd'
+ 
+         self.profile_config['print'] = self.ClientSidePrinting.GetValue()
+@@ -1153,27 +1153,18 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+     def OnSoundEnable(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
+         if self.EnableSound.GetValue():
+             self.PulseAudio.Enable(True)
+-            self.Arts.Enable(True)
+-            self.esd.Enable(True)
++            self.Esd.Enable(True)
+             self.DefaultSoundPort.Enable(True)
+             if self.DefaultSoundPort.GetValue() is False:
+                 self.SoundPortLabel.Enable(True)
+                 self.SoundPort.Enable(True)
+         else:
+             self.PulseAudio.Enable(False)
+-            self.Arts.Enable(False)
+-            self.esd.Enable(False)
++            self.Esd.Enable(False)
+             self.DefaultSoundPort.Enable(False)
+             self.SoundPortLabel.Enable(False)
+             self.SoundPort.Enable(False)
+ 
+-    def OnSoundPort(self, event):
+-        if not self.DefaultSoundPort.GetValue():
+-            self.SoundPortLabel.Enable(True)
+-            self.SoundPort.Enable(True)
+-        else:
+-            self.SoundPortLabel.Enable(False)
+-            self.SoundPort.Enable(False)
+ 
+     def OnSetDisplayFullscreen(self, event):
+         self.ScreenWidthLabel.Enable(False)
+@@ -1193,6 +1184,26 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         else:
+             self.DisplayDPI.Enable(False)
+ 
++    def OnPulseAudio(self, event):
++        if self.DefaultSoundPort.GetValue():
++            self.SoundPort.SetValue(self.audioPorts['pulse'])
++
++    def OnEsd(self, event):
++        if self.DefaultSoundPort.GetValue():
++            self.SoundPort.SetValue(self.audioPorts['esd'])
++
++    def OnDefaultSoundPort(self, event):
++        if not self.DefaultSoundPort.GetValue():
++            self.SoundPortLabel.Enable(True)
++            self.SoundPort.Enable(True)
++        else:
++            if self.PulseAudio.GetValue():
++                self.SoundPort.SetValue(self.audioPorts['pulse'])
++            if self.Esd.GetValue():
++                self.SoundPort.SetValue(self.audioPorts['esd'])
++            self.SoundPortLabel.Enable(False)
++            self.SoundPort.Enable(False)
++
+     def _toggle_localFolderSharing(self):
+         if self.UseLocalFolderSharing.GetValue():
+             self.SharedFolderPathLabel.Enable(True)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012461.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	25fbdae6d78efd45b70894e673ecb95380731ef4
+</A></li>
+	<LI>Next message: <A HREF="012477.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	1264677bb288cc33493d2e8ae3da14996881a801
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12466">[ date ]</a>
+              <a href="thread.html#12466">[ thread ]</a>
+              <a href="subject.html#12466">[ subject ]</a>
+              <a href="author.html#12466">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

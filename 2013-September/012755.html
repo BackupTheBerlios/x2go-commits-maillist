@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.8-12-g69deb8f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.8-12-g69deb8f&In-Reply-To=%3C20130914135518.A6D535DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012754.html">
+   <LINK REL="Next"  HREF="012759.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.8-12-g69deb8f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.8-12-g69deb8f&In-Reply-To=%3C20130914135518.A6D535DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.8-12-g69deb8f">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:18 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012754.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.8-11-gbe7d894
+</A></li>
+        <LI>Next message: <A HREF="012759.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	4bc5bfc1358b525e7b36fbe97264957be0a9fbef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12755">[ date ]</a>
+              <a href="thread.html#12755">[ thread ]</a>
+              <a href="subject.html#12755">[ subject ]</a>
+              <a href="author.html#12755">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  69deb8f819d4be557955e100c6a49c04af643037 (commit)
+      from  be7d894c9c82d590626fdf05bfbe66dd763f772d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    2 +
+ pyhoca/wxgui/profilemanager.py |   93 +++++++++++++++++++++++++++++++++-------
+ 2 files changed, 79 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0d1db30..eee2a37 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -7,6 +7,8 @@ pyhoca-gui (0.1.0.9-0~x2go1) UNRELEASED; urgency=low
+       terminal window if run from the command line).
+     - Use X2goClient.session_can_auto_connect method to detect if we can use
+       SSH pubkey authentication. Speeds up appearance of password dialog box.
++    - Profile manager: x2goclient compat fix, add auto-connect flag for shared
++      folders.
+   * Depend on python-x2go (&gt;=0.1.1.7).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 14 Sep 2011 21:49:08 +0200
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 0cce214..49f3ac2 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -38,6 +38,15 @@ import basepath
+ _icons_location = basepath.icons_basepath
+ _known_encodings = utils.known_encodings()
+ 
++from wx.lib.mixins.listctrl import CheckListCtrlMixin
++
++
++class CheckListCtrl(wx.ListCtrl, CheckListCtrlMixin):
++    def __init__(self, parent):
++        wx.ListCtrl.__init__(self, parent, -1, style=wx.LC_REPORT | wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_VRULES)
++        CheckListCtrlMixin.__init__(self)
++
++
+ class PyHocaGUI_ProfileManager(wx.Dialog):
+     &quot;&quot;&quot;\
+     STILL UNDOCUMENTED
+@@ -238,7 +247,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.SharedFolderPath = wx.TextCtrl(self.tab_SharedFilesAndFolders, -1, &quot;&quot;, style=wx.TE_PROCESS_ENTER)
+         self.SharedFolderPathBrowseButton = wx.BitmapButton(self.tab_SharedFilesAndFolders, -1, wx.Bitmap('%s/PyHoca/16x16/system-search.png' % _icons_location, wx.BITMAP_TYPE_ANY))
+         self.AddSharedFolderPathButton = wx.Button(self.tab_SharedFilesAndFolders, -1, _(u&quot;Add&quot;))
+-        self.SharedFoldersList = wx.ListCtrl(self.tab_SharedFilesAndFolders, -1, style=wx.LC_LIST|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_VRULES)
++        self.SharedFoldersList = CheckListCtrl(self.tab_SharedFilesAndFolders)
++        self.SharedFoldersList.InsertColumn(0, _(&quot;Local Path&quot;), wx.LIST_FORMAT_LEFT)
++        self.SharedFoldersList.InsertColumn(1, _(&quot;Connect Method&quot;), wx.LIST_FORMAT_CENTER)
+         self.DeleteSharedFolderPathButton = wx.Button(self.tab_SharedFilesAndFolders, -1, _(u&quot;Delete&quot;))
+ 
+         self.UseEncodingConverter = wx.CheckBox(self.tab_SharedFilesAndFolders, -1, _(u&quot;Convert between client and server encodings&quot;))
+@@ -263,8 +274,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.CancelButton = wx.Button(self, -1, _(u&quot;Cancel&quot;))
+ 
+         self.__set_properties()
+-        self.__update_fields()
+         self.__do_layout()
++        self.__update_fields()
+ 
+         self.Bind(wx.EVT_BUTTON, self.OnIconChange, self.IconButton)
+         self.Bind(wx.EVT_COMBOBOX, self.OnSessionTypeSelected, self.SessionType)
+@@ -296,6 +307,14 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Bind(wx.EVT_BUTTON, self.OnCancel, self.CancelButton)
+         self.Bind(wx.EVT_BUTTON, self.OnDefault, self.DefaultButton)
+ 
++        # handle check/uncheck events on SharedFoldersList items
++        def _SharedFoldersList_OnCheckItem(index, flag):
++            if flag:
++                self.SharedFoldersList.SetStringItem(index, 1, _(&quot;automatically&quot;))
++            else:
++                self.SharedFoldersList.SetStringItem(index, 1, _(&quot;manually&quot;))
++        self.SharedFoldersList.OnCheckItem = _SharedFoldersList_OnCheckItem
++
+     def __set_properties(self):
+         if self.action == 'ADD':
+             self.SetTitle(_(u&quot;PyHoca-GUI Profile Manager - new profile&quot;))
+@@ -669,12 +688,16 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         sizer_B_x, sizer_B_y = sizer_B.GetSize()
+ 
+         self.SetSize((max(max1_x, max2_x, max3_x, max4_x) * 1.05, (max(max1_y, max2_y, max3_y, max4_y) + sizer_B_y) * 1.2))
+-
+         self.SetAutoLayout(True)
+         self.Layout()
+         self.CentreOnScreen()
+         self.Show(True)
+ 
++        # derive ListCtrl widths from sizer information
++        _sizer_width = sizer_4_1_1_3.GetSize().GetWidth()
++        self.SharedFoldersList.SetColumnWidth(0, abs(_sizer_width*.7))
++        self.SharedFoldersList.SetColumnWidth(1, abs(_sizer_width*.3))
++
+     def __update_fields(self):
+ 
+         self.ProfileName.SetValue(self.profile_config['name'])
+@@ -869,15 +892,46 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.UseLocalFolderSharing.SetValue(self.profile_config['useexports'])
+         self._toggle_localFolderSharing()
+-
+         self.SharedFoldersList.DeleteAllItems()
+-        _shared_folders = self.profile_config['export'].strip().strip(',').strip()
+-        for _shared_folder_path in [ sf.strip() for sf in _shared_folders.split(',') ]:
++
++        # until pyhoca-gui 0.1.0.8 we used a wrong format for the export field in session profiles
++        # the correct export field format is: 
++        #
++        #   export = &quot;{string(path_1)}:{boolint(autoconnect_1);...;string(path_n)}:{boolint(autoconnect_n)};&quot;
++
++        # rewrite path separator from &quot;,&quot; to &quot;;&quot; to correct pyhoca-gui (&lt;0.1.0.9)
++        if ',' in self.profile_config['export']:
++            self.profile_config['export'] = self.profile_config['export'].replace(',', ';')
++
++
++        # strip off whitespaces and &quot;;&quot; from beginning and end of string
++        _shared_folders = self.profile_config['export'].strip().strip(';').strip()
++        # strip off '&quot;' from beginning and end of string
++        _shared_folders = _shared_folders.strip('&quot;')
++        # again: strip off whitespaces and &quot;;&quot; from beginning and end of string
++        _shared_folders = _shared_folders.strip().strip(';').strip()
++
++        _shared_folders = [ sf for sf in _shared_folders.split(';') if sf ]
++
++        for _shared_folder in _shared_folders:
++
++            # support path names with and without &quot;:&quot; as separator between path and autoconnect flag (pyhoca-gui &lt; 0.1.0.9)
++            if &quot;:&quot; not in _shared_folder:
++                _shared_folder = &quot;%s:1&quot; % _shared_folder
++
++            _shared_folder_path = _shared_folder.split(':')[0]
++            if int(_shared_folder.split(':')[1]):
++                _shared_folder_autoconnect = _(&quot;automatically&quot;)
++            else:
++                _shared_folder_autoconnect = _(&quot;manually&quot;)
++
+             if self.SharedFoldersList.FindItem(0, _shared_folder_path) == -1:
+-                _item = wx.ListItem()
+-                _item.SetData(wx.NewId())
+-                _item.SetText(_shared_folder_path)
+-                self.SharedFoldersList.InsertItem(_item)
++
++                idx = self.SharedFoldersList.InsertStringItem(0, _shared_folder_path)
++                self.SharedFoldersList.SetStringItem(idx, 1, _shared_folder_autoconnect)
++                if int(_shared_folder.split(':')[1]):
++                    self.SharedFoldersList.CheckItem(idx)
++
+         self.AddSharedFolderPathButton.Enable(False)
+         self.DeleteSharedFolderPathButton.Enable(False)
+ 
+@@ -1007,9 +1061,17 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         _item_id = self.SharedFoldersList.GetTopItem()
+         while _item_id != -1 and self.SharedFoldersList.ItemCount &gt; 0:
+             _item = self.SharedFoldersList.GetItem(_item_id)
+-            _shared_folders.append(_item.GetText())
++
++            if self.SharedFoldersList.IsChecked(_item_id):
++                _auto_connect = 1
++            else:
++                _auto_connect = 0
++
++            _shared_folders.append('%s:%s' % (_item.GetText().strip(), _auto_connect))
++
+             _item_id = self.SharedFoldersList.GetNextItem(_item_id)
+-        self.profile_config['export'] = ','.join([ f for f in _shared_folders if f ])
++
++        self.profile_config['export'] = '&quot;%s;&quot;' % ';'.join([ f for f in _shared_folders if f ])
+         self.profile_config['useiconv'] = self.UseEncodingConverter.GetValue()
+         self.profile_config['iconvfrom'] = self.ClientEncoding.GetValue()
+         self.profile_config['iconvto'] = self.ServerEncoding.GetValue()
+@@ -1343,10 +1405,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+     def OnAddSharedFolderPath(self, event):
+         _shared_folder_path = self.SharedFolderPath.GetValue()
+         if _shared_folder_path and (self.SharedFoldersList.FindItem(0, _shared_folder_path) == -1):
+-            _item = wx.ListItem()
+-            _item.SetData(wx.NewId())
+-            _item.SetText(_shared_folder_path)
+-            self.SharedFoldersList.InsertItem(_item)
++            idx = self.SharedFoldersList.InsertStringItem(0, _shared_folder_path)
++            self.SharedFoldersList.SetStringItem(idx, 1, _(&quot;automatically&quot;))
++            self.SharedFoldersList.CheckItem(idx)
+             self.SharedFolderPath.SetValue('')
+         self.AddSharedFolderPathButton.Enable(False)
+ 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012754.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.8-11-gbe7d894
+</A></li>
+	<LI>Next message: <A HREF="012759.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	4bc5bfc1358b525e7b36fbe97264957be0a9fbef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12755">[ date ]</a>
+              <a href="thread.html#12755">[ thread ]</a>
+              <a href="subject.html#12755">[ subject ]</a>
+              <a href="author.html#12755">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

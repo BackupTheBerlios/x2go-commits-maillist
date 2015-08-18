@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-28-gbfa63c3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.0.0-28-gbfa63c3&In-Reply-To=%3C20130306122917.DF9655DB14%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004356.html">
+   <LINK REL="Next"  HREF="004358.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-28-gbfa63c3</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.0.0-28-gbfa63c3&In-Reply-To=%3C20130306122917.DF9655DB14%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-28-gbfa63c3">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Mar  6 13:29:17 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004356.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-71-g8676299
+</A></li>
+        <LI>Next message: <A HREF="004358.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-5-g9557b67
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4357">[ date ]</a>
+              <a href="thread.html#4357">[ thread ]</a>
+              <a href="subject.html#4357">[ subject ]</a>
+              <a href="author.html#4357">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  bfa63c366057f870f71fa0686aa913db6525df0b (commit)
+      from  3b0e209049bf4794d4dc58475b9614b6bb1baf10 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bfa63c366057f870f71fa0686aa913db6525df0b
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Wed Mar 6 13:29:10 2013 +0100
+
+    set passphrase for key to reverse ssh connection fix closing client after getting passphrase (Fixes #137)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    2 ++
+ onmainwindow.cpp        |   10 ++++-----
+ sshmasterconnection.cpp |   54 +++++++++++++++++++++++++++--------------------
+ 3 files changed, 38 insertions(+), 28 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0ba65b7..74ef78e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -9,6 +9,8 @@ x2goclient (4.0.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Launching parec to init pulseaudio input only on Windows.
+     - Hide profilecard area on broker authentication
+     - fix ONMainWindow layout in broker mode
++    - set passphrase for key to reverse ssh connection
++      fix closing client after getting passphrase (Fixes #137) 
+ 
+   [ Mike Gabriel ]
+   * New upstream version (4.0.1.0):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 574ffa7..c9741f8 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2891,6 +2891,11 @@ void ONMainWindow::slotSshServerAuthPassphrase(SshMasterConnection* connection)
+             phrase=&quot;&quot;;
+     }
+     connection-&gt;setKeyPhrase(phrase);
++    if(isHidden())
++    {
++        show();
++        QTimer::singleShot(1, this, SLOT(hide()));
++    }
+ }
+ 
+ 
+@@ -8243,11 +8248,6 @@ void ONMainWindow::slotExecXmodmap()
+ 
+ void ONMainWindow::check_cmd_status()
+ {
+-    QString passwd;
+-    QString user=getCurrentUname();
+-    QString host=resumingSession.server;
+-    passwd=getCurrentPass();
+-
+     x2goDebug&lt;&lt;&quot;check command message&quot;&lt;&lt;endl;
+     sshConnection-&gt;executeCommand ( &quot;x2gocmdexitmessage &quot;+
+                                     resumingSession.sessionId , this, SLOT(slotCmdMessage(bool, QString, int)));
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index a93064f..0db4077 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -261,6 +261,8 @@ SshMasterConnection* SshMasterConnection::reverseTunnelConnection ( SshProcess*
+     connect ( con,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ),this,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ) );
+     connect ( con,SIGNAL ( stdErr ( SshProcess*,QByteArray ) ),this,SIGNAL ( stdErr ( SshProcess*,QByteArray ) ) );
+     connect ( con,SIGNAL ( reverseListenOk ( SshProcess* ) ), this, SIGNAL ( reverseListenOk ( SshProcess* ) ) );
++    con-&gt;keyPhrase=keyPhrase;
++    con-&gt;keyPhraseReady=true;
+     con-&gt;start();
+     reverseTunnelConnectionsMutex.lock();
+     reverseTunnelConnections.append ( con );
+@@ -536,7 +538,7 @@ SshMasterConnection::~SshMasterConnection()
+     if(!reverseTunnel)
+         wait(15000);
+     else
+-        wait(3000);
++        wait(5000);
+ #ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;SshMasterConnection, instance &quot;&lt;&lt;this&lt;&lt;&quot; thread finished&quot;;
+ #endif
+@@ -694,18 +696,21 @@ bool SshMasterConnection::userAuthAuto()
+     int i=0;
+     while(rc != SSH_AUTH_SUCCESS)
+     {
+-        keyPhraseReady=false;
+-        emit needPassPhrase(this);
+-        for(;;)
++        if(!reverseTunnel)
+         {
+-            bool ready=false;
+-            this-&gt;usleep(200);
+-            keyPhraseMutex.lock();
+-            if(keyPhraseReady)
+-                ready=true;
+-            keyPhraseMutex.unlock();
+-            if(ready)
+-                break;
++            keyPhraseReady=false;
++            emit needPassPhrase(this);
++            for(;;)
++            {
++                bool ready=false;
++                this-&gt;usleep(200);
++                keyPhraseMutex.lock();
++                if(keyPhraseReady)
++                    ready=true;
++                keyPhraseMutex.unlock();
++                if(ready)
++                    break;
++            }
+         }
+         if(keyPhrase==QString::null)
+             break;
+@@ -766,18 +771,21 @@ bool SshMasterConnection::userAuthWithKey()
+     int i=0;
+     while(!prkey)
+     {
+-        keyPhraseReady=false;
+-        emit needPassPhrase(this);
+-        for(;;)
++        if(!reverseTunnel)
+         {
+-            bool ready=false;
+-            this-&gt;usleep(200);
+-            keyPhraseMutex.lock();
+-            if(keyPhraseReady)
+-                ready=true;
+-            keyPhraseMutex.unlock();
+-            if(ready)
+-                break;
++            keyPhraseReady=false;
++            emit needPassPhrase(this);
++            for(;;)
++            {
++                bool ready=false;
++                this-&gt;usleep(200);
++                keyPhraseMutex.lock();
++                if(keyPhraseReady)
++                    ready=true;
++                keyPhraseMutex.unlock();
++                if(ready)
++                    break;
++            }
+         }
+         if(keyPhrase==QString::null)
+             break;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004356.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-71-g8676299
+</A></li>
+	<LI>Next message: <A HREF="004358.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-5-g9557b67
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4357">[ date ]</a>
+              <a href="thread.html#4357">[ thread ]</a>
+              <a href="subject.html#4357">[ subject ]</a>
+              <a href="author.html#4357">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

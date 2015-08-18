@@ -1,0 +1,251 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-46-ge79d565
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-46-ge79d565&In-Reply-To=%3C20110924022837.9DB4A5DD20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001548.html">
+   <LINK REL="Next"  HREF="001550.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-46-ge79d565</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-46-ge79d565&In-Reply-To=%3C20110924022837.9DB4A5DD20%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-46-ge79d565">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 24 04:28:37 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001548.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.6-42-gf5c94cc
+</A></li>
+        <LI>Next message: <A HREF="001550.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-47-g17a51ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1549">[ date ]</a>
+              <a href="thread.html#1549">[ thread ]</a>
+              <a href="subject.html#1549">[ subject ]</a>
+              <a href="author.html#1549">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  e79d565285b37a4f348a3c796f41a637718680fb (commit)
+      from  57b55fd657ce06af490bcb15eeff0911c93aec6f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e79d565285b37a4f348a3c796f41a637718680fb
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sat Sep 24 04:28:30 2011 +0200
+
+    Provide test method to query server if folder sharing is available. Test for existence of remote home directory on connect.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 ++
+ x2go/backends/control/_stdout.py  |   15 +++++++++++++++
+ x2go/backends/terminal/_stdout.py |    9 +++++++--
+ x2go/client.py                    |   27 +++++++++++++++++++++++++++
+ x2go/session.py                   |   13 ++++++++++++-
+ 5 files changed, 63 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 81dffb3..990531d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -18,6 +18,8 @@ python-x2go (0.1.1.7-0-x2go1) UNRELEASED; urgency=low
+       method.
+     - Compatibility fix for X2go folder sharing (session profile attribute:
+       export).
++    - Provide test method to query server if folder sharing is available.
++    - Test for existence of remote home directory on connect.
+ 
+   [ Dick Kniep ]
+   * Fix for upstream version 0.1.1.7:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 881a318..542e3fe 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -256,6 +256,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         #return username in self._x2go_remote_group('x2gousers')
+         return True
+ 
++    def is_folder_sharing_available(self):
++        if self.remote_username() in self._x2go_remote_group('fuse'):
++            return True
++        return False
++
+     def remote_username(self):
+         &quot;&quot;&quot;\
+         Returns the control session's remote username.
+@@ -486,6 +491,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         if self.get_transport():
+             self.session_died = False
++
++        if not self.home_exists():
++            raise x2go_exceptions.X2goControlSessionException('remote home directory does not exist')
++
+         return (self.get_transport() is not None)
+ 
+     def dissociate(self, terminal_session):
+@@ -540,6 +549,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return False
+ 
+ 
++    def home_exists(self):
++        if self._x2go_exec_command('stat -tL &quot;%s&quot;', loglevel=log.loglevel_DEBUG):
++            return True
++        return False
++
++
+     def is_alive(self):
+         if self._x2go_exec_command('echo', loglevel=log.loglevel_DEBUG):
+             return True
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 18ea716..0e72e77 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -439,12 +439,17 @@ class X2goTerminalSessionSTDOUT(object):
+             # tunnel has already been started and might simply need a resume call
+             self.reverse_tunnels[self.session_info.name]['snd'][1].resume()
+ 
++    def is_folder_sharing_available(self):
++        if self.session_info.username in self.control_session._x2go_remote_group('fuse'):
++            return True
++        return False
++
+     def start_sshfs(self):
+         &quot;&quot;&quot;\
+         Initialize Paramiko/SSH reverse forwarding tunnel for X2go folder sharing.
+ 
+         &quot;&quot;&quot;
+-        if self.session_info.username not in self.control_session._x2go_remote_group('fuse'):
++        if self.is_folder_sharing_available():
+             raise x2go_exceptions.X2goUserException('remote user %s is not member of X2go server group fuse' % self.session_info.username)
+ 
+         # start reverse SSH tunnel for sshfs (folder sharing, printing)
+@@ -591,7 +596,7 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        if self.session_info.username not in self.control_session._x2go_remote_group('fuse'):
++        if self.is_folder_sharing_available():
+             raise x2go_exceptions.X2goUserException('remote user %s is not member of X2go server group fuse' % self.session_info.username)
+ 
+         if local_path is None:
+diff --git a/x2go/client.py b/x2go/client.py
+index a06e02f..0a34f99 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1470,6 +1470,33 @@ class X2goClient(object):
+             return session_name not in [ s for s in self.server_running_sessions(session_uuid)  + self.server_suspended_sessions(session_uuid) ]
+     __has_session_terminated = has_session_terminated
+ 
++    def is_folder_sharing_available(self, session_uuid=None, profile_name=None):
++        &quot;&quot;&quot;\
++        Test if local folder sharing is available for X2go session with unique ID &lt;session_uuid&gt; or
++        session profile &lt;profile_name&gt;.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @param profile_name: alternatively, the profile name can be used to perform this query
++        @type profile_name: C{str}
++
++        @return: returns C{True} if the profile/session supports local folder sharing
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if session_uuid is None and profile_name:
++            _connected = self._X2goClient__client_connected_sessions_of_profile_name(profile_name, return_objects=False)
++            if len(_connected) &gt; 0:
++                session_uuid = _connected[0]
++        if session_uuid:
++            return self.session_registry(session_uuid).is_folder_sharing_available()
++        else:
++            self.logger('Cannot find a terminal session for profile ,,%s\'\' to share a local folder with' % profile_name, loglevel=log.loglevel_WARN)
++            return False
++    __is_folder_sharing_available = is_folder_sharing_available
++    __profile_is_folder_sharing_available = is_folder_sharing_available
++    __session_is_folder_sharing_available = is_folder_sharing_available
++
+     def share_local_folder(self, session_uuid=None, local_path=None, profile_name=None, folder_name=None):
+         &quot;&quot;&quot;\
+         Share a local folder with the X2go session registered as C{session_uuid}.
+diff --git a/x2go/session.py b/x2go/session.py
+index 18b894c..e9baf78 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -1060,7 +1060,7 @@ class X2goSession(object):
+                     self.terminal_session and not self.faulty and self.terminal_session.start_mimebox(mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
+                     self.terminal_session and self.session_environment.update({'X2GO_MIMEBOX': self.terminal_session.get_mimebox_spooldir(), })
+ 
+-                if self._SUPPORTED_FOLDERSHARING and self.share_local_folders and self.terminal_session and not self.faulty:
++                if self._SUPPORTED_FOLDERSHARING and self.share_local_folders and self.terminal_session and not self.faulty and self.is_folder_sharing_available():
+                     if _control.get_transport().reverse_tunnels[self.terminal_session.get_session_name()]['sshfs'][1] is not None:
+                         for _folder in self.share_local_folders:
+                             self.share_local_folder(_folder)
+@@ -1388,6 +1388,17 @@ class X2goSession(object):
+         return self.terminated
+     __has_terminated = has_terminated
+ 
++    def is_folder_sharing_available(self):
++        &quot;&quot;&quot;\
++        Test if the remote session allows sharing of local folders with the session.
++
++        @return: returns C{True} if local folder sharing is available in the remote session
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.is_connected():
++            return self.control_session.is_folder_sharing_available()
++
+     def share_local_folder(self, local_path=None, folder_name=None):
+         &quot;&quot;&quot;\
+         Share a local folder with this registered X2go session.
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2go Client API).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001548.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.6-42-gf5c94cc
+</A></li>
+	<LI>Next message: <A HREF="001550.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-47-g17a51ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1549">[ date ]</a>
+              <a href="thread.html#1549">[ thread ]</a>
+              <a href="subject.html#1549">[ subject ]</a>
+              <a href="author.html#1549">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,875 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-5-gc74e718
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-5-gc74e718&In-Reply-To=%3C20140108143137.3261B5DC65%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025159.html">
+   <LINK REL="Next"  HREF="025258.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-5-gc74e718</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-5-gc74e718&In-Reply-To=%3C20140108143137.3261B5DC65%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-5-gc74e718">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:31:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025159.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-6-g9a1a4ca
+</A></li>
+        <LI>Next message: <A HREF="025258.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-11-g1b463da
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25173">[ date ]</a>
+              <a href="thread.html#25173">[ thread ]</a>
+              <a href="subject.html#25173">[ subject ]</a>
+              <a href="author.html#25173">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  c74e7181b1a71a95fa74b72bd7724a6f6729d19e (commit)
+      from  8a48422fa568620d612901dcd064275122b794e0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    3 ++-
+ x2go/sshproxy.py        |   30 ++++++++++++++++++++++++++++--
+ x2go/x2go_exceptions.py |    1 +
+ 3 files changed, 31 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 6dfa5f8..48badf3 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -6,7 +6,8 @@ python-x2go (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Store the session password in base64 encoded string in order to make 
+       it harder spotting the long term stored (for the duration of the session)
+       plain text password.
+-    - Support encryption passphrases on SSH private key files.
++    - Support encryption passphrases on SSH private key files (X2Go SSH connections
++      as well as SSH proxy connections).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 07 Aug 2013 12:18:46 +0200
+ 
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 7bdb5e5..5aaba51 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -226,7 +226,7 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+                                     )
+                     elif (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+                         self.connect(_hostname, port=self.port,
+-                                     username=self.username, 
++                                     username=self.username,
+                                      key_filename=key_filename,
+                                      pkey=pkey,
+                                      look_for_keys=look_for_keys,
+@@ -234,12 +234,38 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+                                     )
+                     else:
+                         self.connect(_hostname, port=self.port,
+-                                     username=self.username, 
++                                     username=self.username,
+                                      look_for_keys=look_for_keys,
+                                      allow_agent=allow_agent,
+                                     )
+ 
++                except x2go_exceptions.PasswordRequiredException, e:
++                    self.close()
++                    if password:
++                        try:
++                            if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
++                                self.connect(_hostname, port=self.port,
++                                             username=self.username,
++                                             key_filename=key_filename,
++                                             pkey=pkey,
++                                             look_for_keys=look_for_keys,
++                                             allow_agent=allow_agent,
++                                             password=password,
++                                            )
++                            else:
++                                self.connect(_hostname, port=self.port,
++                                             username=self.username,
++                                             look_for_keys=look_for_keys,
++                                             allow_agent=allow_agent,
++                                             password=password,
++                                            )
++                        except x2go_exceptions.AuthenticationException, e:
++                            raise x2go_exceptions.X2GoSSHProxyPasswordRequiredException(str(e))
++
++                    else:
++                        raise x2go_exceptions.X2GoSSHProxyPasswordRequiredException(str(e))
+                 except x2go_exceptions.AuthenticationException, e:
++
+                     self.close()
+                     raise x2go_exceptions.X2GoSSHProxyAuthenticationException('pubkey auth mechanisms both failed')
+                 except x2go_exceptions.SSHException, e:
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 688a8ba..70a5e8c 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -47,6 +47,7 @@ class X2GoSessionException(_X2GoException): pass
+ class X2GoControlSessionException(_X2GoException): pass
+ class X2GoRemoteHomeException(_X2GoException): pass
+ class X2GoHostKeyException(_X2GoException): pass
++class X2GoSSHProxyPasswordRequiredException(_X2GoException): pass
+ class X2GoSSHProxyHostKeyException(_X2GoException): pass
+ class X2GoTerminalSessionException(_X2GoException): pass
+ class X2GoSessionCacheException(_X2GoException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025159.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-6-g9a1a4ca
+</A></li>
+	<LI>Next message: <A HREF="025258.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-11-g1b463da
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25173">[ date ]</a>
+              <a href="thread.html#25173">[ thread ]</a>
+              <a href="subject.html#25173">[ subject ]</a>
+              <a href="author.html#25173">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

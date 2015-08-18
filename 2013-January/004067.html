@@ -1,0 +1,145 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.1.1-62-g3f31b3f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.1.1-62-g3f31b3f&In-Reply-To=%3C20130124095038.AE2A35DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004066.html">
+   <LINK REL="Next"  HREF="004068.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.1.1-62-g3f31b3f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.1.1-62-g3f31b3f&In-Reply-To=%3C20130124095038.AE2A35DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.1.1-62-g3f31b3f">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Jan 24 10:50:38 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004066.html">[X2go-Commits] x2goadmincenter.git - master (branch) updated:	dee1323652c6922b5154871b2fe83f7fa99a7f97
+</A></li>
+        <LI>Next message: <A HREF="004068.html">[X2go-Commits] x2goadmincenter.git - master (branch) updated:	200237d292c6ba89aa1de1fa0c4da35c96febf63
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4067">[ date ]</a>
+              <a href="thread.html#4067">[ thread ]</a>
+              <a href="subject.html#4067">[ subject ]</a>
+              <a href="author.html#4067">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  3f31b3f34c63acb46f45e1d5c29557d70dd72a54 (commit)
+      from  f346d474b4719b1acf6d000999fa7bccbece3b45 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3f31b3f34c63acb46f45e1d5c29557d70dd72a54
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Jan 24 10:51:14 2013 +0100
+
+    Become aware of multiple PyHoca-GUI processes being allowed. Pre-requisited, that each instance runs on its own $DISPLAY ($DISPLAY detection yet unfinished).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    3 +++
+ pyhoca-gui       |   19 ++++++++++++++++++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 4c54b26..7b1758f 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -36,6 +36,9 @@ pyhoca-gui (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Add &#187;Apply&#171; to session profile manager window.
+     - Add another tab &#187;Media&#171; to session profile configuration window.
+       Makes the windows display on netbook screens again (Fixes: #13).
++    - Become aware of multiple PyHoca-GUI processes being allowed.
++      Pre-requisited, that each instance runs on its own $DISPLAY
++      ($DISPLAY detection yet unfinished).
+   * /debian/control:
+     + Thanks to Orion's patch in bug #91 we can drop many build dependencies.
+     + Versioned Depend: on python-x2go (&gt;= 0.4.0.0-0~).
+diff --git a/pyhoca-gui b/pyhoca-gui
+index 0555dd6..d939249 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -23,6 +23,7 @@ modules ={}
+ 
+ import sys
+ import os
++import re
+ PROG_NAME = os.path.basename(sys.argv[0]).replace('.exe', '')
+ PROG_PID  = os.getpid()
+ 
+@@ -139,7 +140,23 @@ def check_running():
+     if _X2GOCLIENT_OS  in ('Linux', 'Mac'):
+         p = subprocess.Popen(['ps', '-U', _CURRENT_LOCAL_USER, '-u', _CURRENT_LOCAL_USER], stdout=subprocess.PIPE)
+         psA_out = p.communicate()
+-        return psA_out[0].count(PROG_NAME) &gt; 1
++        if psA_out[0].count(PROG_NAME) &lt;= 1:
++            return False
++        else:
++            processes = psA_out[0].strip().strip('\n').strip().split('\n')
++            sep = re.compile('[\s]+')
++            processes_of_myself = [ sep.split(row) for row in processes if PROG_NAME in row and not str(PROG_PID) in row ]
++            print
++            print 'FIXME: We found at least one other PyHoca-GUI instance for this user,'
++            print 'but cannot (yet) tell if it/they is/are running on the same $DISPLAY'
++            print 'or some other $DISPLAY. PyHoca-GUI only allows one instance per $DISPLAY.'
++            print
++            print 'These are the other instances of PyHoca-GUI found for this user:'
++            for line in processes_of_myself:
++                print &quot;    &quot;.join(line)
++            # FIXME: add $DISPLAY check here, only return False if no PyHoca-GUI instance is running on this $DISPLAY
++            # return False
++        return True
+     elif _X2GOCLIENT_OS == 'Windows':
+         import wmi
+         w = wmi.WMI()
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004066.html">[X2go-Commits] x2goadmincenter.git - master (branch) updated:	dee1323652c6922b5154871b2fe83f7fa99a7f97
+</A></li>
+	<LI>Next message: <A HREF="004068.html">[X2go-Commits] x2goadmincenter.git - master (branch) updated:	200237d292c6ba89aa1de1fa0c4da35c96febf63
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4067">[ date ]</a>
+              <a href="thread.html#4067">[ thread ]</a>
+              <a href="subject.html#4067">[ subject ]</a>
+              <a href="author.html#4067">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

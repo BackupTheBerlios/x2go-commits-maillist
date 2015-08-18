@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-22-gce08dfb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.2.2-22-gce08dfb&In-Reply-To=%3C20130604215637.C41FD5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008353.html">
+   <LINK REL="Next"  HREF="008355.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-22-gce08dfb</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.2.2-22-gce08dfb&In-Reply-To=%3C20130604215637.C41FD5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-22-gce08dfb">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 23:56:37 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008353.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-165-gccb0ef3
+</A></li>
+        <LI>Next message: <A HREF="008355.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-23-gfd0cd76
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8354">[ date ]</a>
+              <a href="thread.html#8354">[ thread ]</a>
+              <a href="subject.html#8354">[ subject ]</a>
+              <a href="author.html#8354">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  ce08dfb62d7dc63eb9fa4def310047d9ed3b1486 (commit)
+      from  57f6f46492bf568fbcc23c7fae84f57cff8b0971 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ce08dfb62d7dc63eb9fa4def310047d9ed3b1486
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Jun 4 23:55:43 2013 +0200
+
+    add support for suspending/terminating sessions via the X2Go Session Broker
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ lib/x2gobroker-agent.pl           |   12 ++++++++++--
+ x2gobroker/agent.py               |   37 +++++++++++++++++++++++++++++++++++++
+ x2gobroker/brokers/base_broker.py |    1 +
+ 3 files changed, 48 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index c5310b2..79d2d1f 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -187,12 +187,20 @@ if($mode eq 'delauthkey')
+ 	DelAuthKey($uid, $uidNumber, $gidNumber, $home, $pubkey, $authkeyfile);
+ }
+ 
+-if($mode eq 'suspend')
++if($mode eq 'suspendsession')
+ {
+ 	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
+ 	print &quot;OK\n&quot;;
+ 	my $sid=shift;
+-	exec (&quot;/bin/su - $uid -c \&quot;x2gosuspend-session $sid\&quot;&quot;);
++	exec (&quot;/bin/su - $uid -c \&quot;$(x2gopath lib)/x2gochangestatus S $sid\&quot;&quot;);
++}
++
++if($mode eq 'terminatesession')
++{
++	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
++	print &quot;OK\n&quot;;
++	my $sid=shift;
++	exec (&quot;/bin/su - $uid -c \&quot;$(x2gopath lib)/x2gochangestatus T $sid\&quot;&quot;);
+ }
+ 
+ if($mode eq 'ping')
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index 2f2b2d2..e88c805 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -173,6 +173,43 @@ def list_sessions(username, query_mode='LOCAL', remote_agent=None):
+     else:
+         return call_remote_broker_agent(username, mode='listsessions', remote_agent=remote_agent)
+ 
++
++def suspend_session(username, session_name, query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Trigger a session suspensions via the X2Go Broker Agent.
++
++    @param username: suspend the session on behalf of this username
++    @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    if unicode(query_mode).upper() == u'LOCAL':
++        return call_local_broker_agent(username, mode='suspendsession', cmdline_args=[session_name, ], )
++    else:
++        return call_remote_broker_agent(username, mode='suspendsession', cmdline_args=[session_name, ], remote_agent=remote_agent)
++
++
++def terminate_session(username, session_name, query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Trigger a session termination via the X2Go Broker Agent.
++
++    @param username: terminate the session on behalf of this username
++    @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    if unicode(query_mode).upper() == u'LOCAL':
++        return call_local_broker_agent(username, mode='terminatesession', cmdline_args=[session_name, ], )
++    else:
++        return call_remote_broker_agent(username, mode='terminatesession', cmdline_args=[session_name, ], remote_agent=remote_agent)
++
++
+ def has_sessions(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+     Query X2Go Broker Agent to detect running/suspended sessions on
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 52e68c6..153ab70 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -977,6 +977,7 @@ class X2GoBroker(object):
+                         session_info = suspended_sessions[0]
+                     else:
+                         session_info = running_sessions[0]
++                        x2gobroker.agent.suspend_session(session_name=session_info.split('|')[1], query_mode=agent_query_mode)
+                     server_name = session_info.split('|')[3]
+ 
+                     # if we have an explicit IP address for server_name, let's use that instead...
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008353.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-165-gccb0ef3
+</A></li>
+	<LI>Next message: <A HREF="008355.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-23-gfd0cd76
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8354">[ date ]</a>
+              <a href="thread.html#8354">[ thread ]</a>
+              <a href="subject.html#8354">[ subject ]</a>
+              <a href="author.html#8354">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

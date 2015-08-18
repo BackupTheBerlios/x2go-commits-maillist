@@ -1,0 +1,360 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-78-g8cdb797
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-78-g8cdb797&In-Reply-To=%3C20140108143047.70C675DEB2%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025657.html">
+   <LINK REL="Next"  HREF="025716.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-78-g8cdb797</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-78-g8cdb797&In-Reply-To=%3C20140108143047.70C675DEB2%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-78-g8cdb797">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:47 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025657.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-75-g05d0d38
+</A></li>
+        <LI>Next message: <A HREF="025716.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-77-gc1e20ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25712">[ date ]</a>
+              <a href="thread.html#25712">[ thread ]</a>
+              <a href="subject.html#25712">[ subject ]</a>
+              <a href="author.html#25712">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  8cdb797a6342d9eda351b4e71d2c9262c746c687 (commit)
+      from  c1e20ef02f7c157d20ef997b2bedc12587036128 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/terminal/_stdout.py |   50 +++++++++++++++++--------------------
+ x2go/registry.py                  |    7 +++++-
+ 3 files changed, 30 insertions(+), 28 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2c4b02f..eb74667 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -17,6 +17,7 @@ python-x2go (0.1.1.9-0-x2go1) UNRELEASED; urgency=low
+     - Introduce additional session profile parameter: setsessiontitle.
+     - Fix for list processing in  INI files.
+     - Make terminal backend ,,applications'' aware.
++    - Allow session parameter change for already registered sessions.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 12 Oct 2011 10:54:23 +0200
+ 
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 1861431..0e4a361 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -112,32 +112,27 @@ class X2goSessionParams(object):
+         @rtype: str
+ 
+         &quot;&quot;&quot;
+-        session_type = self.session_type
+         cmd = self.cmd
+ 
+-        if session_type in (&quot;D&quot;, &quot;desktop&quot;):
++        print cmd
++
++        if cmd == 'RDP':
++            self.session_type = 'R'
++        elif cmd.startswith('rdesktop'):
++            self.session_type = 'R'
++        elif cmd == 'XDMCP':
++            self.session_type = 'D'
++        elif cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
++            self.session_type = 'D'
++        elif os.path.basename(cmd) in defaults.X2GO_DESKTOPSESSIONS.values():
+             self.session_type = 'D'
+-            return
+-        elif session_type in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
++        else:
++            self.session_type = 'R'
++
++        if self.session_type in (&quot;D&quot;, &quot;desktop&quot;):
++            self.session_type = 'D'
++        elif self.session_type in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
+             self.session_type = 'S'
+-            return
+-        elif cmd:
+-            if cmd == 'RDP':
+-                self.session_type = 'R'
+-                return
+-            elif cmd.startswith('rdesktop'):
+-                self.session_type = 'R'
+-                return
+-            elif cmd == 'XDMCP':
+-                self.session_type = 'D'
+-                return
+-            elif cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
+-                self.session_type = 'D'
+-                return
+-            elif os.path.basename(cmd) in defaults.X2GO_DESKTOPSESSIONS.values():
+-                self.session_type = 'D'
+-                return
+-        self.session_type = 'R'
+ 
+     def update(self, properties_to_be_updated={}):
+         &quot;&quot;&quot;\
+@@ -186,7 +181,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  cache_type=&quot;unix-kde&quot;, 
+                  keyboard='', kblayout='null', kbtype='null/null',
+                  session_type=&quot;application&quot;, snd_system='pulse', snd_port=4713, cmd=None,
+-                 set_session_title=False, session_title=&quot;&quot;,
++                 set_session_title=False, session_title=&quot;&quot;, applications=[],
+                  rdp_server=None, rdp_options=None,
+                  xdmcp_server=None,
+                  convert_encoding=False, server_encoding='UTF-8', client_encoding='UTF-8',
+@@ -910,9 +905,10 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.params.kblayout or self.params.kbtype:
+             setkbd = &quot;1&quot;
+ 
+-        cmd = self.params.cmd
+-        if '/' in cmd:
+-            cmd = os.path.basename(cmd)
++        if '/' in self.params.cmd:
++            self.params.cmd = os.path.basename(self.params.cmd)
++
++        self.params.rewrite_session_type()
+ 
+         cmd_line = [ &quot;x2gostartagent&quot;,
+                      str(self.params.geometry),
+@@ -923,7 +919,7 @@ class X2goTerminalSessionSTDOUT(object):
+                      str(self.params.kbtype),
+                      str(setkbd),
+                      str(self.params.session_type),
+-                     cmd,
++                     self.params.cmd,
+                    ]
+ 
+         if self.params.cmd == 'XDMCP' and self.params.xdmcp_server:
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 3e855cd..cfed8ec 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -449,6 +449,9 @@ class X2goSessionRegistry(object):
+ 
+             session_uuid = _virgin_sessions[0].get_uuid()
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
++            for _k in _params.keys():
++                if _k in kwargs.keys():
++                    _params[_k] = kwargs[_k]
+             self(session_uuid).update_params(_params)
+             self(session_uuid).set_server(server)
+             self(session_uuid).set_profile_name(profile_name)
+@@ -458,7 +461,9 @@ class X2goSessionRegistry(object):
+         session_uuid = self.get_session_of_session_name(session_name)
+         if session_uuid is not None:
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+-
++            for _k in _params.keys():
++                if _k in kwargs.keys():
++                    _params[_k] = kwargs[_k]
+             self(session_uuid).update_params(_params)
+             self(session_uuid).set_server(server)
+             self(session_uuid).set_profile_name(profile_name)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025657.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-75-g05d0d38
+</A></li>
+	<LI>Next message: <A HREF="025716.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-77-gc1e20ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25712">[ date ]</a>
+              <a href="thread.html#25712">[ thread ]</a>
+              <a href="subject.html#25712">[ subject ]</a>
+              <a href="author.html#25712">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,301 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-15-gcf35615
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20build-main%20%28branch%29%0A%09updated%3A%203.0.1.2-15-gcf35615&In-Reply-To=%3C20130607231323.0722E5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="009224.html">
+   <LINK REL="Next"  HREF="009220.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-15-gcf35615</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20build-main%20%28branch%29%0A%09updated%3A%203.0.1.2-15-gcf35615&In-Reply-To=%3C20130607231323.0722E5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-15-gcf35615">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Jun  8 01:13:22 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="009224.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-11-g05b2d0b
+</A></li>
+        <LI>Next message: <A HREF="009220.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-17-g3c4601b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9228">[ date ]</a>
+              <a href="thread.html#9228">[ thread ]</a>
+              <a href="subject.html#9228">[ subject ]</a>
+              <a href="author.html#9228">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  cf356157e83da59220ab7af3c8bb71f722b3e754 (commit)
+      from  619fa9d40858791b1bf98754ed110c606c634005 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ main.cpp         |   27 ++++++++++++++++++++++++---
+ sharetray.cpp    |   55 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ sharetray.h      |   25 ++++++++++++++++++++-----
+ 4 files changed, 99 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 5967ad9..906ed53 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,7 @@ x2godesktopsharing (3.0.1.3-0~x2go1) UNRELEASED; urgency=low
+       of group x2godesktopsharing.
+     - Differentiate between local and remote user, fixes display of wrong
+       user name for remote user.
++    - Add signal handler so that unix signals can be handled within Qt.
+   Depend on x2goserver (&gt;=3.0.99.6).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Mon, 13 Jun 2011 20:39:33 +0200
+diff --git a/main.cpp b/main.cpp
+index e14c578..fa54d3d 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -26,6 +26,7 @@
+ #include &lt;QLocalSocket&gt;
+ #include &lt;iostream&gt;
+ #include &lt;QDir&gt;
++#include &lt;csignal&gt;
+ 
+ using namespace std;
+ 
+@@ -80,9 +81,30 @@ void  client ( const QStringList &amp; cmd )
+ 	cout&lt;&lt;buffer&lt;&lt;endl;
+ }
+ 
+-int main ( int argc, char *argv[] )
++static int setup_unix_signal_handlers()
+ {
++	struct sigaction keybint, term;
++
++	keybint.sa_handler = ShareTray::keybintSignalHandler;
++	sigemptyset(&amp;keybint.sa_mask);
++	keybint.sa_flags = 0;
++	keybint.sa_flags |= SA_RESTART;
++
++	if (sigaction(SIGINT, &amp;keybint, 0) &gt; 0)
++		return 1;
+ 
++	term.sa_handler = ShareTray::termSignalHandler;
++	sigemptyset(&amp;term.sa_mask);
++	term.sa_flags |= SA_RESTART;
++
++	if (sigaction(SIGTERM, &amp;term, 0) &gt; 0)
++	return 2;
++
++	return 0;
++}
++
++int main ( int argc, char *argv[] )
++{
+ 	if ( argc&gt;2 )
+ 	{
+ 		QString par=argv[1];
+@@ -121,7 +143,6 @@ int main ( int argc, char *argv[] )
+ 
+ 	ShareTray* tray=new ShareTray;
+ 	tray-&gt;hide();
+-
++	setup_unix_signal_handlers();
+ 	return app.exec();
+ }
+-
+diff --git a/sharetray.cpp b/sharetray.cpp
+index 2bc944f..56a785c 100644
+--- a/sharetray.cpp
++++ b/sharetray.cpp
+@@ -17,10 +17,12 @@
+ #include &lt;QDir&gt;
+ #include &lt;QtDebug&gt;
+ #include &lt;QMessageBox&gt;
++#include &lt;QSocketNotifier&gt;
++#include &lt;sys/socket.h&gt;
+ #include &quot;simplelocalsocket.h&quot;
+ #include &quot;accessaction.h&quot;
+ #include &lt;sys/types.h&gt;
+-#include &lt;signal.h&gt;
++#include &lt;csignal&gt;
+ #include &lt;errno.h&gt;
+ #include &lt;QToolTip&gt;
+ #include &lt;QTimer&gt;
+@@ -35,6 +37,10 @@
+ 
+ #define VERSION &quot;3.0.1.3&quot;
+ 
++//needed to not get an undefined reference to static members
++int ShareTray::sigkeybintFd[2];
++int ShareTray::sigtermFd[2];
++
+ ShareTray::ShareTray()
+         : QMainWindow()
+ {
+@@ -165,6 +171,18 @@ ShareTray::ShareTray()
+ 
+     actStop-&gt;setEnabled ( false );
+ 
++	// unix signals (TERM, INT) are piped into a unix socket and will raise Qt events
++	if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigkeybintFd))
++		qFatal(&quot;Couldn't create keyboard INT socketpair&quot;);
++
++	if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigtermFd))
++		qFatal(&quot;Couldn't create TERM socketpair&quot;);
++
++	snKeybInt = new QSocketNotifier(sigkeybintFd[1], QSocketNotifier::Read, this);
++	connect(snKeybInt, SIGNAL(activated(int)), this, SLOT(handleSigKeybInt()));
++	snTerm = new QSocketNotifier(sigtermFd[1], QSocketNotifier::Read, this);
++	connect(snTerm, SIGNAL(activated(int)), this, SLOT(handleSigTerm()));
++
+     QTimer *timer = new QTimer ( this );
+     connect ( timer, SIGNAL ( timeout() ), this, SLOT ( slotTimer() ) );
+     timer-&gt;start ( 5000 );
+@@ -185,6 +203,41 @@ ShareTray::~ShareTray()
+     qDebug() &lt;&lt;&quot;settings saved&quot;;
+ }
+ 
++void ShareTray::handleSigKeybInt()
++{
++	snKeybInt-&gt;setEnabled(false);
++	char tmp;
++	::read(sigkeybintFd[1], &amp;tmp, sizeof(tmp));
++
++	// do Qt stuff here
++	slotMenuClose();
++
++	snKeybInt-&gt;setEnabled(true);
++}
++
++void ShareTray::handleSigTerm()
++{
++	snTerm-&gt;setEnabled(false);
++	char tmp;
++	::read(sigtermFd[1], &amp;tmp, sizeof(tmp));
++
++	// do Qt stuff here
++	slotMenuClose();
++
++	snTerm-&gt;setEnabled(true);
++}
++
++void ShareTray::keybintSignalHandler(int)
++{
++	char a = 1;
++	::write(sigkeybintFd[0], &amp;a, sizeof(a));
++}
++
++void ShareTray::termSignalHandler(int)
++{
++	char a = 1;
++	::write(sigtermFd[0], &amp;a, sizeof(a));
++}
+ 
+ void ShareTray::slotStopSharing()
+ {
+diff --git a/sharetray.h b/sharetray.h
+index 137ba61..d2c2531 100644
+--- a/sharetray.h
++++ b/sharetray.h
+@@ -22,6 +22,7 @@ class AccessAction;
+ class QSystemTrayIcon;
+ class MessageBox;
+ class QAction;
++class QSocketNotifier;
+ 
+ /**
+ 	@author Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+@@ -30,11 +31,16 @@ class ShareTray : public QMainWindow
+ {
+     Q_OBJECT
+ public:
+-    ShareTray();
+-    ~ShareTray();
+-    QString getSocketAnswer(QString message);
+-    void closeSocket(SimpleLocalSocket* sock);
+-    bool acceptConnections();
++	ShareTray();
++	~ShareTray();
++	// Unix signal handlers.
++	static void keybintSignalHandler(int unused);
++	static void termSignalHandler(int unused);
++	// desktop sharing socket
++	QString getSocketAnswer(QString message);
++	void closeSocket(SimpleLocalSocket* sock);
++	// entry point for incoming connections
++	bool acceptConnections();
+ private:
+     enum {BLACK,WHITE} current_list;
+     QMenu* menu;
+@@ -55,6 +61,10 @@ private:
+ protected:
+     void closeEvent ( QCloseEvent* event );
+ 
++public slots:
++	// Qt signal handlers.
++	void handleSigKeybInt();
++	void handleSigTerm();
+ private slots:
+     void slotStopSharing();
+     void slotStartSharing();
+@@ -78,6 +88,11 @@ private:
+     void saveSettings();
+     void setTrayIcon();
+     void showList();
++	// unix file sockets for signal handler communication (unix &lt;-&gt; Qt)
++	static int sigkeybintFd[2];
++	static int sigtermFd[2];
++	QSocketNotifier *snKeybInt;
++	QSocketNotifier *snTerm;
+ };
+ 
+ #endif
+
+
+hooks/post-receive
+-- 
+x2godesktopsharing.git (Desktop Sharing for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2godesktopsharing.git&quot; (Desktop Sharing for X2Go).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="009224.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-11-g05b2d0b
+</A></li>
+	<LI>Next message: <A HREF="009220.html">[X2Go-Commits] x2godesktopsharing.git - build-main (branch)	updated: 3.0.1.2-17-g3c4601b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9228">[ date ]</a>
+              <a href="thread.html#9228">[ thread ]</a>
+              <a href="subject.html#9228">[ subject ]</a>
+              <a href="author.html#9228">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

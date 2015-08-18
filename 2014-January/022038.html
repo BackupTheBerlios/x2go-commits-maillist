@@ -1,0 +1,299 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-57-gfdfc794
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-57-gfdfc794&In-Reply-To=%3C20140107152130.036145E170%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022026.html">
+   <LINK REL="Next"  HREF="022040.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-57-gfdfc794</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-57-gfdfc794&In-Reply-To=%3C20140107152130.036145E170%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-57-gfdfc794">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:29 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022026.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-52-g9006f4a
+</A></li>
+        <LI>Next message: <A HREF="022040.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-56-gf602855
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22038">[ date ]</a>
+              <a href="thread.html#22038">[ thread ]</a>
+              <a href="subject.html#22038">[ subject ]</a>
+              <a href="author.html#22038">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  fdfc7942b08d52562801713f25a1cf988225be65 (commit)
+      from  f60285590b5485e4105071e1ce4020bf9026e1ef (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   14 ++++++++------
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 89ac661..2437a2e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -36,6 +36,7 @@ python-x2go (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+       issue #14.
+     - Set the session name in case a session start failed due to lack of
+       forwarding tunneling support in the server's SSH daemon.
++    - Fall back to password auth if agent auth and key discovery fail.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+   * /debian/control:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 2186b71..62104fb 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -774,18 +774,20 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         if forward_sshagent is not None:
+             self.forward_sshagent = forward_sshagent
+ 
+-        if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey or look_for_keys or allow_agent:
++        if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey or look_for_keys or allow_agent or (password and force_password_auth):
+             try:
+-                self.logger('trying SSH pub/priv key authentication with server', loglevel=log.loglevel_DEBUG)
+                 if password and force_password_auth:
++                    self.logger('trying keyboard-interactive SSH authentication with server', loglevel=log.loglevel_DEBUG)
+                     paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=None, password=password,
+-                                               key_filename=None, timeout=timeout, allow_agent=False, 
++                                               key_filename=None, timeout=timeout, allow_agent=False,
+                                                look_for_keys=False)
+                 elif key_filename or pkey:
++                    self.logger('trying SSH pub/priv key authentication with server', loglevel=log.loglevel_DEBUG)
+                     paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=pkey,
+                                                key_filename=key_filename, timeout=timeout, allow_agent=allow_agent,
+                                                look_for_keys=look_for_keys)
+                 else:
++                    self.logger('trying SSH key discovery or agent authentication with server', loglevel=log.loglevel_DEBUG)
+                     paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=None,
+                                                key_filename=None, timeout=timeout, allow_agent=allow_agent,
+                                                look_for_keys=look_for_keys)
+@@ -795,18 +797,18 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 if x2go._paramiko.PARAMIKO_FEATURE['use-compression']:
+                     t.use_compression(compress=True)
+ 
+-            except paramiko.AuthenticationException, e:
++            except (paramiko.AuthenticationException, paramiko.SSHException), e:
+                 self.close()
+                 if password:
+                     self.logger('next auth mechanism we\'ll try is keyboard-interactive authentication', loglevel=log.loglevel_DEBUG)
+                     try:
+                         paramiko.SSHClient.connect(self, _hostname, port=port, username=username, password=password,
+-                                                   timeout=timeout, allow_agent=False, look_for_keys=False)
++                                                   key_filename=None, pkey=None, timeout=timeout, allow_agent=False, look_for_keys=False)
+                     except paramiko.AuthenticationException, e:
+                         self.close()
+                         if self.sshproxy_session:
+                             self.sshproxy_session.stop_thread()
+-                        raise e
++                        raise(e)
+                     except:
+                         self.close()
+                         if self.sshproxy_session:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022026.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-52-g9006f4a
+</A></li>
+	<LI>Next message: <A HREF="022040.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-56-gf602855
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22038">[ date ]</a>
+              <a href="thread.html#22038">[ thread ]</a>
+              <a href="subject.html#22038">[ subject ]</a>
+              <a href="author.html#22038">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

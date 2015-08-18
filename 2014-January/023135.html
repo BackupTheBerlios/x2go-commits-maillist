@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-29-ga20193b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-29-ga20193b&In-Reply-To=%3C20140108142641.2A1785DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023126.html">
+   <LINK REL="Next"  HREF="023107.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-29-ga20193b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-29-ga20193b&In-Reply-To=%3C20140108142641.2A1785DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-29-ga20193b">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:26:41 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023126.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-30-gcf40811
+</A></li>
+        <LI>Next message: <A HREF="023107.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-40-g0cebec3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23135">[ date ]</a>
+              <a href="thread.html#23135">[ thread ]</a>
+              <a href="subject.html#23135">[ subject ]</a>
+              <a href="author.html#23135">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  a20193b34efb6722373e08ee2f9e7b201eb4ae45 (commit)
+      from  552dff7427632ff98dc955bef0eabb23c72546e5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    5 +++--
+ x2go/backends/control/_stdout.py |   12 +++++++++++-
+ x2go/sshproxy.py                 |   21 +++++++++++++++++----
+ 3 files changed, 31 insertions(+), 7 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 5fcab50..e0a0c59 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -6,8 +6,9 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+ 
+ python-x2go (0.1.1.6-0~x2go1) UNRELEASED; urgency=low
+ 
+-  * New upstream version (0.1.1.5), bugfix release for 0.1.1.x series:
+-    - continue development...
++  * New upstream version (0.1.1.6), bugfix release for 0.1.1.x series:
++    - Fix IPv4 enforcement for localhost connections.
++    - Be tolerant against trailing whitespaces in hostnames.
+  
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Mon, 11 Sep 2011 18:37:02 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 5689e27..881a318 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -280,6 +280,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
++        # trailing whitespace tolerance
++        hostname = hostname.strip()
++
++        # force into IPv4 for localhost connections
++        if hostname in ('localhost', 'localhost.localdomain'):
++            hostname = '127.0.0.1'
++
+         return checkhosts.check_ssh_host_key(self, hostname, port=port)
+ 
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+@@ -389,13 +396,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             key_filename = None
+             pkey = None
+ 
++        # trailing whitespace tolerance in hostname
++        hostname = hostname.strip()
++
+         self.logger('connecting to [%s]:%s' % (hostname, port), loglevel=log.loglevel_NOTICE)
+ 
+         self.load_session_host_keys()
+ 
+         _hostname = hostname
+         # enforce IPv4 for localhost address
+-        if _hostname == 'localhost':
++        if _hostname in ('localhost', 'localhost.localdomain'):
+             _hostname = '127.0.0.1'
+ 
+         if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 0fd7f0f..2306860 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -151,13 +151,18 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+             self.remote_host = remote_host
+             self.remote_port = int(remote_port)
+ 
++        # allow more trailing whitespace tolerance in hostnames
++        self.hostname = self.hostname.strip()
++        self.local_host = self.local_host.strip()
++        self.remote_host = self.remote_host.strip()
++
+         # enforce IPv4 for localhost addresses!!!
+         _hostname = self.hostname
+-        if _hostname == 'localhost':
++        if _hostname in ('localhost', 'localhost.localdomain'):
+             _hostname = '127.0.0.1'
+-        if self.local_host == 'localhost':
++        if self.local_host in ('localhost', 'localhost.localdomain'):
+             self.local_host = '127.0.0.1'
+-        if self.remote_host == 'localhost':
++        if self.remote_host in ('localhost', 'localhost.localdomain'):
+             self.remote_host = '127.0.0.1'
+ 
+         if username is None:
+@@ -230,8 +235,16 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
++
++        # hostname rewrite for localhost, force to IPv4
++        _hostname = self.hostname
++
++        # force into IPv4 for localhost connections
++        if _hostname in ('localhost', 'localhost.localdomain'):
++            _hostname = '127.0.0.1'
++
+         _valid = False
+-        (_valid, _hostname, _port, _fingerprint, _fingerprint_type) = checkhosts.check_ssh_host_key(self, self.hostname, port=self.port)
++        (_valid, _hostname, _port, _fingerprint, _fingerprint_type) = checkhosts.check_ssh_host_key(self, _hostname, port=self.port)
+         if not _valid and self.session_instance:
+             _valid = self.session_instance.HOOK_check_host_dialog(_hostname, _port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
+         return _valid
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023126.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-30-gcf40811
+</A></li>
+	<LI>Next message: <A HREF="023107.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-40-g0cebec3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23135">[ date ]</a>
+              <a href="thread.html#23135">[ thread ]</a>
+              <a href="subject.html#23135">[ subject ]</a>
+              <a href="author.html#23135">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-13-g5ef433d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-13-g5ef433d&In-Reply-To=%3C20130519110443.A636B5DB28%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007460.html">
+   <LINK REL="Next"  HREF="007463.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-13-g5ef433d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-13-g5ef433d&In-Reply-To=%3C20130519110443.A636B5DB28%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-13-g5ef433d">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:43 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007460.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-10-g2ce6139
+</A></li>
+        <LI>Next message: <A HREF="007463.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-12-gb03b7cb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7462">[ date ]</a>
+              <a href="thread.html#7462">[ thread ]</a>
+              <a href="subject.html#7462">[ subject ]</a>
+              <a href="author.html#7462">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  5ef433db9f943afd56b15351cceb2021184ed43e (commit)
+      from  b03b7cbfea28b5d962eef483c7fd98661bf203e8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ logrotate/x2gobroker  |   13 +++++++++++++
+ sbin/x2gobroker       |    2 ++
+ x2gobroker/loggers.py |   23 ++++++++++++++++++-----
+ 3 files changed, 33 insertions(+), 5 deletions(-)
+ create mode 100644 logrotate/x2gobroker
+
+The diff of changes is:
+diff --git a/logrotate/x2gobroker b/logrotate/x2gobroker
+new file mode 100644
+index 0000000..4e8c689
+--- /dev/null
++++ b/logrotate/x2gobroker
+@@ -0,0 +1,13 @@
++/var/log/x2gobroker/*.log {
++	weekly
++	missingok
++	rotate 52
++	compress
++	delaycompress
++	notifempty
++	create 640 x2gobroker adm
++	sharedscripts
++	postrotate
++		/etc/init.d/x2gobroker restart &gt; /dev/null
++	endscript
++}
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index 7ca11ce..2e8b5b4 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -33,6 +33,8 @@ except ImportError:
+     sys.path.insert(0, os.path.join(os.getcwd(), '..'))
+     import x2gobroker.defaults
+ 
++from x2gobroker.loggers import logger_broker, logger_access, logger_error
++
+ # parse-in potential command line options
+ cmdline_args = None
+ if __name__ == &quot;__main__&quot;:
+diff --git a/x2gobroker/loggers.py b/x2gobroker/loggers.py
+index 01a659f..7151fd5 100644
+--- a/x2gobroker/loggers.py
++++ b/x2gobroker/loggers.py
+@@ -19,15 +19,28 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
++import sys
++import getpass
+ import logging
+ import logging.config
+ 
+ from x2gobroker.defaults import X2GOBROKER_LOGCONFIG as _X2GOBROKER_LOGCONFIG
+ 
+-logging.config.fileConfig(_X2GOBROKER_LOGCONFIG)
++if getpass.getuser() == &quot;x2gobroker&quot;:
+ 
+-# create loggers
+-logger_broker = logging.getLogger('broker')
+-logger_access = logging.getLogger('access')
+-logger_error = logging.getLogger('error')
++    # we run in standalone daemon mode, so let's use the system configuration for logging
++    logging.config.fileConfig(_X2GOBROKER_LOGCONFIG)
++
++    # create loggers
++    logger_broker = logging.getLogger('broker')
++    logger_access = logging.getLogger('access')
++    logger_error = logging.getLogger('error')
++
++else:
++    logger_root = logging.getLogger()
++    logger_root.addHandler(logging.StreamHandler(sys.stdout))
++
++    logger_broker = logger_root
++    logger_access = logger_root
++    logger_error = logger_root
+ 
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007460.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-10-g2ce6139
+</A></li>
+	<LI>Next message: <A HREF="007463.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-12-gb03b7cb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7462">[ date ]</a>
+              <a href="thread.html#7462">[ thread ]</a>
+              <a href="subject.html#7462">[ subject ]</a>
+              <a href="author.html#7462">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

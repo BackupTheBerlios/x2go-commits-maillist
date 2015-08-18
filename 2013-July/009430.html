@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] buildscripts.git - master (branch) updated:	d114903e52e532fcb1587ceaf5eadbe9d26e45ac
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-July/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09d114903e52e532fcb1587ceaf5eadbe9d26e45ac&In-Reply-To=%3C20130719114854.B9AD25DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="009429.html">
+   <LINK REL="Next"  HREF="009431.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] buildscripts.git - master (branch) updated:	d114903e52e532fcb1587ceaf5eadbe9d26e45ac</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09d114903e52e532fcb1587ceaf5eadbe9d26e45ac&In-Reply-To=%3C20130719114854.B9AD25DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] buildscripts.git - master (branch) updated:	d114903e52e532fcb1587ceaf5eadbe9d26e45ac">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jul 19 13:48:54 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="009429.html">[X2Go-Commits] python-x2go.git - build-main (branch) updated:	0.4.0.4-3-ga0f8350
+</A></li>
+        <LI>Next message: <A HREF="009431.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	f4f2ddf5361259bb3e91d6b33db32ad8053ceb8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9430">[ date ]</a>
+              <a href="thread.html#9430">[ thread ]</a>
+              <a href="subject.html#9430">[ subject ]</a>
+              <a href="author.html#9430">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d114903e52e532fcb1587ceaf5eadbe9d26e45ac (commit)
+       via  0fe6d2898a908e40d1cde9669ebc450a8792c3b6 (commit)
+      from  984f0ae8ce1212d1b0503e9dbd0c45ddadf90c0d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d114903e52e532fcb1587ceaf5eadbe9d26e45ac
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Jul 19 13:48:49 2013 +0200
+
+    build 3.0 (quilt) packages, as well
+
+commit 0fe6d2898a908e40d1cde9669ebc450a8792c3b6
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Aug 21 21:01:10 2012 +0200
+
+    add support quilt format, extracting upstream orig tarballs from git, if possible
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/build-package |   31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+
+The diff of changes is:
+diff --git a/bin/build-package b/bin/build-package
+index c510799..59da3ea 100755
+--- a/bin/build-package
++++ b/bin/build-package
+@@ -103,13 +103,19 @@ prepare_workspace() {
+ 		cd &quot;$PROJECT_DIR&quot; &amp;&amp; git reset --hard
+ 		git checkout --force $CHECKOUT || git checkout --force -b $CHECKOUT
+ 		git pull origin $CHECKOUT
++		git fetch origin upstream:upstream || true
++		git fetch origin pristine-tar:pristine-tar || true
+ 		# and again, get the $CHECKOUT refspec in pure state
+ 		git reset --hard
++		git clean -df
+ 	else
+ 		cd &quot;$(dirname $PROJECT_DIR)&quot;
+ 		git clone <A HREF="git://$GIT_HOSTNAME/$PROJECT_PATH.git">git://$GIT_HOSTNAME/$PROJECT_PATH.git</A>
+ 		cd &quot;$PROJECT&quot;
+ 		git checkout --force $CHECKOUT || git checkout --force -b $CHECKOUT;
++		git fetch origin upstream:upstream
++		git fetch origin pristine-tar:pristine-tar || true
++		git clean -df
+ 	fi
+ 	cd &quot;$PROJECT_DIR&quot;
+ 
+@@ -188,10 +194,19 @@ build_packages() {
+ 				git checkout $CHECKOUT || git checkout master
+ 				find $PROJECT_DIR/../ -type f -maxdepth 0 -mindepth 0 | grep $PROJECT_*.orig.tar.gz &amp;&gt;/dev/null &amp;&amp; cp $PROJECT_DIR/../$PROJECT_*.orig.tar.gz ..
+ 				GITREV=$(gitrevno)
++
++				# we always build native packages for our repos
++				SA_OPTION=&quot;&quot;
++
+ 				# we always build native packages for our repos
+ 				test -f debian/source/format &amp;&amp; cat debian/source/format | egrep '^3.0.*\(quilt\)$' &gt;/dev/null &amp;&amp; {
+-					echo &quot;3.0 (native)&quot; &gt; debian/source/format
+-			        }	
++					git fetch origin upstream:upstream
++					UPSTREAM_VERSION=$(dpkg-parsechangelog | grep Version: | cut -d &quot; &quot; -f2 | sed -e 's/-.*//' -e 's/^.*://')
++					REVISION=$(dpkg-parsechangelog | grep Version: | cut -d &quot; &quot; -f2 | sed -e 's/.*-//')
++					git archive --prefix=${PROJECT}-${UPSTREAM_VERSION}/ -o ../${PROJECT}_${UPSTREAM_VERSION}.orig.tar.gz upstream/${UPSTREAM_VERSION} &amp;&amp; {
++						SA_OPTION=&quot;--debbuildopts=-sa&quot;
++					} || echo &quot;3.0 (native)&quot; &gt; debian/source/format
++				}
+ 
+ 				# for Ubuntu version is the codename of the distribution release
+ 				VERSION=$l_CODENAME
+@@ -221,32 +236,32 @@ build_packages() {
+ 				[ &quot;x$USE_SUDO&quot; != &quot;xyes&quot; ] &amp;&amp; {
+ 					[ &quot;x$EXTRA_ARCHS_ONLY&quot; = &quot;x&quot; ] &amp;&amp; {
+ 						[ &quot;x$SKIP_ARCH&quot; != &quot;xamd64&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(all|any|amd64)' &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/amd64&quot; -- --allow-untrusted 0&lt;&amp;-
++							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/amd64&quot; -- --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 						[ &quot;x$SKIP_ARCH&quot; != &quot;xi386&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(any|i386)' &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/i386&quot;  -- --binary-arch --allow-untrusted 0&lt;&amp;-
++							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/i386&quot;  -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 					}
+ 					for extra_arch in $EXTRA_ARCHS; do
+ 						mkdir -p &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot;
+ 						cat debian/control | egrep &quot;Architecture.*(any|$extra_arch)&quot; &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted 0&lt;&amp;-
++							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 					done
+ 				}
+ 				[ &quot;x$USE_SUDO&quot; = &quot;xyes&quot; ] &amp;&amp; {
+ 					[ &quot;x$EXTRA_ARCHS_ONLY&quot; = &quot;x&quot; ] &amp;&amp; {
+ 						[ &quot;x$SKIP_ARCH&quot; != &quot;xamd64&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(all|any|amd64)' &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/amd64 -- --allow-untrusted 0&lt;&amp;-
++							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/amd64 -- --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 						[ &quot;x$SKIP_ARCH&quot; != &quot;xi386&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(any|i386)' &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/i386  -- --binary-arch --allow-untrusted 0&lt;&amp;-
++							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/i386  -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 					}
+ 					for extra_arch in $EXTRA_ARCHS; do
+ 						mkdir -p &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot;
+ 						cat debian/control | egrep &quot;Architecture.*(any|$extra_arch)&quot; &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted 0&lt;&amp;-
++							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+ 						}
+ 					done
+ 				}
+
+
+hooks/post-receive
+-- 
+buildscripts.git (X2Go packaging scripts)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;buildscripts.git&quot; (X2Go packaging scripts).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="009429.html">[X2Go-Commits] python-x2go.git - build-main (branch) updated:	0.4.0.4-3-ga0f8350
+</A></li>
+	<LI>Next message: <A HREF="009431.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	f4f2ddf5361259bb3e91d6b33db32ad8053ceb8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#9430">[ date ]</a>
+              <a href="thread.html#9430">[ thread ]</a>
+              <a href="subject.html#9430">[ subject ]</a>
+              <a href="author.html#9430">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

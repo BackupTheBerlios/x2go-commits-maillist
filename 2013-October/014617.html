@@ -1,0 +1,458 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-8-g6da6228
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-8-g6da6228&In-Reply-To=%3C20131028080737.74BDF5DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014616.html">
+   <LINK REL="Next"  HREF="014618.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-8-g6da6228</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-8-g6da6228&In-Reply-To=%3C20131028080737.74BDF5DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-8-g6da6228">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Oct 28 09:07:37 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014616.html">[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-16-ge92d6b6
+</A></li>
+        <LI>Next message: <A HREF="014618.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-13-g47304ba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14617">[ date ]</a>
+              <a href="thread.html#14617">[ thread ]</a>
+              <a href="subject.html#14617">[ subject ]</a>
+              <a href="author.html#14617">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  6da6228cee83ec4e383d149ba160af0e118a0f92 (commit)
+      from  7256699ba90dca0b6001e19a0ac6576660a9e4ff (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6da6228cee83ec4e383d149ba160af0e118a0f92
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sat Sep 14 15:53:30 2013 +0200
+
+    Implement two-factor authentication.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog           |    1 +
+ paramiko                   |    1 -
+ pyhoca/wxgui/frontend.py   |   57 ++++++++++++++++++++---------
+ pyhoca/wxgui/logon.py      |   43 +++++++++++++++++++---
+ pyhoca/wxgui/passphrase.py |   85 ++++++++++++++++++++++++++++++--------------
+ 5 files changed, 138 insertions(+), 49 deletions(-)
+ delete mode 120000 paramiko
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0ef6293..131085e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -7,6 +7,7 @@ pyhoca-gui (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Only show notifications if there really is something to show.
+     - Support encrypted on SSH proxy whith password authentication on X2Go
+       Server.
++    - Implement two-factor authentication.
+   * /debian/copyright:
+     + Update file. Add entry for file icon2exe.py.
+ 
+diff --git a/paramiko b/paramiko
+deleted file mode 120000
+index 79a7991..0000000
+--- a/paramiko
++++ /dev/null
+@@ -1 +0,0 @@
+-../python-paramiko/paramiko
+\ No newline at end of file
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 00e47f3..96c530b 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -609,7 +609,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             _can_sshproxy_auto_connect = self._X2GoClient__session_can_sshproxy_auto_connect(session_uuid)
+             _session_uses_sshproxy = self._X2GoClient__session_uses_sshproxy(session_uuid)
+             _session_reuses_sshproxy_authinfo = self._X2GoClient__session_reuses_sshproxy_authinfo(session_uuid)
+-            if _can_session_auto_connect:
++            if _can_session_auto_connect or _can_sshproxy_auto_connect:
+                 self._X2GoClient__connect_session(session_uuid, add_to_known_hosts=self.add_to_known_hosts)
+                 if not self._X2GoClient__server_valid_x2gouser(session_uuid):
+                     self.notifier.send(_(u'%s - connect failure') % profile_name, _(u'User is not allowed to start X2Go sessions!'), icon='session_warning', timeout=10000)
+@@ -662,16 +662,46 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                 _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=True, )
+             self._logon_windows[profile_name] = _logon_window
+         except x2go.SSHException, e:
+-            if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
+-                errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++            if str(e).startswith('Two-factor authentication requires a password'):
++                self._pyhoca_logger('X2Go Server requests two-factor authentication', loglevel=x2go.loglevel_NOTICE)
++
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name,
++                                                                  caller=self,
++                                                                  sshproxy_auth=False,
++                                                                  twofactor_auth=True,
++                                                                 )
++                self._logon_windows[profile_name] = _logon_window
+             else:
+-                errmsg = str(e)
+-            self.notifier.send(_(u'%s - SSH error') % profile_name, u'%s!' % errmsg, icon='auth_error', timeout=10000)
+-            try:
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except ValueError:
+-                pass
+-            connect_failed = True
++                if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
++                    errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++                else:
++                    errmsg = str(e)
++                try:
++                    self._temp_disabled_profile_names.remove(profile_name)
++                except ValueError:
++                    pass
++                connect_failed = True
++                self.notifier.send(_(u'%s - SSH error') % profile_name, u'%s!' % errmsg, icon='auth_error', timeout=10000)
++        except x2go.X2GoSSHProxyException, e:
++            if str(e).startswith('Two-factor authentication requires a password'):
++                self._pyhoca_logger('SSH proxy host requests two-factor authentication', loglevel=x2go.loglevel_NOTICE)
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name,
++                                                                  caller=self,
++                                                                  sshproxy_auth=True,
++                                                                  sshproxy_twofactor_auth=True,
++                                                                 )
++                self._logon_windows[profile_name] = _logon_window
++            else:
++                if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
++                    errmsg = _('Host key verification failed. The SSH proxy server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++                else:
++                    errmsg = str(e)
++                try:
++                    self._temp_disabled_profile_names.remove(profile_name)
++                except ValueError:
++                    pass
++                connect_failed = True
++                self.notifier.send(_(u'%s - SSH error') % profile_name, u'%s!' % errmsg, icon='auth_error', timeout=10000)
+         except x2go.X2GoHostKeyException, e:
+             self.notifier.send(_(u'%s - host key error') % profile_name, _(u'The remote server\'s host key is invalid or has not been accepted by the user') + '!', icon='auth_error', timeout=4000)
+             try:
+@@ -707,13 +737,6 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             except ValueError:
+                 pass
+             connect_failed = True
+-        except x2go.X2GoSSHProxyException, e:
+-            self.notifier.send(_(u'%s - auth key error') % profile_name, u'%s' % str(e), icon='auth_error', timeout=4000)
+-            try:
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except ValueError:
+-                pass
+-            connect_failed = True
+         except x2go.X2GoRemoteHomeException, e:
+             self.notifier.send(_(u'%s - missing home directory') % profile_name, _(u&quot;The remote user's home directory does not exist.&quot;), icon='auth_error', timeout=4000)
+             try:
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index c287339..511ee53 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -54,7 +54,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+     Logon window for L{PyHocaGUI}.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, profile_name, caller=None, sshproxy_auth=False): 
++    def __init__(self, _PyHocaGUI, profile_name, caller=None, passphrase=None, sshproxy_passphrase=None, sshproxy_auth=False, twofactor_auth=False, sshproxy_twofactor_auth=False): 
+         &quot;&quot;&quot;\
+         Logon window (constructor)
+ 
+@@ -66,6 +66,10 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         @type caller: C{None}
+         @param sshproxy_auth: use (dual) SSH proxy authentication
+         @type sshproxy_auth: C{bool}
++        @param twofactor_auth: use two-factor authentication for X2Go Server
++        @type twofactor_auth: C{bool}
++        @param sshproxy_twofactor_auth: use two-factor authentication for SSH proxy
++        @type sshproxy_twofactor_auth: C{bool}
+ 
+         &quot;&quot;&quot;
+         self._PyHocaGUI = _PyHocaGUI
+@@ -73,6 +77,8 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         self._pyhoca_logger('password dialog box started', loglevel=x2go.loglevel_INFO, )
+ 
+         self.sshproxy_auth = sshproxy_auth
++        self.twofactor_auth = twofactor_auth
++        self.sshproxy_twofactor_auth = sshproxy_twofactor_auth
+ 
+         self.current_profile_name = profile_name
+         self.current_profile_config = self._PyHocaGUI.session_profiles.get_profile_config(profile_name)
+@@ -86,6 +92,8 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             self.SetTitle(_(u'%s (via %s)') % (profile_name, self.current_profile_config['sshproxyhost']))
+ 
+         self.password = None
++        self.passphrase = passphrase
++        self.sshproxy_passphrase = sshproxy_passphrase
+ 
+         self.userLbl = wx.StaticText(self, wx.ID_ANY, _(u'Username')+':', size=(-1, -1)) 
+         self.userTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER, size=(120, -1)) 
+@@ -274,10 +282,10 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                 return
+ 
+         if self.sshproxy_auth and (not self.sshproxy_started):
+-            force_password_auth=False
++            force_password_auth = False
+             sshproxy_force_password_auth = True
+         else:
+-            force_password_auth=True
++            force_password_auth = True 
+             sshproxy_force_password_auth = True
+ 
+         wx.BeginBusyCursor()
+@@ -286,11 +294,13 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
+                                                          username=username,
+                                                          password=password,
+-                                                         force_password_auth=force_password_auth,
++                                                         passphrase=self.passphrase,
++                                                         force_password_auth=(force_password_auth and not self.twofactor_auth),
+                                                          add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
+                                                          sshproxy_user=sshproxy_user,
+                                                          sshproxy_password=sshproxy_password,
+-                                                         sshproxy_force_password_auth=sshproxy_force_password_auth,
++                                                         sshproxy_passphrase=self.sshproxy_passphrase,
++                                                         sshproxy_force_password_auth=(sshproxy_force_password_auth and not self.sshproxy_twofactor_auth),
+                                                         )
+             if not self._PyHocaGUI._X2GoClient__server_valid_x2gouser(session_uuid):
+                 self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+@@ -423,6 +433,29 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+ 
+         except x2go.SSHException, e:
+ 
++            if str(e).startswith('Two-factor authentication requires a password'):
++                if self.sshproxy_auth and (not self.sshproxy_started):
++                    try: wx.EndBusyCursor()
++                    except: pass
++                    self.sshproxy_started = True
++                    self.headerLbl.Enable(True)
++                    self.userLbl.Enable(True)
++                    self.userTxt.Enable(True)
++                    self.passwordLbl.Enable(True)
++                    self.passwordTxt.Enable(True)
++                    self.passwordTxt.SetFocus()
++                    self.loginBtn.Enable(True)
++                    self.loginBtn.SetDefault()
++                    self.cancelBtn.Enable(True)
++                    self.sshProxyHeaderLbl.Enable(False)
++                    self.sshProxyUserLbl.Enable(False)
++                    self.sshProxyUserTxt.Enable(False)
++                    self.sshProxyPasswordLbl.Enable(False)
++                    self.sshProxyPasswordTxt.Enable(False)
++                    self.sshProxyLoginBtn.Enable(False)
++                    self.sshProxyLoginBtn.SetLabel(_(u'SSH tunnel started'))
++                    return
++
+             if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
+                 errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
+             else:
+diff --git a/pyhoca/wxgui/passphrase.py b/pyhoca/wxgui/passphrase.py
+index 497f9d0..5c9104f 100644
+--- a/pyhoca/wxgui/passphrase.py
++++ b/pyhoca/wxgui/passphrase.py
+@@ -43,7 +43,7 @@ import os
+ import base64
+ 
+ # PyHoca-GUI modules
+-# ... NONE ...
++import logon
+ 
+ if os.environ.has_key('DESKTOP_SESSION'):
+     WINDOW_MANAGER = os.environ['DESKTOP_SESSION']
+@@ -55,7 +55,7 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+     SSH key passphrase window for L{PyHocaGUI}.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, profile_name, caller=None, password='', sshproxy_auth=False, sshproxy_passphrase='', key_filename=''):
++    def __init__(self, _PyHocaGUI, profile_name, caller=None, password=None, sshproxy_auth=False, sshproxy_passphrase=None, key_filename=None):
+         &quot;&quot;&quot;\
+         Passphrase window (constructor)
+ 
+@@ -81,7 +81,6 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+ 
+         self._PyHocaGUI._sub_windows.append(self)
+ 
+-        self.passphrase = ''
+         self.password = password
+         self.key_filename = key_filename
+         self.sshproxy_auth = sshproxy_auth
+@@ -168,17 +167,27 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+         @type evt: C{obj}
+ 
+         &quot;&quot;&quot;
++        password = None
++        passphrase = None
+         force_password_auth = False
+         sshproxy_force_password_auth = False
+         if self.sshproxy_auth and self.password:
+-            passphrase = self.password
++            password = self.password
+             sshproxy_passphrase = self.passphraseTxt.GetValue()
+             force_password_auth = True
+         elif self.sshproxy_auth:
+             passphrase = sshproxy_passphrase = self.passphraseTxt.GetValue()
+         else:
+             passphrase = self.passphraseTxt.GetValue()
+-            sshproxy_passphrase = base64.b64decode(self.sshproxy_passphrase)
++            try:
++                sshproxy_passphrase = base64.b64decode(self.sshproxy_passphrase)
++            except TypeError:
++                sshproxy_passphrase = None
++
++        try:
++            b64_passphrase = base64.b64encode(passphrase)
++        except TypeError:
++            b64_passphrase = None
+ 
+         connect_failed = False
+ 
+@@ -187,8 +196,9 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+ 
+         try:
+             self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
+-                                                         password=passphrase,
+-                                                         sshproxy_password=sshproxy_passphrase,
++                                                         password=password,
++                                                         passphrase=passphrase,
++                                                         sshproxy_passphrase=sshproxy_passphrase,
+                                                          force_password_auth=force_password_auth,
+                                                          sshproxy_force_password_auth=sshproxy_force_password_auth,
+                                                          add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
+@@ -207,7 +217,7 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+                 except KeyError:
+                     pass
+                 self._pyhoca_logger('SSH private key file is encrypted and requires a passphrase', loglevel=x2go.log.loglevel_INFO, )
+-                _passphrase_window = PyHocaGUI_DialogBoxPassphrase(self._PyHocaGUI, self.current_profile_name, caller=self, sshproxy_passphrase=base64.b64encode(passphrase), key_filename=key_filename)
++                _passphrase_window = PyHocaGUI_DialogBoxPassphrase(self._PyHocaGUI, self.current_profile_name, caller=self, sshproxy_passphrase=b64_passphrase, key_filename=key_filename)
+                 self._PyHocaGUI._logon_windows[self.current_profile_name] = _passphrase_window
+ 
+             else:
+@@ -262,12 +272,27 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+             connect_failed = True
+ 
+         except x2go.X2GoSSHProxyException, e:
+-            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+-                                             title=_(u'%s - key error') % self.current_profile_name,
+-                                             text='%s!' % str(e),
+-                                             icon='auth_error',
+-                                             timeout=4000)
+-            connect_failed = True
++            if str(e).startswith('Two-factor authentication requires a password'):
++                self._pyhoca_logger('SSH proxy host requests two-factor authentication', loglevel=x2go.loglevel_NOTICE)
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self._PyHocaGUI, self.current_profile_name,
++                                                                  caller=self,
++                                                                  passphrase=passphrase,
++                                                                  sshproxy_passphrase=sshproxy_passphrase,
++                                                                  sshproxy_auth=True,
++                                                                  sshproxy_twofactor_auth=True,
++                                                                 )
++                self._PyHocaGUI._logon_windows[self.current_profile_name] = _logon_window
++            else:
++                if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
++                    errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++                else:
++                    errmsg = str(e)
++                self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
++                                                 title=_(u'%s - key error') % self.current_profile_name,
++                                                 text='%s!' % errmsg,
++                                                 icon='auth_error',
++                                                 timeout=4000)
++                connect_failed = True
+ 
+         except x2go.X2GoSessionException, e:
+             self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+@@ -278,20 +303,28 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+             connect_failed = True
+ 
+         except x2go.SSHException, e:
+-
+-            if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
+-                errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++            if str(e).startswith('Two-factor authentication requires a password'):
++                self._pyhoca_logger('X2Go Server requests two-factor authentication', loglevel=x2go.loglevel_NOTICE)
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self._PyHocaGUI, self.current_profile_name,
++                                                                  caller=self,
++                                                                  passphrase=passphrase,
++                                                                  sshproxy_passphrase=sshproxy_passphrase,
++                                                                  sshproxy_auth=False,
++                                                                  twofactor_auth=True,
++                                                                 )
++                self._PyHocaGUI._logon_windows[self.current_profile_name] = _logon_window
+             else:
+-                errmsg = str(e)
+-
+-            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+-                                             title=_(u'%s - SSH error') % self.current_profile_name,
+-                                             text='%s' % errmsg,
+-                                             icon='auth_error',
+-                                             timeout=10000)
++                if str(e).startswith('Host key for server ') and str(e).endswith(' does not match!'):
++                    errmsg = _('Host key verification failed. The X2Go server may have been compromised.\n\nIt is also possible that the host key has just been changed.\n\nHowever, for security reasons the connection will not be established!!!')
++                else:
++                    errmsg = str(e)
+ 
+-
+-            connect_failed = True
++                self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
++                                                 title=_(u'%s - SSH error') % self.current_profile_name,
++                                                 text='%s' % errmsg,
++                                                 icon='auth_error',
++                                                 timeout=10000)
++                connect_failed = True
+ 
+         except:
+             self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014616.html">[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-16-ge92d6b6
+</A></li>
+	<LI>Next message: <A HREF="014618.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-13-g47304ba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14617">[ date ]</a>
+              <a href="thread.html#14617">[ thread ]</a>
+              <a href="subject.html#14617">[ subject ]</a>
+              <a href="author.html#14617">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

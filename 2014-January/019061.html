@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-229-g40c674c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-229-g40c674c&In-Reply-To=%3C20140103195150.77FD15DB97%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019059.html">
+   <LINK REL="Next"  HREF="019003.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-229-g40c674c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-229-g40c674c&In-Reply-To=%3C20140103195150.77FD15DB97%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-229-g40c674c">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:51:50 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019059.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-228-gda7cc13
+</A></li>
+        <LI>Next message: <A HREF="019003.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-236-g7d62bc3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19061">[ date ]</a>
+              <a href="thread.html#19061">[ thread ]</a>
+              <a href="subject.html#19061">[ subject ]</a>
+              <a href="author.html#19061">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  40c674c9e82c6217c5422aae2d86974c5949b716 (commit)
+      from  da7cc13e30fb9773b0c2ab8706e5ceadb55feec8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server/DB.pm                                  |   49 +++++++++++++++++++-
+ X2Go/Server/DB/PostgreSQL.pm                       |   16 ++++++-
+ X2Go/Server/DB/SQLite3.pm                          |   47 ++++++++++++++++++-
+ debian/changelog                                   |    4 ++
+ x2goserver/bin/x2gostartagent                      |   21 +++++++--
+ .../{x2gocreatesession =&gt; x2gocreateshadowsession} |    5 +-
+ .../{x2goinsertsession =&gt; x2goinsertshadowsession} |    5 +-
+ 7 files changed, 137 insertions(+), 10 deletions(-)
+ copy x2goserver/lib/{x2gocreatesession =&gt; x2gocreateshadowsession} (87%)
+ copy x2goserver/lib/{x2goinsertsession =&gt; x2goinsertshadowsession} (88%)
+
+The diff of changes is:
+diff --git a/X2Go/Server/DB.pm b/X2Go/Server/DB.pm
+index 0f638a2..2ce7a02 100644
+--- a/X2Go/Server/DB.pm
++++ b/X2Go/Server/DB.pm
+@@ -63,7 +63,7 @@ if ($backend ne 'postgres' &amp;&amp; $backend ne 'sqlite')
+ use base 'Exporter';
+ 
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
+-             'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount', 
++             'db_getdisplays', 'db_insertsession', 'db_insertshadowsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_createshadowsession', 'db_insertmount', 
+              'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot', 
+              'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts', 'db_listshadowsessions','db_listshadowsessions_all');
+ 
+@@ -210,6 +210,27 @@ sub db_insertsession
+ 	syslog('debug', &quot;db_insertsession called, session ID: $sid, server: $server, session ID: $sid&quot;);
+ }
+ 
++sub db_insertshadowsession
++{
++	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $shadreq_user=shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
++	if ($backend eq 'postgres')
++	{
++		X2Go::Server::DB::PostgreSQL::db_insertshadowsession($display, $server, $sid, $shadreq_user);
++	}
++	if ($backend eq 'sqlite')
++	{
++		my $err=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertshadowsession $display $server $sid $shadreq_user`;
++		if ($err ne &quot;ok&quot;)
++		{
++			die &quot;$err: $x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertshadowsession $display $server $sid $shadreq_user&quot;;
++		}
++	}
++	syslog('debug', &quot;db_insertshadowsession called, session ID: $sid, server: $server, session ID: $sid, shadowing requesting user: $shadreq_user&quot;);
++}
++
+ sub db_createsession
+ {
+ 	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
+@@ -234,6 +255,32 @@ sub db_createsession
+ 	syslog('debug', &quot;db_createsession called, session ID: $sid, cookie: $cookie, client: $client, pid: $pid, graphics port: $gr_port, sound port: $snd_port, file sharing port: $fs_port&quot;);
+ }
+ 
++sub db_createshadowsession
++{
++	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
++	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
++	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $shadreq_user=shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
++	if ($backend eq 'postgres')
++	{
++		# for PostgreSQL we can use the normal db_createsession code...
++		X2Go::Server::DB::PostgreSQL::db_createsession($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid);
++	}
++	if ($backend eq 'sqlite')
++	{
++		my $err= `$x2go_lib_path/libx2go-server-db-sqlite3-wrapper createshadowsession $cookie $pid $client $gr_port $snd_port $fs_port $sid $shadreq_user`;
++		if ($err ne &quot;ok&quot;)
++		{
++			die $err;
++		}
++	}
++	syslog('debug', &quot;db_createshadowsession called, session ID: $sid, cookie: $cookie, client: $client, pid: $pid, graphics port: $gr_port, sound port: $snd_port, file sharing port: $fs_port, shadowing requesting user: $shadreq_user&quot;);
++}
++
+ sub db_insertport
+ {
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+diff --git a/X2Go/Server/DB/PostgreSQL.pm b/X2Go/Server/DB/PostgreSQL.pm
+index 1bad04a..f101de8 100644
+--- a/X2Go/Server/DB/PostgreSQL.pm
++++ b/X2Go/Server/DB/PostgreSQL.pm
+@@ -43,7 +43,7 @@ setlogmask( LOG_UPTO(loglevel()) );
+ use base 'Exporter';
+ 
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus',
+-             'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount',
++             'db_getdisplays', 'db_insertsession', 'db_insertshadowsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount',
+              'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot',
+              'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts', 'db_listshadowsessions','db_listshadowsessions_all');
+ 
+@@ -256,6 +256,20 @@ sub db_insertsession
+ 	$dbh-&gt;disconnect();
+ }
+ 
++sub db_insertshadowsession
++{
++	init_db();
++	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $shadreq_user=shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
++	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$shadreq_user','$sid')&quot;);
++	$sth-&gt;execute()or die $_;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
+ sub db_createsession
+ {
+ 	init_db();
+diff --git a/X2Go/Server/DB/SQLite3.pm b/X2Go/Server/DB/SQLite3.pm
+index 21741b8..9a0ce2a 100644
+--- a/X2Go/Server/DB/SQLite3.pm
++++ b/X2Go/Server/DB/SQLite3.pm
+@@ -52,7 +52,7 @@ my $realuser=$uname;
+ use base 'Exporter';
+ 
+ our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus',
+-             'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount',
++             'db_getdisplays', 'db_insertsession', 'db_insertshadowsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_createshadowsession', 'db_insertmount',
+              'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot',
+              'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot', 'dbsys_deletemounts', 'db_listshadowsessions','db_listshadowsessions_all', );
+ 
+@@ -219,6 +219,24 @@ sub db_insertsession
+ 	return 1;
+ }
+ 
++sub db_insertshadowsession
++{
++	my $dbh = init_db();
++	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $shadreq_user = shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
++	my $fake_sid = $sid;
++	$fake_sid =~ s/$shadreq_user-/$realuser-/;
++	check_user($fake_sid);
++	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id, init_time, last_time) values
++	                       (?, ?, ?, ?, datetime('now','localtime'), datetime('now','localtime'))&quot;);
++	$sth-&gt;execute($display, $server, $shadreq_user, $sid) or die $_;
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return 1;
++}
++
+ sub db_createsession
+ {
+ 	my $dbh = init_db();
+@@ -243,6 +261,33 @@ sub db_createsession
+ 	return 1;
+ }
+ 
++sub db_createshadowsession
++{
++	my $dbh = init_db();
++	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
++	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
++	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $shadreq_user = shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
++	my $fake_sid = $sid;
++	$fake_sid =~ s/^$shadreq_user-/$realuser-/;
++	check_user($fake_sid);
++	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
++	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
++	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $shadreq_user);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;createshadowsession (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++	return 1;
++}
++
+ sub db_insertport
+ {
+ 	my $dbh = init_db();
+diff --git a/debian/changelog b/debian/changelog
+index 989bb45..9cc828d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -26,6 +26,10 @@ x2goserver (4.1.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix build-arch target in x2goserver/Makefile. (Fixes: #121).
+     - Load config files from a Perl package (X2Go::Config).
+     - Disable SupeReNicer by default.
++    - Fix session handling for cross-user-account desktop sharing. Now session
++      names of desktop sharing session start with the username of the user who
++      is requesting the desktop sharing, rather than the username of the person
++      who shares his/her desktop.
+   * /debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+diff --git a/x2goserver/bin/x2gostartagent b/x2goserver/bin/x2gostartagent
+index bc399c2..7b94862 100755
+--- a/x2goserver/bin/x2gostartagent
++++ b/x2goserver/bin/x2gostartagent
+@@ -89,6 +89,7 @@ if [ &quot;$X2GO_STYPE&quot; == &quot;S&quot; ]; then
+ 		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;notice&quot; &quot;user ,,$USER'' requests desktop sharing from user ,,$SHADOW_USER'' for desktop ,,$SHADOW_DESKTOP''&quot;
+ 		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;executing command: x2godesktopsharing client $X2GO_CLIENT $X2GO_GEOMETRY $X2GO_LINK $X2GO_PACK $X2GO_TYPE $X2GO_KBD_LAYOUT $X2GO_KBD_TYPE $X2GO_SET_KBD $X2GO_STYPE $X2GO_CMD $USER&quot;
+ 		OUTPUT=`x2godesktopsharing client &quot;$X2GO_CLIENT&quot; &quot;$X2GO_GEOMETRY&quot; &quot;$X2GO_LINK&quot; &quot;$X2GO_PACK&quot; &quot;$X2GO_TYPE&quot; &quot;$X2GO_KBD_LAYOUT&quot; &quot;$X2GO_KBD_TYPE&quot; &quot;$X2GO_SET_KBD&quot; &quot;$X2GO_STYPE&quot; &quot;$X2GO_CMD&quot; &quot;$USER&quot;`
++		OUTPUT=`echo $OUTPUT | sed -e 's/#012/ /g'`
+ 		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;command result is: $OUTPUT&quot;
+ 		if [ &quot;$OUTPUT&quot; == &quot;DENY&quot; ]; then
+ 			echo &quot;ACCESS DENIED&quot; 1&gt;&amp;2
+@@ -165,12 +166,22 @@ while [ &quot;$OUTPUT&quot;  != &quot;inserted&quot; ]; do
+ 		grep -q &quot;|${NX_PORT}|&quot; &lt;&lt;&lt;$USED_PORTS ; then
+ 		OUTPUT=&quot;XXX&quot;
+ 	else
+-		SESSION_NAME=&quot;${USER}-${X2GO_PORT}-`date +\&quot;%s\&quot;`&quot;
++		if [ -n &quot;$SHADREQ_USER&quot; ]; then
++			SESSION_NAME=&quot;${SHADREQ_USER}-${X2GO_PORT}-`date +\&quot;%s\&quot;`&quot;
++		else
++			SESSION_NAME=&quot;${USER}-${X2GO_PORT}-`date +\&quot;%s\&quot;`&quot;
++		fi
+ 		if [ &quot;$COLORDEPTH&quot; != &quot;&quot; ]; then
+ 			SESSION_NAME=&quot;${SESSION_NAME}_st${SESSION_TYPE}${X2GO_CMD}_dp${COLORDEPTH}&quot;
+ 			SESSION_NAME=`echo &quot;$SESSION_NAME&quot; | sed  -e  &quot;s/:/PP/g&quot;`
+ 		fi
+-		OUTPUT=`$X2GO_LIB_PATH/x2goinsertsession &quot;$X2GO_PORT&quot; &quot;$HOSTNAME&quot; &quot;$SESSION_NAME&quot;`
++		if [ -n &quot;$SHADREQ_USER&quot; ]; then
++			$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;initializing new shadow session with ID $SESSION_NAME&quot;
++			OUTPUT=`$X2GO_LIB_PATH/x2goinsertshadowsession &quot;$X2GO_PORT&quot; &quot;$HOSTNAME&quot; &quot;$SESSION_NAME&quot; &quot;$SHADREQ_USER&quot;`
++		else
++			$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;initializing new session with ID $SESSION_NAME&quot;
++			OUTPUT=`$X2GO_LIB_PATH/x2goinsertsession &quot;$X2GO_PORT&quot; &quot;$HOSTNAME&quot; &quot;$SESSION_NAME&quot;`
++		fi
+ 	fi 
+ done
+ 
+@@ -317,7 +328,11 @@ test $X2GO_AGENT_RETVAL &amp;&amp; {
+ 
+ X2GO_SND_PORT=1024
+ 
+-$X2GO_LIB_PATH/x2gocreatesession &quot;$X2GO_COOKIE&quot; &quot;$X2GO_AGENT_PID&quot; &quot;$X2GO_CLIENT&quot; &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &quot;$SESSION_NAME&quot; &gt; /dev/null
++if [ -n &quot;$SHADREQ_USER&quot; ]; then
++	$X2GO_LIB_PATH/x2gocreateshadowsession &quot;$X2GO_COOKIE&quot; &quot;$X2GO_AGENT_PID&quot; &quot;$X2GO_CLIENT&quot; &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &quot;$SESSION_NAME&quot; &quot;$SHADREQ_USER&quot; &gt; /dev/null
++else
++	$X2GO_LIB_PATH/x2gocreatesession &quot;$X2GO_COOKIE&quot; &quot;$X2GO_AGENT_PID&quot; &quot;$X2GO_CLIENT&quot; &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &quot;$SESSION_NAME&quot; &gt; /dev/null#
++fi
+ 
+ if [ &quot;$X2GO_SET_KBD&quot; == &quot;0&quot; ] || [ &quot;$X2GO_KBD_TYPE&quot; != &quot;auto&quot; ]; then
+ 	$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;blocking creation of agent's keyboard file ${SESSION_DIR}/keyboard as requested by session startup command&quot;
+diff --git a/x2goserver/lib/x2gocreatesession b/x2goserver/lib/x2gocreateshadowsession
+similarity index 87%
+copy from x2goserver/lib/x2gocreatesession
+copy to x2goserver/lib/x2gocreateshadowsession
+index 27d3d2d..7149b81 100755
+--- a/x2goserver/lib/x2gocreatesession
++++ b/x2goserver/lib/x2gocreateshadowsession
+@@ -23,7 +23,7 @@
+ use strict;
+ use Sys::Syslog qw( :standard :macros );
+ 
+-use X2Go::Server::DB qw(db_createsession);
++use X2Go::Server::DB qw(db_createshadowsession);
+ use X2Go::Log qw(loglevel);
+ 
+ openlog($0,'cons,pid','user');
+@@ -37,8 +37,9 @@ my $gr_port=shift or die;
+ my $snd_port=shift or die;
+ my $fs_port=shift or die;
+ my $sid=shift or die;
++my $shadreq_user=shift or die;
+ 
+-db_createsession($cookie,$pid,$client,$gr_port, $snd_port, $fs_port, $sid);
++db_createshadowsession($cookie,$pid,$client,$gr_port, $snd_port, $fs_port, $sid, $shadreq_user);
+ 
+ # closing syslog 
+ closelog;
+\ No newline at end of file
+diff --git a/x2goserver/lib/x2goinsertsession b/x2goserver/lib/x2goinsertshadowsession
+similarity index 88%
+copy from x2goserver/lib/x2goinsertsession
+copy to x2goserver/lib/x2goinsertshadowsession
+index 94deece..44cc336 100755
+--- a/x2goserver/lib/x2goinsertsession
++++ b/x2goserver/lib/x2goinsertshadowsession
+@@ -23,7 +23,7 @@
+ use strict;
+ use Sys::Syslog qw( :standard :macros );
+ 
+-use X2Go::Server::DB qw(db_insertsession);
++use X2Go::Server::DB qw(db_insertshadowsession);
+ use X2Go::Log qw(loglevel);
+ 
+ openlog($0,'cons,pid','user');
+@@ -33,8 +33,9 @@ setlogmask( LOG_UPTO(loglevel()) );
+ my $display=shift or die;
+ my $server=shift or die;
+ my $sid=shift or die;
++my $shadreq_user=shift or die;
+ 
+-db_insertsession($display, $server, $sid);
++db_insertshadowsession($display, $server, $sid, $shadreq_user);
+ print &quot;inserted&quot;;
+ 
+ # closing syslog 
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019059.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-228-gda7cc13
+</A></li>
+	<LI>Next message: <A HREF="019003.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-236-g7d62bc3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19061">[ date ]</a>
+              <a href="thread.html#19061">[ thread ]</a>
+              <a href="subject.html#19061">[ subject ]</a>
+              <a href="author.html#19061">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,410 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-48-gf732b21
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.29.0-48-gf732b21&In-Reply-To=%3C20130914135449.176A65DB3F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012518.html">
+   <LINK REL="Next"  HREF="012528.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-48-gf732b21</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.29.0-48-gf732b21&In-Reply-To=%3C20130914135449.176A65DB3F%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-48-gf732b21">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:48 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012518.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-42-ge0fb0ea
+</A></li>
+        <LI>Next message: <A HREF="012528.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-47-gf4dcc3a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12524">[ date ]</a>
+              <a href="thread.html#12524">[ thread ]</a>
+              <a href="subject.html#12524">[ subject ]</a>
+              <a href="author.html#12524">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  f732b2117b39e725cb23902c8efad1e316123a8d (commit)
+      from  f4dcc3adfb30074b5c4182e6b1048ecac1f3258a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py       |   48 +++++++++++++++----------------
+ pyhoca/wxgui/logon.py          |    1 +
+ pyhoca/wxgui/printingprefs.py  |   62 +++++++++++++++++++++++++++++-----------
+ pyhoca/wxgui/profilemanager.py |    7 +++++
+ 4 files changed, 77 insertions(+), 41 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index de06217..4855fa6 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -331,12 +331,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+             _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, )
+             self._logon_windows[profile_name] = _logon_window
+-            self._sub_windows.append(_logon_window)
+         except x2go.X2goSSHProxyAuthenticationException:
+             self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+             _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=True )
+             self._logon_windows[profile_name] = _logon_window
+-            self._sub_windows.append(_logon_window)
+         except x2go.SSHException, e:
+             self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+             self._temp_disabled_profile_names.remove(profile_name)
+@@ -538,7 +536,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         &quot;&quot;&quot;
+         self._pyhoca_logger('opening the printing preferences window', loglevel=x2go.log.loglevel_INFO, )
+-        printingprefs.PyHocaGUI_PrintingPreferences(self)
++        _pp_dialog = printingprefs.PyHocaGUI_PrintingPreferences(self)
+ 
+     def OnClose(self, evt):
+         &quot;&quot;&quot;\
+@@ -586,58 +584,60 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+     def HOOK_no_such_command(self, cmd, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - session failure') % profile_name, _('The command ,,%s\'\' is not available on X2go server\n%s).') % (cmd, session_name), icon='session_error', timeout=10000)
++
+     def HOOK_rforward_request_denied(self, profile_name='UNKNOWN', session_name='UNKNOWN', server_port=0):
+         self.notifier.send(_(u'%s - session warning') % profile_name, _(u'Reverse TCP port forwarding request for session %s to server port %s has been denied by the X2go server. This is a common issue with SSH, it might help to restart the X2go server\'s SSH daemon.') % (session_name, server_port), icon='session_warning', timeout=10000)
++
+     def HOOK_forwarding_tunnel_setup_failed(self, profile_name='UNKNOWN', session_name='UNKNOWN', chain_host='UNKNOWN', chain_port=0):
+         self.notifier.send(_(u'%s - session failure') % profile_name, _(u'Forwarding tunnel request to [%s]:%s for session %s was denied by remote X2go/SSH server. Session startup failed.') % (chain_host, chain_port, session_name), icon='session_error', timeout=10000)
++
+     def HOOK_pulseaudio_not_supported_in_RDPsession(self):
+         self.notifier.send(_(u'%s - audio warning') % self.appname, _(u'The X2go PulseAudio system is not available within Remote Desktop sessions.'), icon='audio_error', timeout=10000)
++
+     def HOOK_pulseaudio_server_startup_failed(self):
+         self.notifier.send(_(u'%s - audio error') % self.appname, _(u'The X2go PulseAudio system could not be started.'), icon='audio_error', timeout=10000)
++
+     def HOOK_pulseaudio_server_died(self):
+         self.notifier.send(_(u'%s - audio error') % self.appname, _(u'The X2go PulseAudio system has died unexpectedly.'), icon='audio_error', timeout=10000)
++
+     def HOOK_on_sound_tunnel_failed(self, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - audio problem') % profile_name, _(u'The audio connection could not be set up for this session.\n%s') % session_name, icon='session_warning', timeout=5000)
+ 
+     # this hook gets called from Python X2go classes if a print job is coming in and the print action is ,,DIALOG''...
+-    def HOOK_open_print_dialog(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN'):
+-        self.notifier.send(_(u'%s - print job') % profile_name, _(u'Opening print job dialog not implemented yet!!!\n%s')  % session_name, icon='session_printing', timeout=5000)
+-
+-        #_p = wx.Dialog(None, -1, '%s (%s)' % (session_name, profile_name), size=(450,380))
+-        #print 1
+-        #_p_data = wx.PrintData()
+-        #print 2
+-        #_p_data.SetFilename(filename)
+-        #print 3
+-        #_p_dialogdata = wx.PrintDialogData(_p_data)
+-        #print 4
+-        ##_p_dialog = wx.PrintDialog(_p, _p_dialogdata)
+-        #print 5
+-        ##_p_dialog.ShowModal()
+-        #print 6
+-        ##_p.Fit()
+-        #print 7
+-        ##_p.Layout()
+-        #print 8
+-        ##_p.Show(True)
+-        #print 9
++    def HOOK_open_print_dialog(self, profile_name='UNKNOWN', session_name='UNKNOWN'):
++        _print_action = None
++        _pp_dialog = printingprefs.PyHocaGUI_PrintingPreferences(self, mode='print', profile_name=profile_name, session_name=session_name)
++        while _pp_dialog in self._sub_windows:
++            _print_action = _pp_dialog.get_print_action()
++            _print_action_properties = _pp_dialog.get_print_action_properties()
++            gevent.sleep(.2)
++
++        return _print_action, _print_action_properties
++
+     def HOOK_printaction_error(self, filename, profile_name='UNKNOWN', session_name='UNKNOWN', err_msg='GENERIC_ERROR', printer=None):
+         if printer:
+             self.notifier.send(_(u'%s - print error') % profile_name, _(u'%s\n...caused on printer %s by session\n%s')  % (err_msg, printer, session_name), icon='session_error', timeout=5000)
+         else:
+             self.notifier.send(_(u'%s - print error') % profile_name, _(u'%s\n...caused by session\n%s')  % (err_msg, session_name), icon='session_error', timeout=5000)
++
+     def HOOK_on_session_has_started_by_me(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - start') % profile_name, _(u'New X2go session starting up...\n%s') % session_name, icon='session_start', timeout=5000)
++
+     def HOOK_on_session_has_started_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - start') % profile_name, _(u'Another client started X2go session\n%s') % session_name, icon='session_start', timeout=5000)
++
+     def HOOK_on_session_has_resumed_by_me(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - resume') % profile_name, _(u'Resuming X2go session...\n%s') % session_name, icon='session_resume', timeout=5000)
++
+     def HOOK_on_session_has_resumed_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - resume') % profile_name, _(u'Another client resumed X2go session\n%s') % session_name, icon='session_resume', timeout=5000)
++
+     def HOOK_on_found_session_running_after_connect(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         gevent.spawn_later(5, self.notifier.send, _(u'%s - running') % profile_name, _(u'Found already running session\n%s') %  session_name, icon='session_resume', timeout=5000)
++
+     def HOOK_on_session_has_been_suspended(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - suspend') % profile_name, _(u'X2go Session has been suspended\n%s') % session_name, icon='session_suspend', timeout=5000)
++
+     def HOOK_on_session_has_terminated(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         # avoid notification if X2goClient.clean_sessions has been used to terminate sessions
+         if self._hide_notifications_map.has_key(profile_name) and session_name in self._hide_notifications_map[profile_name]:
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index a9b1f7d..b4ddb44 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -74,6 +74,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Frame):
+         self.current_profile_config = self._PyHocaGUI.session_profiles.get_profile_config(profile_name)
+ 
+         wx.Frame.__init__(self, None, -1, profile_name)
++        self._PyHocaGUI._sub_windows.append(self)
+ 
+         if self.sshproxy_auth:
+             self.sshproxy_started = False
+diff --git a/pyhoca/wxgui/printingprefs.py b/pyhoca/wxgui/printingprefs.py
+index 46c56b7..371671b 100644
+--- a/pyhoca/wxgui/printingprefs.py
++++ b/pyhoca/wxgui/printingprefs.py
+@@ -58,13 +58,14 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         else:
+             _title = _(u'%s - Incoming Print Job from  %s (%s)') % (self._PyHocaGUI.appname, profile_name, session_name)
+         wx.Dialog.__init__(self, None, -1, title=_title, style=wx.DEFAULT_DIALOG_STYLE, )
++        self._PyHocaGUI._sub_windows.append(self)
+ 
+         self._availablePrintActions = {
++            'DIALOG': _(u'Open this dialog window'),
+             'PDFVIEW': _(u'Open with PDF viewer'),
+             'PDFSAVE': _(u'Save to a local folder'),
+             'PRINT': _(u'Print to a local printer'),
+             'PRINTCMD': _(u'Run custom print command'),
+-            'DIALOG': _(u'Open this dialog window'),
+             }
+         if self.mode != 'edit':
+             self._availablePrintActions['DIALOG'] = _(u'&lt;Select a print action here&gt;')
+@@ -122,12 +123,12 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self.PrintCmd = wx.TextCtrl(self, -1, '', )
+ 
+         if self.mode == 'edit':
+-            self.OKButton = wx.Button(self, -1, _(u&quot;Ok&quot;))
++            self.OKButton = wx.Button(self, wx.ID_OK, _(u&quot;Ok&quot;))
+             self.ApplyButton = wx.Button(self, -1, _(u&quot;Apply&quot;))
+         else:
+-            self.OKButton = wx.Button(self, -1, _(u&quot;Print&quot;))
++            self.OKButton = wx.Button(self, wx.ID_OK, _(u&quot;Print&quot;))
+         self.OKButton.SetDefault()
+-        self.CancelButton = wx.Button(self, -1, _(u&quot;Cancel&quot;))
++        self.CancelButton = wx.Button(self, wx.ID_CANCEL, _(u&quot;Cancel&quot;))
+ 
+         self.__set_properties()
+         self.__update_fields()
+@@ -139,7 +140,8 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self.Bind(wx.EVT_BUTTON, self.OnPdfSaveToFolderBrowseButton, self.PdfSaveToFolderBrowseButton)
+ 
+         self.Bind(wx.EVT_BUTTON, self.OnOKButton, self.OKButton)
+-        self.Bind(wx.EVT_BUTTON, self.OnApplyButton, self.ApplyButton)
++        if self.mode == 'edit':
++            self.Bind(wx.EVT_BUTTON, self.OnApplyButton, self.ApplyButton)
+         self.Bind(wx.EVT_BUTTON, self.OnCancel, self.CancelButton)
+ 
+ 
+@@ -151,7 +153,8 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self.PdfViewCmdBrowseButton.SetMinSize(self.PdfViewCmdBrowseButton.GetBestSize())
+         self.PdfSaveToFolderBrowseButton.SetMinSize(self.PdfSaveToFolderBrowseButton.GetBestSize())
+         self.OKButton.SetMinSize((-1, 30))
+-        self.ApplyButton.SetMinSize((-1, 30))
++        if self.mode == 'edit':
++            self.ApplyButton.SetMinSize((-1, 30))
+         self.CancelButton.SetMinSize((-1, 30))
+ 
+     def __do_layout(self):
+@@ -204,7 +207,7 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+ 
+     def __update_fields(self):
+ 
+-        print_action_name = self.client_printing.get_print_action(reinit=True, return_name=True)
++        print_action_name = self.client_printing.get_print_action(reload=True, reinit=True, return_name=True)
+ 
+         self.PdfViewCmd.SetValue(self.client_printing.get_property('pdfview_cmd'))
+         self.PdfSaveToFolder.SetValue(self.client_printing.get_property('save_to_folder'))
+@@ -221,18 +224,31 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+             self.PrintAction.SetValue(print_action_name)
+         self._onPrintActionChange()
+ 
++        if self.mode != 'edit':
++            if self._print_action == 'DIALOG':
++                self.OKButton.Enable(False)
++
+     def __update_from_screen(self):
+-        properties = {
++        self.client_printing.store_print_action(self._print_action, **self._print_action_properties)
++
++    @property
++    def _print_action(self):
++        return [ p for p in self._availablePrintActions.keys() if self._availablePrintActions[p] == self.PrintAction.GetValue() ][0]
++
++    @property
++    def _print_action_properties(self):
++        return {
+             'pdfview_cmd': self.PdfViewCmd.GetValue(),
+             'save_to_folder': self.PdfSaveToFolder.GetValue(),
+             'printer': [ p for p in self._availablePrinters.keys() if self._availablePrinters[p] == self.PrintPrinter.GetValue() ][0],
+             'print_cmd': self.PrintCmd.GetValue(),
+         }
+-        self.client_printing.store_print_action(self._print_action, **properties)
+ 
+-    @property
+-    def _print_action(self):
+-        return [ p for p in self._availablePrintActions.keys() if self._availablePrintActions[p] == self.PrintAction.GetValue() ][0]
++    def get_print_action(self):
++        return self.client_printing.get_print_action(reinit=True)
++
++    def get_print_action_properties(self):
++        return self._print_action_properties
+ 
+     def _onPrintActionChange(self):
+         if self._print_action == 'PDFVIEW':
+@@ -245,6 +261,7 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+             self.PrintCmdSelected()
+         else:
+             self._disable_PrintOptions()
++        self.__update_from_screen()
+ 
+     def OnPrintActionChange(self, evt):
+         self._onPrintActionChange()
+@@ -261,6 +278,12 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self.PrintCmdLabel.Enable(False)
+         self.PrintCmd.Enable(False)
+ 
++        if self.mode != 'edit':
++            if self._print_action == 'DIALOG':
++                self.OKButton.Enable(False)
++            else:
++                self.OKButton.Enable(True)
++
+     def PdfViewSelected(self):
+         self._disable_PrintOptions()
+         self.PdfViewCmdLabel.Enable(True)
+@@ -283,7 +306,6 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self.PrintCmdLabel.Enable(True)
+         self.PrintCmd.Enable(True)
+ 
+-
+     def OnPdfViewCmdBrowseButton(self, evt):
+         wildcard = &quot;All files (*.*)|*&quot;
+         dlg = wx.FileDialog(
+@@ -325,11 +347,11 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+     def _apply_changes(self):
+         self.__update_from_screen()
+         if self.__validate():
+-            self.client_printing.write()
++            if self.mode == 'edit': self.client_printing.write()
+             return True
+         return False
+ 
+-    def OnOKButton(self, event):
++    def OnOKButton(self, evt):
+         wx.BeginBusyCursor()
+         if self._apply_changes():
+             wx.EndBusyCursor()
+@@ -338,13 +360,19 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         else:
+             wx.EndBusyCursor()
+ 
+-    def OnApplyButton(self, event):
++    def OnApplyButton(self, evt):
+         wx.BeginBusyCursor()
+         self._apply_changes()
+         wx.EndBusyCursor()
+ 
+-    def OnCancel(self, event):
++    def OnCancel(self, evt):
+         self.client_printing.load()
+         self.Close()
+         self.Destroy()
+ 
++    def Destroy(self):
++        try:
++            self._PyHocaGUI._sub_windows.remove(self)
++        except ValueError:
++            pass
++        wx.Dialog.Destroy(self)
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index c1ba168..aa72f2c 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -53,6 +53,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self._pyhoca_logger('starting profile manager, action is: %s' % action, loglevel=log.loglevel_INFO)
+ 
+         wx.Dialog.__init__(self, None, -1, style=wx.DEFAULT_DIALOG_STYLE, size=wx.Size(550,450))
++        self._PyHocaGUI._sub_windows.append(self)
+ 
+         self.profileManagerDefaults = defaults.X2GO_SESSIONPROFILE_DEFAULTS
+         self.success = False
+@@ -1375,3 +1376,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.profile_config = copy.deepcopy(self.profile_config_bak)
+         self.__update_fields()
+ 
++    def Destroy(self):
++        try:
++            self._PyHocaGUI._sub_windows.remove(self)
++        except ValueError:
++            pass
++        wx.Dialog.Destroy(self)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012518.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-42-ge0fb0ea
+</A></li>
+	<LI>Next message: <A HREF="012528.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-47-gf4dcc3a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12524">[ date ]</a>
+              <a href="thread.html#12524">[ thread ]</a>
+              <a href="subject.html#12524">[ subject ]</a>
+              <a href="author.html#12524">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

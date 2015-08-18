@@ -1,0 +1,230 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-92-g9665542
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-92-g9665542&In-Reply-To=%3C20140103195217.3F9675DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019197.html">
+   <LINK REL="Next"  HREF="019206.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-92-g9665542</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-92-g9665542&In-Reply-To=%3C20140103195217.3F9675DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-92-g9665542">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:52:17 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019197.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-95-g999a7a6
+</A></li>
+        <LI>Next message: <A HREF="019206.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-93-gfff8dfd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19201">[ date ]</a>
+              <a href="thread.html#19201">[ thread ]</a>
+              <a href="subject.html#19201">[ subject ]</a>
+              <a href="author.html#19201">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  96655427f63bf17cf244f44859c568366950680c (commit)
+      from  30ba707a2402086c71eaf3061519a85662848aa1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                    |    1 +
+ debian/x2goserver.postinst          |   24 ++++++++++++++----------
+ x2goserver/lib/x2gosqlitewrapper.pl |   12 ++++++------
+ x2goserver/sbin/x2godbadmin         |    8 ++++----
+ 4 files changed, 25 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 01aa4fd..5d44ea4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -14,6 +14,7 @@ x2goserver (3.0.99.5-0~x2go3) UNRELEASED; urgency=low
+   * Use source format 3.0 (native).
+   * Fix of Debian clean rules, fix of Makefile's clean rules.
+   * Breaks/replaces packages: x2goserver-one, x2goserver-home, x2goprint (instead of Conflicts).
++  * Switch to setgid instead of setuid for SQLite wrapper.
+ 
+   [Martin Oehler]
+   * Removes old debug code fragment, fixes x2golistsessions parsing.
+diff --git a/debian/x2goserver.postinst b/debian/x2goserver.postinst
+index bed72b7..5cbd874 100755
+--- a/debian/x2goserver.postinst
++++ b/debian/x2goserver.postinst
+@@ -25,31 +25,35 @@ case &quot;$1&quot; in
+     chmod 600 /etc/x2go/x2gosql/passwords/pgadmin
+ 
+     # setup x2gouser and group
+-    if ! getent group x2gousers &gt;/dev/null; then
+-        echo &quot;Creating x2gouser user.&quot; &gt;&amp;2
+-        addgroup --system x2gousers
++    if ! getent group x2gouser &gt;/dev/null; then
++        echo &quot;Creating x2gouser group.&quot; &gt;&amp;2
++        addgroup --system x2gouser
+     else
+-        echo &quot;User x2gouser already exists.&quot; &gt;&amp;2
++        echo &quot;Group x2gouser already exists.&quot; &gt;&amp;2
+     fi
+     if ! getent passwd x2gouser &gt;/dev/null; then
+         echo &quot;Creating x2gouser user.&quot; &gt;&amp;2
+         adduser --system --no-create-home \
+             --disabled-password --disabled-login \
+-            --shell /bin/false --group --home /var/lib/x2go x2gouser
++            --shell /bin/false --group --home /var/db/x2go x2gouser
+     else
+         echo &quot;User x2gouser already exists.&quot; &gt;&amp;2
+     fi
+ 
+-    if [ ! -f /var/lib/x2go/x2go_sessions ]; then
++    if [ ! -f /var/db/x2go/x2go_sessions ]; then
+         x2godbadmin --createdb
++    else
++        # make sure db permissions are set correctly
++        chown root:x2gouser /var/db/x2go -Rf
++        chmod 0750 /var/db/x2go
++        chmod 0660 /var/db/x2go/x2go_sessions
+     fi
+ 
+     # the sqlite db has to be accessed as uid x2gouser
+-    dpkg-statoverride --add --update x2gouser x2gousers 6755 /usr/lib/x2go/x2gosqlitewrapper.pl || true
++    dpkg-statoverride --add --update root x2gouser 4755 /usr/bin/x2gosqlitewrapper || true
+ 
+-    # we may be upgrading versions of x2goserver that used perlsuid, so make sure setuid is removed
+-    # from /usr/bin/x2gosqlitewrapper
+-    dpkg-statoverride --remove /usr/bin/x2gosqlitewrapper &amp;&amp; chown root:root /usr/bin/x2gosqlitewrapper &amp;&amp; chmod 0755 /usr/bin/x2gosqlitewrapper || true
++    # we may be upgrading versions of x2goserver that had /usr/lib/x2go/x2gosqlitewrapper.pl set to setuid user.
++    dpkg-statoverride --remove /usr/lib/x2go/x2gosqlitewrapper.pl &amp;&amp; chown root:root /usr/lib/x2go/x2gosqlitewrapper.pl &amp;&amp; chmod 0755 /usr/lib/x2go/x2gosqlitewrapper.pl || true
+ 
+     ;;
+ 
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index 9cbf663..70ee4e5 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -25,14 +25,14 @@ use strict;
+ use DBI;
+ use POSIX;
+ 
+-if ($&lt; eq $&gt;)
+-{
+-	die &quot;Please install this program as SUID x2gouser!\n&quot;;
+-}
++# retrieve home dir of x2gouser 
++my $x2gouser='x2gouser';
++my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwnam($x2gouser);
++my $dbfile=&quot;$homedir/x2go_sessions&quot;;
+ 
++# retrieve account data of real user
+ my $realuser=$&lt;;
+-my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid($&gt;);
+-my $dbfile=&quot;$homedir/x2go_sessions&quot;;
++my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwnam($realuser);
+ 
+ my $dbh=DBI-&gt;connect(&quot;dbi:SQLite:dbname=$dbfile&quot;,&quot;&quot;,&quot;&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 
+diff --git a/x2goserver/sbin/x2godbadmin b/x2goserver/sbin/x2godbadmin
+index 7dc98b6..00bb073 100755
+--- a/x2goserver/sbin/x2godbadmin
++++ b/x2goserver/sbin/x2godbadmin
+@@ -147,10 +147,10 @@ if($Config-&gt;param(&quot;backend&quot;) eq 'sqlite')
+ 	  
+ 	  $sth-&gt;finish();	  
+ 	  $dbh-&gt;disconnect();
+-	  chmod(0700,&quot;$dir&quot;);
+-	  chown($uid,$pgid,&quot;$dir&quot;);
+-	  chmod(0600,&quot;$dbfile&quot;);
+-	  chown($uid,$pgid,&quot;$dbfile&quot;);
++	  chmod(0750, &quot;$dir&quot;);
++	  chown('root',$pgid,&quot;$dir&quot;);
++	  chmod(0660, &quot;$dbfile&quot;);
++	  chown('root',$pgid,&quot;$dbfile&quot;);
+ 
+ 	  exit(0);
+     }
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019197.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-95-g999a7a6
+</A></li>
+	<LI>Next message: <A HREF="019206.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-93-gfff8dfd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19201">[ date ]</a>
+              <a href="thread.html#19201">[ thread ]</a>
+              <a href="subject.html#19201">[ subject ]</a>
+              <a href="author.html#19201">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

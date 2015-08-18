@@ -1,0 +1,225 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-12-g59c2429
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-12-g59c2429&In-Reply-To=%3C20110830090151.C2FFD5DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001390.html">
+   <LINK REL="Next"  HREF="001392.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-12-g59c2429</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-12-g59c2429&In-Reply-To=%3C20110830090151.C2FFD5DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-12-g59c2429">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 30 11:01:51 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001390.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-204-ga851ed4
+</A></li>
+        <LI>Next message: <A HREF="001392.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-13-gc75449e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1391">[ date ]</a>
+              <a href="thread.html#1391">[ thread ]</a>
+              <a href="subject.html#1391">[ subject ]</a>
+              <a href="author.html#1391">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  59c2429e0897568b5815eb50a71dbcd7b9a40188 (commit)
+      from  66ceeab13cba84ed0e23e09310465d9bb3c184fc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 59c2429e0897568b5815eb50a71dbcd7b9a40188
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Aug 30 11:03:07 2011 +0200
+
+    Multiple changes in this commit...
+    
+    * Adapt to x2goprint setgid change in x2goserver package (&gt;=3.0.99.6).
+    * Add syslog support for cups-x2go (Mario Oroz).
+    * Ownership fix for .title file (Mario Oroz).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ cups-x2go        |   40 +++++++++++++++++++++++++++++++++++-----
+ debian/changelog |    5 +++++
+ 2 files changed, 40 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/cups-x2go b/cups-x2go
+index 853599f..1045a0e 100755
+--- a/cups-x2go
++++ b/cups-x2go
+@@ -17,14 +17,19 @@
+ #  Free Software Foundation, Inc.,
+ #  51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
++use Sys::Syslog qw( :DEFAULT setlogsock);
+ use Sys::Hostname;
+ use File::Basename;
+ use File::Copy;
+ use strict;
+ 
++setlogsock('unix');
++openlog($0,'','user');
++
+ my $x2goserver = &quot;local&quot;;
+ my $printdsa = &quot;/root/.x2go/ssh/.x2goprint/id_dsa&quot;;
+ my $ps2pdf = &quot;/usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f \&quot;%s\&quot;&quot;;
++#my $ps2pdf = &quot;/usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f /usr/bin/margen-offset.ps \&quot;%s\&quot;&quot;;
+ my $cfgfile=&quot;/etc/cups/cups-x2go.conf&quot;;
+ my $userName;
+ my @sessions;
+@@ -64,16 +69,30 @@ sub readconfig
+  }
+ }
+ 
++
+ sub getsessions
+ {
+   my $sesslist;
+   if ( $x2goserver eq &quot;local&quot; )
+   {
+-        $sesslist=`su $userName -c &quot;x2golistsessions --all-servers&quot;`;
++       $sesslist=`su $userName -c &quot;x2golistsessions --all-servers&quot;`;
++
++       ### Suggested patch from Mario OROZ, probably not acceptable here...
++       #-$sesslist=`su $userName -c &quot;x2golistsessions --all-servers&quot;`;
++       #+open (SQLCONF, &quot;&lt;/etc/x2go/x2gosql/sql&quot;);
++       #+my $cfgline=&lt;SQLCONF&gt;;
++       #+close (SQLCONF);
++       #+if(($cfgline=~m/local/)||($cfgline=~m/sqlite/))
++       #+{
++       #+    $sesslist=`su $userName -c &quot;x2golistsessions --all-servers&quot;`;
++       #+}
++
+   }
+   else
+   {
+-          $sesslist=`ssh -i $printdsa x2goprint\@$x2goserver &quot;sudo x2goprint $userName&quot;`;
++          # Calling x2goprint with a single parameter &lt;username&gt; will result in an x2golistsessions --all-servers command on the
++          # remote X2go server.
++          $sesslist=`ssh -i $printdsa x2goprint\@$x2goserver 'test -f $(x2gobasepath)/lib/x2go/x2goprint.pl &amp;&amp; x2goprint $userName || sudo x2goprint $userName&quot;`;
+   }
+   @sessions=split(&quot;\n&quot;,$sesslist);
+ }
+@@ -89,8 +108,12 @@ sub printfile
+        my $spfile=&quot;$spooldir/$sess$bname&quot;;
+        copy($pfile, $spfile);
+        copy($tfile, &quot;$spfile.title&quot;);
+-       chown $uid,$gid,$spfile;
+-       system( &quot;su x2goprint -c \&quot;sudo x2goprint $userName $sess $sess$bname $sess$bname.title\&quot;&quot; );
++       chown $uid,$gid,&quot;$spfile&quot;;
++       chown $uid,$gid,&quot;$spfile.title&quot;;
++       system( &quot;su x2goprint -c \&quot;x2goprint $userName $sess $sess$bname $sess$bname.title\&quot;&quot; );
++
++       # log that we processed a print job
++       syslog('info', &quot;su x2goprint -c \&quot;x2goprint $userName $sess $bname $bname.title\&quot;&quot;);
+     }
+     else
+     {
+@@ -99,6 +122,7 @@ sub printfile
+     }
+ }
+ 
++
+ my $uname=$ENV{USER};
+ 
+ if (!$ARGV[0])
+@@ -120,7 +144,7 @@ my $printOptions;
+ my $printFile;
+ 
+ ($jobID, $userName, $jobTitle, $copies, $printOptions, $printFile) =  @ARGV;
+-
++syslog('notice', &quot;Print job received from cups-&gt; $jobID $userName $jobTitle $copies $printOptions $sepa $printFile&quot;);
+ 
+ my $tempFile;
+ if (!$printFile)
+@@ -131,6 +155,7 @@ if (!$printFile)
+     $uid =~ s/\W//g; #sanity check
+     $tempFile = &quot;/tmp/$jid-$uid-cupsjob$$&quot;;
+     open (OUT, &quot;&gt;$tempFile&quot;) or die &quot;ERROR: Cannot write $tempFile: $!\n&quot;;
++    syslog('info', &quot;Print job comes from STDIN, writing incoming job to temp file $tempFile\n&quot;);
+     while(&lt;STDIN&gt;)
+     {
+         print OUT &quot;$_&quot;;
+@@ -157,8 +182,13 @@ for(my $i=0; $i&lt;scalar(@sessions);$i++ )
+      if(@sinfo[4] eq &quot;R&quot;)
+      {
+          printfile( $printFile, $titleFile, @sinfo[3], @sinfo[1]);
++         syslog('info', &quot;Call to printfile function with: $printFile $titleFile @sinfo[3] @sinfo[1]\n&quot;);
+      }
+ }
+ 
+ unlink ($printFile);
+ unlink ($titleFile);
++
++# closing syslog 
++closelog;
++
+diff --git a/debian/changelog b/debian/changelog
+index 6f8e439..26979b1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,11 @@ cups-x2go (3.0.0.2-0~x2go2) UNRELEASED; urgency=low
+   * Add dpkg-statoverride for CUPS backend cups-x2go, file permission 0700
+     on CUPS backend makes CUPS run this backend with root-privileges which
+     is needed for cups-x2go to work.
++  * Adapt to x2goprint setgid change in x2goserver package (&gt;=3.0.99.6).
++
++  [ Mario Oroz ]
++  * Add syslog support for cups-x2go.
++  * Ownership fix for .title file.
+ 
+   [ Oleksandr Shneyder ]
+   * fixed reading deprecated /etc/x2go/sql
+
+
+hooks/post-receive
+-- 
+cups-x2go.git (CUPS Backend for X2go Printing)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;cups-x2go.git&quot; (CUPS Backend for X2go Printing).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001390.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-204-ga851ed4
+</A></li>
+	<LI>Next message: <A HREF="001392.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-13-gc75449e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1391">[ date ]</a>
+              <a href="thread.html#1391">[ thread ]</a>
+              <a href="subject.html#1391">[ subject ]</a>
+              <a href="author.html#1391">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-221-g15dab5d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.1.0.10-221-g15dab5d&In-Reply-To=%3C20130827112220.B79F25DB9B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010856.html">
+   <LINK REL="Next"  HREF="010863.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-221-g15dab5d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.1.0.10-221-g15dab5d&In-Reply-To=%3C20130827112220.B79F25DB9B%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-221-g15dab5d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:22:20 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010856.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-218-g77c8b64
+</A></li>
+        <LI>Next message: <A HREF="010863.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-219-g5c29aff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10858">[ date ]</a>
+              <a href="thread.html#10858">[ thread ]</a>
+              <a href="subject.html#10858">[ subject ]</a>
+              <a href="author.html#10858">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  15dab5d01c3fdd027611126acd3205616bcdb815 (commit)
+      from  bae5b829194d0c480c1bac2988da6613302db46e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    2 ++
+ pyhoca/wxgui/frontend.py |    6 +++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 68135c4..eccdfac 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -114,6 +114,8 @@ pyhoca-gui (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix initialization of published applications sessions.
+     - Catch AttributeError in case a published applications session has not yet
+       fully started.
++    - Catch and notify command startup failures for published applications
++      sessions.
+   * Depend on Python X2Go 0.1.2.0.
+   * Install GNOME icons via dh_links.
+   * Install X2Go icons with explicit install paths.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 76d30d5..db99d99 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -639,7 +639,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             _exec = self._eventid_pubapp_execmap[profile_name][evt.GetId()]
+             _s = self.get_session_of_session_name(_session_name, return_object=True)
+             if _s is not None and _s.is_alive():
+-                _s._X2goSession__exec_published_application(exec_name=_exec)
++                try:
++                    _s._X2goSession__exec_published_application(exec_name=_exec, timeout=40)
++                except x2go.x2go_exceptions.X2goControlSessionException, e:
++                    self.notifier.send(_(u'%s - session warning') % profile_name, _(u'Execution of command ,,%s'' failed.') % _exec, icon='session_warning', timeout=10000)
+         except KeyError:
+             pass
+ 
+@@ -946,6 +949,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+ 
++
+     def HOOK_session_startup_failed(self, profile_name='UNKNOWN'):
+         self.notifier.send(_(u'%s - session failure') % profile_name, _('The session startup failed.'), icon='session_error', timeout=10000)
+         if self.exit_on_disconnect:
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010856.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-218-g77c8b64
+</A></li>
+	<LI>Next message: <A HREF="010863.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.1.0.10-219-g5c29aff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10858">[ date ]</a>
+              <a href="thread.html#10858">[ thread ]</a>
+              <a href="subject.html#10858">[ subject ]</a>
+              <a href="author.html#10858">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

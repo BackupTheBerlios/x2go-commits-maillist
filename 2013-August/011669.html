@@ -1,0 +1,866 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.2.0-6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcomp/3.2.0-6&In-Reply-To=%3C20130830142359.50CAB5DB4D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011658.html">
+   <LINK REL="Next"  HREF="011670.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.2.0-6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcomp/3.2.0-6&In-Reply-To=%3C20130830142359.50CAB5DB4D%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.2.0-6">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:23:59 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011658.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.2.0-7
+</A></li>
+        <LI>Next message: <A HREF="011670.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.1.0-6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11669">[ date ]</a>
+              <a href="thread.html#11669">[ thread ]</a>
+              <a href="subject.html#11669">[ subject ]</a>
+              <a href="author.html#11669">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  92239dafb601d2ee5da1554d19631267c81fe57c (commit)
+      from  d7a8d67d760a80962821f6951caee5a9c807f5be (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nxcomp/Auth.cpp          |    8 +++
+ nxcomp/Auth.h            |    7 ++
+ nxcomp/CHANGELOG         |   34 +++++++++-
+ nxcomp/Children.cpp      |   69 ++++++++++++++++++++
+ nxcomp/ClientChannel.cpp |   14 +++-
+ nxcomp/Control.cpp       |   61 ++++++++++++------
+ nxcomp/Control.h         |    6 ++
+ nxcomp/Loop.cpp          |  159 +++++++++++++++++++++++++++++++++++++++++++++-
+ nxcomp/ServerChannel.cpp |   14 +++-
+ nxcomp/Statistics.cpp    |    4 +-
+ nxcomp/Timestamp.h       |   63 +++---------------
+ nxcomp/VERSION           |    2 +-
+ 12 files changed, 355 insertions(+), 86 deletions(-)
+
+The diff of changes is:
+diff --git a/nxcomp/Auth.cpp b/nxcomp/Auth.cpp
+index 57e2070..78f93a0 100755
+--- a/nxcomp/Auth.cpp
++++ b/nxcomp/Auth.cpp
+@@ -55,6 +55,8 @@ Auth::Auth(char *display, char *cookie)
+ 
+   dataSize_ = 0;
+ 
++  generatedCookie_ = 0;
++
+   if (display == NULL || *display == '\0' || cookie == NULL ||
+           *cookie == '\0' || strlen(cookie) != 32)
+   {
+@@ -316,16 +318,20 @@ int Auth::getCookie()
+             &lt;&lt; &quot;auth command.\n&quot; &lt;&lt; logofs_flush;
+     #endif
+ 
++    #ifdef TEST
+     cerr &lt;&lt; &quot;Warning&quot; &lt;&lt; &quot;: Failed to read data from the X &quot;
+          &lt;&lt; &quot;auth command.\n&quot;;
++    #endif
+ 
+     #ifdef PANIC
+     *logofs &lt;&lt; &quot;Auth: WARNING! Generating a fake cookie for &quot;
+             &lt;&lt; &quot;X authentication.\n&quot; &lt;&lt; logofs_flush;
+     #endif
+ 
++    #ifdef TEST
+     cerr &lt;&lt; &quot;Warning&quot; &lt;&lt; &quot;: Generating a fake cookie for &quot;
+          &lt;&lt; &quot;X authentication.\n&quot;;
++    #endif
+ 
+     generateCookie(realCookie_);
+   }
+@@ -621,6 +627,8 @@ void Auth::generateCookie(char *cookie)
+     data &gt;&gt;= 8;
+   }
+ 
++  generatedCookie_ = 1;
++
+   #ifdef TEST
+   *logofs &lt;&lt; &quot;Auth: Generated X cookie string '&quot;
+           &lt;&lt; cookie &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
+diff --git a/nxcomp/Auth.h b/nxcomp/Auth.h
+index c8e960b..1b77aaa 100755
+--- a/nxcomp/Auth.h
++++ b/nxcomp/Auth.h
+@@ -52,6 +52,11 @@ class Auth
+                         realData_ != NULL &amp;&amp; dataSize_ != 0);
+   }
+ 
++  int isFake() const
++  {
++    return generatedCookie_;
++  }
++
+   //
+   // Method called in the channel class to find if the
+   // provided cookie matches the fake one. If the data
+@@ -107,6 +112,8 @@ class Auth
+   char *realData_;
+ 
+   int dataSize_;
++
++  int generatedCookie_;
+ };
+ 
+ #endif /* Auth_H */
+diff --git a/nxcomp/CHANGELOG b/nxcomp/CHANGELOG
+index 12b77e5..cceeb07 100755
+--- a/nxcomp/CHANGELOG
++++ b/nxcomp/CHANGELOG
+@@ -1,5 +1,35 @@
+ ChangeLog:
+ 
++nxcomp-3.2.0-6
++
++- Changes considering that unsetenv() returns void on Mac OS X.
++
++nxcomp-3.2.0-5
++
++- Fixed TR03F02024. Assume the launchd unix socket as X socket.
++
++- Changed the authorization cookie retrieval when using the launchd
++  socket on MacOSX, in order to wait for the X server start.
++
++nxcomp-3.2.0-4
++
++- Fixed TR03F02026. Unset environment variable LD_LIBRARY_PATH before
++  calling the exec function running nxclient.
++
++nxcomp-3.2.0-3
++
++- Fix addMsTimestamp() and subMsTimestamp(). Remove the check for
++  a valid input in diffTimestamp() and diffUsTimestamp().
++
++nxcomp-3.2.0-2
++
++- Fixed TR12E01973. Now the correct number of bits are used for the
++  number of points in a X_FillPoly request.
++
++nxcomp-3.2.0-1
++
++- Opened the 3.2.0 branch based on nxcomp-3.1.0-6.
++
+ nxcomp-3.1.0-6
+ 
+ - Always use a timeout of 50 ms to update the congestion counter.
+@@ -36,7 +66,7 @@ nxcomp-3.1.0-2
+   
+ nxcomp-3.1.0-1
+ 
+-- Opened the 3.0.1 branch based on nxcomp-3.0.0-46.
++- Opened the 3.1.0 branch based on nxcomp-3.0.0-46.
+ 
+ nxcomp-3.0.0-46
+ 
+@@ -325,7 +355,7 @@ nxcomp-3.0.0-15
+ 
+ - Removed the pending_ flag from the proxy and channel class mem-
+   bers. If needed, the classes will query the transport buffers
+-  to see whether there is data pending.B
++  to see whether there is data pending.
+ 
+ - Removed the additional parameter from NXTransFlush().
+ 
+diff --git a/nxcomp/Children.cpp b/nxcomp/Children.cpp
+index c9b4b96..ec4ce35 100755
+--- a/nxcomp/Children.cpp
++++ b/nxcomp/Children.cpp
+@@ -71,6 +71,10 @@ extern char *GetClientPath();
+ 
+ extern int CheckParent(char *name, char *type, int parent);
+ 
++#ifdef __sun
++extern char **environ;
++#endif
++
+ //
+ // Close all the unused descriptors and
+ // install any signal handler that might
+@@ -86,6 +90,12 @@ static void SystemCleanup(char *name);
+ static void MemoryCleanup(char *name);
+ 
+ //
++// Remove 'name' from the environment.
++//
++
++static int UnsetEnv(char *name);
++
++//
+ // Start a nxclient process in dialog mode.
+ //
+ 
+@@ -187,6 +197,8 @@ int NXTransDialog(const char *caption, const char *message,
+ 
+   parent[DEFAULT_STRING_LIMIT - 1] = '\0';
+ 
++  UnsetEnv(&quot;LD_LIBRARY_PATH&quot;);
++
+   for (int i = 0; i &lt; 2; i++)
+   {
+     if (local != 0)
+@@ -409,6 +421,8 @@ int NXTransClient(const char* display)
+ 
+   #endif
+ 
++  UnsetEnv(&quot;LD_LIBRARY_PATH&quot;);
++
+   for (int i = 0; i &lt; 2; i++)
+   {
+     execlp(command, command, NULL);
+@@ -962,3 +976,58 @@ void MemoryCleanup(char *name)
+ 
+   EnableSignals();
+ }
++
++int UnsetEnv(char *name)
++{
++  int result;
++
++  #ifdef __sun
++
++  char **pEnv = environ;
++
++  int nameLen = strlen(name) + 1;
++
++  char *varName = new char[nameLen + 1];
++
++  strcpy(varName, name);
++
++  strcat(varName, &quot;=&quot;);
++
++  pEnv = environ;
++
++  while (*pEnv != NULL)
++  {
++    if (!strncmp(varName, *pEnv, nameLen))
++    {
++      break;
++    }
++
++    *pEnv++;
++  }
++
++  while (*pEnv != NULL)
++  {
++    *pEnv = *(pEnv + 1);
++
++    pEnv++;
++  }
++
++  result = 0;
++
++  #else
++
++  #ifdef __APPLE__
++
++  unsetenv(name);
++  result = 0;
++
++  #else
++
++  result = unsetenv(name);
++
++  #endif
++
++  #endif
++
++  return result;
++}
+diff --git a/nxcomp/ClientChannel.cpp b/nxcomp/ClientChannel.cpp
+index 3c45501..e69a879 100755
+--- a/nxcomp/ClientChannel.cpp
++++ b/nxcomp/ClientChannel.cpp
+@@ -1139,8 +1139,18 @@ int ClientChannel::handleRead(EncodeBuffer &amp;encodeBuffer, const unsigned char *m
+           }
+ 
+           unsigned int numPoints = ((inputLength - 16) &gt;&gt; 2);
+-          encodeBuffer.encodeCachedValue(numPoints, 14,
+-                             clientCache_ -&gt; fillPolyNumPointsCache, 4);
++
++          if (control -&gt; isProtoStep10() == 1)
++          {
++            encodeBuffer.encodeCachedValue(numPoints, 16,
++                               clientCache_ -&gt; fillPolyNumPointsCache, 4);
++          }
++          else
++          {
++            encodeBuffer.encodeCachedValue(numPoints, 14,
++                               clientCache_ -&gt; fillPolyNumPointsCache, 4);
++          }
++
+           encodeBuffer.encodeXidValue(GetULONG(inputMessage + 4, bigEndian_),
+                              clientCache_ -&gt; drawableCache);
+           encodeBuffer.encodeXidValue(GetULONG(inputMessage + 8, bigEndian_),
+diff --git a/nxcomp/Control.cpp b/nxcomp/Control.cpp
+index e6693d4..19105be 100755
+--- a/nxcomp/Control.cpp
++++ b/nxcomp/Control.cpp
+@@ -659,10 +659,11 @@ Control::Control()
+   // time the session is negotiated.
+   //
+ 
+-  protoStep6_ = 0;
+-  protoStep7_ = 0;
+-  protoStep8_ = 0;
+-  protoStep9_ = 0;
++  protoStep6_  = 0;
++  protoStep7_  = 0;
++  protoStep8_  = 0;
++  protoStep9_  = 0;
++  protoStep10_ = 0;
+ }
+ 
+ Control::~Control()
+@@ -734,37 +735,51 @@ void Control::setProtoStep(int step)
+   {
+     case 6:
+     {
+-      protoStep6_ = 1;
+-      protoStep7_ = 0;
+-      protoStep8_ = 0;
+-      protoStep9_ = 0;
++      protoStep6_  = 1;
++      protoStep7_  = 0;
++      protoStep8_  = 0;
++      protoStep9_  = 0;
++      protoStep10_ = 0;
+ 
+       break;
+     }
+     case 7:
+     {
+-      protoStep6_ = 1;
+-      protoStep7_ = 1;
+-      protoStep8_ = 0;
+-      protoStep9_ = 0;
++      protoStep6_  = 1;
++      protoStep7_  = 1;
++      protoStep8_  = 0;
++      protoStep9_  = 0;
++      protoStep10_ = 0;
+ 
+       break;
+     }
+     case 8:
+     {
+-      protoStep6_ = 1;
+-      protoStep7_ = 1;
+-      protoStep8_ = 1;
+-      protoStep9_ = 0;
++      protoStep6_  = 1;
++      protoStep7_  = 1;
++      protoStep8_  = 1;
++      protoStep9_  = 0;
++      protoStep10_ = 0;
+ 
+       break;
+     }
+     case 9:
+     {
+-      protoStep6_ = 1;
+-      protoStep7_ = 1;
+-      protoStep8_ = 1;
+-      protoStep9_ = 1;
++      protoStep6_  = 1;
++      protoStep7_  = 1;
++      protoStep8_  = 1;
++      protoStep9_  = 1;
++      protoStep10_ = 0;
++
++      break;
++    }
++    case 10:
++    {
++      protoStep6_  = 1;
++      protoStep7_  = 1;
++      protoStep8_  = 1;
++      protoStep9_  = 1;
++      protoStep10_ = 1;
+ 
+       break;
+     }
+@@ -783,7 +798,11 @@ void Control::setProtoStep(int step)
+ 
+ int Control::getProtoStep()
+ {
+-  if (protoStep9_ == 1)
++  if (protoStep10_ == 1)
++  {
++    return 10;
++  }
++  else if (protoStep9_ == 1)
+   {
+     return 9;
+   }
+diff --git a/nxcomp/Control.h b/nxcomp/Control.h
+index 9d998a3..9750b4c 100755
+--- a/nxcomp/Control.h
++++ b/nxcomp/Control.h
+@@ -719,6 +719,11 @@ class Control
+     return protoStep9_;
+   }
+ 
++  int isProtoStep10()
++  {
++    return protoStep10_;
++  }
++
+   private:
+ 
+   //
+@@ -736,6 +741,7 @@ class Control
+   int protoStep7_;
+   int protoStep8_;
+   int protoStep9_;
++  int protoStep10_;
+ };
+ 
+ #endif /* Control_H */
+diff --git a/nxcomp/Loop.cpp b/nxcomp/Loop.cpp
+index 0a5b3a2..9992a77 100755
+--- a/nxcomp/Loop.cpp
++++ b/nxcomp/Loop.cpp
+@@ -888,6 +888,13 @@ static int useSlaveSocket = 0;
+ static int useAgentSocket = 0;
+ 
+ //
++// Set if the launchd service is running
++// and its socket must be used as X socket.
++//
++
++static int useLaunchdSocket = 0;
++
++//
+ // Set by user if he/she wants to modify
+ // the default TCP_NODELAY option as set
+ // in control.
+@@ -3745,7 +3752,90 @@ int SetupAuthInstance()
+   {
+     if (authCookie != NULL &amp;&amp; *authCookie != '\0')
+     {
+-      auth = new Auth(displayHost, authCookie);
++      if (useLaunchdSocket == 1)
++      {
++        //
++        // If we are going to retrieve the X11 autho-
++        // rization through the launchd service, make
++        // a connection to its socket to trigger the
++        // X server starting.
++        //
++
++        sockaddr_un launchdAddrUnix;
++
++        unsigned int launchdAddrLength = sizeof(sockaddr_un);
++
++        int launchdAddrFamily = AF_UNIX;
++
++        launchdAddrUnix.sun_family = AF_UNIX;
++
++        const int launchdAddrNameLength = 108;
++
++        int success = -1;
++
++        strncpy(launchdAddrUnix.sun_path, displayHost, launchdAddrNameLength);
++
++        *(launchdAddrUnix.sun_path + launchdAddrNameLength - 1) = '\0';
++
++        #ifdef TEST
++        *logofs &lt;&lt; &quot;Loop: Connecting to launchd service &quot;
++                &lt;&lt; &quot;on Unix port '&quot; &lt;&lt; displayHost &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
++        #endif
++
++        int launchdFd = socket(launchdAddrFamily, SOCK_STREAM, PF_UNSPEC);
++
++        if (launchdFd &lt; 0)
++        {
++          #ifdef PANIC
++          *logofs &lt;&lt; &quot;Loop: PANIC! Call to socket failed. &quot;
++                  &lt;&lt; &quot;Error is &quot; &lt;&lt; EGET() &lt;&lt; &quot; '&quot; &lt;&lt; ESTR()
++                  &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
++          #endif
++        }
++        else if ((success = connect(launchdFd, (sockaddr *) &amp;launchdAddrUnix, launchdAddrLength)) &lt; 0)
++        {
++          #ifdef WARNING
++          *logofs &lt;&lt; &quot;Loop: WARNING! Connection to launchd service &quot;
++                  &lt;&lt; &quot;on Unix port '&quot; &lt;&lt; displayHost &lt;&lt; &quot;' failed &quot;
++                  &lt;&lt; &quot;with error &quot; &lt;&lt; EGET() &lt;&lt; &quot;, '&quot; &lt;&lt; ESTR() &lt;&lt; &quot;'.\n&quot;
++                  &lt;&lt; logofs_flush;
++          #endif
++        }
++
++        if (launchdFd &gt;= 0)
++        {
++          close(launchdFd);
++        }
++
++        //
++        // The real cookie will not be available
++        // until the X server starts. Query for the
++        // cookie in a loop, unless the connection
++        // to the launchd service failed.
++        //
++
++        int attempts = (success &lt; 0 ? 1 : 10);
++
++        for (int i = 0; i &lt; attempts; i++)
++        {
++          delete auth;
++
++          auth = new Auth(displayHost, authCookie);
++
++          if (auth != NULL &amp;&amp; auth -&gt; isFake() == 1)
++          {
++            usleep(200000);
++
++            continue;
++          }
++
++          break;
++        }
++      }
++      else
++      {
++        auth = new Auth(displayHost, authCookie);
++      }
+ 
+       if (auth == NULL || auth -&gt; isValid() != 1)
+       {
+@@ -3758,6 +3848,20 @@ int SetupAuthInstance()
+ 
+         HandleCleanup();
+       }
++      else if (auth -&gt; isFake() == 1)
++      {
++        #ifdef WARNING
++        *logofs &lt;&lt; &quot;Loop: WARNING! Could not retrieve the X server &quot;
++                &lt;&lt; &quot;authentication cookie.\n&quot;
++                &lt;&lt; logofs_flush;
++        #endif
++
++        cerr &lt;&lt; &quot;Warning&quot; &lt;&lt; &quot;: Failed to read data from the X &quot;
++             &lt;&lt; &quot;auth command.\n&quot;;
++
++        cerr &lt;&lt; &quot;Warning&quot; &lt;&lt; &quot;: Generated a fake cookie for X &quot;
++             &lt;&lt; &quot;authentication.\n&quot;;
++      }
+     }
+     else
+     {
+@@ -4068,6 +4172,20 @@ int SetupDisplaySocket(int &amp;xServerAddrFamily, sockaddr *&amp;xServerAddr,
+ 
+   strcpy(display, displayHost);
+ 
++  #ifdef __APPLE__
++
++  if (strncasecmp(display, &quot;/tmp/launch&quot;, 11) == 0)
++  {
++    #ifdef TEST
++    *logofs &lt;&lt; &quot;Loop: Using launchd service on socket '&quot;
++            &lt;&lt; display &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
++    #endif
++
++    useLaunchdSocket = 1;
++  }
++
++  #endif
++
+   char *separator = rindex(display, ':');
+ 
+   if ((separator == NULL) || !isdigit(*(separator + 1)))
+@@ -4092,7 +4210,16 @@ int SetupDisplaySocket(int &amp;xServerAddrFamily, sockaddr *&amp;xServerAddr,
+           &lt;&lt; xPort &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
+   #endif
+ 
++  #ifdef __APPLE__
++
++  if (separator == display || strcmp(display, &quot;unix&quot;) == 0 ||
++          useLaunchdSocket == 1)
++
++  #else
++
+   if (separator == display || strcmp(display, &quot;unix&quot;) == 0)
++
++  #endif
+   {
+     //
+     // UNIX domain port.
+@@ -4129,6 +4256,15 @@ int SetupDisplaySocket(int &amp;xServerAddrFamily, sockaddr *&amp;xServerAddr,
+     snprintf(unixSocketDir, DEFAULT_STRING_LENGTH - 1, &quot;%s/.X11-unix&quot;,
+                  control -&gt; TempPath);
+ 
++    #ifdef __APPLE__
++
++    if (useLaunchdSocket == 1)
++    {
++      snprintf(unixSocketDir, DEFAULT_STRING_LENGTH - 1, &quot;%s&quot;, display);
++    }
++
++    #endif
++
+     *(unixSocketDir + DEFAULT_STRING_LENGTH - 1) = '\0';
+ 
+     #ifdef TEST
+@@ -4160,6 +4296,15 @@ int SetupDisplaySocket(int &amp;xServerAddrFamily, sockaddr *&amp;xServerAddr,
+ 
+     sprintf(unixSocketName, &quot;%s/X%d&quot;, unixSocketDir, xPort);
+ 
++    #ifdef __APPLE__
++
++    if (useLaunchdSocket == 1)
++    {
++      sprintf(unixSocketName, &quot;%s:%d&quot;, unixSocketDir, xPort);
++    }
++
++    #endif
++
+     #ifdef TEST
+     *logofs &lt;&lt; &quot;Loop: Assuming X socket name '&quot; &lt;&lt; unixSocketName
+             &lt;&lt; &quot;'.\n&quot; &lt;&lt; logofs_flush;
+@@ -12345,9 +12490,13 @@ int SetVersion()
+   {
+     step = 7;
+   }
+-  else if (major &gt;= 3)
++  else if (major == 3)
+   {
+-    if (minor &gt; 0 || patch &gt; 0)
++    if (minor &gt;= 2)
++    {
++      step = 10;
++    }
++    else if (minor &gt; 0 || patch &gt; 0)
+     {
+       step = 9;
+     }
+@@ -12356,6 +12505,10 @@ int SetVersion()
+       step = 8;
+     }
+   }
++  else if (major &gt; 3)
++  {
++    step = 10;
++  }
+ 
+   if (step == 0)
+   {
+diff --git a/nxcomp/ServerChannel.cpp b/nxcomp/ServerChannel.cpp
+index ba731c5..8df4bad 100755
+--- a/nxcomp/ServerChannel.cpp
++++ b/nxcomp/ServerChannel.cpp
+@@ -2753,8 +2753,18 @@ int ServerChannel::handleWrite(const unsigned char *message, unsigned int length
+           }
+ 
+           unsigned int numPoints;
+-          decodeBuffer.decodeCachedValue(numPoints, 14,
+-                                 clientCache_ -&gt; fillPolyNumPointsCache, 4);
++
++          if (control -&gt; isProtoStep10() == 1)
++          {
++            decodeBuffer.decodeCachedValue(numPoints, 16,
++                               clientCache_ -&gt; fillPolyNumPointsCache, 4);
++          }
++          else
++          {
++            decodeBuffer.decodeCachedValue(numPoints, 14,
++                               clientCache_ -&gt; fillPolyNumPointsCache, 4);
++          }
++
+           outputLength = 16 + (numPoints &lt;&lt; 2);
+           outputMessage = writeBuffer_.addMessage(outputLength);
+           decodeBuffer.decodeXidValue(value, clientCache_ -&gt; drawableCache);
+diff --git a/nxcomp/Statistics.cpp b/nxcomp/Statistics.cpp
+index 8b57921..b70dd2e 100755
+--- a/nxcomp/Statistics.cpp
++++ b/nxcomp/Statistics.cpp
+@@ -410,14 +410,14 @@ void Statistics::updateBitrate(int bytes)
+ 
+     if (diffStartInMs &gt; control -&gt; ShortBitrateTimeFrame)
+     {
+-      addMsToTimestamp(startShortFrameTs_, diffStartInMs);
++      addMsTimestamp(startShortFrameTs_, diffStartInMs);
+     }
+ 
+     diffStartInMs = diffTimestamp(thisFrameTs, startLongFrameTs_);
+ 
+     if (diffStartInMs &gt; control -&gt; LongBitrateTimeFrame)
+     {
+-      addMsToTimestamp(startLongFrameTs_, diffStartInMs);
++      addMsTimestamp(startLongFrameTs_, diffStartInMs);
+     }
+ 
+     startFrameTs_ = thisFrameTs;
+diff --git a/nxcomp/Timestamp.h b/nxcomp/Timestamp.h
+index 270dd38..15246dd 100755
+--- a/nxcomp/Timestamp.h
++++ b/nxcomp/Timestamp.h
+@@ -87,20 +87,13 @@ inline T_timestamp getTimestamp(long ms)
+ 
+ inline long diffTimestamp(const T_timestamp &amp;ts1, const T_timestamp &amp;ts2)
+ {
+-  if (ts1.tv_sec == 0 &amp;&amp; ts1.tv_usec == 0)
+-  {
+-     return -1;
+-  }
+-
+   //
+   // Add 500 microseconds to round up
+   // to the nearest millisecond.
+   //
+ 
+-  long ms = ((ts2.tv_sec * 1000 + (ts2.tv_usec + 500) / 1000) -
+-                 (ts1.tv_sec * 1000 + (ts1.tv_usec + 500) / 1000));
+-
+-  return (ms &lt; 0 ? -1 : ms);
++  return ((ts2.tv_sec * 1000 + (ts2.tv_usec + 500) / 1000) -
++             (ts1.tv_sec * 1000 + (ts1.tv_usec + 500) / 1000));
+ }
+ 
+ //
+@@ -110,20 +103,8 @@ inline long diffTimestamp(const T_timestamp &amp;ts1, const T_timestamp &amp;ts2)
+ 
+ inline long diffUsTimestamp(const T_timestamp &amp;ts1, const T_timestamp &amp;ts2)
+ {
+-  if (ts1.tv_sec == 0 &amp;&amp; ts1.tv_usec == 0)
+-  {
+-     return -1;
+-  }
+-
+-  //
+-  // Add 500 microseconds to round up
+-  // to the nearest millisecond.
+-  //
+-
+-  long ms = ((ts2.tv_sec * 1000000 + ts2.tv_usec) -
+-                 (ts1.tv_sec * 1000000 + ts1.tv_usec));
+-
+-  return (ms &lt; 0 ? -1 : ms);
++  return ((ts2.tv_sec * 1000000 + ts2.tv_usec) -
++             (ts1.tv_sec * 1000000 + ts1.tv_usec));
+ }
+ 
+ //
+@@ -234,40 +215,16 @@ inline bool isTimestamp(const T_timestamp &amp;ts)
+   return 1;
+ }
+ 
+-inline void subMsToTimestamp(T_timestamp &amp;ts, long ms)
++inline void subMsTimestamp(T_timestamp &amp;ts, long ms)
+ {
+-  long sec = ms / 1000;
+-
+-  ts.tv_sec -= sec;
+-
+-  long mod = ms % (ms * 1000);
+-
+-  if (ts.tv_usec &gt;= (mod * 1000))
+-  {
+-    ts.tv_sec -= mod * 1000;
+-  }
+-  else
+-  {
+-    ts.tv_sec--;
+-
+-    ts.tv_usec = 1000000 - mod * 1000;
+-  }
++  ts.tv_sec  -= ms / 1000;
++  ts.tv_usec -= (ms % 1000) * 1000;
+ }
+ 
+-inline void addMsToTimestamp(T_timestamp &amp;ts, long ms)
++inline void addMsTimestamp(T_timestamp &amp;ts, long ms)
+ {
+-  long sec = ms / 1000;
+-
+-  ts.tv_sec += sec;
+-
+-  long mod = ms % (ms * 1000);
+-
+-  ts.tv_usec += mod * 1000;
+-
+-  if (ts.tv_usec &gt; 1000000)
+-  {
+-    ts.tv_sec += 1;
+-  }
++  ts.tv_sec  += ms / 1000;
++  ts.tv_usec += (ms % 1000) * 1000;
+ }
+ 
+ //
+diff --git a/nxcomp/VERSION b/nxcomp/VERSION
+index fd2a018..944880f 100755
+--- a/nxcomp/VERSION
++++ b/nxcomp/VERSION
+@@ -1 +1 @@
+-3.1.0
++3.2.0
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011658.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.2.0-7
+</A></li>
+	<LI>Next message: <A HREF="011670.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcomp/3.1.0-6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11669">[ date ]</a>
+              <a href="thread.html#11669">[ thread ]</a>
+              <a href="subject.html#11669">[ subject ]</a>
+              <a href="author.html#11669">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

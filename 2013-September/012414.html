@@ -1,0 +1,303 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	b05b4d50225300df7023eea907db9af643c0c2a7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09b05b4d50225300df7023eea907db9af643c0c2a7&In-Reply-To=%3C20130914135430.1D0205DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012413.html">
+   <LINK REL="Next"  HREF="012415.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	b05b4d50225300df7023eea907db9af643c0c2a7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09b05b4d50225300df7023eea907db9af643c0c2a7&In-Reply-To=%3C20130914135430.1D0205DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	b05b4d50225300df7023eea907db9af643c0c2a7">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:30 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012413.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	12ce7e2b05ed89da2871773335762d2f2257ba7d
+</A></li>
+        <LI>Next message: <A HREF="012415.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2e084470dedc09b2d165e46d6693d400b9ec795f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12414">[ date ]</a>
+              <a href="thread.html#12414">[ thread ]</a>
+              <a href="subject.html#12414">[ subject ]</a>
+              <a href="author.html#12414">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  b05b4d50225300df7023eea907db9af643c0c2a7 (commit)
+      from  852ff8bb25facaf1057b1a3fb92ab4d3083efc8d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py |   11 ++++-
+ pyhoca/wxgui/logon.py    |  104 ++++++++++++++++++++--------------------------
+ 2 files changed, 56 insertions(+), 59 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index dadb2a6..2216a38 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -183,6 +183,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self.notifier = notify.notificationmessage_NotifierPopup(self.about)
+ 
+         self._sub_windows = []
++        self._hide_notifications_map = {}
+         self._eventid_profilenames_map = {}
+         self._eventid_sessionnames_map = {}
+         self._temp_disabled_profile_names = []
+@@ -409,8 +410,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         if self._X2goClient__server_is_alive(session_uuid):
+             if session_names:
+                 _notify_text = 'Cleaning X2go sessions...'
++                self._hide_notifications_map[self.current_profile_name] = []
+                 for session_name in session_names:
+                     _notify_text += '\n%s' % session_name
++                    self._hide_notifications_map[self.current_profile_name].append(session_name)
+                 self.notifier.send(self.current_profile_name, _notify_text, icon='session_cleanall', timeout=10000)
+             gevent.spawn(self._X2goClient__clean_sessions, session_uuid)
+ 
+@@ -545,4 +548,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+     def HOOK_on_session_has_been_suspended(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.notifier.send(profile_name, 'X2go Session has been suspended\n%s' % session_name, icon='session_suspend', timeout=5000)
+     def HOOK_on_session_has_terminated(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+-        self.notifier.send(profile_name, 'X2go Session has terminated\n%s' % session_name, icon='session_terminate', timeout=5000)
++        # avoid notification if X2goClient.clean_sessions has been used to terminate sessions
++        if self._hide_notifications_map.has_key(profile_name) and session_name in self._hide_notifications_map[profile_name]:
++            self._hide_notifications_map[profile_name].remove(session_name)
++            if not self._hide_notifications_map[profile_name]:
++                del self._hide_notifications_map[profile_name]
++        else:
++            self.notifier.send(profile_name, 'X2go Session has terminated\n%s' % session_name, icon='session_terminate', timeout=5000)
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index 4b217fc..0f72434 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -51,49 +51,6 @@ import threading
+ # PyHoca-GUI modules
+ # ... NONE ...
+ 
+-try:
+-    from agw import knobctrl as KC
+-    knobctrlavailable = True
+-except ImportError: # if it's not there locally, try the wxPython lib.
+-    try:
+-        import wx.lib.agw.knobctrl as KC
+-        knobctrlavailable = True
+-    except ImportError:
+-        knobctrlavailable = False
+-
+-#class PyHocaGUI_LogonStatusBar(wx.StatusBar):
+-#    &quot;&quot;&quot;\
+-#    STILL UNDOCUMENTED
+-#
+-#    &quot;&quot;&quot;
+-#    def __init__(self, _PyHocaGUI):
+-#        &quot;&quot;&quot;\
+-#        STILL UNDOCUMENTED
+-#
+-#        &quot;&quot;&quot;
+-#        self._PyHocaGUI = _PyHocaGUI
+-#
+-#        wx.StatusBar.__init__(self, self._PyHocaGUI, -1)
+-#        font = self.GetFont()
+-#        font.SetPointSize(7)
+-#        self.SetFont(font)
+-#        self.SetFieldsCount(2)
+-#        self.SetStatusWidths([-1,200])
+-#
+-#        self.timer = wx.PyTimer(self.Notify)
+-#        self.timer.Start(1000)
+-#        self.Notify()
+-#
+-#    def Notify(self):
+-#        &quot;&quot;&quot;\
+-#        STILL UNDOCUMENTED
+-#
+-#        &quot;&quot;&quot;
+-#        self.SetStatusText(self._PyHocaGUI.Environment, 0)
+-#        self.SetStatusText(self._PyHocaGUI.parent.StatusText, 1)
+-#        t = time.localtime(time.time())
+-#
+-
+ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+     &quot;&quot;&quot;\
+     STILL UNDOCUMENTED
+@@ -110,30 +67,42 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         self.current_profile_name = profile_name
+         self.current_profile_config = self._PyHocaGUI.session_profiles.get_profile_config(profile_name)
+ 
+-        wx.Dialog.__init__(self, None, -1, profile_name, size=(210,150))
++        if self.sshproxy_auth:
++            size=(210, 190)
++        else:
++            size=(210, 150)
++
++        wx.Dialog.__init__(self, None, -1, profile_name, size=size)
++
++        self.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
+ 
+         if self.sshproxy_auth:
+             self.sshproxy_started = False
+-            self.SetTitle('%s (via SSH proxy %s)' % (profile_name, self.current_profile_config['sshproxyhost']))
++            self.SetTitle('%s (via %s)' % (profile_name, self.current_profile_config['sshproxyhost']))
+ 
+         self.userLbl = wx.StaticText(self, wx.ID_ANY, 'Username:', size=(80, -1)) 
+-        self.userTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER) 
++        self.userTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER, size=(80, -1)) 
+         self.passwordLbl = wx.StaticText(self, wx.ID_ANY, 'Password:', size=(80, -1)) 
+-        self.passwordTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER|wx.TE_PASSWORD) 
++        self.passwordTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER|wx.TE_PASSWORD, size=(80, -1)) 
+         self.passwordTxt.SetFocus()
+         self.loginBtn = wx.Button(self, wx.ID_OK, 'Authenticate')
+         self.loginBtn.SetDefault()
+ 
+         # widgets 
+         if self.sshproxy_auth:
+-            self.sshProxyUserLbl = wx.StaticText(self, wx.ID_ANY, 'Username (SSH proxy server):', size=(180, -1)) 
+-            self.sshProxyUserTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER) 
+-            self.sshProxyPasswordLbl = wx.StaticText(self, wx.ID_ANY, 'Password (SSH proxy server):', size=(180, -1)) 
+-            self.sshProxyPasswordTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER|wx.TE_PASSWORD) 
++            self.headerLbl = wx.StaticText(self, wx.ID_ANY, 'Session login:', size=(160, -1))
++            self.sshProxyHeaderLbl = wx.StaticText(self, wx.ID_ANY, 'SSH proxy server login:', size=(160, -1))
++            self.headerLbl.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.FONTWEIGHT_BOLD, 0, &quot;&quot;))
++            self.sshProxyHeaderLbl.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.FONTWEIGHT_BOLD, 0, &quot;&quot;))
++            self.sshProxyUserLbl = wx.StaticText(self, wx.ID_ANY, 'Username:', size=(80, -1)) 
++            self.sshProxyUserTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER, size=(80, -1)) 
++            self.sshProxyPasswordLbl = wx.StaticText(self, wx.ID_ANY, 'Password:', size=(80, -1)) 
++            self.sshProxyPasswordTxt = wx.TextCtrl(self, wx.ID_ANY, '', style=wx.TE_PROCESS_ENTER|wx.TE_PASSWORD, size=(80, -1)) 
+             self.sshProxyPasswordTxt.SetFocus()
+             self.sshProxyLoginBtn = wx.Button(self, wx.ID_OK, '  Start SSH tunnel  ')
+             self.sshProxyLoginBtn.SetDefault()
+ 
++            self.headerLbl.Enable(False)
+             self.userLbl.Enable(False)
+             self.userTxt.Enable(False)
+             self.passwordLbl.Enable(False)
+@@ -152,33 +121,50 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         self.Bind(wx.EVT_TEXT_ENTER, self.OnLogin, self.passwordTxt)
+         self.Bind(wx.EVT_BUTTON, self.OnCancel, self.cancelBtn)
+ 
+-        # sizer / layout 
+         userSizer = wx.BoxSizer(wx.HORIZONTAL) 
+         passwordSizer = wx.BoxSizer(wx.HORIZONTAL) 
++
++        # sizer / layout 
++        if self.sshproxy_auth:
++            sshProxySizer = wx.BoxSizer(wx.VERTICAL)
++            sshProxyUserSizer = wx.BoxSizer(wx.HORIZONTAL) 
++            sshProxyPasswordSizer = wx.BoxSizer(wx.HORIZONTAL) 
++
++        sessionSizer = wx.BoxSizer(wx.VERTICAL)
+         btnSizer = wx.BoxSizer(wx.HORIZONTAL) 
++        credentialsSizer = wx.BoxSizer(wx.HORIZONTAL)
+         mainSizer = wx.BoxSizer(wx.VERTICAL)
+ 
+         if self.sshproxy_auth:
+-            userSizer.Add(self.sshProxyUserLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+-            userSizer.Add(self.sshProxyUserTxt, 0, wx.ALL, 5)
++            sshProxySizer.Add(self.sshProxyHeaderLbl, 0, wx.ALL, 5)
++            sessionSizer.Add(self.headerLbl, 0, wx.ALL, 5)
++            sshProxyUserSizer.Add(self.sshProxyUserLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
++            sshProxyUserSizer.Add(self.sshProxyUserTxt, 0, wx.ALL, 5)
++            sshProxySizer.Add(sshProxyUserSizer, 0, 0, 0)
+ 
+         userSizer.Add(self.userLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5) 
+         userSizer.Add(self.userTxt, 0, wx.ALL, 5) 
++        sessionSizer.Add(userSizer, 0, 0, 0)
+ 
+         if self.sshproxy_auth:
+-            passwordSizer.Add(self.sshProxyPasswordLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+-            passwordSizer.Add(self.sshProxyPasswordTxt, 0, wx.ALL, 5)
++            sshProxyPasswordSizer.Add(self.sshProxyPasswordLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
++            sshProxyPasswordSizer.Add(self.sshProxyPasswordTxt, 0, wx.ALL, 5)
++            sshProxySizer.Add(sshProxyPasswordSizer, 0, 0, 0)
+ 
+         passwordSizer.Add(self.passwordLbl, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5) 
+         passwordSizer.Add(self.passwordTxt, 0, wx.ALL, 5) 
++        sessionSizer.Add(passwordSizer, 0, 0, 0)
++
++        if self.sshproxy_auth:
++            credentialsSizer.Add(sshProxySizer, 0, 0, 0)
++        credentialsSizer.Add(sessionSizer, 0, 0, 0)
+ 
+         if self.sshproxy_auth:
+             btnSizer.Add(self.sshProxyLoginBtn, 0, wx.ALL, 5)
+         btnSizer.Add(self.loginBtn, 0, wx.ALL, 5) 
+         btnSizer.Add(self.cancelBtn, 0, wx.ALL, 5) 
+ 
+-        mainSizer.Add(userSizer, 0, wx.ALL, 0) 
+-        mainSizer.Add(passwordSizer, 0, wx.ALL, 0) 
++        mainSizer.Add(credentialsSizer, 0, wx.ALL, 0) 
+         mainSizer.Add(btnSizer, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+ 
+         if self.current_profile_config.has_key('user'):
+@@ -259,6 +245,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             if self.sshproxy_auth and (not self.sshproxy_started):
+                 wx.EndBusyCursor()
+                 self.sshproxy_started = True
++                self.headerLbl.Enable(True)
+                 self.userLbl.Enable(True)
+                 self.userTxt.Enable(True)
+                 self.passwordLbl.Enable(True)
+@@ -266,6 +253,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                 self.passwordTxt.SetFocus()
+                 self.loginBtn.Enable(True)
+                 self.loginBtn.SetDefault()
++                self.sshProxyHeaderLbl.Enable(False)
+                 self.sshProxyUserLbl.Enable(False)
+                 self.sshProxyUserTxt.Enable(False)
+                 self.sshProxyPasswordLbl.Enable(False)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012413.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	12ce7e2b05ed89da2871773335762d2f2257ba7d
+</A></li>
+	<LI>Next message: <A HREF="012415.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	2e084470dedc09b2d165e46d6693d400b9ec795f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12414">[ date ]</a>
+              <a href="thread.html#12414">[ thread ]</a>
+              <a href="subject.html#12414">[ subject ]</a>
+              <a href="author.html#12414">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

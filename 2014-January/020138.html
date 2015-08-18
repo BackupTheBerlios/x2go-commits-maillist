@@ -1,0 +1,378 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-47-ge29fa6e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-47-ge29fa6e&In-Reply-To=%3C20140106172829.BE3255DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020136.html">
+   <LINK REL="Next"  HREF="020134.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-47-ge29fa6e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-47-ge29fa6e&In-Reply-To=%3C20140106172829.BE3255DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-47-ge29fa6e">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Jan  6 18:28:29 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020136.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-46-g4c62b38
+</A></li>
+        <LI>Next message: <A HREF="020134.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-50-g92c2c8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20138">[ date ]</a>
+              <a href="thread.html#20138">[ thread ]</a>
+              <a href="subject.html#20138">[ subject ]</a>
+              <a href="author.html#20138">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  e29fa6e3fcb823fde96ed10e6cb27a6ad0d65a12 (commit)
+      from  4c62b385033f4b5e909367596c54b19ee869edb9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                    |    1 +
+ x2goserver/bin/x2gostartagent       |    2 +-
+ x2goserver/lib/x2godbwrapper.pm     |   24 ++++++++++++------------
+ x2goserver/lib/x2gosqlitewrapper.pl |   32 ++++++++++++++++----------------
+ x2goserver/lib/x2goutils.pm         |    6 +++---
+ 5 files changed, 33 insertions(+), 32 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9012f3f..9d38b8d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -178,6 +178,7 @@ x2goserver (4.0.0.9-0x2go1) UNRELEASED; urgency=low
+     - Sanitize session name in x2gostartagent, as well. Fixes problems
+       with custom session commands containing characters that get
+       sanitized out.
++    - Allow dots (&quot;.&quot;) in sanitized session names.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mga at listrac.informatik.uni-kiel.de</A>&gt;  Mon, 06 Jan 2014 12:35:24 +0100
+ 
+diff --git a/x2goserver/bin/x2gostartagent b/x2goserver/bin/x2gostartagent
+index cd82f27..6ad27e2 100755
+--- a/x2goserver/bin/x2gostartagent
++++ b/x2goserver/bin/x2gostartagent
+@@ -167,7 +167,7 @@ while [ &quot;$OUTPUT&quot;  != &quot;inserted&quot; ]; do
+ 			SESSION_NAME=&quot;${SESSION_NAME}_st${SESSION_TYPE}${X2GO_CMD}_dp${COLORDEPTH}&quot;
+ 			SESSION_NAME=`echo &quot;$SESSION_NAME&quot; | sed  -e  &quot;s/:/PP/g&quot;`
+ 			# sanitize session name
+-			SESSION_NAME=`echo &quot;$SESSION_NAME&quot; | sed  -e  &quot;s/[^a-zA-Z0-9\_\-]//g&quot;`
++			SESSION_NAME=`echo &quot;$SESSION_NAME&quot; | sed  -e  &quot;s/[^a-zA-Z0-9\_\-\.]//g&quot;`
+ 		fi
+ 		OUTPUT=`$X2GO_LIB_PATH/x2goinsertsession &quot;$X2GO_PORT&quot; &quot;$HOSTNAME&quot; &quot;$SESSION_NAME&quot;`
+ 	fi 
+diff --git a/x2goserver/lib/x2godbwrapper.pm b/x2goserver/lib/x2godbwrapper.pm
+index 259e567..1315575 100644
+--- a/x2goserver/lib/x2godbwrapper.pm
++++ b/x2goserver/lib/x2godbwrapper.pm
+@@ -193,7 +193,7 @@ sub dbsys_getmounts
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my @strings;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
+@@ -223,7 +223,7 @@ sub db_getmounts
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my @strings;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts_view where session_id='$sid'&quot;);
+@@ -253,7 +253,7 @@ sub db_deletemount
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;delete from mounts_view where session_id='$sid' and path='$path'&quot;);
+ 		$sth-&gt;execute();
+@@ -275,7 +275,7 @@ sub db_insertmount
+ 	my $res_ok=0;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  ('$sid','$path','$client')&quot;);
+ 		$sth-&gt;execute();
+@@ -304,7 +304,7 @@ sub db_insertsession
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		$display = x2goutils::sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$uname','$sid')&quot;);
+@@ -334,7 +334,7 @@ sub db_createsession
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		$pid = x2goutils::sanitizer('num', $pid) or die &quot;argument \&quot;pid\&quot; malformed&quot;;
+ 		$gr_port = x2goutils::sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 		$snd_port = x2goutils::sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+@@ -365,7 +365,7 @@ sub db_insertport
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
+ 		$sth-&gt;execute()or die;
+@@ -408,7 +408,7 @@ sub db_resume
+ 	my $fs_port=shift or die &quot;argument \&quot;fs_port\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		$gr_port = x2goutils::sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 		$snd_port = x2goutils::sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 		$fs_port = x2goutils::sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+@@ -432,7 +432,7 @@ sub db_changestatus
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='$status' where session_id = '$sid'&quot;);
+ 		$sth-&gt;execute()or die;
+@@ -452,7 +452,7 @@ sub db_getstatus
+ 	my $status='';
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;select status from sessions_view where session_id = '$sid'&quot;);
+ 		$sth-&gt;execute($sid) or die;
+@@ -566,7 +566,7 @@ sub db_getagent
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions_view
+ 		                      where session_id ='$sid'&quot;);
+@@ -594,7 +594,7 @@ sub db_getdisplay
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	if ($backend eq 'postgres')
+ 	{
+-		$sid = x2goutils::sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++		$sid = x2goutils::sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 		my $sth=$dbh-&gt;prepare(&quot;select display from sessions_view
+ 		                      where session_id ='$sid'&quot;);
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index 48278fa..c146b3b 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -60,9 +60,9 @@ sub sanitizer {
+ 			$string = $1;
+ 			return $string;
+ 		} else {return 0;}
+-	} elsif ($type eq &quot;anumazcsdaus&quot;) {
+-		$string =~ s/[^a-zA-Z0-9\_\-]//g;
+-		if ($string =~ /^([a-zA-Z0-9\_\-]*)$/) {
++	} elsif ($type eq &quot;pnixusername&quot;) {
++		$string =~ s/[^a-zA-Z0-9\_\-\.]//g;
++		if ($string =~ /^([a-zA-Z0-9\_\-\.]*)$/) {
+ 			$string = $1;
+ 			return $string;
+ 		} else {return 0;}
+@@ -149,7 +149,7 @@ elsif($cmd eq  &quot;listsessionsroot_all&quot;)
+ elsif($cmd eq  &quot;getmounts&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id=?&quot;);
+@@ -165,7 +165,7 @@ elsif($cmd eq  &quot;getmounts&quot;)
+ elsif($cmd eq  &quot;deletemount&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=? and path=?&quot;);
+@@ -181,7 +181,7 @@ elsif($cmd eq  &quot;deletemount&quot;)
+ elsif($cmd eq  &quot;deletemounts&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=?&quot;);
+ 	$sth-&gt;execute($sid);
+@@ -196,7 +196,7 @@ elsif($cmd eq  &quot;deletemounts&quot;)
+ elsif($cmd eq  &quot;insertmount&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	check_user($sid);
+@@ -217,7 +217,7 @@ elsif($cmd eq  &quot;insertsession&quot;)
+ 	$display = sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id, init_time, last_time) values
+ 	                       (?, ?, ?, ?, datetime('now','localtime'), datetime('now','localtime'))&quot;);
+@@ -239,7 +239,7 @@ elsif($cmd eq  &quot;createsession&quot;)
+ 	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
+ 	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
+@@ -257,7 +257,7 @@ elsif($cmd eq  &quot;insertport&quot;)
+ {
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  (?, ?, ?)&quot;);
+ 	check_user($sid);
+@@ -274,7 +274,7 @@ elsif($cmd eq  &quot;rmport&quot;)
+ {
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server=? and session_id=? and port=?&quot;);
+ 	check_user($sid);
+@@ -290,7 +290,7 @@ elsif($cmd eq  &quot;resume&quot;)
+ {
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $gr_port=shift or die &quot;argument \&quot;gr_port\&quot; missed&quot;;
+ 	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 	my $snd_port=shift or die &quot;argument \&quot;snd_port\&quot; missed&quot;;
+@@ -313,7 +313,7 @@ elsif($cmd eq  &quot;changestatus&quot;)
+ {
+ 	my $status=shift or die &quot;argument \&quot;status\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),
+ 	                       status=? where session_id = ? and uname=?&quot;);
+@@ -329,7 +329,7 @@ elsif($cmd eq  &quot;changestatus&quot;)
+ elsif($cmd eq  &quot;getstatus&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select status from sessions where session_id = ?&quot;);
+ 	$sth-&gt;execute($sid);
+@@ -415,7 +415,7 @@ elsif($cmd eq  &quot;getservers&quot;)
+ elsif($cmd eq  &quot;getagent&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $agent;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions
+@@ -439,7 +439,7 @@ elsif($cmd eq  &quot;getagent&quot;)
+ elsif($cmd eq  &quot;getdisplay&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
++	$sid = sanitizer('pnixusername', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $display;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions
+diff --git a/x2goserver/lib/x2goutils.pm b/x2goserver/lib/x2goutils.pm
+index 05aa460..a2330ec 100644
+--- a/x2goserver/lib/x2goutils.pm
++++ b/x2goserver/lib/x2goutils.pm
+@@ -38,9 +38,9 @@ sub sanitizer {
+ 			$string = $1;
+ 			return $string;
+ 		} else {return 0;}
+-	} elsif ($type eq &quot;anumazcsdaus&quot;) {
+-		$string =~ s/[^a-zA-Z0-9\_\-]//g;
+-		if ($string =~ /^([a-zA-Z0-9\_\-]*)$/) {
++	} elsif ($type eq &quot;pnixusername&quot;) {
++		$string =~ s/[^a-zA-Z0-9\_\-\.]//g;
++		if ($string =~ /^([a-zA-Z0-9\_\-\.]*)$/) {
+ 			$string = $1;
+ 			return $string;
+ 		} else {return 0;}
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020136.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-46-g4c62b38
+</A></li>
+	<LI>Next message: <A HREF="020134.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-50-g92c2c8b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20138">[ date ]</a>
+              <a href="thread.html#20138">[ thread ]</a>
+              <a href="subject.html#20138">[ subject ]</a>
+              <a href="author.html#20138">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

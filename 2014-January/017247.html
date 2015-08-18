@@ -1,0 +1,286 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-31-g5a2aa0c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-31-g5a2aa0c&In-Reply-To=%3C20140103165749.2B8B05DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017246.html">
+   <LINK REL="Next"  HREF="017250.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-31-g5a2aa0c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-31-g5a2aa0c&In-Reply-To=%3C20140103165749.2B8B05DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-31-g5a2aa0c">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 17:57:49 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017246.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-33-gebbb6a0
+</A></li>
+        <LI>Next message: <A HREF="017250.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-30-g12c9c19
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17247">[ date ]</a>
+              <a href="thread.html#17247">[ thread ]</a>
+              <a href="subject.html#17247">[ subject ]</a>
+              <a href="author.html#17247">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  5a2aa0c36ef7a57d87e3bb6f7c6b2558ed5430f7 (commit)
+      from  12c9c197795256573aa9c9ea65ed400d746f71c4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5a2aa0c36ef7a57d87e3bb6f7c6b2558ed5430f7
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sat Dec 28 22:34:42 2013 +0100
+
+    Avoid one argument system calls and backticks in x2gocleansessions and x2golistsessions_root.
+    
+    Conflicts (resolved by Mike Gabriel):
+    	debian/control
+    	x2goserver/sbin/x2gocleansessions
+    	x2goserver/sbin/x2golistsessions_root
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                      |    2 ++
+ debian/control                        |    1 +
+ x2goserver/sbin/x2gocleansessions     |   43 +++++++++++++++++++++------------
+ x2goserver/sbin/x2golistsessions_root |   20 ++++++++++-----
+ 4 files changed, 45 insertions(+), 21 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 4c41675..9791fd8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -17,6 +17,8 @@ x2goserver (4.0.1.10-0x2go1) UNRELEASED; urgency=low
+     - Provide RHEL/Fedora support in x2goserver-xsession.
+     - Only sanity check for existence of /etc/x2go/Xsession.d on Debian
+       (derived) systems.
++    - Avoid one argument system calls and backticks in x2gocleansessions and
++      x2golistsessions_root.
+     - Provide man page for x2goserver.conf.
+   * x2goserver.spec:
+     + Ship x2goserver.spec (RPM package definitions) in upstream project.
+diff --git a/debian/control b/debian/control
+index 0170df5..1adfed1 100644
+--- a/debian/control
++++ b/debian/control
+@@ -28,6 +28,7 @@ Depends:
+  libdbd-pg-perl,
+  libdbd-sqlite3-perl,
+  libfile-basedir-perl,
++ libfile-readbackwards-perl,
+  adduser,
+  xauth,
+  psmisc,
+diff --git a/x2goserver/sbin/x2gocleansessions b/x2goserver/sbin/x2gocleansessions
+index 4d1395b..6d64eb2 100755
+--- a/x2goserver/sbin/x2gocleansessions
++++ b/x2goserver/sbin/x2gocleansessions
+@@ -23,6 +23,7 @@
+ use strict;
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
++use File::ReadBackwards;
+ 
+ my $x2go_lib_path=`x2gopath libexec`;
+ use lib `x2gopath lib`;
+@@ -56,8 +57,14 @@ sub has_terminated
+ 	my $sess=shift;
+ 	my $user=shift;
+ 	my $log=&quot;/tmp/.x2go-${user}/session-C-${sess}.log&quot;;
+-	my $text=`tail -1 $log 2&gt;/dev/null`;
+-	if ($text =~ m/Session terminated/)
++	my $log_line;
++	my $log_file = File::ReadBackwards-&gt;new( $log ) or return 1;
++	while( defined( $log_line = $log_file-&gt;readline ) ) {
++		next if ( ! ( $log_line =~ m/^Session:/ ) );
++		last;
++	}
++	$log_file-&gt;close();
++	if ($log_line =~ m/Session terminated/)
+ 	{
+ 		return 1;
+ 	}
+@@ -69,8 +76,14 @@ sub is_suspended
+ 	my $sess=shift;
+ 	my $user=shift;
+ 	my $log=&quot;/tmp/.x2go-${user}/session-C-${sess}.log&quot;;
+-	my $text=`grep Session: $log 2&gt;/dev/null|tail -1`;
+-	if ($text =~ m/Session suspended/)
++	my $log_line;
++	my $log_file = File::ReadBackwards-&gt;new( $log ) or return 0;
++	while( defined( $log_line = $log_file-&gt;readline ) ) {
++		next if ( ! ( $log_line =~ m/^Session:/ ) );
++		last;
++	}
++	$log_file-&gt;close();
++	if ($log_line =~ m/Session suspended/)
+ 	{
+ 		return 1;
+ 	}
+@@ -155,30 +168,30 @@ elsif ($pid == 0 )
+ 				{
+ 					# send SIGKILL to dangling X-server processes
+ 					syslog('warning', &quot;@sinfo[1]: found stale X-server process (@sinfo[0]), sending SIGKILL&quot;);
+-					qw(kill -9 @sinfo[0]);
++					system(&quot;kill&quot;, &quot;-9&quot;, &quot;@sinfo[0]&quot;);
+ 					delete $remembered_sessions_since{@sinfo[1]};
+ 				}
+ 				syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+-				system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
++				system( &quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]&quot;);
+ 			}
+ 
+ 			elsif (! check_pid (@sinfo[0]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[12]))
+ 			{
+-				system(&quot;su @sinfo[11] -c \&quot;$x2go_lib_path/x2gochangestatus 'F' @sinfo[1] \&quot; 1&gt; /dev/null 2&gt; /dev/null&quot;);
++				system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;$x2go_lib_path/x2gochangestatus 'F' @sinfo[1]&quot;);
+ 				syslog('debug', &quot;@sinfo[1], pid @sinfo[0] does not exist, changing status from @sinfo[4] to F&quot;);
+ 				syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+-				system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
++				system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]&quot;);
+ 			}
+ 			else
+-			{ 
++			{
+ 				if ( (@sinfo[4] eq 'R') &amp;&amp; ( $remembered_sessions_since{ @sinfo[1] } ge 2 ))
+ 				{
+ 					if (is_suspended(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 					{
+-						system(&quot;su @sinfo[11] -c  \&quot;$x2go_lib_path/x2gochangestatus 'S' @sinfo[1] \&quot; 1&gt; /dev/null 2&gt;/dev/null&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;$x2go_lib_path/x2gochangestatus S @sinfo[1]&quot;);
+ 						syslog('debug', &quot;@sinfo[1] is suspended, changing status from @sinfo[4] to S&quot;);
+ 						syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+-						system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]&quot;);
+ 					}
+ 				}
+ 				if (@sinfo[4] eq 'S')
+@@ -186,8 +199,8 @@ elsif ($pid == 0 )
+ 					if (is_running(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 					{
+ 						syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+-						system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
+-						system(&quot;su @sinfo[11] -c  \&quot;x2gosuspend-session @sinfo[1] \&quot; 1&gt; /dev/null 2&gt;/dev/null&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;x2gosuspend-session @sinfo[1]&quot;);
+ 						syslog('debug', &quot;@sinfo[1] was found running and has now been suspended&quot;);
+ 					}
+ 				}
+@@ -196,8 +209,8 @@ elsif ($pid == 0 )
+ 					if (!has_terminated(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 					{
+ 						syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+-						system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
+-						system(&quot;su @sinfo[11] -c  \&quot;x2goterminate-session @sinfo[1] \&quot; 1&gt; /dev/null 2&gt;/dev/null&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]&quot;);
++						system(&quot;su&quot;, &quot;@sinfo[11]&quot;, &quot;-c&quot;, &quot;x2goterminate-session @sinfo[1]&quot;);
+ 						syslog('debug', &quot;@sinfo[1] has been requested for termination via the session DB&quot;);
+ 					}
+ 				}
+diff --git a/x2goserver/sbin/x2golistsessions_root b/x2goserver/sbin/x2golistsessions_root
+index a3b7ea6..56d1781 100755
+--- a/x2goserver/sbin/x2golistsessions_root
++++ b/x2goserver/sbin/x2golistsessions_root
+@@ -22,25 +22,33 @@
+ use strict;
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
++use File::ReadBackwards;
+ 
+ use lib `x2gopath lib`;
+ use x2gologlevel;
+ 
++
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(x2gologlevel()) );
+ 
+ 
+-sub check_stat
++sub is_suspended
+ {
+ 	my $sess=shift;
+ 	my $user=shift;
+ 	my $log=&quot;/tmp/.x2go-${user}/session-C-${sess}.log&quot;;
+-	my $text=`tail -1 $log 2&gt;/dev/null`;
+-	if ($text =~ m/Session suspended/)
++	my $log_line;
++	my $log_file = File::ReadBackwards-&gt;new( $log ) or return 0;
++	while( defined( $log_line = $log_file-&gt;readline ) ) {
++		next if ( ! ( $log_line =~ m/^Session:/ ) );
++		last;
++	}
++	$log_file-&gt;close();
++	if ($log_line =~ m/Session suspended/)
+ 	{
+-		return 0;
++		return 1;
+ 	}
+-	return 1;
++	return 0;
+ }
+ 
+ my $x2go_lib_path = `x2gopath libexec`;
+@@ -68,7 +76,7 @@ for (my $i=0;$i&lt;@outp;$i++)
+ 	{ 
+ 		if (@sinfo[4]eq 'R')
+ 		{
+-			if (!check_stat(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
++			if (is_suspended(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 			{
+ 				system(&quot;su - @sinfo[11] -c \&quot;$x2go_lib_path/x2gochangestatus 'S' @sinfo[1]\&quot; &gt; /dev/null&quot;);
+ 				@outp[$i] =~ s/\|R\|/\|S\|/;
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017246.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-33-gebbb6a0
+</A></li>
+	<LI>Next message: <A HREF="017250.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-30-g12c9c19
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17247">[ date ]</a>
+              <a href="thread.html#17247">[ thread ]</a>
+              <a href="subject.html#17247">[ subject ]</a>
+              <a href="author.html#17247">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

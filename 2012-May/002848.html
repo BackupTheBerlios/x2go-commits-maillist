@@ -1,0 +1,338 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-253-g469afde
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-253-g469afde&In-Reply-To=%3C20120528145532.9B7AF5DB34%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002847.html">
+   <LINK REL="Next"  HREF="002849.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-253-g469afde</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-253-g469afde&In-Reply-To=%3C20120528145532.9B7AF5DB34%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-253-g469afde">git-admin at x2go.org
+       </A><BR>
+    <I>Mon May 28 16:55:32 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002847.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+        <LI>Next message: <A HREF="002849.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-254-g2f0353d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2848">[ date ]</a>
+              <a href="thread.html#2848">[ thread ]</a>
+              <a href="subject.html#2848">[ subject ]</a>
+              <a href="author.html#2848">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  469afde919074790f53328b0f2fc3fd8f2971ea8 (commit)
+      from  144f7a489ea5aefcb13aca8a619438f329da3a66 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 469afde919074790f53328b0f2fc3fd8f2971ea8
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon May 28 16:55:11 2012 +0200
+
+    Use proper locking of session actions that are critical to being executed in parallel.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 +
+ x2go/backends/control/_stdout.py  |   93 ++++++++++++++++++++++---------------
+ x2go/backends/terminal/_stdout.py |   11 ++--
+ 3 files changed, 62 insertions(+), 44 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 4a70238..89fff6d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -140,6 +140,8 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+       keyboard layout _and_ the keyboard variant from the client-side.
+     - Give functionality to the ,,setdpi'' and the ,,dpi'' session profile
+       parameter (setting the DPI allows font scaling).
++    - Use proper locking of session actions that are critical to being executed
++      in parallel.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index e249cc4..f9be7da 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -35,6 +35,7 @@ import string
+ import random
+ import re
+ import locale
++import threading
+ 
+ from gevent import socket
+ 
+@@ -127,8 +128,6 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self._server_features = None
+ 
+-        self.locked = False
+-
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+         else:
+@@ -155,6 +154,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.published_applications_no_submenus = published_applications_no_submenus
+         self._already_querying_published_applications = False
+ 
++        self._transport_lock = threading.Lock()
++
+     def get_hostname(self):
+         return self.hostname
+ 
+@@ -172,41 +173,57 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def _x2go_sftp_put(self, local_path, remote_path):
+ 
+-        self.logger('sFTP-put: %s -&gt; %s:%s' % (os.path.normpath(local_path), self.remote_peername(), remote_path), loglevel=log.loglevel_DEBUG)
+-        try:
+-            while self.sftp_client is None:
+-                gevent.sleep(.1)
+-            self.sftp_client.put(os.path.normpath(local_path), remote_path)
+-        except x2go_exceptions.SSHException:
+-            # react to connection dropped error for SSH connections
+-            raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an SFTP put action.')
++        ssh_transport = self.get_transport()
++        self._transport_lock.acquire()
++        if ssh_transport and ssh_transport.is_authenticated():
++            self.logger('sFTP-put: %s -&gt; %s:%s' % (os.path.normpath(local_path), self.remote_peername(), remote_path), loglevel=log.loglevel_DEBUG)
++            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                self.sftp_client.put(os.path.normpath(local_path), remote_path)
++            except x2go_exceptions.SSHException, socket.error:
++                # react to connection dropped error for SSH connections
++                self._transport_lock.release()
++                raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an SFTP put action.')
++            self.sftp_client = None
++        self._transport_lock.release()
+ 
+     def _x2go_sftp_write(self, remote_path, content):
+ 
+-        self.logger('sFTP-write: opening remote file %s on host %s for writing' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
+-        try:
+-            while self.sftp_client is None:
+-                gevent.sleep(.1)
+-            remote_fileobj = self.sftp_client.open(remote_path, 'w')
+-            self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
+-            remote_fileobj.write(content)
+-            remote_fileobj.close()
+-        except x2go_exceptions.SSHException:
+-            self.logger('sFTP-write: opening remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
++        ssh_transport = self.get_transport()
++        self._transport_lock.acquire()
++        if ssh_transport and ssh_transport.is_authenticated():
++            self.logger('sFTP-write: opening remote file %s on host %s for writing' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
++            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                remote_fileobj = self.sftp_client.open(remote_path, 'w')
++                self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
++                remote_fileobj.write(content)
++                remote_fileobj.close()
++            except x2go_exceptions.SSHException, socket.error:
++                self._transport_lock.release()
++                self.logger('sFTP-write: opening remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
++            self.sftp_client = None
++        self._transport_lock.release()
+ 
+     def _x2go_sftp_remove(self, remote_path):
+ 
+-        self.logger('sFTP-write: removing remote file %s on host %s' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
+-        while self.sftp_client is None:
+-            gevent.sleep(.1)
+-        self.sftp_client.remove(remote_path)
++        ssh_transport = self.get_transport()
++        self._transport_lock.acquire()
++        if ssh_transport and ssh_transport.is_authenticated():
++            self.logger('sFTP-write: removing remote file %s on host %s' % (remote_path, self.remote_peername()), loglevel=log.loglevel_DEBUG)
++            self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
++            try:
++                self.sftp_client.remove(remote_path)
++            except x2go_exceptions.SSHException, socket.error:
++                self._transport_lock.release()
++                self.logger('sFTP-write: removing remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
++            self.sftp_client = None
++            self._transport_lock.release()
+ 
+     def _x2go_exec_command(self, cmd_line, loglevel=log.loglevel_INFO, timeout=20, **kwargs):
+ 
+-        while self.locked:
+-            gevent.sleep(.1)
++        self._transport_lock.acquire()
+ 
+-        self.locked = True
+         _retval = None
+ 
+         if type(cmd_line) == types.ListType:
+@@ -214,11 +231,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         else:
+             cmd = cmd_line
+         ssh_transport = self.get_transport()
+-        if ssh_transport is not None:
++        if ssh_transport and ssh_transport.is_authenticated():
+ 
+             timer = gevent.Timeout(timeout)
+             timer.start()
+-            self.sftp_client = None
+             try:
+                 self.logger(&quot;executing command on X2Go server ,,%s'': %s&quot; % (self.profile_name, _rerewrite_blanks(cmd)), loglevel)
+                 _retval = self.exec_command(_rewrite_password(cmd, user=self.get_transport().get_username(), password=self._session_password), **kwargs)
+@@ -226,42 +242,40 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 self.session_died = True
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self.locked = False
++                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except EOFError:
+                 self.session_died = True
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self.locked = False
++                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except x2go_exceptions.SSHException:
+                 self.session_died = True
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self.locked = False
++                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except gevent.timeout.Timeout:
+                 self.session_died = True
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self.locked = False
++                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session command timed out')
+             except socket.error:
+                 self.session_died = True
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self.locked = False
++                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             finally:
+-                self.locked = False
+                 timer.cancel()
+-                self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
+ 
+         else:
+-            self.locked = False
+             raise x2go_exceptions.X2goControlSessionException('the X2Go control session is not connected')
+-        return _retval
+ 
++        self._transport_lock.release()
++        return _retval
+ 
+     @property
+     def _x2go_server_features(self):
+@@ -598,6 +612,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self._session_auth_rsakey = None
+ 
++        # in any case, release out internal transport lock
++        self._transport_lock.release()
++
+         try:
+             if self.get_transport() is not None:
+                 still_active = self.get_transport().is_active()
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index ce80d32..066db33 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -33,6 +33,7 @@ import gevent
+ import cStringIO
+ import copy
+ import shutil
++import threading
+ 
+ # Python X2Go modules
+ import x2go.rforward as rforward
+@@ -339,6 +340,7 @@ class X2goTerminalSessionSTDOUT(object):
+         else:
+             self.session_info = info_backend()
+ 
++        self._share_local_folder_lock = threading.Lock()
+         self._cleaned_up = False
+ 
+     def __del__(self):
+@@ -698,9 +700,7 @@ class X2goTerminalSessionSTDOUT(object):
+         _x2go_key_bundle = _tmp_io_object.getvalue()
+ 
+         # if there is another call to this method currently being processed, wait for that one to finish
+-        while self._share_local_folder_busy:
+-            gevent.sleep(.1)
+-        self._share_local_folder_busy = True
++        self._share_local_folder_lock.acquire()
+ 
+         try:
+             self.control_session._x2go_sftp_write(_x2go_key_fname, _x2go_key_bundle)
+@@ -762,10 +762,9 @@ class X2goTerminalSessionSTDOUT(object):
+             self.logger('x2gomountdirs output is: %s' % _stdout, log.loglevel_NOTICE)
+ 
+         except:
++            self._share_local_folder_lock.release()
+             raise
+-        finally:
+-            # allow sharing of other folders again
+-            self._share_local_folder_busy = False
++        self._share_local_folder_lock.release()
+ 
+         if len(_stdout) &gt;= 6 and _stdout[5].endswith('ok'):
+             return True
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002847.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+	<LI>Next message: <A HREF="002849.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-254-g2f0353d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2848">[ date ]</a>
+              <a href="thread.html#2848">[ thread ]</a>
+              <a href="subject.html#2848">[ subject ]</a>
+              <a href="author.html#2848">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

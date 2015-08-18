@@ -1,0 +1,776 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	473fd7030473f69799c491a161b5281f13599be4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09473fd7030473f69799c491a161b5281f13599be4&In-Reply-To=%3C20140108142734.C0BCC5DB47%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023659.html">
+   <LINK REL="Next"  HREF="023662.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	473fd7030473f69799c491a161b5281f13599be4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09473fd7030473f69799c491a161b5281f13599be4&In-Reply-To=%3C20140108142734.C0BCC5DB47%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	473fd7030473f69799c491a161b5281f13599be4">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:34 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023659.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	3e9bd013e07df85ae426e58bc3c177cbb4f61977
+</A></li>
+        <LI>Next message: <A HREF="023662.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.2-7-gd5df830
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23660">[ date ]</a>
+              <a href="thread.html#23660">[ thread ]</a>
+              <a href="subject.html#23660">[ subject ]</a>
+              <a href="author.html#23660">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  473fd7030473f69799c491a161b5281f13599be4 (commit)
+      from  926ebbbc9976ec45e3131f4dd814340ce9895933 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/__init__.py                  |    4 +-
+ x2go/backends/control/_stdout.py  |    6 +-
+ x2go/backends/proxy/_nx3.py       |    2 +-
+ x2go/backends/proxy/base.py       |   14 ++-
+ x2go/backends/terminal/_stdout.py |   20 ++--
+ x2go/client.py                    |  199 +++++++++++++++++++++++++++++++------
+ x2go/defaults.py                  |   22 +++-
+ x2go/printqueue.py                |   13 ++-
+ x2go/registry.py                  |    6 +-
+ x2go/session.py                   |    8 +-
+ 10 files changed, 231 insertions(+), 63 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index effdd92..ef8146a 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -169,6 +169,7 @@ from client import X2goClient
+ from backends.profiles import X2goSessionProfiles
+ from backends.printing import X2goClientPrinting
+ from backends.settings import X2goClientSettings
++from session import X2goSession
+ from x2go_exceptions import *
+ from log import *
+ 
+@@ -177,7 +178,8 @@ from cleanup import x2go_cleanup
+ from defaults import X2GOCLIENT_OS
+ from defaults import CURRENT_LOCAL_USER
+ from defaults import LOCAL_HOME
+-from defaults import X2GO_SESSION_ROOTDIR
++from defaults import X2GO_CLIENT_ROOTDIR
++from defaults import X2GO_SESSIONS_ROOTDIR
+ from defaults import X2GO_SSH_ROOTDIR
+ 
+ if X2GOCLIENT_OS == 'Windows':
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index f0a06de..3377ff6 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -80,7 +80,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                  list_backend=_X2goServerSessionList,
+                  proxy_backend=_X2goProxy,
+                  client_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_CLIENT_ROOTDIR),
+-                 session_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SESSION_ROOTDIR),
++                 sessions_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SSH_ROOTDIR),
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  *args, **kwargs):
+@@ -111,7 +111,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self._proxy_backend = proxy_backend
+ 
+         self.client_rootdir = client_rootdir
+-        self.session_rootdir = session_rootdir
++        self.sessions_rootdir = sessions_rootdir
+         self.ssh_rootdir = ssh_rootdir
+ 
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+@@ -378,7 +378,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                            list_backend=self._list_backend,
+                                            proxy_backend=self._proxy_backend,
+                                            client_rootdir=self.client_rootdir,
+-                                           session_rootdir=self.session_rootdir,
++                                           sessions_rootdir=self.sessions_rootdir,
+                                            **kwargs)
+ 
+         if session_name is not None:
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index f229c3e..c6f8701 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -70,7 +70,7 @@ class X2goProxyNX3(base.X2goProxyBASE):
+             self.PROXY_CMD = &quot;/usr/bin/nxproxy&quot;
+         self.PROXY_ENV.update({
+             &quot;NX_CLIENT&quot;: &quot;/bin/true&quot;,
+-            &quot;NX_ROOT&quot;: self.session_rootdir
++            &quot;NX_ROOT&quot;: self.sessions_rootdir
+         })
+         self.PROXY_MODE = '-S'
+         if _X2GOCLIENT_OS == &quot;Windows&quot;:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 585492e..7dc37e9 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -44,7 +44,7 @@ else:
+     import x2go.gevent_subprocess as subprocess
+ 
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+-from x2go.defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
++from x2go.defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ 
+ 
+ class X2goProxyBASE(threading.Thread):
+@@ -69,8 +69,8 @@ class X2goProxyBASE(threading.Thread):
+     proxy = None
+ 
+     def __init__(self, session_info=None, 
+-                 session_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSION_ROOTDIR), 
+                  ssh_transport=None, session_log=&quot;session.log&quot;, 
++                 sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR), 
+                  logger=None, loglevel=log.loglevel_DEFAULT, ):
+         &quot;&quot;&quot;\
+         @param session_info: session information provided as an C{X2goServerSessionInfo} backend
+@@ -94,7 +94,7 @@ class X2goProxyBASE(threading.Thread):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        self.session_rootdir = session_rootdir
++        self.sessions_rootdir = sessions_rootdir
+         self.session_info = session_info
+         self.ssh_transport = ssh_transport
+         self.session_log = session_log
+@@ -146,6 +146,11 @@ class X2goProxyBASE(threading.Thread):
+         &quot;&quot;&quot;
+         self._keepalive = True
+         self.proxy = None
++
++        print self.session_info
++        print self.ssh_transport
++        print self.session_info.local_container
++
+         if self.session_info is None or self.ssh_transport is None:
+             return None
+ 
+@@ -214,6 +219,5 @@ class X2goProxyBASE(threading.Thread):
+         threading.Thread.start(self)
+         while self.proxy is None:
+             gevent.sleep(.1)
+-        return self.proxy
+-
+ 
++        return self.proxy
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index f7e8c8e..91821d2 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -51,7 +51,7 @@ from x2go.cleanup import x2go_cleanup
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from x2go.defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
++from x2go.defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ 
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+@@ -226,7 +226,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  proxy_backend=_X2goProxy,
+                  printing_backend=_X2goClientPrinting,
+                  client_rootdir=os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR),
+-                 session_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSION_ROOTDIR),
++                 sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
+                  client_instance=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+@@ -253,7 +253,7 @@ class X2goTerminalSessionSTDOUT(object):
+         self.reverse_tunnels = self.control_session.get_transport().reverse_tunnels
+ 
+         self.client_rootdir = client_rootdir
+-        self.session_rootdir = session_rootdir
++        self.sessions_rootdir = sessions_rootdir
+ 
+         self.params = X2goSessionParams()
+ 
+@@ -271,7 +271,7 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.rdp_server = rdp_server
+         self.params.rdp_options = rdp_options
+ 
+-        self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or self.session_rootdir
++        self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or self.sessions_rootdir
+         self.params.update()
+ 
+         self.profile_name = profile_name
+@@ -282,7 +282,7 @@ class X2goTerminalSessionSTDOUT(object):
+         self.printing_backend = printing_backend
+         self.client_instance = client_instance
+ 
+-        self._mk_session_rootdir(self.params.rootdir)
++        self._mk_sessions_rootdir(self.params.rootdir)
+ 
+         self.session_info = session_info
+         if self.session_info is not None:
+@@ -315,7 +315,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         self.session_info.clear()
+ 
+-    def _mk_session_rootdir(self, d):
++    def _mk_sessions_rootdir(self, d):
+ 
+         try:
+             os.mkdir(d)
+@@ -680,8 +680,8 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         # set up SSH tunnel for X11 graphical elements
+         self.proxy = self.proxy_class(session_info=self.session_info, 
+-                                      session_rootdir=self.session_rootdir, 
+                                       ssh_transport=self.control_session.get_transport(), 
++                                      sessions_rootdir=self.sessions_rootdir, 
+                                       logger=self.logger)
+         self.proxy_subprocess = self.proxy.start_proxy()
+         self.active_threads.append(self.proxy)
+@@ -714,7 +714,11 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+ 
+-        self.proxy = self.proxy_class(self.session_info, self.control_session.get_transport(), logger=self.logger)
++        self.proxy = self.proxy_class(session_info=self.session_info, 
++                                      ssh_transport=self.control_session.get_transport(), 
++                                      sessions_rootdir=self.sessions_rootdir,
++                                      logger=self.logger
++                                     )
+         self.proxy_subprocess = self.proxy.start_proxy()
+ 
+         # local path may be a Windows path, so we use the path separator of the local system
+diff --git a/x2go/client.py b/x2go/client.py
+index 3a483bf..8bf016b 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -136,17 +136,29 @@ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ from defaults import LOCAL_HOME as _LOCAL_HOME
+ from defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
++from defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+-
+-from x2go.backends.control import X2goControlSession as _X2goControlSession
+-from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+-from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+-from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+-from x2go.backends.proxy import X2goProxy as _X2goProxy
+-from x2go.backends.profiles import X2goSessionProfiles as _X2goSessionProfiles
+-from x2go.backends.settings import X2goClientSettings as _X2goClientSettings
+-from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
++from defaults import X2GO_SESSIONPROFILES_FILENAME as _X2GO_SESSIONPROFILES_FILENAME
++from defaults import X2GO_SETTINGS_FILENAME as _X2GO_SETTINGS_FILENAME
++from defaults import X2GO_PRINTING_FILENAME as _X2GO_PRINTING_FILENAME
++from defaults import X2GO_XCONFIG_FILENAME as _X2GO_XCONFIG_FILENAME
++
++from defaults import BACKENDS_CONTROLSESSION as _BACKENDS_CONTROLSESSION
++from defaults import BACKENDS_TERMINALSESSION as _BACKENDS_TERMINALSESSION
++from defaults import BACKENDS_SERVERSESSIONINFO as _BACKENDS_SERVERSESSIONINFO
++from defaults import BACKENDS_SERVERSESSIONLIST as _BACKENDS_SERVERSESSIONLIST
++from defaults import BACKENDS_PROXY as _BACKENDS_PROXY
++from defaults import BACKENDS_SESSIONPROFILES as _BACKENDS_SESSIONPROFILES
++from defaults import BACKENDS_CLIENTSETTINGS as _BACKENDS_CLIENTSETTINGS
++from defaults import BACKENDS_CLIENTPRINTING as _BACKENDS_CLIENTPRINTING
++
++import x2go.backends.control as control
++import x2go.backends.terminal as terminal
++import x2go.backends.info as info
++import x2go.backends.proxy as proxy
++import x2go.backends.profiles as profiles
++import x2go.backends.settings as settings
++import x2go.backends.printing as printing
+ 
+ if _X2GOCLIENT_OS == 'Windows':
+     from xserver import X2goClientXConfig, X2goXServer
+@@ -163,17 +175,17 @@ class X2goClient(object):
+     use these methods: L{X2goClient.register_session()} and L{X2goClient.connect_session()}.
+     &quot;&quot;&quot;
+     def __init__(self, use_cache=True, start_xserver=False,
+-                 control_backend=_X2goControlSession,
+-                 terminal_backend=_X2goTerminalSession,
+-                 info_backend=_X2goServerSessionInfo,
+-                 list_backend=_X2goServerSessionList,
+-                 proxy_backend=_X2goProxy,
+-                 profiles_backend=_X2goSessionProfiles,
+-                 settings_backend=_X2goClientSettings,
+-                 printing_backend=_X2goClientPrinting,
+-                 client_rootdir=os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR),
+-                 session_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSION_ROOTDIR),
+-                 ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR),
++                 control_backend=control.X2goControlSession,
++                 terminal_backend=terminal.X2goTerminalSession,
++                 info_backend=info.X2goServerSessionInfo,
++                 list_backend=info.X2goServerSessionList,
++                 proxy_backend=proxy.X2goProxy,
++                 profiles_backend=profiles.X2goSessionProfiles,
++                 settings_backend=settings.X2goClientSettings,
++                 printing_backend=printing.X2goClientPrinting,
++                 client_rootdir=None,
++                 sessions_rootdir=None,
++                 ssh_rootdir=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param logger: you can pass an L{X2goLogger} object to the
+@@ -199,15 +211,35 @@ class X2goClient(object):
+         self.info_backend = info_backend
+         self.list_backend = list_backend
+         self.proxy_backend = proxy_backend
++        self.profiles_backend = profiles_backend
+         self.settings_backend = settings_backend
+         self.printing_backend = printing_backend
+ 
+-        self.client_rootdir = client_rootdir
+-        self.session_rootdir = session_rootdir
+-        self.ssh_rootdir = ssh_rootdir
++        self._detect_backend_classes()
++
++        self.client_rootdir = client_rootdir or os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR)
++        self.sessions_rootdir = sessions_rootdir or os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR)
++        self.ssh_rootdir = ssh_rootdir or os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR)
++
++        if self.client_rootdir is not None:
++            self._has_custom_client_rootdir = True
++            _sessions_config_file = os.path.join(self.client_rootdir, _X2GO_SESSIONPROFILES_FILENAME)
++            _settings_config_file = os.path.join(self.client_rootdir, _X2GO_SETTINGS_FILENAME)
++            _printing_config_file = os.path.join(self.client_rootdir, _X2GO_PRINTING_FILENAME)
++            _xconfig_config_file = os.path.join(self.client_rootdir, _X2GO_XCONFIG_FILENAME)
++            self.session_profiles = self.profiles_backend(config_files=[_sessions_config_file], logger=self.logger)
++            self.client_settings = self.settings_backend(config_files=[_settings_config_file], logger=self.logger)
++            self.client_printing = self.printing_backend(config_files=[_printing_config_file], client_instance=self, logger=self.logger)
++        else:
++            self.session_profiles = self.profiles_backend(logger=self.logger)
++            self.client_settings = self.settings_backend(logger=self.logger)
++            self.client_printing = self.printing_backend(client_instance=self, logger=self.logger)
+ 
+         if _X2GOCLIENT_OS == 'Windows' and start_xserver:
+-            self.client_xconfig = X2goClientXConfig(logger=self.logger)
++            if self.client_rootdir:
++                self.client_xconfig = X2goClientXConfig(config_files=[_xconfig_config_file], logger=self.logger)
++            else:
++                self.client_xconfig = X2goClientXConfig(logger=self.logger)
+             if not self.client_xconfig.known_server:
+                 self.HOOK_no_known_xserver_found()
+             elif not self.client_xconfig.running_xservers:
+@@ -221,15 +253,10 @@ class X2goClient(object):
+                 # presume the running XServer listens on :0
+                 os.environ.update({'DISPLAY': 'localhost:0'})
+ 
+-        self.session_profiles = profiles_backend(logger=self.logger)
+-        self.session_registry = X2goSessionRegistry(
+-            logger=self.logger,
+-        )
++        self.session_registry = X2goSessionRegistry(logger=self.logger)
+         self.session_guardian = X2goSessionGuardian(self, enable_cache=use_cache, logger=self.logger)
+         if use_cache:
+             self.listsessions_cache = X2goListSessionsCache(self, logger=self.logger)
+-        self.client_settings = settings_backend(logger=self.logger)
+-        self.client_printing = printing_backend(client_instance=self, logger=self.logger)
+ 
+         self.use_cache = use_cache
+ 
+@@ -245,6 +272,114 @@ class X2goClient(object):
+     def HOOK_on_session_got_terminated_from_within(self, session_uuid):
+         self.logger('session %s has been terminated from within the application' % self.session_registry(session_uuid).get_session_name(), loglevel=log.loglevel_WARN)
+ 
++    def _detect_backend_classes(self):
++
++
++        # CONTROL session backend
++        if type(self.control_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_CONTROLSESSION[self.control_backend]
++            except KeyError:
++                if self.control_backend in _BACKENDS_CONTROLSESSION.values():
++                   _classname = self.control_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown control session backend name %s' % self.control_backend)
++            self.control_backend = eval('control.%s' % _classname)
++
++        # TERMINAL session backend
++        if type(self.terminal_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_TERMINALSESSION[self.terminal_backend]
++            except KeyError:
++                if self.terminal_backend in _BACKENDS_TERMINALSESSION.values():
++                   _classname = self.terminal_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown terminal session backend name %s' % self.terminal_backend)
++            self.terminal_backend = eval('terminal.%s' % _classname)
++
++        # PROXY session backend
++        if type(self.proxy_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_PROXY[self.proxy_backend]
++            except KeyError:
++                if self.proxy_backend in _BACKENDS_PROXY.values():
++                   _classname = self.proxy_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown proxy backend name %s' % self.proxy_backend)
++            self.proxy_backend = eval('proxy.%s' % _classname)
++
++        # server session info backend
++        if type(self.info_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_SERVERSESSIONINFO[self.info_backend]
++            except KeyError:
++                if self.info_backend in _BACKENDS_SERVERSESSIONINFO.values():
++                   _classname = self.info_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown server session info backend name %s' % self.info_backend)
++            self.info_backend = eval('info.%s' % _classname)
++
++        # server session list backend
++        if type(self.list_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_SERVERSESSIONLIST[self.list_backend]
++            except KeyError:
++                if self.list_backend in _BACKENDS_SERVERSESSIONLIST.values():
++                   _classname = self.list_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown server session info backend name %s' % self.list_backend)
++            self.list_backend = eval('info.%s' % _classname)
++
++        # session profiles backend
++        if type(self.profiles_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_SESSIONPROFILES[self.profiles_backend]
++            except KeyError:
++                if self.profiles_backend in _BACKENDS_SESSIONPROFILES.values():
++                   _classname = self.profiles_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown session profiles backend name %s' % self.profiles_backend)
++            self.profiles_backend = eval('profiles.%s' % _classname)
++
++        # client settings backend
++        if type(self.settings_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_CLIENTSETTINGS[self.settings_backend]
++            except KeyError:
++                if self.settings_backend in _BACKENDS_CLIENTSETTINGS.values():
++                   _classname = self.settings_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown client settings backend name %s' % self.settings_backend)
++            self.settings_backend = eval('settings.%s' % _classname)
++
++        # client printing backend
++        if type(self.printing_backend) is types.StringType:
++            try:
++                _classname = _BACKENDS_CLIENTPRINTING[self.printing_backend]
++            except KeyError:
++                if self.printing_backend in _BACKENDS_CLIENTPRINTING.values():
++                   _classname = self.printing_backend
++                else:
++                    raise x2go_exceptions.X2goBackendException('unknown client printing backend name %s' % self.printing_backend)
++            self.printing_backend = eval('printing.%s' % _classname)
++
++    def get_client_rootdir(self):
++        return self.client_rootdir
++    __get_client_rootdir = get_client_rootdir
++
++    @property
++    def has_custom_client_rootdir(self):
++        return self._has_custom_client_rootdir
++    __has_custom_client_rootdir = has_custom_client_rootdir
++
++    def get_sessions_rootdir(self):
++        return self.sessions_rootdir
++    __get_sessions_rootdir = get_sessions_rootdir
++
++    def get_ssh_rootdir(self):
++        return self.ssh_rootdir
++    __get_ssh_rootdir = get_ssh_rootdir
++
+     def __get_client_username(self):
+         &quot;&quot;&quot;\
+         Query the local user's username (i.e. the user running the X2go client).
+@@ -390,7 +525,7 @@ class X2goClient(object):
+                                                       settings_backend=self.settings_backend,
+                                                       printing_backend=self.printing_backend,
+                                                       client_rootdir=self.client_rootdir,
+-                                                      session_rootdir=self.session_rootdir,
++                                                      sessions_rootdir=self.sessions_rootdir,
+                                                       ssh_rootdir=self.ssh_rootdir,
+                                                       **_params)
+ 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 1f17cba..69cbbbc 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -35,12 +35,16 @@ import platform
+ X2GOCLIENT_OS = platform.system()
+ 
+ LOCAL_HOME = os.path.expanduser('~')
+-X2GO_SESSION_ROOTDIR = '.x2go'
++X2GO_SESSIONS_ROOTDIR = '.x2go'
+ X2GO_CLIENT_ROOTDIR = '.x2goclient'
+ X2GO_SSH_ROOTDIR = os.path.join('.x2go','.ssh')
+ 
+ # setting OS dependent variables
+ if X2GOCLIENT_OS == &quot;Windows&quot;:
++    # on Windows we will use the current directory as ,,ROOTDIR'' which 
++    # will normally be the application directory
++    ROOT_DIR = os.path.abspath(os.path.curdir)
++    ETC_DIR = os.path.join(ROOT_DIR, 'etc')
+     import win32api
+     CURRENT_LOCAL_USER = win32api.GetUserName()
+     X2GO_SSH_ROOTDIR = '.ssh'
+@@ -49,6 +53,8 @@ if X2GOCLIENT_OS == &quot;Windows&quot;:
+     SUPPORTED_FOLDERSHARING = True
+     
+ elif X2GOCLIENT_OS == &quot;Linux&quot;:
++    ROOT_DIR = '/'
++    ETC_DIR = os.path.join(ROOT_DIR, 'etc', 'x2goclient')
+     import getpass
+     CURRENT_LOCAL_USER = getpass.getuser()
+     X2GO_SSH_ROOTDIR = '.ssh'
+@@ -57,6 +63,8 @@ elif X2GOCLIENT_OS == &quot;Linux&quot;:
+     SUPPORTED_FOLDERSHARING = True
+ 
+ elif X2GOCLIENT_OS == &quot;Mac&quot;:
++    ROOT_DIR = '/'
++    ETC_DIR = os.path.join(ROOT_DIR, 'etc', 'x2goclient')
+     import getpass
+     CURRENT_LOCAL_USER = getpass.getuser()
+     X2GO_SSH_ROOTDIR = '.ssh'
+@@ -127,20 +135,24 @@ BACKEND_CLIENTPRINTING_DEFAULT = 'X2goClientPrintingFILE'
+ ## X2go Printing
+ ##
+ 
++X2GO_SETTINGS_FILENAME = 'settings'
+ X2GO_SETTINGS_CONFIGFILES = [
+-    '/etc/x2goclient/settings',
++    os.path.join(ETC_DIR,X2GO_SETTINGS_FILENAME),
+     os.path.join(LOCAL_HOME, X2GO_CLIENT_ROOTDIR, 'settings'),
+ ]
++X2GO_PRINTING_FILENAME = 'printing'
+ X2GO_PRINTING_CONFIGFILES = [
+-    '/etc/x2goclient/printing',
++    os.path.join(ETC_DIR,X2GO_PRINTING_FILENAME),
+     os.path.join(LOCAL_HOME, X2GO_CLIENT_ROOTDIR, 'printing'),
+ ]
++X2GO_SESSIONPROFILES_FILENAME = 'sessions'
+ X2GO_SESSIONPROFILES_CONFIGFILES = [
+-    '/etc/x2goclient/sessions',
++    os.path.join(ETC_DIR,X2GO_SESSIONPROFILES_FILENAME),
+     os.path.join(LOCAL_HOME, X2GO_CLIENT_ROOTDIR, 'sessions'),
+ ]
++X2GO_XCONFIG_FILENAME = 'xconfig'
+ X2GO_XCONFIG_CONFIGFILES = [
+-    '/etc/x2goclient/xconfig',
++    os.path.join(ETC_DIR,X2GO_XCONFIG_FILENAME),
+     os.path.join(LOCAL_HOME, X2GO_CLIENT_ROOTDIR, 'xconfig'),
+ ]
+ 
+diff --git a/x2go/printqueue.py b/x2go/printqueue.py
+index 266ba61..4706e96 100644
+--- a/x2go/printqueue.py
++++ b/x2go/printqueue.py
+@@ -39,6 +39,7 @@ import defaults
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
++from defaults import X2GO_PRINTING_FILENAME as _X2GO_PRINTING_FILENAME
+ 
+ class X2goPrintQueue(threading.Thread):
+     &quot;&quot;&quot;\
+@@ -83,6 +84,7 @@ class X2goPrintQueue(threading.Thread):
+         self.session_name = session_name
+         self.spool_dir = spool_dir
+         self.client_instance = client_instance
++        self.client_rootdir = client_instance.get_client_rootdir()
+         self.printing_backend = printing_backend
+         if print_action is not None:
+             self.set_print_action(print_action, logger=logger, **print_action_args)
+@@ -208,7 +210,16 @@ def x2go_printjob_handler(job_file=None, pdf_file=None, job_title=None, print_ac
+ 
+     &quot;&quot;&quot;
+     if print_action is None:
+-        _printing = parent_thread.printing_backend(client_instance=parent_thread.client_instance, logger=logger)
++        if parent_thread.client_instance is not None and parent_thread.client_instance.has_custom_client_rootdir:
++            _printing = parent_thread.printing_backend(config_files=[os.path.join(parent_thread.client_instance.get_client_rootdir(), _X2GO_PRINTING_FILENAME)],
++                                                       client_instance=parent_thread.client_instance, 
++                                                       logger=logger
++                                                      )
++        else:
++            _printing = parent_thread.printing_backend(client_instance=parent_thread.client_instance, 
++                                                       logger=logger
++                                                      )
++
+         print_action = _printing.print_action
+         print_action.profile_name = parent_thread.profile_name
+         print_action.session_name = parent_thread.session_name
+diff --git a/x2go/registry.py b/x2go/registry.py
+index acdb5d4..66f6af3 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -46,7 +46,7 @@ from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+ from defaults import LOCAL_HOME as _LOCAL_HOME
+ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
++from defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+ class X2goSessionRegistry(object):
+@@ -134,7 +134,7 @@ class X2goSessionRegistry(object):
+                  settings_backend=_X2goClientSettings,
+                  printing_backend=_X2goClientPrinting,
+                  client_rootdir=os.path.join(_LOCAL_HOME,_X2GO_CLIENT_ROOTDIR),
+-                 session_rootdir=os.path.join(_LOCAL_HOME,_X2GO_SESSION_ROOTDIR),
++                 sessions_rootdir=os.path.join(_LOCAL_HOME,_X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(_LOCAL_HOME,_X2GO_SSH_ROOTDIR),
+                  **kwargs):
+ 
+@@ -152,7 +152,7 @@ class X2goSessionRegistry(object):
+                                 settings_backend=settings_backend,
+                                 printing_backend=printing_backend,
+                                 client_rootdir=client_rootdir,
+-                                session_rootdir=session_rootdir,
++                                sessions_rootdir=sessions_rootdir,
+                                 ssh_rootdir=ssh_rootdir,
+                                 logger=self.logger, **kwargs)
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 7ad9c30..08248a0 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -46,7 +46,7 @@ from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ 
+ from defaults import LOCAL_HOME as _LOCAL_HOME
+ from defaults import X2GO_CLIENT_ROOTDIR as _X2GO_CLIENT_ROOTDIR
+-from defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
++from defaults import X2GO_SESSIONS_ROOTDIR as _X2GO_SESSIONS_ROOTDIR
+ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+ from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARING
+@@ -77,7 +77,7 @@ class X2goSession(object):
+                  settings_backend=_X2goClientSettings,
+                  printing_backend=_X2goClientPrinting,
+                  client_rootdir=os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR),
+-                 session_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSION_ROOTDIR),
++                 sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR),
+                  known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+@@ -110,7 +110,7 @@ class X2goSession(object):
+         self._settings_backend = settings_backend
+         self._printing_backend = printing_backend
+         self.client_rootdir = client_rootdir
+-        self.session_rootdir = session_rootdir
++        self.sessions_rootdir = sessions_rootdir
+         self.ssh_rootdir = ssh_rootdir
+ 
+         # the client instance is not deeply copiable
+@@ -147,7 +147,7 @@ class X2goSession(object):
+                                                    list_backend=list_backend,
+                                                    proxy_backend=proxy_backend,
+                                                    client_rootdir=client_rootdir,
+-                                                   session_rootdir=session_rootdir,
++                                                   sessions_rootdir=sessions_rootdir,
+                                                    ssh_rootdir=ssh_rootdir,
+                                                    logger=logger)
+         else:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023659.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	3e9bd013e07df85ae426e58bc3c177cbb4f61977
+</A></li>
+	<LI>Next message: <A HREF="023662.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.2-7-gd5df830
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23660">[ date ]</a>
+              <a href="thread.html#23660">[ thread ]</a>
+              <a href="subject.html#23660">[ subject ]</a>
+              <a href="author.html#23660">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

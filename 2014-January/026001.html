@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-35-g93d5e22
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-35-g93d5e22&In-Reply-To=%3C20140108212007.999FF5DB42%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025995.html">
+   <LINK REL="Next"  HREF="026003.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-35-g93d5e22</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-35-g93d5e22&In-Reply-To=%3C20140108212007.999FF5DB42%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-35-g93d5e22">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 22:20:07 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025995.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-38-g1196358
+</A></li>
+        <LI>Next message: <A HREF="026003.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-31-g0c46ca9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26001">[ date ]</a>
+              <a href="thread.html#26001">[ thread ]</a>
+              <a href="subject.html#26001">[ subject ]</a>
+              <a href="author.html#26001">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  93d5e22355bbc0b388213bfaf2454da53a0e3222 (commit)
+      from  b9f22a3b34178a389d0c8ca177d622f4aa3904c7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ onmainwindow.cpp |   43 ++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 35 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 612e2fc..afc6267 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -21,6 +21,7 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+     - Expand tilde operator for all other file paths handed over to X2Go Client
+       via sessions file or cmdline parameter.
+     - Syntax fix of x2goclient.desktop file.
++    - Test for various file locations of the pulseaudio cookie file.
+   * Pull-in packaging changes from Debian.
+   * debian/source/format:
+     + Switch to format 1.0.
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 357a298..3b5b319 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -5062,21 +5062,46 @@ void ONMainWindow::slotRetResumeSess ( bool result,
+                 file.close();
+             }
+ #endif
++            QString pulsecookie_filename = &quot;&quot;;
+             if ( sysPulse )
+             {
+-                sshConnection-&gt;copyFile(
+-                    &quot;/var/run/pulse/.pulse-cookie&quot;,
+-                    &quot;~/.x2go/C-&quot;+
+-                    resumingSession.sessionId+
+-                    &quot;/.pulse-cookie&quot;, this, SLOT ( slotPCookieReady ( bool, QString,int )));
++                if ( QFile::exists(&quot;/run/pulse/.config/pulse/cookie&quot;) ) {
++                    pulsecookie_filename = &quot;/run/pulse/.config/pulse/cookie&quot;;
++                }
++                else if ( QFile::exists(&quot;/run/pulse/.pulse-cookie&quot;) ) {
++                    pulsecookie_filename = &quot;/run/pulse/.pulse-cookie&quot;;
++                }
++                else if ( QFile::exists(&quot;/var/run/pulse/.config/pulse/cookie&quot;) ) {
++                    pulsecookie_filename = &quot;/var/run/pulse/.config/pulse/cookie&quot;;
++                }
++                else if ( QFile::exists(&quot;/var/run/pulse/.pulse-cookie&quot;) ) {
++                    pulsecookie_filename = &quot;/var/run/pulse/.pulse-cookie&quot;;
++                }
++                if ( pulsecookie_filename.length() &gt; 0 )
++                {
++                    sshConnection-&gt;copyFile(
++                        pulsecookie_filename,
++                        &quot;~/.x2go/C-&quot;+
++                        resumingSession.sessionId+
++                        &quot;/.pulse-cookie&quot;, this, SLOT ( slotPCookieReady ( bool, QString,int )));
++                }
+             }
+             else
+             {
+ #ifndef Q_OS_WIN
+-                sshConnection-&gt;copyFile(homeDir+&quot;/.pulse-cookie&quot;,
+-                                        &quot;~/.x2go/C-&quot;+
+-                                        resumingSession.sessionId+
+-                                        &quot;/.pulse-cookie&quot;, this, SLOT ( slotPCookieReady ( bool, QString,int )));
++                if ( QFile::exists(homeDir+&quot;.config/pulse/cookie&quot;) ) {
++                    pulsecookie_filename = homeDir+&quot;.config/pulse/cookie&quot;;
++                }
++                else if ( QFile::exists(homeDir+&quot;.pulse-cookie&quot;) ) {
++                    pulsecookie_filename = homeDir+&quot;.pulse-cookie&quot;;
++                }
++                if ( pulsecookie_filename.length() &gt; 0 )
++                {
++                    sshConnection-&gt;copyFile(pulsecookie_filename,
++                                            &quot;~/.x2go/C-&quot;+
++                                            resumingSession.sessionId+
++                                            &quot;/.pulse-cookie&quot;, this, SLOT ( slotPCookieReady ( bool, QString,int )));
++                }
+ #else
+                 QString cooFile=
+                     wapiShortFileName ( homeDir )  +
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025995.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-38-g1196358
+</A></li>
+	<LI>Next message: <A HREF="026003.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-31-g0c46ca9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26001">[ date ]</a>
+              <a href="thread.html#26001">[ thread ]</a>
+              <a href="subject.html#26001">[ subject ]</a>
+              <a href="author.html#26001">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

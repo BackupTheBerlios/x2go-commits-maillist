@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-39-g41fd2fa
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.0.5-39-g41fd2fa&In-Reply-To=%3C20130304152314.C1EBE5DB14%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004318.html">
+   <LINK REL="Next"  HREF="004320.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-39-g41fd2fa</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.0.5-39-g41fd2fa&In-Reply-To=%3C20130304152314.C1EBE5DB14%40ymir%3E"
+       TITLE="[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-39-g41fd2fa">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Mar  4 16:23:14 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004318.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-38-g54b7e70
+</A></li>
+        <LI>Next message: <A HREF="004320.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-40-g1cd026f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4319">[ date ]</a>
+              <a href="thread.html#4319">[ thread ]</a>
+              <a href="subject.html#4319">[ subject ]</a>
+              <a href="author.html#4319">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  41fd2fad0c72117701608c83ced9b6e35221e9fd (commit)
+      from  54b7e70d862107b1d2142c7313b3d06335cace2b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 41fd2fad0c72117701608c83ced9b6e35221e9fd
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Mar 4 16:23:09 2013 +0100
+
+    implement delayed function execution/spawning without gevent (doesn't work with gevent)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/control      |    1 -
+ x2gobroker/agent.py |   16 +++++++++++++++-
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/control b/debian/control
+index fbee287..3190f5c 100644
+--- a/debian/control
++++ b/debian/control
+@@ -152,7 +152,6 @@ Depends:
+  python-netaddr,
+  python-webpy (&gt;= 1:0.37),
+  python-paramiko,
+- python-gevent,
+ Suggests:
+  apache2 | httpd,
+ Description: X2Go http(s) based session broker (Python modules)
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index be8df22..037450b 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -32,6 +32,20 @@ import x2gobroker.defaults
+ from x2gobroker.loggers import logger_broker, logger_error
+ 
+ 
++class delayed_execution(threading.Thread):
++
++    def __init__(self, agent_func, delay=0, **kwargs):
++        threading.Thread.__init__(self)
++        self.agent_func = agent_func
++        self.delay = delay
++        self.kwargs = kwargs
++        self.start()
++
++    def run(self):
++        time.sleep(self.delay)
++        self.agent_func(**self.kwargs)
++
++
+ def call_local_broker_agent(username, mode, cmdline_args=[]):
+     &quot;&quot;&quot;\
+     Launch X2Go Broker Agent locally and process its output.
+@@ -209,7 +223,7 @@ def delete_authorized_key(username, pubkey_hash, authorized_keys_file='%h/.x2go/
+         _hostname = remote_agent['hostname']
+ 
+     if delay_deletion &gt; 0:
+-        gevent.spawn_later(delay_deletion, delete_authorized_key, username=username, authorized_keys_file=authorized_keys_file, query_mode=query_mode, remote_agent=remote_agent, )
++        delayed_execution(delete_authorized_key, delay=60, username=username, authorized_keys_file=authorized_keys_file, query_mode=query_mode, remote_agent=remote_agent, )
+         logger_broker.debug('Scheduled deletion of authorized key in {delay}: user={user}, host={host}'.format(delay=delay_deletion, user=username, host=_hostname))
+     else:
+         if query_mode.upper() == u'LOCAL':
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004318.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-38-g54b7e70
+</A></li>
+	<LI>Next message: <A HREF="004320.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.5-40-g1cd026f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4319">[ date ]</a>
+              <a href="thread.html#4319">[ thread ]</a>
+              <a href="subject.html#4319">[ subject ]</a>
+              <a href="author.html#4319">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

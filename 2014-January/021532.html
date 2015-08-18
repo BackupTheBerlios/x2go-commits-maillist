@@ -1,0 +1,515 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.2-2-gb05f63f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.0.2-2-gb05f63f&In-Reply-To=%3C20140107152038.E1A215E042%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021529.html">
+   <LINK REL="Next"  HREF="021597.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.2-2-gb05f63f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.0.2-2-gb05f63f&In-Reply-To=%3C20140107152038.E1A215E042%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.2-2-gb05f63f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:20:38 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021529.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.0-1-g73b0531
+</A></li>
+        <LI>Next message: <A HREF="021597.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.2-1-g1a5aed7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21532">[ date ]</a>
+              <a href="thread.html#21532">[ thread ]</a>
+              <a href="subject.html#21532">[ subject ]</a>
+              <a href="author.html#21532">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  b05f63fd5f08d1d1878bdcf65ebbd4ad10c6f2c9 (commit)
+      from  1a5aed7b7146d7925f1abca9c451c028db65b39c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/base.py       |   41 +++++++++++++--
+ x2go/backends/terminal/_stdout.py |  102 ++++++++++++++++++++-----------------
+ x2go/client.py                    |    7 ++-
+ x2go/session.py                   |    3 +-
+ 4 files changed, 98 insertions(+), 55 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 1e121d0..ab48b39 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -74,18 +74,26 @@ class X2goProxyBASE(threading.Thread):
+     def __init__(self, session_info=None, 
+                  ssh_transport=None, session_log=&quot;session.log&quot;, 
+                  sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
++                 proxy_options={},
+                  session_instance=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT, ):
+         &quot;&quot;&quot;\
+-        @param session_info: session information provided as an C{X2goServerSessionInfo} backend
+-            class object
+-        @type session_info: C{X2goServerSessionInfo} instance
+-        @param ssh_transport: SSH transport object from paramiko.SSHClient
++        @param session_info: session information provided as an C{X2goServerSessionInfo*} backend
++            instance
++        @type session_info: C{X2goServerSessionInfo*} instance
++        @param ssh_transport: SSH transport object from C{paramiko.SSHClient}
+         @type ssh_transport: C{paramiko.Transport} instance
+         @param session_log: name of the proxy's session logfile
+-        @type session_log: type
++        @type session_log: C{str}
++        @param sessions_rootdir: base dir where X2go session files are stored (by default: ~/.x2go)
++        @type sessions_rootdir: C{str}
++        @param proxy_options: a set of very C{X2goProxy*} backend specific options; any option that is not known
++            to the C{X2goProxy*} backend will simply be ignored
++        @type proxy_options: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goProxy} constructor
++        @param session_instance: the L{X2goSession} instance this C{X2goProxy*} instance belongs to
++        @type session_instance: L{X2goSession} instance
+         @type logger: L{X2goLogger} instance
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+@@ -102,6 +110,7 @@ class X2goProxyBASE(threading.Thread):
+         self.session_info = session_info
+         self.ssh_transport = ssh_transport
+         self.session_log = session_log
++        self.proxy_options = proxy_options
+         self.session_instance = session_instance
+         self.PROXY_ENV = os.environ.copy()
+         self.proxy = None
+@@ -184,6 +193,9 @@ class X2goProxyBASE(threading.Thread):
+             _stdin = file('nul', 'r')
+             _shell = True
+ 
++        # allow inheriting classes to do something with backend specific proxy_options...
++        self.process_proxy_options()
++
+         while not self.proxy:
+             gevent.sleep(.2)
+             p = self.proxy = subprocess.Popen(cmd_line,
+@@ -208,6 +220,25 @@ class X2goProxyBASE(threading.Thread):
+         except WindowsError:
+             pass
+ 
++    def process_proxy_options(self):
++        &quot;&quot;&quot;\
++        Override this method to incorporate elements from C{proxy_options} 
++        into actual proxy subprocess execution.
++
++        This method (if overridden) should (by design) never fail nor raise an exception.
++        Make sure to catch all possible errors appropriately.
++
++        If you want to log ignored proxy_options then
++
++            1. remove processed proxy_options from self.proxy_options
++            2. once you have finished processing the proxy_options call
++            the parent class method X2goProxyBASE.process_proxy_options()
++
++        &quot;&quot;&quot;
++        # do the logging of remaining options, call
++        if self.proxy_options:
++            self.logger('ignoring non-processed proxy options: %s' % self.proxy_options, loglevel=log.loglevel_INFO)
++
+     def _update_local_proxy_socket(self, port):
+         pass
+ 
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 5ee1ead..6fa8fd1 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -173,51 +173,6 @@ class X2goTerminalSessionSTDOUT(object):
+         - C{X2goServerSessionInfo} backend class: when starting or resuming a session, an object of this class 
+         will be used to store all information retrieved from the X2go server.
+ 
+-    @param geometry: screen geometry of the X2go session. Can be either C{&lt;width&gt;x&lt;height&gt;}
+-        or C{fullscreen}
+-    @type geometry: str
+-    @param depth: color depth in bits (common values: C{16}, C{24})
+-    @type depth: int
+-    @param link: network link quality (either one of C{modem}, C{isdn}, C{adsl}, C{wan} or C{lan})
+-    @type link: str
+-    @param pack: compression method for NX based session proxying
+-    @type pack: str
+-    @param cache_type: a dummy parameter that is passed to the L{X2goProxyBASE}. In NX Proxy 
+-        (class C{X2goProxyNX3}) this originally is the session name. With X2go it 
+-        defines the name of the NX cache directory. Best is to leave it untouched.
+-    @type cache_type: str
+-    @param kblayout: keyboard layout, e.g. C{us} (default), C{de}, C{fr}, ...
+-    @type kblayout: str
+-    @param kbtype: keyboard type, e.g. C{pc105/us} (default), C{pc105/de}, ...
+-    @type kbtype: str
+-    @param session_type: either C{desktop} or C{application} (rootless session)
+-    @type session_type: str
+-    @param snd_system: sound system to be used on server (C{none}, C{pulse} (default), 
+-        C{arts} (obsolete) or C{esd})
+-    @type snd_system: str
+-    @param cmd: command to be run on X2go server after session start (only used
+-        when L{X2goTerminalSessionSTDOUT.start()} is called, ignored on resume, suspend etc.
+-    @type cmd: str
+-    @param rootdir: X2go session directory, normally C{~/.x2go}
+-    @type rootdir: str
+-    @param info_backend: backend for handling storage of server session information
+-    @type info_backend: C{X2goServerSessionInfo*} instance
+-    @param list_backend: backend for handling storage of session list information
+-    @type list_backend: C{X2goServerSessionList*} instance
+-    @param proxy_backend: backend for handling the X-proxy connections
+-    @type proxy_backend: C{X2goProxy*} instance
+-    @param print_action: either a print action short name (PDFVIEW, PDFSAVE, PRINT, PRINTCMD) or the
+-        resp. C{X2goPrintActionXXX} class (where XXX equals one of the given short names)
+-    @type print_action: str or class
+-    @param print_action_args: optional arguments for a given print_action (for further info refer to
+-        L{X2goPrintActionPDFVIEW}, L{X2goPrintActionPDFSAVE}, L{X2goPrintActionPRINT} and L{X2goPrintActionPRINTCMD})
+-    @type print_action_args: dict
+-    @param logger: you can pass an L{X2goLogger} object to the
+-        L{X2goTerminalSessionSTDOUT} constructor
+-    @type logger: L{X2goLogger} instance
+-    @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+-        constructed with the given loglevel
+-    @type loglevel: int
+ 
+     &quot;&quot;&quot;
+     def __init__(self, control_session, session_info=None,
+@@ -232,7 +187,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  print_action=None, print_action_args={},
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+-                 proxy_backend=_X2goProxy,
++                 proxy_backend=_X2goProxy, proxy_options={},
+                  printing_backend=_X2goClientPrinting,
+                  client_rootdir=os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR),
+                  sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
+@@ -243,9 +198,59 @@ class X2goTerminalSessionSTDOUT(object):
+         new X2go sessions, resume suspended sessions or suspend resp. terminate
+         currently running sessions on a connected X2go server.
+ 
++        @param geometry: screen geometry of the X2go session. Can be either C{&lt;width&gt;x&lt;height&gt;}
++            or C{fullscreen}
++        @type geometry: str
++        @param depth: color depth in bits (common values: C{16}, C{24})
++        @type depth: int
++        @param link: network link quality (either one of C{modem}, C{isdn}, C{adsl}, C{wan} or C{lan})
++        @type link: str
++        @param pack: compression method for NX based session proxying
++        @type pack: str
++        @param cache_type: a dummy parameter that is passed to the L{X2goProxyBASE}. In NX Proxy 
++            (class C{X2goProxyNX3}) this originally is the session name. With X2go it 
++            defines the name of the NX cache directory. Best is to leave it untouched.
++        @type cache_type: str
++        @param kblayout: keyboard layout, e.g. C{us} (default), C{de}, C{fr}, ...
++        @type kblayout: str
++        @param kbtype: keyboard type, e.g. C{pc105/us} (default), C{pc105/de}, ...
++        @type kbtype: str
++        @param session_type: either C{desktop} or C{application} (rootless session)
++        @type session_type: str
++        @param snd_system: sound system to be used on server (C{none}, C{pulse} (default), 
++            C{arts} (obsolete) or C{esd})
++        @type snd_system: str
++        @param cmd: command to be run on X2go server after session start (only used
++            when L{X2goTerminalSessionSTDOUT.start()} is called, ignored on resume, suspend etc.
++        @type cmd: str
++        @param rootdir: X2go session directory, normally C{~/.x2go}
++        @type rootdir: str
++        @param info_backend: backend for handling storage of server session information
++        @type info_backend: C{X2goServerSessionInfo*} instance
++        @param list_backend: backend for handling storage of session list information
++        @type list_backend: C{X2goServerSessionList*} instance
++        @param proxy_backend: backend for handling the X-proxy connections
++        @type proxy_backend: C{X2goProxy*} instance
++        @param print_action: either a print action short name (PDFVIEW, PDFSAVE, PRINT, PRINTCMD) or the
++            resp. C{X2goPrintActionXXX} class (where XXX equals one of the given short names)
++        @type print_action: str or class
++        @param print_action_args: optional arguments for a given print_action (for further info refer to
++            L{X2goPrintActionPDFVIEW}, L{X2goPrintActionPDFSAVE}, L{X2goPrintActionPRINT} and L{X2goPrintActionPRINTCMD})
++        @type print_action_args: dict
++        @param proxy_options: a set of very C{X2goProxy*} backend specific options; any option that is not known
++            to the C{X2goProxy*} backend will simply be ignored
++        @type proxy_options: C{dict}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goTerminalSessionSTDOUT} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: int
++
+         &quot;&quot;&quot;
+         self.proxy = None
+         self.proxy_subprocess = None
++        self.proxy_options = proxy_options
+ 
+         self.active_threads = []
+         self.reverse_tunnels = {}
+@@ -830,9 +835,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         # set up SSH tunnel for X11 graphical elements
+         self.proxy = self.proxy_backend(session_info=self.session_info, 
+-                                        ssh_transport=self.control_session.get_transport(), 
+-                                        sessions_rootdir=self.sessions_rootdir, 
++                                        ssh_transport=self.control_session.get_transport(),
++                                        sessions_rootdir=self.sessions_rootdir,
+                                         session_instance=self.session_instance,
++                                        proxy_options=self.proxy_options,
+                                         logger=self.logger)
+         self.proxy_subprocess = self.proxy.start_proxy()
+         self.active_threads.append(self.proxy)
+diff --git a/x2go/client.py b/x2go/client.py
+index 995dc81..c6b41ff 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -741,7 +741,8 @@ class X2goClient(object):
+                          allow_printing=False, 
+                          allow_share_local_folders=False, share_local_folders=[], 
+                          allow_mimebox=False, mimebox_extensions=[], mimebox_action='OPEN',
+-                         add_to_known_hosts=False, known_hosts=None, 
++                         add_to_known_hosts=False, known_hosts=None,
++                         proxy_options={},
+                          return_object=False, **kwargs):
+         &quot;&quot;&quot;\
+         Register a new L{X2goSession}. Within one L{X2goClient}
+@@ -797,6 +798,9 @@ class X2goClient(object):
+         @type add_to_known_hosts: C{bool}
+         @param known_hosts: full path to C{known_hosts} file
+         @type known_hosts: C{str}
++        @param proxy_options: a set of very C{X2goProxy*} backend specific options; any option that is not known
++            to the C{X2goProxy*} backend will simply be ignored
++        @type proxy_options: C{dict}
+         @param return_object: normally this method returns a unique session UUID. If 
+             C{return_object} is set to C{True} an X2goSession object will be returned 
+             instead
+@@ -848,6 +852,7 @@ class X2goClient(object):
+             _params['mimebox_extensions'] = mimebox_extensions
+             _params['mimebox_action'] = mimebox_action
+             _params['client_instance'] = self
++            _params['proxy_options'] = proxy_options
+ 
+         session_uuid = self.session_registry.register(server=server,
+                                                       profile_id=_profile_id, profile_name=_profile_name,
+diff --git a/x2go/session.py b/x2go/session.py
+index aff1933..3857d72 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -67,7 +67,8 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
+                         'convert_encoding', 'client_encoding', 'server_encoding',
+-                        'proxy_class', 'logger',
++                        'proxy_options', 
++                        'logger',
+                         'control_backend', 'terminal_backend', 'proxy_backend',
+                         'profiles_backend', 'settings_backend', 'printing_backend',
+                        )
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021529.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.0-1-g73b0531
+</A></li>
+	<LI>Next message: <A HREF="021597.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.2-1-g1a5aed7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21532">[ date ]</a>
+              <a href="thread.html#21532">[ thread ]</a>
+              <a href="subject.html#21532">[ subject ]</a>
+              <a href="author.html#21532">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

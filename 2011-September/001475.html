@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - build-main (branch) updated:	0.1.1.5-4-ga462d31
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.1.1.5-4-ga462d31&In-Reply-To=%3C20110914193526.E98AA5DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001474.html">
+   <LINK REL="Next"  HREF="001476.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - build-main (branch) updated:	0.1.1.5-4-ga462d31</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.1.1.5-4-ga462d31&In-Reply-To=%3C20110914193526.E98AA5DB1C%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - build-main (branch) updated:	0.1.1.5-4-ga462d31">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 14 21:35:26 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001474.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.6-26-g5d6108f
+</A></li>
+        <LI>Next message: <A HREF="001476.html">[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.5-5-gc20bb5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1475">[ date ]</a>
+              <a href="thread.html#1475">[ thread ]</a>
+              <a href="subject.html#1475">[ subject ]</a>
+              <a href="author.html#1475">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  a462d315a76b877535aaadc4e799d268e6a4bf29 (commit)
+       via  29297e679ea9c13051bd89a037e8d260a5d4b572 (commit)
+       via  18903032511f7a0865600cbb5da78fc9382db069 (commit)
+       via  19db0a0ec580c83bd216c6524367c2c7646ea541 (commit)
+      from  fa3e51faff8c4a00a6beb998dd671d8c3a61e4f1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |   10 ++++++++++
+ x2go/__init__.py                 |    2 +-
+ x2go/backends/control/_stdout.py |   12 +++++++++++-
+ x2go/defaults.py                 |    2 +-
+ x2go/inifiles.py                 |    7 +++++--
+ x2go/sshproxy.py                 |   21 +++++++++++++++++----
+ 6 files changed, 45 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 78343dd..91485a2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,3 +1,13 @@
++python-x2go (0.1.1.6-0~x2go1) UNRELEASED; urgency=low
++
++  * New upstream version (0.1.1.6), bugfix release for 0.1.1.x series:
++    - Fix IPv4 enforcement for localhost connections.
++    - Be tolerant against trailing whitespaces in hostnames.
++    - Fix handling of lists in session profiles (i.e. ini files). Fixes breakage
++      with x2goclient's rootless vs. desktop mode after pyhoca-gui has been used.
++ 
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Mon, 11 Sep 2011 18:37:02 +0200
++
+ python-x2go (0.1.1.5-0~x2go1) unstable; urgency=low
+ 
+   * New upstream version (0.1.1.5), bugfix release for 0.1.1.x series:
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index 31ff130..576547d 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -158,7 +158,7 @@ Contact
+ &quot;&quot;&quot;
+ 
+ __NAME__    = 'python-x2go'
+-__VERSION__ = '0.1.1.5'
++__VERSION__ = '0.1.1.6'
+ 
+ from gevent import monkey
+ monkey.patch_all()
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 2f14082..4936189 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -280,6 +280,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
++        # trailing whitespace tolerance
++        hostname = hostname.strip()
++
++        # force into IPv4 for localhost connections
++        if hostname in ('localhost', 'localhost.localdomain'):
++            hostname = '127.0.0.1'
++
+         return checkhosts.check_ssh_host_key(self, hostname, port=port)
+ 
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+@@ -389,13 +396,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             key_filename = None
+             pkey = None
+ 
++        # trailing whitespace tolerance in hostname
++        hostname = hostname.strip()
++
+         self.logger('connecting to [%s]:%s' % (hostname, port), loglevel=log.loglevel_NOTICE)
+ 
+         self.load_session_host_keys()
+ 
+         _hostname = hostname
+         # enforce IPv4 for localhost address
+-        if _hostname == 'localhost':
++        if _hostname in ('localhost', 'localhost.localdomain'):
+             _hostname = '127.0.0.1'
+ 
+         if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index c3627af..9d60613 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -276,7 +276,7 @@ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'sound':False, 'soundsystem': 'pulse', 'startsoundsystem': False, 'soundtunnel':True, 'defsndport':True, 'sndport':4713, 
+     'name': 'NEW_PROFILE', 'icon': ':icons/128x128/x2gosession.png', 
+     'host': '', 'user': CURRENT_LOCAL_USER, 'key': '', 'sshport': 22,
+-    'rootless': True, 'applications': str(X2GO_GENERIC_APPLICATIONS), 'command':'TERMINAL',
++    'rootless': True, 'applications': X2GO_GENERIC_APPLICATIONS, 'command':'TERMINAL',
+     'rdpoptions': '-u X2GO_USER -p X2GO_PASSWORD', 'rdpserver': '',
+     'print': False,
+     'xdmcpserver': 'localhost',
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+index 3269483..6c2afae 100644
+--- a/x2go/inifiles.py
++++ b/x2go/inifiles.py
+@@ -156,9 +156,10 @@ class X2goIniFile(object):
+         &quot;&quot;&quot;
+         if type(value) == type(u''):
+             value = value.encode(utils.get_encoding())
+-
+         if type(value) is types.BooleanType:
+             self.iniConfig.set(section, key, str(int(value)))
++        elif type(value) in (types.ListType, types.TupleType):
++            self.iniConfig.set(section, key, &quot;, &quot;.join(value))
+         else:
+             self.iniConfig.set(section, key, str(value))
+ 
+@@ -249,8 +250,10 @@ class X2goIniFile(object):
+                 val = self.iniConfig.get(section, key)
+                 if val.startswith('[') and val.endswith(']'):
+                     return eval(val)
++                elif ',' in val:
++                    val = [ v.strip() for v in val.split(',') ]
+                 else:
+-                    raise TypeError
++                    val = [ val ]
+             else:
+                 _val = self.iniConfig.get(section, key)
+                 return _val.decode(utils.get_encoding())
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index dcf7f51..cd51afe 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -151,13 +151,18 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+             self.remote_host = remote_host
+             self.remote_port = int(remote_port)
+ 
++        # allow more trailing whitespace tolerance in hostnames
++        self.hostname = self.hostname.strip()
++        self.local_host = self.local_host.strip()
++        self.remote_host = self.remote_host.strip()
++
+         # enforce IPv4 for localhost addresses!!!
+         _hostname = self.hostname
+-        if _hostname == 'localhost':
++        if _hostname in ('localhost', 'localhost.localdomain'):
+             _hostname = '127.0.0.1'
+-        if self.local_host == 'localhost':
++        if self.local_host in ('localhost', 'localhost.localdomain'):
+             self.local_host = '127.0.0.1'
+-        if self.remote_host == 'localhost':
++        if self.remote_host in ('localhost', 'localhost.localdomain'):
+             self.remote_host = '127.0.0.1'
+ 
+         if username is None:
+@@ -230,8 +235,16 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
++
++        # hostname rewrite for localhost, force to IPv4
++        _hostname = self.hostname
++
++        # force into IPv4 for localhost connections
++        if _hostname in ('localhost', 'localhost.localdomain'):
++            _hostname = '127.0.0.1'
++
+         _valid = False
+-        (_valid, _hostname, _port, _fingerprint, _fingerprint_type) = checkhosts.check_ssh_host_key(self, self.hostname, port=self.port)
++        (_valid, _hostname, _port, _fingerprint, _fingerprint_type) = checkhosts.check_ssh_host_key(self, _hostname, port=self.port)
+         if not _valid and self.session_instance:
+             _valid = self.session_instance.HOOK_check_host_dialog(_hostname, _port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
+         return _valid
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2go Client API).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001474.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.6-26-g5d6108f
+</A></li>
+	<LI>Next message: <A HREF="001476.html">[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.5-5-gc20bb5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1475">[ date ]</a>
+              <a href="thread.html#1475">[ thread ]</a>
+              <a href="subject.html#1475">[ subject ]</a>
+              <a href="author.html#1475">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

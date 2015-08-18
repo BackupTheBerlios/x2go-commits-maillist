@@ -1,0 +1,338 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-9-g9a50744
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.2.2-9-g9a50744&In-Reply-To=%3C20130604191023.E060B5DB2E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008326.html">
+   <LINK REL="Next"  HREF="008328.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-9-g9a50744</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.2.2-9-g9a50744&In-Reply-To=%3C20130604191023.E060B5DB2E%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-9-g9a50744">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:10:23 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008326.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-6-g851439d
+</A></li>
+        <LI>Next message: <A HREF="008328.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-4-geb38dff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8327">[ date ]</a>
+              <a href="thread.html#8327">[ thread ]</a>
+              <a href="subject.html#8327">[ subject ]</a>
+              <a href="author.html#8327">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  9a50744749881a91422b397c2985ed3f35bc8175 (commit)
+      from  f51f163d2e8ade102a8a3d7484e0abe22f2ab4f3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9a50744749881a91422b397c2985ed3f35bc8175
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Jun 4 21:08:39 2013 +0200
+
+    first draft for reporting session status via the list_profiles() method
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ lib/x2gobroker-agent.pl           |    5 ++
+ x2gobroker/agent.py               |   35 +++++++++++
+ x2gobroker/brokers/base_broker.py |  116 ++++++++++++++++++++-----------------
+ 3 files changed, 102 insertions(+), 54 deletions(-)
+
+The diff of changes is:
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index 5fc5459..c5310b2 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -105,6 +105,11 @@ if($uidNumber &lt; 1000)
+ 	die 'operation on system user';
+ }
+ 
++if($mode eq 'ping')
++{
++	print &quot;OK\n&quot;;
++}
++
+ if($mode eq 'listsessions')
+ {
+ 	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index b106dd4..e3cb489 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -139,6 +139,23 @@ def call_remote_broker_agent(username, mode, cmdline_args=[], remote_agent=None)
+         raise x2gobroker.x2gobroker_exceptions.X2GoBrokerAgentException('Query to remote X2Go Broker Agent (user: {user}, hostname: {hostname}, port: {port}) failed'.format(user=remote_username, hostname=remote_hostname, port=remote_port))
+ 
+ 
++def ping(query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Ping X2Go Broker Agent.
++
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    username='foo'
++    if query_mode.upper() == u'LOCAL':
++        return call_local_broker_agent(username, mode='ping')
++    else:
++        return call_remote_broker_agent(username, mode='ping', remote_agent=remote_agent)
++
++
+ def list_sessions(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+     Query X2Go Broker Agent for a session list for a given username.
+@@ -156,6 +173,24 @@ def list_sessions(username, query_mode='LOCAL', remote_agent=None):
+     else:
+         return call_remote_broker_agent(username, mode='listsessions', remote_agent=remote_agent)
+ 
++def has_sessions(username, query_mode='LOCAL', remote_agent=None):
++    &quot;&quot;&quot;\
++    Query X2Go Broker Agent to detect running/suspended sessions on
++    the remote X2Go Server (farm).
++
++    @param username: run the query on behalf of this username
++    @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    @return: (&lt;has-running-sessions&gt;, &lt;has-suspended-session&gt;), a tuple of two Boolean values
++    @rtype: C{tuple}
++
++    &quot;&quot;&quot;
++    _session_list = list_sessions(username, query_mode=query_mode, remote_agent=remote_agent)
++    return (bool([ s for s in _session_list if s.split('|')[4] == 'R' ]), bool([ s for s in _session_list if s.split('|')[4] == 'S' ]))
+ 
+ def find_busy_servers(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 2738105..c01a76a 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -780,6 +780,50 @@ class X2GoBroker(object):
+         except KeyError:
+             return None
+ 
++
++    def get_remote_agent(self, profile_id, exclude_agents=[], ):
++        &quot;&quot;&quot;\
++        Randomly choose a remote agent for agent query.
++
++        @param profile_id: choose remote agent for this profile ID
++        @type profile_id: C{unicode}
++        @param exclude_agents: a list of remote agent dict objects to be exclude from the random choice
++        @type exclude_agents: C{list}
++
++        &quot;&quot;&quot;
++        remote_agent = None
++
++        agent_query_mode = self.get_agent_query_mode().upper()
++        if agent_query_mode == u'SSH':
++
++            profile = self.get_profile(profile_id)
++            server_list = profile[u'host']
++            random.shuffle(server_list)
++
++            for agent in exclude_agents:
++                if agent['hostname'] in server_list:
++                    server_list.remove(agent['hostname'])
++
++            while server_list:
++
++                remote_agent_server = server_list[-1]
++                remote_agent_port = profile[u'sshport']
++                remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
++
++                if x2gobroker.agent.ping(query_mode=agent_query_mode, remote_agent=remote_agent)
++                    break
++
++                server_list = server_list[0:-1]
++
++            else:
++                logger_broker.warning('base_broker.X2GoBroker.get_remote_agent(): failed to allocate any broker agent (query-mode: {query_mode}, remote_agent: {remote_agent})'.format(query_mode=agent_query_mode, remote_agent=remote_agent))
++
++        elif agent_query_mode == u'LOCAL':
++            # use a non-False value here, not used anywhere else...
++            remote_agent = 'LOCAL'
++
++        return remote_agent
++
+     def list_profiles(self, username):
+         &quot;&quot;&quot;\
+         Retrieve a list of available session profiles for the authenticated user.
+@@ -806,34 +850,16 @@ class X2GoBroker(object):
+             acls = self.get_profile_acls(profile_id)
+ 
+             if self.check_profile_acls(username, acls):
+-                list_of_profiles.update({profile_id: profile, })
+-
+-        return list_of_profiles
+-
+-    def random_remote_agent(self, profile_id, exclude_agents=[]):
+-        &quot;&quot;&quot;\
+-        Randomly choose a remote agent for agent query.
+-
+-        @param profile_id: choose remote agent for this profile ID
+-        @type profile_id: C{unicode}
+-        @param exclude_agents: a list of remote agent dict objects to be exclude from the random choice
+-        @type exclude_agents: C{list}
+ 
+-        &quot;&quot;&quot;
+-        profile = self.get_profile(profile_id)
+-        server_list = profile[u'host']
++                remote_agent = self.get_remote_agent(profile_id)
++                if remote_agent:
++                    running_sessions, suspended_sessions = x2gobroker.agent.has_sessions(username, query_mode=agent_query_mode, remote_agent=remote_agent)
++                    if running_sessions: profile['status'] = u'R'
++                    if suspended_sessions: profile['status'] = u'S'
+ 
+-        for agent in exclude_agents:
+-            if agent['hostname'] in server_list:
+-                server_list.remove(agent['hostname'])
++                list_of_profiles.update({profile_id: profile, })
+ 
+-        remote_agent = None
+-        if server_list:
+-            random.shuffle(server_list)
+-            remote_agent_server = server_list[0]
+-            remote_agent_port = profile[u'sshport']
+-            remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
+-        return remote_agent
++        return list_of_profiles
+ 
+     def select_session(self, profile_id, username=None):
+         &quot;&quot;&quot;\
+@@ -852,39 +878,21 @@ class X2GoBroker(object):
+ 
+         # if we have more than one server, pick one server randomly for X2Go Broker Agent queries
+         server_list = profile[u'host']
+-        random.shuffle(server_list)
+-        agent_query_mode = self.get_agent_query_mode().upper()
+-
+-        remote_agent = None
+-        if agent_query_mode == u'SSH':
+-            remote_agent = self.random_remote_agent(profile_id)
++        remote_agent = self.get_remote_agent(profile_id)
+ 
+         # detect best X2Go server for this user if load balancing is configured
+-        if agent_query_mode != u'NONE' and len(server_list) &gt;= 2 and username:
++        if remote_agent and len(server_list) &gt;= 2 and username:
+ 
+-            # query remote agent for session info, if one of the server's is down, we will try the next one...
++            # query remote agent for session info
+             busy_servers = None
+-            exclude_agents = []
+-            while busy_servers is None and remote_agent:
+-
+-                try:
+-                    busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent=remote_agent)
+-                except x2gobroker.x2gobroker_exceptions.X2GoBrokerAgentException:
+-                    logger_broker.warning('base_broker.X2GoBroker.select_session(): failed to query broker agent (quey-mode: {query_mode}, remote_agent: {remote_agent})'.format(query_mode=agent_query_mode, remote_agent=remote_agent))
+-
+-                    if agent_query_mode == u'SSH':
+-                        # mark this agent as bad
+-                        exclude_agents.append(remote_agent)
+-                        # also remove this agent from the list of available servers as the machine is probably down
+-                        server_list.remove(remote_agent['hostname'])
+-
+-                        remote_agent = self.random_remote_agent(profile_id, exclude_agents=exclude_agents)
+-                    else:
+-                        remote_agent = None
++            try:
++                busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent=remote_agent)
++            except x2gobroker.x2gobroker_exceptions.X2GoBrokerAgentException:
++                pass
+ 
+             if busy_servers is not None:
+ 
+-                # if we do not get until here, then all broker agent calls have failed!!!!
++                # if we do not get here, we failed to query a valid agent...
+ 
+                 # when detecting the server load we have to support handling of differing subdomains (config
+                 # file vs. server load returned by x2gobroker agent). Best approach: all members of a multi-node
+@@ -924,7 +932,7 @@ class X2GoBroker(object):
+                 best_server = busy_server_list[0][1]
+ 
+             else:
+-                logger_broker.warning('base_broker.X2GoBroker.select_session(): all expected broker agents failed to respond, this does not look good. We tried these agent hosts: {agent_hosts}'.format(agent_hosts=unicode(server_list)))
++                logger_broker.warning('base_broker.X2GoBroker.select_session(): no broker agent could be contacted, this does not look good. We tried these agent hosts: {agent_hosts}'.format(agent_hosts=unicode(server_list)))
+                 if server_list: best_server = server_list[0]
+                 else: return { 'server': 'no-server-available', 'port': profile[u'sshport'], }
+ 
+@@ -944,7 +952,7 @@ class X2GoBroker(object):
+         }
+ 
+         # find already running sessions and resume the first one found
+-        if agent_query_mode != u'NONE' and len(server_list) &gt;= 2 and username:
++        if remote_agent and len(server_list) &gt;= 2 and username:
+ 
+             session_list = x2gobroker.agent.list_sessions(username=username, query_mode=agent_query_mode, remote_agent=remote_agent)
+             if session_list:
+@@ -972,7 +980,7 @@ class X2GoBroker(object):
+ 
+ 
+         # session autologin feature
+-        if agent_query_mode != u'NONE' and self.use_session_autologin(profile_id):
++        if remote_agent and self.use_session_autologin(profile_id) and username:
+ 
+             # FIXME: we somehow have to find out about the username of the person at the broker client-side...
+             # using the username used for broker login for now...
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008326.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-6-g851439d
+</A></li>
+	<LI>Next message: <A HREF="008328.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.2.2-4-geb38dff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8327">[ date ]</a>
+              <a href="thread.html#8327">[ thread ]</a>
+              <a href="subject.html#8327">[ subject ]</a>
+              <a href="author.html#8327">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

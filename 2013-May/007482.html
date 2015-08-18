@@ -1,0 +1,250 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-14-gb5df92c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-14-gb5df92c&In-Reply-To=%3C20130519110443.B88265DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007471.html">
+   <LINK REL="Next"  HREF="007461.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-14-gb5df92c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-14-gb5df92c&In-Reply-To=%3C20130519110443.B88265DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-14-gb5df92c">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:43 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007471.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-8-gbbe2c8a
+</A></li>
+        <LI>Next message: <A HREF="007461.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-17-g58da6a1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7482">[ date ]</a>
+              <a href="thread.html#7482">[ thread ]</a>
+              <a href="subject.html#7482">[ subject ]</a>
+              <a href="author.html#7482">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  b5df92c61e0c84ec314b29acc60e635d43f3b7b0 (commit)
+      from  5ef433db9f943afd56b15351cceb2021184ed43e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/defaults.py |   74 ++++++++++++++++++++++++++++++++----------------
+ x2gobroker/loggers.py  |   32 +++++++++++++++++----
+ 2 files changed, 76 insertions(+), 30 deletions(-)
+
+The diff of changes is:
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index b85a296..1f250c2 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -22,50 +22,76 @@
+ # modules
+ import os
+ import uuid
++import getpass
+ 
+-# the home directory of the user that the daemon/cgi runs as
+-X2GOBROKER_HOME = os.path.normpath(os.path.expanduser('~'))
++import logging
++from loggers import logger_broker, logger_access, logger_error, X2GOBROKER_DAEMON_USER
+ 
+-if os.environ.has_key('X2GOBROKER_CONFIG'):
+-    X2GOBROKER_CONFIG=os.environ['X2GOBROKER_CONFIG']
+-else:
+-    X2GOBROKER_CONFIG=&quot;/etc/x2go/x2gobroker.conf&quot;
++X2GOBROKER_USER =  getpass.getuser()
+ 
+-if os.environ.has_key('X2GOBROKER_LOGCONFIG'):
+-    X2GOBROKER_LOGCONFIG=os.environ['X2GOBROKER_LOGCONFIG']
+-else:
+-    X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
++###
++### dynamic default values, influencable through os.environ...
++###
+ 
+-if os.environ.has_key('X2GOBROKER_SESSIONPROFILES'):
+-    X2GOBROKER_SESSIONPROFILES=os.environ['X2GOBROKER_SESSIONPROFILES']
++if os.environ.has_key('X2GOBROKER_DEBUG'):
++    X2GOBROKER_DEBUG = ( os.environ['X2GOBROKER_DEBUG'].lower() in ('1', 'on', 'true', 'yes', ) )
+ else:
+-    X2GOBROKER_SESSIONPROFILES=&quot;/etc/x2go/broker/x2gobroker-sessionprofiles.conf&quot;
++    X2GOBROKER_DEBUG = False
++if X2GOBROKER_USER != X2GOBROKER_DAEMON_USER:
++    X2GOBROKER_DEBUG = True
+ 
+-if os.environ.has_key('X2GOBROKER_DEBUG'):
+-    X2GOBROKER_DEBUG=( os.environ['X2GOBROKER_DEBUG'].lower() in ('1', 'on', 'true', 'yes', ) )
++if X2GOBROKER_DEBUG:
++    logger_broker.setLevel(logging.DEBUG)
++    logger_access.setLevel(logging.DEBUG)
++    logger_error.setLevel(logging.DEBUG)
++
++if X2GOBROKER_USER != X2GOBROKER_DAEMON_USER:
++    logger_broker.warn('X2Go Session Broker has been started interactively by user {username}, better run as user {daemon_username}.'.format(username=X2GOBROKER_USER, daemon_username=X2GOBROKER_DAEMON_USER))
++    logger_broker.info('Automatically switching to DEBUG mode due to interactive launch of this application.')
++logger_broker.info('Setting up the broker\'s environment...')
++logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=X2GOBROKER_DEBUG))
++
++if os.environ.has_key('X2GOBROKER_CONFIG'):
++    X2GOBROKER_CONFIG = os.environ['X2GOBROKER_CONFIG']
+ else:
+-    X2GOBROKER_DEBUG=False
++    X2GOBROKER_CONFIG = &quot;/etc/x2go/x2gobroker.conf&quot;
++logger_broker.info('  X2GOBROKER_CONFIG: {value}'.format(value=X2GOBROKER_CONFIG))
++
++X2GOBROKER_SESSIONPROFILES = &quot;/etc/x2go/broker/x2gobroker-sessionprofiles.conf&quot;
+ 
+ if os.environ.has_key('X2GOBROKER_AGENT_CMD'):
+-    X2GOBROKER_AGENT_CMD=os.environ['X2GOBROKER_AGENT_CMD']
++    X2GOBROKER_AGENT_CMD = os.environ['X2GOBROKER_AGENT_CMD']
+ else:
+-    X2GOBROKER_AGENT_CMD=&quot;/usr/lib/x2go/x2gobroker-agent&quot;
++    X2GOBROKER_AGENT_CMD = &quot;/usr/lib/x2go/x2gobroker-agent&quot;
++logger_broker.info('  X2GOBROKER_AGENT_CMD: {value}'.format(value=X2GOBROKER_AGENT_CMD))
+ 
+ if os.environ.has_key('X2GOBROKER_DEFAULT_BACKEND'):
+-    X2GOBROKER_DEFAULT_BACKEND=os.environ['X2GOBROKER_DEFAULT_BACKEND']
++    X2GOBROKER_DEFAULT_BACKEND = os.environ['X2GOBROKER_DEFAULT_BACKEND']
+ else:
+-    X2GOBROKER_DEFAULT_BACKEND=&quot;zeroconf&quot;
++    X2GOBROKER_DEFAULT_BACKEND = &quot;zeroconf&quot;
++logger_broker.info('  X2GOBROKER_DEFAULT_BACKEND: {value}'.format(value=X2GOBROKER_DEFAULT_BACKEND))
+ 
+ if os.environ.has_key('X2GOBROKER_SSL_CERTFILE'):
+-    X2GOBROKER_SSL_CERTFILE=os.environ['X2GOBROKER_SSL_CERTFILE']
++    X2GOBROKER_SSL_CERTFILE = os.environ['X2GOBROKER_SSL_CERTFILE']
+ else:
+-    X2GOBROKER_SSL_CERTFILE=&quot;&quot;
++    X2GOBROKER_SSL_CERTFILE = &quot;&quot;
++logger_broker.info('  X2GOBROKER_SSL_CERTFILE: {value}'.format(value=X2GOBROKER_SSL_CERTFILE))
+ 
+ if os.environ.has_key('X2GOBROKER_SSL_KEYFILE'):
+-    X2GOBROKER_SSL_KEYFILE=os.environ['X2GOBROKER_SSL_KEYFILE']
++    X2GOBROKER_SSL_KEYFILE = os.environ['X2GOBROKER_SSL_KEYFILE']
+ else:
+-    X2GOBROKER_SSL_KEYFILE=&quot;&quot;
++    X2GOBROKER_SSL_KEYFILE = &quot;&quot;
++logger_broker.info('  X2GOBROKER_SSL_KEYFILE: {value}'.format(value=X2GOBROKER_SSL_KEYFILE))
++
+ 
++###
++### static / hard-coded defaults
++###
++
++X2GOBROKER_SESSIONPROFILES = &quot;/etc/x2go/broker/x2gobroker-sessionprofiles.conf&quot;
++
++# the home directory of the user that the daemon/cgi runs as
++X2GOBROKER_HOME = os.path.normpath(os.path.expanduser('~'))
+ 
+ # defaults for X2Go Sessino Broker configuration file
+ X2GOBROKER_CONFIG_DEFAULTS = {
+diff --git a/x2gobroker/loggers.py b/x2gobroker/loggers.py
+index 7151fd5..e35a9a7 100644
+--- a/x2gobroker/loggers.py
++++ b/x2gobroker/loggers.py
+@@ -19,14 +19,22 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
++import os
+ import sys
+ import getpass
+ import logging
+ import logging.config
+ 
+-from x2gobroker.defaults import X2GOBROKER_LOGCONFIG as _X2GOBROKER_LOGCONFIG
++X2GOBROKER_DAEMON_USER = 'x2gobroker'
+ 
+-if getpass.getuser() == &quot;x2gobroker&quot;:
++# normally this would go into defaults.py, however, we do not want to create a dependency loop between loggers.py and defaults.py...
++if os.environ.has_key('X2GOBROKER_LOGCONFIG'):
++    X2GOBROKER_LOGCONFIG=os.environ['X2GOBROKER_LOGCONFIG']
++else:
++    X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
++
++# standalone daemon mode (x2gobroker-daemon) or interactive mode (called from the cmdline)?
++if getpass.getuser() == X2GOBROKER_DAEMON_USER:
+ 
+     # we run in standalone daemon mode, so let's use the system configuration for logging
+     logging.config.fileConfig(_X2GOBROKER_LOGCONFIG)
+@@ -38,9 +46,21 @@ if getpass.getuser() == &quot;x2gobroker&quot;:
+ 
+ else:
+     logger_root = logging.getLogger()
+-    logger_root.addHandler(logging.StreamHandler(sys.stdout))
++    stdout_handler = logging.StreamHandler(sys.stdout)
++    stdout_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt=''))
++
++    # all loggers stream to stdout...
++    logger_root.addHandler(stdout_handler)
++
++    logger_broker = logging.getLogger('broker')
++    logger_broker.addHandler(stdout_handler)
++    logger_broker.propagate = 0
++
++    logger_access = logging.getLogger('access')
++    logger_access.addHandler(stdout_handler)
++    logger_access.propagate = 0
+ 
+-    logger_broker = logger_root
+-    logger_access = logger_root
+-    logger_error = logger_root
++    logger_error = logging.getLogger('error')
++    logger_error.addHandler(stdout_handler)
++    logger_error.propagate = 0
+ 
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007471.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-8-gbbe2c8a
+</A></li>
+	<LI>Next message: <A HREF="007461.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-17-g58da6a1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7482">[ date ]</a>
+              <a href="thread.html#7482">[ thread ]</a>
+              <a href="subject.html#7482">[ subject ]</a>
+              <a href="author.html#7482">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,564 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-30-gc64bf0c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-30-gc64bf0c&In-Reply-To=%3C20130914135621.A34B85DCF2%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013388.html">
+   <LINK REL="Next"  HREF="013398.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-30-gc64bf0c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-30-gc64bf0c&In-Reply-To=%3C20130914135621.A34B85DCF2%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-30-gc64bf0c">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:21 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013388.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-29-g723ccbb
+</A></li>
+        <LI>Next message: <A HREF="013398.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-31-g2c5b98f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13391">[ date ]</a>
+              <a href="thread.html#13391">[ thread ]</a>
+              <a href="subject.html#13391">[ subject ]</a>
+              <a href="author.html#13391">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  c64bf0c058790384308e91503ee7a8e975ed0489 (commit)
+      from  723ccbb41ce920aa9434d613a21ddbb7a4c551d9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/profilemanager.py |  297 +++++++++++++++++++++++++++-------------
+ 1 file changed, 199 insertions(+), 98 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 38e10fa..3e61ad5 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -90,7 +90,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'APPLICATION': _(u'Single Application'),
+             'XDMCP': _(u'XDMCP Query'),
+             'RDP': _(u'Windows Terminal Server (X2Go-proxied RDP)'),
+-            'DirectRDP': 'Windows Terminal Server (Direct RDP)',
++            'DirectRDP': _(u'Windows Terminal Server (Direct RDP)'),
+             'CUSTOM': _(u'Custom command'),
+             }
+         if self.action == 'EDIT_CONNECTED':
+@@ -818,18 +818,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.ProfileName.SetValue(self.profile_config['name'])
+         self.SetSessionWindowTitle.SetValue(self.profile_config['setsessiontitle'])
+         self.CustomSessionWindowTitle.SetValue(self.profile_config['sessiontitle'])
+-        if not self.profile_config['setsessiontitle']:
+-            self.CustomSessionWindowTitleLabel.Enable(False)
+-            self.CustomSessionWindowTitle.Enable(False)
+-            self.UseDefaultSessionWindowTitle.Enable(False)
+-        else:
+-            if self.profile_config['sessiontitle']:
+-                self.UseDefaultSessionWindowTitle.SetValue(False)
+-            else:
+-                self.UseDefaultSessionWindowTitle.SetValue(True)
+-                self.CustomSessionWindowTitleLabel.Enable(False)
+-                self.CustomSessionWindowTitle.Enable(False)
+-
+         self.Host.SetValue(self.profile_config['host'])
+         self.UserName.SetValue(self.profile_config['user'])
+         self.SSHPort.SetValue(self.profile_config['sshport'])
+@@ -872,7 +860,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.UseSSHProxy.SetValue(_ssh_proxy)
+         self.SSHProxySameUser.SetValue(self.profile_config['sshproxysameuser'])
+         self.SSHProxySamePassword.SetValue(self.profile_config['sshproxysamepass'])
+-        self.ToggleSSHProxy()
++        self._toggle_SSHProxy()
+ 
+         self.AutoStartSession.SetValue(self.profile_config['autostart'])
+         self.AutoLoginSessionProfile.SetValue(self.profile_config['autologin'])
+@@ -948,59 +936,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.ImageQuality.SetValue(9)
+             self.ImageQuality.Enable(False)
+ 
+-        if _command == 'RDP':
+-            if self.profile_config['directrdp']:
+-                self.UseSSHProxy.SetValue(False)
+-                self.ToggleSSHProxy()
+-                self.enable_DirectRDP()
+-                self.SSHPort.SetValue(self.profile_config['rdpport'])
+-                self.RDPOptions.SetValue(self.profile_config['directrdpsettings'])
+-                self.RDPServerLabel.Enable(True)
+-                self.RDPServer.Enable(False)
+-                self.RDPOptionsLabel.Enable(True)
+-                self.RDPOptions.Enable(True)
+-                self.UsePublishedApplications.SetValue(False)
+-                self.UsePublishedApplications.Enable(False)
+-                self.RootlessSession.SetValue(False)
+-                self.RootlessSession.Enable(False)
+-            else:
+-                self.disable_DirectRDP()
+-                self.RDPServerLabel.Enable(True)
+-                self.RDPServer.Enable(True)
+-                self.RDPOptionsLabel.Enable(True)
+-                self.RDPOptions.Enable(True)
+-                self.UsePublishedApplications.SetValue(False)
+-                self.UsePublishedApplications.Enable(False)
+-                self.RootlessSession.SetValue(False)
+-                self.RootlessSession.Enable(False)
+-        else:
+-            self.disable_DirectRDP()
+-            self.RDPServerLabel.Enable(False)
+-            self.RDPServer.Enable(False)
+-            self.RDPOptionsLabel.Enable(False)
+-            self.RDPOptions.Enable(False)
+-
+-        self.XDMCPServer.SetValue(self.profile_config['xdmcpserver'])
+-
+-        self.DisplayTypeFullscreen.SetValue(self.profile_config['fullscreen'] and not self.profile_config['maxdim'])
+-        self.DisplayTypeMaximize.SetValue(self.profile_config['maxdim'])
+-        self.DisplayTypeCustom.SetValue(not (self.profile_config['fullscreen'] or self.profile_config['maxdim']))
+-        self.ScreenWidth.SetValue(self.profile_config['width'])
+-        self.ScreenHeight.SetValue(self.profile_config['height'])
+-        if self.profile_config['fullscreen']:
+-            self.ScreenWidth.Enable(False)
+-            self.ScreenHeight.Enable(False)
+-        else:
+-            self.ScreenWidth.Enable(True)
+-            self.ScreenHeight.Enable(True)
+-
+-        self.SetDisplayDPI.SetValue(self.profile_config['setdpi'])
+-        self.DisplayDPI.SetValue(self.profile_config['dpi'])
+-        if not self.profile_config['setdpi']:
+-            self.DisplayDPI.Enable(False)
+-        else:
+-            self.DisplayDPI.Enable(True)
+-
+         if self.profile_config['usekbd']:
+             self.DontSetKeyboard.SetValue(False)
+             if self.profile_config['type'] == 'auto':
+@@ -1038,12 +973,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.EnableSound.SetValue(self.profile_config['sound'])
+         self.DefaultSoundPort.SetValue(self.profile_config['defsndport'])
+         self.SoundPort.SetValue(self.profile_config['sndport'])
+-        if self.profile_config['soundsystem'] == 'pulse':
+-            self.PulseAudio.SetValue(True)
+-        elif self.profile_config['soundsystem'] == 'arts':
+-            self.Arts.SetValue(True)
+-        elif self.profile_config['soundsystem'] == 'esd':
+-            self.Esd.SetValue(True)
+         if self.profile_config['sound']:
+             self.PulseAudio.Enable(True)
+             self.Esd.Enable(True)
+@@ -1063,6 +992,60 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.ClientSidePrinting.SetValue(self.profile_config['print'])
+ 
++        if _command == 'RDP':
++            if self.profile_config['directrdp']:
++                self.UseSSHProxy.SetValue(False)
++                self._toggle_SSHProxy()
++                self.enable_DirectRDP()
++                self._toggle_SetKeyboard()
++                self.PulseAudio.SetValue(True)
++                self._toggle_DefaultSoundPort()
++                self.SSHPort.SetValue(self.profile_config['rdpport'])
++                self.RDPOptions.SetValue(self.profile_config['directrdpsettings'])
++                self.RDPServerLabel.Enable(True)
++                self.RDPServer.Enable(False)
++                self.RDPOptionsLabel.Enable(True)
++                self.RDPOptions.Enable(True)
++                self.UsePublishedApplications.SetValue(False)
++                self.UsePublishedApplications.Enable(False)
++                self.RootlessSession.SetValue(False)
++                self.RootlessSession.Enable(False)
++            else:
++                self.disable_DirectRDP()
++                self._toggle_SetKeyboard()
++                self.RDPServerLabel.Enable(True)
++                self.RDPServer.Enable(True)
++                self.RDPOptionsLabel.Enable(True)
++                self.RDPOptions.Enable(True)
++                self.UsePublishedApplications.SetValue(False)
++                self.UsePublishedApplications.Enable(False)
++                self.RootlessSession.SetValue(False)
++                self.RootlessSession.Enable(False)
++        else:
++            self.disable_DirectRDP()
++            self._toggle_SetKeyboard()
++            self.RDPServerLabel.Enable(False)
++            self.RDPServer.Enable(False)
++            self.RDPOptionsLabel.Enable(False)
++            self.RDPOptions.Enable(False)
++
++        self.XDMCPServer.SetValue(self.profile_config['xdmcpserver'])
++
++        self.DisplayTypeFullscreen.SetValue(self.profile_config['fullscreen'] and not self.profile_config['maxdim'])
++        self.DisplayTypeMaximize.SetValue(self.profile_config['maxdim'])
++        self.DisplayTypeCustom.SetValue(not (self.profile_config['fullscreen'] or self.profile_config['maxdim']))
++        self.ScreenWidth.SetValue(self.profile_config['width'])
++        self.ScreenHeight.SetValue(self.profile_config['height'])
++
++        self._toggle_DisplayProperties()
++
++        self.SetDisplayDPI.SetValue(self.profile_config['setdpi'])
++        self.DisplayDPI.SetValue(self.profile_config['dpi'])
++        if not self.profile_config['setdpi']:
++            self.DisplayDPI.Enable(False)
++        else:
++            self.DisplayDPI.Enable(True)
++
+         self.UseLocalFolderSharing.SetValue(self.profile_config['useexports'])
+         self._toggle_localFolderSharing()
+         self.SharedFoldersList.DeleteAllItems()
+@@ -1123,6 +1106,65 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.disable_EditConnected_options()
+ 
++    def _toggle_DisplayProperties(self):
++        &quot;&quot;&quot;\
++        Toggle display properties, depend on activation/deactivation of rootless session mode.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if not self.RootlessSession.GetValue():
++            self.DisplayTypeFullscreen.Enable(True)
++            self.DisplayTypeMaximize.Enable(True)
++            self.DisplayTypeCustom.Enable(True)
++            if self.DisplayTypeFullscreen.GetValue() or self.DisplayTypeMaximize.GetValue():
++                self.ScreenWidth.Enable(False)
++                self.ScreenHeightLabel.Enable(False)
++                self.ScreenHeight.Enable(False)
++            else:
++                self.ScreenWidth.Enable(True)
++                self.ScreenHeightLabel.Enable(True)
++                self.ScreenHeight.Enable(True)
++
++            self.SetSessionWindowTitle.Enable(True)
++            self.SetSessionWindowTitle.SetValue(self.profile_config_bak['setsessiontitle'])
++            self.CustomSessionWindowTitle.SetValue(self.profile_config_bak['sessiontitle'])
++
++            if not self.profile_config['setsessiontitle']:
++                self.CustomSessionWindowTitleLabel.Enable(False)
++                self.CustomSessionWindowTitle.Enable(False)
++                self.UseDefaultSessionWindowTitle.Enable(False)
++            else:
++                if self.profile_config['sessiontitle']:
++                    self.UseDefaultSessionWindowTitle.SetValue(False)
++                else:
++                    self.UseDefaultSessionWindowTitle.SetValue(True)
++                    self.CustomSessionWindowTitleLabel.Enable(False)
++                    self.CustomSessionWindowTitle.Enable(False)
++
++        else:
++            self.DisplayTypeFullscreen.Enable(False)
++            self.DisplayTypeMaximize.Enable(False)
++            self.DisplayTypeCustom.Enable(False)
++            self.ScreenWidth.Enable(False)
++            self.ScreenHeightLabel.Enable(False)
++            self.ScreenHeight.Enable(False)
++
++            self.SetSessionWindowTitle.Enable(False)
++            self.SetSessionWindowTitle.SetValue(False)
++            self.CustomSessionWindowTitleLabel.Enable(False)
++            self.CustomSessionWindowTitle.Enable(False)
++            self.UseDefaultSessionWindowTitle.Enable(False)
++            self.profile_config_bak['setsessiontitle'] = self.SetSessionWindowTitle.GetValue()
++            if self.UseDefaultSessionWindowTitle.GetValue():
++                self.profile_config_bak['sessiontitle'] = ''
++            else:
++                self.profile_config_bak['sessiontitle'] = self.CustomSessionWindowTitle.GetValue()
++            self.SetSessionWindowTitle.SetValue(False)
++            self.UseDefaultSessionWindowTitle.SetValue(False)
++            self.CustomSessionWindowTitle.SetValue(&quot;&quot;)
++
+     def disable_EditConnected_options(self):
+         &quot;&quot;&quot;\
+         If C{action} in the constructor has been set to C{EDIT_CONNECTED} this
+@@ -1254,12 +1296,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.profile_config['sound'] = self.EnableSound.GetValue()
+         self.profile_config['defsndport'] = self.DefaultSoundPort.GetValue()
+         self.profile_config['sndport'] = self.SoundPort.GetValue()
+-        if self.PulseAudio.GetValue():
+-            self.profile_config['soundsystem'] = 'pulse'
+-        elif self.Arts.GetValue():
+-            self.profile_config['soundsystem'] = 'arts'
+-        elif self.Esd.GetValue():
+-            self.profile_config['soundsystem'] = 'esd'
++
++        self.profile_config['soundsystem'] = self._get_SoundSystem()
+ 
+         self.profile_config['print'] = self.ClientSidePrinting.GetValue()
+ 
+@@ -1302,6 +1340,25 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             _mimebox_action = 'OPEN'
+         self.profile_config['mimeboxaction'] = _mimebox_action
+ 
++    def _get_SoundSystem(self):
++        if self.PulseAudio.GetValue():
++            return 'pulse'
++        elif self.Arts.GetValue():
++            return 'arts'
++        elif self.Esd.GetValue():
++            return 'esd'
++
++    def _set_SoundSystem(self, sound_system='pulse'):
++        self.PulseAudio.SetValue(False)
++        self.Arts.SetValue(False)
++        self.Esd.SetValue(False)
++        if self.profile_config['soundsystem'] == 'pulse':
++            self.PulseAudio.SetValue(True)
++        elif self.profile_config['soundsystem'] == 'arts':
++            self.Arts.SetValue(True)
++        elif self.profile_config['soundsystem'] == 'esd':
++            self.Esd.SetValue(True)
++
+     def OnIconChange(self, event):
+         &quot;&quot;&quot;\
+         Gets called on profile icon change requests.
+@@ -1388,7 +1445,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Compression.Enable(False)
+         self.ImageQualityLabel.Enable(False)
+         self.ImageQuality.Enable(False)
+-        self.tab_Settings.Enable(False)
++        self.staticbox_Keyboard.Enable(False)
++        self.DontSetKeyboard.Enable(False)
++        self.AutoSetKeyboard.Enable(False)
++        self.CustomSetKeyboard.Enable(False)
++        self.CustomSetKeyboard.SetValue(True)
++        self.DefaultSoundPort.Enable(False)
++        self.SoundPortLabel.Enable(False)
++        self.SoundPort.Enable(False)
++        self.Esd.Enable(False)
+         self.tab_SharedFilesAndFolders.Enable(True)
+         self.RDPServer.Enable(False)
+         self.RDPServer.SetValue(self.Host.GetValue())
+@@ -1430,7 +1495,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Compression.Enable(True)
+         self.ImageQualityLabel.Enable(True)
+         self.ImageQuality.Enable(True)
+-        self.tab_Settings.Enable(True)
++        self.staticbox_Keyboard.Enable(True)
++        self.DontSetKeyboard.Enable(True)
++        self.AutoSetKeyboard.Enable(True)
++        self.CustomSetKeyboard.Enable(True)
++        self.EnableSound.Enable(True)
++        if self.EnableSound.GetValue():
++            self.DefaultSoundPort.Enable(True)
++            self.DefaultSoundPort.SetValue(True)
++            self.Esd.Enable(True)
+         self.tab_SharedFilesAndFolders.Enable(True)
+         self.RDPServer.SetValue(self.profile_config_bak['rdpserver'])
+         self.RDPOptions.SetValue(self.profile_config_bak['rdpoptions'])
+@@ -1496,7 +1569,14 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.profile_config_bak['sshport'] = self.SSHPort.GetValue()
+             self.profile_config_bak['rdpserver'] = self.RDPServer.GetValue()
+             self.profile_config_bak['rdpoptions'] = self.RDPOptions.GetValue()
++            self.profile_config_bak['soundsystem'] = self._get_SoundSystem()
++            self.PulseAudio.SetValue(True)
++            self.Arts.SetValue(False)
++            self.Esd.SetValue(False)
++            self.DefaultSoundPort.SetValue(True)
++            self._toggle_DefaultSoundPort()
+             self.enable_DirectRDP()
++            self._toggle_SetKeyboard()
+             self.RDPServerLabel.Enable(True)
+             self.RDPServer.Enable(False)
+             self.RDPOptionsLabel.Enable(True)
+@@ -1509,6 +1589,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.profile_config_bak['rdpport'] = self.SSHPort.GetValue()
+             self.profile_config_bak['directrdpsettings'] = self.RDPOptions.GetValue()
+             self.disable_DirectRDP()
++            self._toggle_SetKeyboard()
++            self._set_SoundSystem(self.profile_config_bak['soundsystem'])
++            self._toggle_DefaultSoundPort()
+             self.RDPServerLabel.Enable(True)
+             self.RDPServer.Enable(True)
+             self.RDPOptionsLabel.Enable(True)
+@@ -1524,6 +1607,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+                 self.profile_config_bak['rdpserver'] = self.RDPServer.GetValue()
+                 self.profile_config_bak['rdpoptions'] = self.RDPOptions.GetValue()
+             self.disable_DirectRDP()
++            self._toggle_SetKeyboard()
++            self._set_SoundSystem(self.profile_config_bak['soundsystem'])
++            self._toggle_DefaultSoundPort()
+             self.RDPServerLabel.Enable(False)
+             self.RDPServer.Enable(False)
+             self.RDPOptionsLabel.Enable(False)
+@@ -1547,6 +1633,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+                 self.AutoStartSession.SetValue(self._last_auto_start_value)
+                 self._last_auto_start_value = None
+ 
++        self._toggle_DisplayProperties()
+         self.disable_EditConnected_options()
+ 
+     def OnCompressionSelected(self, event):
+@@ -1653,7 +1740,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         if self.UseSSHProxy.GetValue():
+             self.profile_config_bak['host'] = self.Host.GetValue()
+             self.profile_config_bak['sshport'] = self.SSHPort.GetValue()
+-        self.ToggleSSHProxy()
++        self._toggle_SSHProxy()
+ 
+     def OnSSHProxySameUser(self, event):
+         &quot;&quot;&quot;\
+@@ -1665,7 +1752,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         &quot;&quot;&quot;
+         if self.SSHProxySameUser.GetValue():
+             self.profile_config_bak['sshproxyuser'] = self.SSHProxyUser.GetValue()
+-        self.ToggleSSHProxy()
++        self._toggle_SSHProxy()
+ 
+     def OnSSHProxySamePassword(self, event):
+         &quot;&quot;&quot;\
+@@ -1677,9 +1764,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         &quot;&quot;&quot;
+         if self.SSHProxySamePassword.GetValue():
+             self.profile_config_bak['sshproxykeyfile'] = self.SSHProxyKeyFile.GetValue()
+-        self.ToggleSSHProxy()
++        self._toggle_SSHProxy()
+ 
+-    def ToggleSSHProxy(self):
++    def _toggle_SSHProxy(self):
+         &quot;&quot;&quot;\
+         Gets called if the use-ssh-proxy checkbox gets marked.
+ 
+@@ -1777,6 +1864,16 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
++        self._toggle_SetKeyboard()
++
++    def _toggle_SetKeyboard(self):
++        &quot;&quot;&quot;\
++        Toggle keyboard settings, depends on activation/deactivation of custom keyboard settings.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
+         if self.CustomSetKeyboard.GetValue():
+             self.KeyboardModelLabel.Enable(True)
+             self.KeyboardLayoutLabel.Enable(True)
+@@ -1800,13 +1897,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
++        _session_type = [ i for i in self.sessionChoices.keys() if self.sessionChoices[i] == self.SessionType.GetValue() ][0]
+         if self.EnableSound.GetValue():
+             self.PulseAudio.Enable(True)
+-            self.Esd.Enable(True)
+-            self.DefaultSoundPort.Enable(True)
+-            if self.DefaultSoundPort.GetValue() is False:
+-                self.SoundPortLabel.Enable(True)
+-                self.SoundPort.Enable(True)
++            if _session_type != 'DirectRDP':
++                self.Esd.Enable(True)
++                self.DefaultSoundPort.Enable(True)
++                if self.DefaultSoundPort.GetValue() is False:
++                    self.SoundPortLabel.Enable(True)
++                    self.SoundPort.Enable(True)
+         else:
+             self.PulseAudio.Enable(False)
+             self.Esd.Enable(False)
+@@ -1814,7 +1913,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SoundPortLabel.Enable(False)
+             self.SoundPort.Enable(False)
+ 
+-
+     def OnSetDisplayFullscreen(self, event):
+         &quot;&quot;&quot;\
+         Gets called whenever the fullscreen-display radion button gets checked.
+@@ -1897,6 +1995,16 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
++        self._toggle_DefaultSoundPort()
++
++    def _toggle_DefaultSoundPort(self):
++        &quot;&quot;&quot;\
++        Gets called indirectly on activation/deactivation of the default-sound-port checkbox.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
+         if not self.DefaultSoundPort.GetValue():
+             self.SoundPortLabel.Enable(True)
+             self.SoundPort.Enable(True)
+@@ -1934,13 +2042,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.ServerEncoding.Enable(False)
+ 
+     def OnToggleLocalFolderSharing(self, event):
+-        &quot;&quot;&quot;\
+-        Gets called on activation/deactivation of client-side local folder sharing.
+-
+-        @param event: event
+-        @type event: C{obj}
+-
+-        &quot;&quot;&quot;
+         self._toggle_localFolderSharing()
+ 
+     def OnSelectSharedFolderPath(self, event):
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013388.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-29-g723ccbb
+</A></li>
+	<LI>Next message: <A HREF="013398.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-31-g2c5b98f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13391">[ date ]</a>
+              <a href="thread.html#13391">[ thread ]</a>
+              <a href="subject.html#13391">[ subject ]</a>
+              <a href="author.html#13391">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

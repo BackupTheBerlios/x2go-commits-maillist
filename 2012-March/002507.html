@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-22-gbdf58be
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.0.1-22-gbdf58be&In-Reply-To=%3C20120315195435.B13565DB35%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002506.html">
+   <LINK REL="Next"  HREF="002508.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-22-gbdf58be</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.0.1-22-gbdf58be&In-Reply-To=%3C20120315195435.B13565DB35%40ymir%3E"
+       TITLE="[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-22-gbdf58be">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Mar 15 20:54:35 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002506.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-20-g8af661e
+</A></li>
+        <LI>Next message: <A HREF="002508.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-28-g2747cda
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2507">[ date ]</a>
+              <a href="thread.html#2507">[ thread ]</a>
+              <a href="subject.html#2507">[ subject ]</a>
+              <a href="author.html#2507">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  bdf58be37831c772c5f888e267e807c87d13f3d3 (commit)
+       via  e9fc713660e691425c8a6729d0280aa941253c76 (commit)
+      from  8af661ea45669bb7af75ffeb7439ede85e2541eb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit bdf58be37831c772c5f888e267e807c87d13f3d3
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Mar 15 20:54:04 2012 +0100
+
+    If setting a session state to 'R' fails in x2goresume-session, simly try again.
+
+commit e9fc713660e691425c8a6729d0280aa941253c76
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Mar 15 20:53:22 2012 +0100
+
+    cleanup one entry from changelog
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    4 +-
+ x2goserver/bin/x2goresume-session                  |   13 +++++++++-
+ x2goserver/lib/x2godbwrapper.pm                    |   27 +++++++++++++++++++-
+ x2goserver/lib/{x2gochangestatus =&gt; x2gogetstatus} |    8 +++---
+ x2goserver/lib/x2gosqlitewrapper.pl                |   21 +++++++++++++++
+ 5 files changed, 65 insertions(+), 8 deletions(-)
+ copy x2goserver/lib/{x2gochangestatus =&gt; x2gogetstatus} (94%)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9c1fa64..f8a24d5 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,8 +13,8 @@ x2goserver (3.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Update date and version number in man pages.
+     - Add syslogging to SQLite3 session DB backend for occuring
+       DB failures.
+-    - Specify non-sbin path in x2gosqlitewrapper.c. Allows us
+-      to do system calls in x2gosqlitewrapper.pl.
++    - If setting a session state to 'R' fails in x2goresume-session,
++      simly try again.
+   * Remove /etc/x2go/applications on package removal if it is a
+     symlink, keep it, if it is a directory. Remove /etc/x2go
+     (if empty after purge) on package purge.
+diff --git a/x2goserver/bin/x2goresume-session b/x2goserver/bin/x2goresume-session
+index e03751a..baf639a 100755
+--- a/x2goserver/bin/x2goresume-session
++++ b/x2goserver/bin/x2goresume-session
+@@ -149,7 +149,18 @@ fi
+ 
+ echo &quot;$NEWOPTIONS&quot; &gt;&quot;${SESSION_DIR}/options&quot;
+ 
+-$X2GO_LIB_PATH/x2goresume  &quot;$X2GO_CLIENT&quot; &quot;$SESSION_NAME&quot;  &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &gt; /dev/null
++# we really have to make sure the session database got this write operation
++# this may just be an SQLite issue so...
++# FIXME: probably migrate this piece of code to the SQLite db backend...
++while True; do 
++	$X2GO_LIB_PATH/x2goresume  &quot;$X2GO_CLIENT&quot; &quot;$SESSION_NAME&quot;  &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &gt; /dev/null
++	if [ $($X2GO_LIB_PATH/x2gogetstatus &quot;$SESSION_NAME&quot;) == &quot;R&quot; ]; then
++		break;
++	else
++		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;warning&quot; &quot;failed to write to X2Go db, will try again...&quot;
++		sleep 1;
++	fi
++done
+ 
+ # run x2goserver-extensions for pre-resume
+ x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$SESSION_NAME&quot; pre-resume || true
+diff --git a/x2goserver/lib/x2godbwrapper.pm b/x2goserver/lib/x2godbwrapper.pm
+index aec0294..2690544 100644
+--- a/x2goserver/lib/x2godbwrapper.pm
++++ b/x2goserver/lib/x2godbwrapper.pm
+@@ -85,7 +85,7 @@ if ($backend eq 'postgres')
+ 
+ use base 'Exporter';
+ 
+-our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 
++our @EXPORT=('db_listsessions','db_listsessions_all', 'db_getservers', 'db_getagent', 'db_resume', 'db_changestatus', 'db_getstatus', 
+              'db_getdisplays', 'db_insertsession', 'db_getports', 'db_insertport', 'db_rmport', 'db_createsession', 'db_insertmount', 
+              'db_getmounts', 'db_deletemount', 'db_getdisplay', 'dbsys_getmounts', 'dbsys_listsessionsroot', 
+              'dbsys_listsessionsroot_all', 'dbsys_rmsessionsroot');
+@@ -410,6 +410,31 @@ sub db_changestatus
+ 	syslog('debug', &quot;db_changestatus called, session ID: $sid, new status: $status&quot;);
+ }
+ 
++sub db_getstatus
++{
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	my $status='';
++	if ($backend eq 'postgres')
++	{
++		my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
++		my $sth=$dbh-&gt;prepare(&quot;select status from sessions_view where session_id = '$sid'&quot;);
++		$sth-&gt;execute($sid) or die;
++		my @data;
++		if (@data = $sth-&gt;fetchrow_array) 
++		{
++			$status=@data[0];
++		}
++		$sth-&gt;finish();
++		$dbh-&gt;disconnect();
++	}
++	if ($backend eq 'sqlite')
++	{
++		$status=`$x2go_lib_path/x2gosqlitewrapper getstatus $sid`;
++	}
++	syslog('debug', &quot;db_getstatus called, session ID: $sid, return value: $status&quot;);
++	return $status;
++}
++
+ sub db_getdisplays
+ {
+ 	my @displays;
+diff --git a/x2goserver/lib/x2gochangestatus b/x2goserver/lib/x2gogetstatus
+similarity index 94%
+copy from x2goserver/lib/x2gochangestatus
+copy to x2goserver/lib/x2gogetstatus
+index ce33520..a245352 100755
+--- a/x2goserver/lib/x2gochangestatus
++++ b/x2goserver/lib/x2gogetstatus
+@@ -30,11 +30,11 @@ use x2gologlevel;
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(x2gologlevel()) );
+ 
+-
+-my $status=shift or die;
++my $status;
+ my $sid=shift or die;
+ 
+-db_changestatus($status, $sid);
++$status = db_getstatus($sid);
++print &quot;$status\n&quot;;
+ 
+ # closing syslog 
+-closelog;
+\ No newline at end of file
++closelog;
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index 4ad329e..1d8923a 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -270,6 +270,27 @@ elsif($cmd eq  &quot;changestatus&quot;)
+ 	$sth-&gt;finish();
+ }
+ 
++elsif($cmd eq  &quot;getstatus&quot;)
++{
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	check_user($sid);
++	my $sth=$dbh-&gt;prepare(&quot;select status from sessions where session_id = ?&quot;);
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;changestatus (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
++	}
++	my @data;
++	my $status;
++	@data = $sth-&gt;fetchrow_array;
++	{
++		$status = @data[0];
++	}
++	$sth-&gt;finish();
++	print $status;
++}
++
+ elsif($cmd eq  &quot;getdisplays&quot;)
+ {
+ 	#ignore $server
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002506.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-20-g8af661e
+</A></li>
+	<LI>Next message: <A HREF="002508.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.0.1-28-g2747cda
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2507">[ date ]</a>
+              <a href="thread.html#2507">[ thread ]</a>
+              <a href="subject.html#2507">[ subject ]</a>
+              <a href="author.html#2507">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

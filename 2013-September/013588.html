@@ -1,0 +1,433 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-22-gaee40cd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-22-gaee40cd&In-Reply-To=%3C20130914135638.625DE5DDB3%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013586.html">
+   <LINK REL="Next"  HREF="013592.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-22-gaee40cd</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-22-gaee40cd&In-Reply-To=%3C20130914135638.625DE5DDB3%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-22-gaee40cd">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:38 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013586.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-20-gad6f58f
+</A></li>
+        <LI>Next message: <A HREF="013592.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.1-5-ga0095f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13588">[ date ]</a>
+              <a href="thread.html#13588">[ thread ]</a>
+              <a href="subject.html#13588">[ subject ]</a>
+              <a href="author.html#13588">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  aee40cd57c0925f62589eab444d0505c94245793 (commit)
+      from  6fd80fce8bb01b6b3c6fa59eaaf7f35cae0f6cb2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    2 +
+ pyhoca/wxgui/profilemanager.py |  176 ++++++++--------------------------------
+ 2 files changed, 38 insertions(+), 140 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b0dab63..46ebea2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,6 +13,8 @@ pyhoca-gui (0.2.1.2-0~x2go1) UNRELEASED; urgency=low
+       coming up with an inspiring patch. (Fixes: #92).
+     - Add support for exporting session profiles and session profile groups.
+     - Translation source file (.pot) updated. Update of en.po and de.po.
++    - Drop SSH proxy tunnel configuration parameter. Adapt PyHoca-GUI to the
++      way X2GoClient configures the SSH proxy settings.
+   * /debian/control:
+     + Thanks to Orion's patch in bug #91 we can drop many build dependencies.
+     + Versioned Depend: on python-x2go (&gt;= 0.2.1.2-0~).
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 0d3dde5..c8c9de8 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -149,19 +149,31 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             # allow localization of the default keyboard settings
+             self.profile_name = self.profile_config['name'] = profile_name
+ 
++        # this code block is for compatibility of session profiles prior to 0.2.2.0:
++        _from_host = _from_port = _to_host = _to_port = None
++        if self.profile_config.has_key('sshproxytunnel'):
++            if self.profile_config['sshproxytunnel'].count(':') == 2:
++                _from_port, _to_host, _to_port = self.profile_config['sshproxytunnel'].split(':')
++                _from_host = 'localhost'
++            elif self.profile_config['sshproxytunnel'].count(':') == 3:
++                _from_host, _from_port, _to_host, _to_port = self.profile_config['sshproxytunnel'].split(':')
++
++            if _to_host: self.profile_config['host'] = _to_host
++            if _to_port: self.profile_config['sshport'] = int(_to_port)
++
+         # we create a backup dict of our profile_config immediately (for being able to reset erroneously made changes)
+         self.profile_config_bak = copy.deepcopy(self.profile_config)
+ 
+         self._last_rdpclient = self.profile_config['rdpclient']
+         self._last_application = self.applicationChoices['TERMINAL']
+ 
+-        self.X2goTabs = wx.Notebook(self, -1, style=0)
+-        self.tab_Profile = wx.Panel(self.X2goTabs, -1)
+-        self.tab_Session = wx.Panel(self.X2goTabs, -1)
+-        self.tab_Connection = wx.Panel(self.X2goTabs, -1)
+-        self.tab_LinkQuality = wx.Panel(self.X2goTabs, -1)
+-        self.tab_Settings = wx.Panel(self.X2goTabs, -1)
+-        self.tab_SharedResources = wx.Panel(self.X2goTabs, -1)
++        self.X2GoTabs = wx.Notebook(self, -1, style=0)
++        self.tab_Profile = wx.Panel(self.X2GoTabs, -1)
++        self.tab_Session = wx.Panel(self.X2GoTabs, -1)
++        self.tab_Connection = wx.Panel(self.X2GoTabs, -1)
++        self.tab_LinkQuality = wx.Panel(self.X2GoTabs, -1)
++        self.tab_Settings = wx.Panel(self.X2GoTabs, -1)
++        self.tab_SharedResources = wx.Panel(self.X2GoTabs, -1)
+ 
+         # boxes for all tabs
+         self.staticbox_Profile = wx.StaticBox(self.tab_Profile, -1, ' %s ' % _(u'Session Title'))
+@@ -261,12 +273,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.SSHProxyHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(80,20))
+         self.SSHProxyPortLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Port&quot;)+&quot;: &quot;)
+         self.SSHProxyPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;22&quot;, min=1, max=65534)
+-        self.SSHProxyTunnelLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;SSH Proxy Tunnel&quot;)+&quot;: &quot;)
+-        self.SSHProxyTunnelFromHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.SSHProxyTunnelFromPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;44444&quot;, min=1, max=65534)
+-        self.SSHProxyTunnelBetweenLabel = wx.StaticText(self.tab_Connection, -1, &quot; -&gt; &quot;)
+-        self.SSHProxyTunnelToHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.SSHProxyTunnelToPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;22&quot;, min=1, max=65534)
+         self.SSHProxyAutoLogin = wx.CheckBox(self.tab_Connection, -1, _(u&quot;Discover SSH keys or use SSH agent for proxy authentication&quot;))
+ 
+         self.LinkSpeed = wx.Slider(self.tab_LinkQuality, -1, 0, 0, 4)
+@@ -367,8 +373,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Bind(wx.EVT_CHECKBOX, self.OnSSHProxySameUser, self.SSHProxySameUser)
+         self.Bind(wx.EVT_CHECKBOX, self.OnSSHProxySamePassword, self.SSHProxySamePassword)
+         self.Bind(wx.EVT_CHECKBOX, self.OnSSHProxyAutoLogin, self.SSHProxyAutoLogin)
+-        self.Bind(wx.EVT_TEXT, self.OnUpdateSSHProxyTunnelFromHost, self.SSHProxyTunnelFromHost)
+-        self.Bind(wx.EVT_TEXT, self.OnUpdateSSHProxyTunnelFromPort, self.SSHProxyTunnelFromPort)
+         self.Bind(wx.EVT_COMBOBOX, self.OnCompressionSelected, self.Compression)
+         self.Bind(wx.EVT_RADIOBUTTON, self.OnSetDisplayFullscreen, self.DisplayTypeFullscreen)
+         self.Bind(wx.EVT_RADIOBUTTON, self.OnSetDisplayMaximize, self.DisplayTypeMaximize)
+@@ -458,11 +462,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.SSHProxyPortLabel.SetMinSize((-1, 16))
+         self.SSHProxyPort.SetMinSize((65, self._textfield_height))
+         self.SSHProxyKeyFile.SetMinSize((220, self._textfield_height))
+-        self.SSHProxyTunnelLabel.SetMinSize((-1, 16))
+-        self.SSHProxyTunnelFromPort.SetMinSize((65, self._textfield_height))
+-        self.SSHProxyTunnelToPort.SetMinSize((65, self._textfield_height))
+-        self.SSHProxyTunnelFromHost.SetMinSize((140, self._textfield_height))
+-        self.SSHProxyTunnelToHost.SetMinSize((140, self._textfield_height))
+         if X2GOCLIENT_OS == 'Windows':
+             self.LinkSpeed.SetMinSize((425, self._textfield_height))
+         else:
+@@ -602,18 +601,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         sizer_3_2_1.Add(self.SSHProxyPort, pos=(3,4), span=(1,2), flag=wx.ALIGN_CENTRE_VERTICAL)
+         sizer_3_2_1.Add(self.SSHProxyAutoLogin, pos=(4,0), span=(1,6), flag=wx.ALIGN_CENTRE_VERTICAL)
+         sizer_3_2_1_1 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelFromHost, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_2_1_1.Add((4, 0))
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelFromPort, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_2_1_1.Add((8, 0))
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelBetweenLabel, flag=wx.ALIGN_CENTRE_VERTICAL|wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1_1.Add((8, 0))
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelToHost, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_2_1_1.Add((4, 0))
+-        sizer_3_2_1_1.Add(self.SSHProxyTunnelToPort, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_2_1_1.Add((0,32))
+-        sizer_3_2_1.Add(sizer_3_2_1_1, pos=(5,0), span=(1,6))
+         sizer_3_2.Add(sizer_3_2_1, flag=wx.EXPAND|wx.ALL, border=7)
+ 
+         sizer_3.Add(sizer_3_1, flag=wx.EXPAND|wx.ALL, border=5)
+@@ -794,12 +781,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.tab_SharedResources.SetSizerAndFit(sizer_6)
+         self.tab_SharedResources.Layout()
+ 
+-        self.X2goTabs.AddPage(self.tab_Profile, _(u&quot;Profile&quot;))
+-        self.X2goTabs.AddPage(self.tab_Session, _(u&quot;Session&quot;))
+-        self.X2goTabs.AddPage(self.tab_Connection, _(u&quot;Connection&quot;))
+-        self.X2goTabs.AddPage(self.tab_LinkQuality, _(u&quot;Link Quality&quot;))
+-        self.X2goTabs.AddPage(self.tab_Settings, _(u&quot;Settings&quot;))
+-        self.X2goTabs.AddPage(self.tab_SharedResources, _(u&quot;Sharing&quot;))
++        self.X2GoTabs.AddPage(self.tab_Profile, _(u&quot;Profile&quot;))
++        self.X2GoTabs.AddPage(self.tab_Session, _(u&quot;Session&quot;))
++        self.X2GoTabs.AddPage(self.tab_Connection, _(u&quot;Connection&quot;))
++        self.X2GoTabs.AddPage(self.tab_LinkQuality, _(u&quot;Link Quality&quot;))
++        self.X2GoTabs.AddPage(self.tab_Settings, _(u&quot;Settings&quot;))
++        self.X2GoTabs.AddPage(self.tab_SharedResources, _(u&quot;Sharing&quot;))
+ 
+         # the bottom area with OK, Defaults and Cancel buttons
+         sizer_B = wx.BoxSizer(wx.HORIZONTAL)
+@@ -811,7 +798,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         # put it all together...
+         MainSizer = wx.BoxSizer(wx.VERTICAL)
+-        MainSizer.Add(self.X2goTabs, proportion=1, flag=wx.EXPAND|wx.FIXED_MINSIZE)
++        MainSizer.Add(self.X2GoTabs, proportion=1, flag=wx.EXPAND|wx.FIXED_MINSIZE)
+         MainSizer.Add(sizer_B, flag=wx.ALIGN_RIGHT)
+         self.SetSizerAndFit(MainSizer)
+ 
+@@ -822,7 +809,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         max5_x, max5_y = self.tab_Settings.GetBestSize()
+         max6_x, max6_y = self.tab_SharedResources.GetBestSize()
+ 
+-        #self.SetSize(self.GetBestSize() + self.X2goTabs.GetBestSize())
++        #self.SetSize(self.GetBestSize() + self.X2GoTabs.GetBestSize())
+ 
+         if X2GOCLIENT_OS == &quot;Windows&quot;:
+             self.SetSize((max(max1_x, max2_x, max3_x, max4_x, max5_x) * 1.05, max(max1_y, max2_y, max3_y, max4_y, max5_y) * 1.10 + 50))
+@@ -881,18 +868,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHProxyUser.SetValue(self.profile_config['sshproxyuser'])
+         self.SSHProxyKeyFile.SetValue(self.profile_config['sshproxykeyfile'])
+ 
+-        _from_host = _from_port = _to_host = _to_port = None
+-        if self.profile_config['sshproxytunnel'].count(':') == 2:
+-            _from_port, _to_host, _to_port = self.profile_config['sshproxytunnel'].split(':')
+-            _from_host = 'localhost'
+-        elif self.profile_config['sshproxytunnel'].count(':') == 3:
+-            _from_host, _from_port, _to_host, _to_port = self.profile_config['sshproxytunnel'].split(':')
+-
+-        if _from_host: self.SSHProxyTunnelFromHost.SetValue(_from_host)
+-        if _from_port: self.SSHProxyTunnelFromPort.SetValue(int(_from_port))
+-        if _to_host: self.SSHProxyTunnelToHost.SetValue(_to_host)
+-        if _to_port: self.SSHProxyTunnelToPort.SetValue(int(_to_port))
+-
+         self.UseSSHProxy.SetValue(_ssh_proxy)
+         self.SSHProxySameUser.SetValue(self.profile_config['sshproxysameuser'])
+         self.SSHProxySamePassword.SetValue(self.profile_config['sshproxysamepass'])
+@@ -1246,12 +1221,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHProxyHost.Enable(False)
+             self.SSHProxyPortLabel.Enable(False)
+             self.SSHProxyPort.Enable(False)
+-            self.SSHProxyTunnelLabel.Enable(False)
+-            self.SSHProxyTunnelFromHost.Enable(False)
+-            self.SSHProxyTunnelFromPort.Enable(False)
+-            self.SSHProxyTunnelBetweenLabel.Enable(False)
+-            self.SSHProxyTunnelToHost.Enable(False)
+-            self.SSHProxyTunnelToPort.Enable(False)
+             self.SSHProxyAutoLogin.Enable(False)
+ 
+ 
+@@ -1281,13 +1250,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.profile_config['icon'] = ':icons/128x128/x2gosession.png'
+         self.profile_config['user'] = self.UserName.GetValue()
+         self.profile_config['key'] = self.SSHKeyFile.GetValue()
++        self.profile_config['host'] = self.Host.GetValue()
+         if self.UseSSHProxy.GetValue():
+             self.profile_config['usesshproxy'] = True
+-            self.profile_config['host'] = self.SSHProxyTunnelFromHost.GetValue()
+-            self.profile_config['sshport'] = self.SSHProxyTunnelFromPort.GetValue()
+         else:
+             self.profile_config['usesshproxy'] = False
+-            self.profile_config['host'] = self.Host.GetValue()
+             if _session_type != 'DirectRDP':
+                 self.profile_config['sshport'] = self.SSHPort.GetValue()
+         self.profile_config['sshproxysameuser'] = self.SSHProxySameUser.GetValue()
+@@ -1295,11 +1262,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.profile_config['sshproxyhost'] = self.SSHProxyHost.GetValue()
+         self.profile_config['sshproxyport'] = self.SSHProxyPort.GetValue()
+-        self.profile_config['sshproxytunnel'] = '%s:%s:%s:%s' % (self.SSHProxyTunnelFromHost.GetValue(),
+-                                                                 self.SSHProxyTunnelFromPort.GetValue(),
+-                                                                 self.SSHProxyTunnelToHost.GetValue(),
+-                                                                 self.SSHProxyTunnelToPort.GetValue(),
+-                                                                )
++        if self.profile_config.has_key('sshproxytunnel'):
++            self.profile_config['sshproxytunnel'] = 'DEPRECATED_CAN_BE_REMOVED'
+         self.profile_config['sshproxyautologin'] = self.SSHProxyAutoLogin.GetValue()
+         if self.profile_config['sshproxysameuser']:
+             self.profile_config['sshproxyuser'] = ''
+@@ -1521,12 +1485,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.SSHProxyHost.Enable(False)
+         self.SSHProxyPortLabel.Enable(False)
+         self.SSHProxyPort.Enable(False)
+-        self.SSHProxyTunnelLabel.Enable(False)
+-        self.SSHProxyTunnelFromHost.Enable(False)
+-        self.SSHProxyTunnelFromPort.Enable(False)
+-        self.SSHProxyTunnelBetweenLabel.Enable(False)
+-        self.SSHProxyTunnelToHost.Enable(False)
+-        self.SSHProxyTunnelToPort.Enable(False)
+         self.SSHProxyAutoLogin.Enable(False)
+         self.LinkSpeed.Enable(False)
+         self.ModemLabel.Enable(False)
+@@ -1566,14 +1524,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
+-        if not self.UseSSHProxy.GetValue():
+-            self.HostLabel.Enable(True)
+-            self.Host.Enable(True)
+-            self.SSHPortLabel.Enable(True)
+-            self.SSHPort.Enable(True)
+-            self.SSHPort.SetValue(self.profile_config_bak['sshport'])
+-        else:
+-            self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
++        self.HostLabel.Enable(True)
++        self.Host.Enable(True)
++        self.SSHPortLabel.Enable(True)
++        self.SSHPort.Enable(True)
++        self.SSHPort.SetValue(self.profile_config_bak['sshport'])
+         self.SSHAutoLogin.Enable(True)
+         if PARAMIKO_FEATURE['forward-ssh-agent']:
+             self.SSHForwardAuthAgent.Enable(True)
+@@ -1956,18 +1911,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             if self.SSHProxyAutoLogin.GetValue():
+                 self.SSHProxyKeyFileLabel.Enable(False)
+             self.SSHProxyAutoLogin.Enable(True)
+-            self.SSHProxyTunnelLabel.Enable(True)
+-            self.SSHProxyTunnelFromHost.Enable(True)
+-            self.SSHProxyTunnelFromPort.Enable(True)
+-            self.SSHProxyTunnelBetweenLabel.Enable(True)
+-            self.SSHProxyTunnelToHost.Enable(True)
+-            self.SSHProxyTunnelToPort.Enable(True)
+-            self.Host.Enable(False)
+-            self.HostLabel.Enable(False)
+-            self.Host.SetValue(self.SSHProxyTunnelFromHost.GetValue())
+-            self.SSHPort.Enable(False)
+-            self.SSHPortLabel.Enable(False)
+-            self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
+         else:
+             self.staticbox_Proxy.Enable(False)
+             self.SSHProxySameUser.Enable(False)
+@@ -1981,39 +1924,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHProxyKeyFileLabel.Enable(False)
+             self.SSHProxyKeyFile.Enable(False)
+             self.SSHProxyKeyFileBrowseButton.Enable(False)
+-            self.SSHProxyTunnelLabel.Enable(False)
+-            self.SSHProxyTunnelFromHost.Enable(False)
+-            self.SSHProxyTunnelFromPort.Enable(False)
+-            self.SSHProxyTunnelBetweenLabel.Enable(False)
+-            self.SSHProxyTunnelToHost.Enable(False)
+-            self.SSHProxyTunnelToPort.Enable(False)
+             self.SSHProxyAutoLogin.Enable(False)
+-            self.Host.Enable(True)
+-            self.HostLabel.Enable(True)
+-            self.Host.SetValue(self.profile_config_bak['host'])
+-            self.SSHPort.Enable(True)
+-            self.SSHPortLabel.Enable(True)
+-            self.SSHPort.SetValue(self.profile_config_bak['sshport'])
+-
+-    def OnUpdateSSHProxyTunnelFromHost(self, event):
+-        &quot;&quot;&quot;\
+-        Gets called whenever the ssh-proxy-tunnel-from-host gets modified.
+-
+-        @param event: event
+-        @type event: C{obj}
+-
+-        &quot;&quot;&quot;
+-        self.Host.SetValue(self.SSHProxyTunnelFromHost.GetValue())
+-
+-    def OnUpdateSSHProxyTunnelFromPort(self, event):
+-        &quot;&quot;&quot;\
+-        Gets called whenever the ssh-proxy-tunnel-from-port gets modified.
+-
+-        @param event: event
+-        @type event: C{obj}
+-
+-        &quot;&quot;&quot;
+-        self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
+ 
+     def OnSetKeyboard(self, event):
+         &quot;&quot;&quot;\
+@@ -2048,7 +1959,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.KeyboardModel.Enable(False)
+             self.KeyboardVariant.Enable(False)
+ 
+-    def OnSoundEnable(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++    def OnSoundEnable(self, event):
+         &quot;&quot;&quot;\
+         Gets called whenever the enable-sound checkbox gets marked.
+ 
+@@ -2352,21 +2263,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         elif self.profile_config['name'].strip() != self.profile_config_bak['name'] and self.profile_config['name'] in self.session_profiles.profile_names:
+             validateOk = False
+             self._PyHocaGUI.notifier.send(title=_(u'Profile Manager'), text=_(u'Profile name %s already exists!!!') % self.profile_config['name'].strip(), icon='profile_error')
+-        elif self.profile_config['usesshproxy'] and self.profile_config['name'] == self.profile_config_bak['name']:
+-            try:
+-                (from_host, from_port) = self.profile_config['sshproxytunnel'].split(':')[0:2]
+-            except ValueError:
+-                self._PyHocaGUI.notifier.send(title=_(u'Profile Manager'), text=_(u'The SSH proxy configuration is incomplete. Try again.'), icon='profile_error')
+-            for profile_name in [ p for p in self._PyHocaGUI.profile_names if p != self.profile_config['name'] ]:
+-                test_profile_config = self.session_profiles.get_profile_config(profile_name)
+-                if test_profile_config['usesshproxy']:
+-                    try:
+-                        (test_from_host, test_from_port) = test_profile_config['sshproxytunnel'].split(':')[0:2]
+-                    except ValueError:
+-                        continue
+-                    if (from_host, from_port) == (test_from_host, test_from_port):
+-                        validateOk = False
+-                        self._PyHocaGUI.notifier.send(title=_(u'Profile Manager'), text=_(u'Another session profile (%s) already uses [%s]:%s for binding a local SSH proxy to.\nPlease change the SSH proxy settings accordingly.' % (profile_name.strip(), from_host, from_port)), icon='profile_warning')
+         return validateOk
+ 
+     def OnOKButton(self, event):
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013586.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-20-gad6f58f
+</A></li>
+	<LI>Next message: <A HREF="013592.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.1-5-ga0095f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13588">[ date ]</a>
+              <a href="thread.html#13588">[ thread ]</a>
+              <a href="subject.html#13588">[ subject ]</a>
+              <a href="author.html#13588">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

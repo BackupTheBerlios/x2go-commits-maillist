@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	019de66c67ab70c279030e9bb17884b369c6fd0e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09019de66c67ab70c279030e9bb17884b369c6fd0e&In-Reply-To=%3C20130519110432.AFFDF5DB3E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007370.html">
+   <LINK REL="Next"  HREF="007376.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	019de66c67ab70c279030e9bb17884b369c6fd0e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09019de66c67ab70c279030e9bb17884b369c6fd0e&In-Reply-To=%3C20130519110432.AFFDF5DB3E%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	019de66c67ab70c279030e9bb17884b369c6fd0e">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007370.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	499105e333bc9b5ca4242d080f4ae0bce5e4e80e
+</A></li>
+        <LI>Next message: <A HREF="007376.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	a131f337a4ff78a1390aabd576d9e1f8c25b8ff1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7372">[ date ]</a>
+              <a href="thread.html#7372">[ thread ]</a>
+              <a href="subject.html#7372">[ subject ]</a>
+              <a href="author.html#7372">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  019de66c67ab70c279030e9bb17884b369c6fd0e (commit)
+      from  d7fac0cdf9f44dcbf752f2f0fcabe262c804efa5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker.conf         |    3 +++
+ x2gobroker/backends/base.py |   14 ++++++++++----
+ x2gobroker/defaults.py      |    3 +++
+ 3 files changed, 16 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index b453a7a..6d42375 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -84,15 +84,18 @@ enable-html-output = false
+ 
+ [zeroconf]
+ enable = true
++auth-mech = pam
+ desktop-shell = KDE
+ 
+ [singlenodes]
+ enable = false
++auth-mech = pam
+ session-profiles = /etc/x2go/broker/x2gobroker-sessionprofiles.conf
+ session-profiles-map = /etc/x2go/broker/x2gobroker-sessionprofilesmap.conf
+ 
+ [ldap]
+ enable = false
++auth-mech = pam
+ uri = <A HREF="ldap://localhost:389">ldap://localhost:389</A>
+ base = dc=example,dc=org
+ user-search-filter = (&amp;(objectClass=posixAccount)(uid=*))
+diff --git a/x2gobroker/backends/base.py b/x2gobroker/backends/base.py
+index 8b2cbb3..afff442 100644
+--- a/x2gobroker/backends/base.py
++++ b/x2gobroker/backends/base.py
+@@ -121,10 +121,16 @@ class X2GoBroker(object):
+ 
+     def _check_access(self, username='', password='', authid=None):
+ 
+-        # do a simple PAM authentication against the PAM service ,,x2gobroker''
+-        if username and password:
+-            if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
+-                return True
++        if self.config.get_value(self.backend_name, 'auth-mech').lower() == 'pam':
++            # do a simple PAM authentication against the PAM service ,,x2gobroker''
++            if username and password:
++                if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
++                    return True
++
++        elif self.config.get_value(self.backend_name, 'auth-mech').lower() == 'htpasswd':
++            ### TODO: implement an authentication mechanism that can use htpasswd files
++            pass
++
+         return False
+ 
+     def check_access(self, username='', password='', authid=None, ):
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index d1bbd35..34a33fb 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -51,15 +51,18 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+     },
+     'zeroconf': {
+         'enable': True,
++        'auth-mech': 'pam',
+         'desktop-shell': 'KDE',
+     },
+     'inifile': {
+         'enable': False,
++        'auth-mech': 'pam',
+         'session-profiles': '/etc/x2go/broker/x2gobroker-sessionprofiles.conf',
+         'session-profiles-map': '/etc/x2go/broker/x2gobroker-sessionprofilesmap.conf',
+     },
+     'ldap': {
+         'enable': False,
++        'auth-mech': 'pam',
+         'uri': '<A HREF="ldap://localhost:389">ldap://localhost:389</A>',
+         'base': 'dc=example,dc=org',
+         'user-search-filter': '(&amp;(objectClass=posixAccount)(uid=*))',
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007370.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	499105e333bc9b5ca4242d080f4ae0bce5e4e80e
+</A></li>
+	<LI>Next message: <A HREF="007376.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	a131f337a4ff78a1390aabd576d9e1f8c25b8ff1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7372">[ date ]</a>
+              <a href="thread.html#7372">[ thread ]</a>
+              <a href="subject.html#7372">[ subject ]</a>
+              <a href="author.html#7372">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-11-g2c005d9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.1.2-11-g2c005d9&In-Reply-To=%3C20140103144244.54E2B5DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017215.html">
+   <LINK REL="Next"  HREF="017217.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-11-g2c005d9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.1.2-11-g2c005d9&In-Reply-To=%3C20140103144244.54E2B5DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-11-g2c005d9">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 15:42:44 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017215.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-10-g70f0699
+</A></li>
+        <LI>Next message: <A HREF="017217.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-12-g9ff8236
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17216">[ date ]</a>
+              <a href="thread.html#17216">[ thread ]</a>
+              <a href="subject.html#17216">[ subject ]</a>
+              <a href="author.html#17216">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  2c005d94ce49157cd446f18bfacf85a3aa8eb427 (commit)
+      from  70f0699c0ae5b8f26938d8cfa6c05d2cd5741070 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2c005d94ce49157cd446f18bfacf85a3aa8eb427
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Fri Jan 3 15:42:33 2014 +0100
+
+    make GSSAPI delegation configurable.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    1 +
+ onmainwindow.cpp        |    6 +++++-
+ sessionwidget.cpp       |   19 ++++++++++++++++---
+ sessionwidget.h         |    2 ++
+ sshmasterconnection.cpp |    2 ++
+ sshmasterconnection.h   |    7 +++++++
+ sshprocess.cpp          |   14 +++++++++++---
+ 7 files changed, 44 insertions(+), 7 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index dcc0433..23fd372 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,7 @@ x2goclient (4.0.1.3-0x2go1) UNRELEASED; urgency=low
+     - changed keyboard settings. Supported modes: auto, none and config with
+       model/layout(variant)
+     - Enables forwarding (delegation) of GSSAPI credentials to the server. 
++    - make GSSAPI delegation configurable.
+ 
+   [ Orion Poplawski ]
+   * New upstream version (4.0.1.3):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 1c8bd8b..a1c6779 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -3325,6 +3325,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+     QString host;
+     bool autologin=false;
+     bool krblogin=false;
++    bool krbDelegation=false;
+ 
+     bool useproxy=false;
+     SshMasterConnection::ProxyType proxyType= SshMasterConnection::PROXYHTTP;
+@@ -3378,6 +3379,8 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+                                      ( QVariant ) false ).toBool();
+     krblogin=st-&gt;setting()-&gt;value ( sid+&quot;/krblogin&quot;,
+                                     ( QVariant ) false ).toBool();
++    krbDelegation=st-&gt;setting()-&gt;value ( sid+&quot;/krbdelegation&quot;,
++                                         ( QVariant ) false ).toBool();
+ #ifdef Q_OS_LINUX
+     directRDP=(st-&gt;setting()-&gt;value ( sid+&quot;/directrdp&quot;,
+                                       ( QVariant ) false ).toBool() &amp;&amp; cmd == &quot;RDP&quot;);
+@@ -3502,6 +3505,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+ 
+     sshConnection=startSshConnection ( host,sshPort,acceptRsa,user,passwd,autologin, krblogin, false, useproxy,proxyType,proxyserver,
+                                        proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin, proxyKrbLogin);
++    sshConnection-&gt;set_kerberosDelegation(krbDelegation);
+     return true;
+ }
+ 
+@@ -6195,7 +6199,7 @@ void ONMainWindow::runCommand()
+     command.replace ( &quot; &quot;,&quot;X2GO_SPACE_CHAR&quot; );
+     QString krbFwString;
+ 
+-    if(sshConnection-&gt;useKerberos())
++    if(sshConnection-&gt;useKerberos() &amp;&amp; sshConnection-&gt;get_kerberosDelegation())
+     {
+         krbFwString=&quot;KRB5CCNAME=`echo $KRB5CCNAME |sed 's/<A HREF="FILE://g">FILE://g</A>'` \
+         KRBFL=~/.x2go/C-&quot;+resumingSession.sessionId+&quot;/krb5cc ;\
+diff --git a/sessionwidget.cpp b/sessionwidget.cpp
+index 5874a92..418924d 100644
+--- a/sessionwidget.cpp
++++ b/sessionwidget.cpp
+@@ -126,8 +126,10 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     sgbLay-&gt;addLayout ( keyLay );
+     cbAutoLogin=new QCheckBox(tr(&quot;Try auto login (ssh-agent or default ssh key)&quot;),sgb);
+     cbKrbLogin=new QCheckBox(tr(&quot;Kerberos 5 (GSSAPI) authentication&quot;),sgb);
++    cbKrbDelegation=new QCheckBox(tr(&quot;Delegation of GSSAPI credentials to the server&quot;),sgb);
+     sgbLay-&gt;addWidget(cbAutoLogin);
+     sgbLay-&gt;addWidget(cbKrbLogin);
++    sgbLay-&gt;addWidget(cbKrbDelegation);
+     cbProxy=new QCheckBox(tr(&quot;Use Proxy server for SSH connection&quot;),sgb);
+     proxyBox=new QGroupBox(tr(&quot;Proxy server&quot;),sgb);
+     sgbLay-&gt;addWidget(cbProxy);
+@@ -260,6 +262,7 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+               SIGNAL ( nameChanged ( const QString &amp; ) ) );
+     connect (server, SIGNAL(textChanged(const QString&amp;)),this, SLOT(slot_emitSettings()));
+     connect (uname, SIGNAL(textChanged(const QString&amp;)),this, SLOT(slot_emitSettings()));
++    connect (cbKrbLogin, SIGNAL(clicked(bool)), this, SLOT(slot_krbChecked()));
+ #ifdef Q_OS_LINUX
+     connect (rdpPort, SIGNAL(valueChanged(int)),this, SLOT(slot_emitSettings()));
+ #endif
+@@ -528,6 +531,9 @@ void SessionWidget::readConfig()
+     cbKrbLogin-&gt;setChecked(st.setting()-&gt;value (
+                                sessionId+&quot;/krblogin&quot;,
+                                ( QVariant ) false ).toBool());
++    cbKrbDelegation-&gt;setChecked(st.setting()-&gt;value (
++                                    sessionId+&quot;/krbdelegation&quot;,
++                                    ( QVariant ) false ).toBool());
+     sshPort-&gt;setValue (
+         st.setting()-&gt;value (
+             sessionId+&quot;/sshport&quot;,
+@@ -593,9 +599,9 @@ void SessionWidget::readConfig()
+                                      false
+                                  ).toBool() );
+     cbProxyKrbLogin-&gt;setChecked(st.setting()-&gt;value (
+-                                     sessionId+&quot;/sshproxykrblogin&quot;,
+-                                     false
+-                                 ).toBool() );
++                                    sessionId+&quot;/sshproxykrblogin&quot;,
++                                    false
++                                ).toBool() );
+ 
+     if(proxyHost-&gt;text().indexOf(&quot;:&quot;)!=-1)
+     {
+@@ -718,6 +724,7 @@ void SessionWidget::readConfig()
+ #ifdef Q_OS_LINUX
+     slot_rdpDirectClicked();
+ #endif
++    slot_krbChecked();
+ }
+ 
+ void SessionWidget::setDefaults()
+@@ -790,6 +797,7 @@ void SessionWidget::saveSettings()
+                              ( QVariant ) sshPort-&gt;value() );
+     st.setting()-&gt;setValue(sessionId+&quot;/autologin&quot;,( QVariant ) cbAutoLogin-&gt;isChecked());
+     st.setting()-&gt;setValue(sessionId+&quot;/krblogin&quot;,( QVariant ) cbKrbLogin-&gt;isChecked());
++    st.setting()-&gt;setValue(sessionId+&quot;/krbdelegation&quot;,( QVariant ) cbKrbDelegation-&gt;isChecked());
+ #ifdef Q_OS_LINUX
+     st.setting()-&gt;setValue(sessionId+&quot;/directrdp&quot;,( QVariant ) cbDirectRDP-&gt;isChecked());
+ #endif
+@@ -889,3 +897,8 @@ void SessionWidget::slot_emitSettings()
+     emit settingsChanged(server-&gt;text(), QString::number( rdpPort-&gt;value()), uname-&gt;text());
+ }
+ #endif
++
++void SessionWidget::slot_krbChecked()
++{
++    cbKrbDelegation-&gt;setEnabled(cbKrbLogin-&gt;isChecked());
++}
+diff --git a/sessionwidget.h b/sessionwidget.h
+index e3858cc..fd98507 100644
+--- a/sessionwidget.h
++++ b/sessionwidget.h
+@@ -50,6 +50,7 @@ private slots:
+     void slot_proxyType();
+     void slot_proxySameLogin();
+     void slot_proxyGetKey();
++    void slot_krbChecked();
+ public slots:
+ #ifdef Q_OS_LINUX
+     void slot_rdpDirectClicked();
+@@ -68,6 +69,7 @@ private:
+     QLineEdit* key;
+     QCheckBox* cbAutoLogin;
+     QCheckBox* cbKrbLogin;
++    QCheckBox* cbKrbDelegation;
+ #ifdef Q_OS_LINUX
+     QCheckBox* cbDirectRDP;
+ #endif
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index aa8269d..1dcd7fe 100755
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -165,6 +165,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int por
+     nextPid=0;
+ 
+     breakLoop=false;
++    kerberosDelegation=false;
+     this-&gt;host=host;
+     this-&gt;port=port;
+     this-&gt;user=user;
+@@ -222,6 +223,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, ONMainWindow* mwd, QS
+     tcpNetworkProxy = NULL;
+     sshProxy= NULL;
+     sshProxyReady=false;
++    kerberosDelegation=false;
+     breakLoop=false;
+     this-&gt;host=host;
+     this-&gt;port=port;
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index 7354e50..6494356 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -27,6 +27,12 @@
+ #include &lt;QTcpSocket&gt;
+ #include &lt;QNetworkProxy&gt;
+ 
++
++#define PROPERTY(TYPE,NAME)  private: TYPE NAME; \
++public: TYPE get_##NAME(){return NAME;} \
++void set_##NAME(TYPE VAL){NAME=VAL;}
++
++
+ class ONMainWindow;
+ class SshProcess;
+ struct ChannelConnection
+@@ -56,6 +62,7 @@ struct CopyRequest
+ class SshMasterConnection: public QThread
+ {
+     Q_OBJECT
++    PROPERTY(bool, kerberosDelegation)
+ public:
+     enum ProxyType {PROXYSSH, PROXYHTTP};
+     void run();
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index b9f690a..f2e847d 100755
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -205,11 +205,19 @@ void SshProcess::startNormal(const QString&amp; cmd)
+         QString shcmd = &quot;echo X2GODATABEGIN:&quot; + uuidStr + &quot;; &quot;+cmd+&quot;; echo X2GODATAEND:&quot; + uuidStr;
+         proc=new QProcess(this);
+ #ifdef Q_OS_WIN
+-        addPuttyReg(host, uuidStr);
+-        host = uuidStr;
++        if(masterCon-&gt;get_kerberosDelegation())
++        {
++            addPuttyReg(host, uuidStr);
++            host = uuidStr;
++        }
+         QString sshString=&quot;plink -batch -P &quot;+
+ #else
+-        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +&quot;-K -o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
++        QString krbDelegOption=&quot; -k &quot;;
++        if(masterCon-&gt;get_kerberosDelegation())
++        {
++            krbDelegOption=&quot; -K &quot;;
++        }
++        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +krbDelegOption+&quot; -o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
+ #endif
+                           QString::number(masterCon-&gt;getPort())+&quot; -l &quot;+
+                           masterCon-&gt;getUser()+&quot; &quot;+ host +  &quot; \&quot;&quot;+shcmd+&quot;\&quot;&quot;;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017215.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-10-g70f0699
+</A></li>
+	<LI>Next message: <A HREF="017217.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.2-12-g9ff8236
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17216">[ date ]</a>
+              <a href="thread.html#17216">[ thread ]</a>
+              <a href="subject.html#17216">[ subject ]</a>
+              <a href="author.html#17216">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

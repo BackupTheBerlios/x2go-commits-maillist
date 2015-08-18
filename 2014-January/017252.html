@@ -1,0 +1,176 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-34-gb036655
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-34-gb036655&In-Reply-To=%3C20140103165749.7101D5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017251.html">
+   <LINK REL="Next"  HREF="017256.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-34-gb036655</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.9-34-gb036655&In-Reply-To=%3C20140103165749.7101D5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-34-gb036655">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 17:57:49 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017251.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-35-g8347d3f
+</A></li>
+        <LI>Next message: <A HREF="017256.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-38-g18bd2f0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17252">[ date ]</a>
+              <a href="thread.html#17252">[ thread ]</a>
+              <a href="subject.html#17252">[ subject ]</a>
+              <a href="author.html#17252">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  b03665513ab1969b069c1351fe17cbb8b5fca256 (commit)
+      from  ebbb6a0b17264a6d9743ab8a7199fb964ba20efd (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b03665513ab1969b069c1351fe17cbb8b5fca256
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Dec 29 14:19:15 2013 +0100
+
+    Avoid one argument system calls and backticks in x2golistsessions.
+    
+    Conflicts (resolved by Mike Gabriel):
+    	debian/changelog
+    	x2goserver/bin/x2golistsessions
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                |    1 +
+ x2goserver/bin/x2golistsessions |   27 +++++++++++++++++++--------
+ 2 files changed, 20 insertions(+), 8 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index fa1f121..fd4f452 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -173,6 +173,7 @@ x2goserver (4.0.0.8-0x2go1) UNRELEASED; urgency=low
+       for finding this!!! (Fixes: #356).
+     - Avoid one argument system calls and backticks in x2gocleansessions and
+       x2golistsessions_root.
++    - Avoid one argument system calls and backticks in x2golistsessions.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 28 Nov 2013 16:14:32 +0100
+ 
+diff --git a/x2goserver/bin/x2golistsessions b/x2goserver/bin/x2golistsessions
+index eb24196..1b3d350 100755
+--- a/x2goserver/bin/x2golistsessions
++++ b/x2goserver/bin/x2golistsessions
+@@ -24,10 +24,13 @@ use strict;
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
+ 
++use File::ReadBackwards;
++
+ use lib `x2gopath lib`;
+ use x2godbwrapper; 
+ use x2gologlevel;
+ 
++
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(x2gologlevel()) );
+ 
+@@ -38,18 +41,26 @@ if ( @ARGV ) {
+ 	syslog('debug', &quot;x2golistsessions has been called with no option&quot;);
+ }
+ 
+-sub check_stat
++
++sub is_suspended
+ {
+ 	my $sess=shift;
+-	my $log=&quot;$ENV{'HOME'}/.x2go/C-$sess/session.log&quot;;
+-	my $text=`tail -1 $log 2&gt;/dev/null`;
+-	if ($text =~ m/Session suspended/)
++	my $log=&quot;$ENV{'HOME'}/.x2go/C-${sess}.log&quot;;
++	my $log_line;
++	my $log_file = File::ReadBackwards-&gt;new( $log ) or return 0;
++	while( defined( $log_line = $log_file-&gt;readline ) ) {
++		next if ( ! ( $log_line =~ m/^Session:/ ) );
++		last;
++	}
++	$log_file-&gt;close();
++	if ($log_line =~ m/Session suspended/)
+ 	{
+-		return 0;
++		return 1;
+ 	}
+-	return 1;
++	return 0;
+ }
+ 
++
+ my $serv=shift;
+ if( ! $serv)
+ {
+@@ -79,11 +90,11 @@ for (my $i=0;$i&lt;@outp;$i++)
+ 	{ 
+ 		if (@sinfo[4]eq 'R')
+ 		{
+-			if(!check_stat(@sinfo[1]))
++			if(is_suspended(@sinfo[1]))
+ 			{
+ 				db_changestatus( 'S', @sinfo[1] );
+ 				@outp[$i] =~ s/\|R\|/\|S\|/;
+-				system( &quot;x2goumount-session @sinfo[1]&quot;);
++				system(&quot;x2goumount-session&quot;, &quot;@sinfo[1]&quot;);
+ 			}
+ 		}
+ 		print &quot;@outp[$i]\n&quot;;
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017251.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-35-g8347d3f
+</A></li>
+	<LI>Next message: <A HREF="017256.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-38-g18bd2f0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17252">[ date ]</a>
+              <a href="thread.html#17252">[ thread ]</a>
+              <a href="subject.html#17252">[ subject ]</a>
+              <a href="author.html#17252">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

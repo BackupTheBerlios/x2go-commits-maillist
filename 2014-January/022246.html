@@ -1,0 +1,201 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-35-gcb527b4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-35-gcb527b4&In-Reply-To=%3C20140107152138.951845DD00%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022239.html">
+   <LINK REL="Next"  HREF="022257.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-35-gcb527b4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-35-gcb527b4&In-Reply-To=%3C20140107152138.951845DD00%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-35-gcb527b4">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:38 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022239.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-32-g3133baf
+</A></li>
+        <LI>Next message: <A HREF="022257.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-38-ge1f9afd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22246">[ date ]</a>
+              <a href="thread.html#22246">[ thread ]</a>
+              <a href="subject.html#22246">[ subject ]</a>
+              <a href="author.html#22246">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  cb527b4b142bf337d50a026dd2a85eea4ccea923 (commit)
+      from  1ddcfcf9bbc3ba029a697b6b7914ccbf67ba71e5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    3 +++
+ x2go/backends/control/_stdout.py |    2 ++
+ x2go/client.py                   |   19 ++++++++++++++-----
+ 3 files changed, 19 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9393787..47fa7be 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -28,6 +28,9 @@ python-x2go (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Improve desktop sharing code. Add code to obtain version information of
+       server-side X2Go components.
+     - Add session type filter for list of sharable desktops.
++    - Sort X2Go feature list, add force option for X2GoClient queries of server
++      features and server components. Add alias get_server_components (for 
++      get_server_versions).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Dec 2012 08:58:44 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 52eee5f..cb28bc7 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -483,6 +483,8 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         if self._server_features is None:
+             (stdin, stdout, stderr) = self._x2go_exec_command('which x2gofeaturelist &gt;/dev/null &amp;&amp; x2gofeaturelist')
+             self._server_features = stdout.read().split('\n')
++            self._server_features = [ f for f in self._server_features if f ]
++            self._server_features.sort()
+             self.logger('server-side X2Go features are: %s' % self._server_features, loglevel=log.loglevel_DEBUG)
+         return self._server_features
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index e4ead86..66b2a28 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -2181,7 +2181,7 @@ class X2GoClient(object):
+         return self.session_registry.control_session_of_profile_name(profile_name)
+     __client_control_session_of_profile_name = client_control_session_of_profile_name
+ 
+-    def get_server_versions(self, profile_name, component=None):
++    def get_server_versions(self, profile_name, component=None, force=False):
+         &quot;&quot;&quot;\
+         Query the server configured in session profile &lt;profile_name&gt; for the list of install X2Go components
+         and its versions.
+@@ -2190,6 +2190,8 @@ class X2GoClient(object):
+         @type profile_name: C{str}
+         @param component: only return the version of a specific component
+         @type component: C{str}
++        @param force: refresh component/version data by a query to the server
++        @type force: C{bool}
+ 
+         @return: dictionary of server components (as keys) and their versions (as values) or the version of the given &lt;component&gt;
+         @rtype: C{dict} or C{str}
+@@ -2199,27 +2201,33 @@ class X2GoClient(object):
+         &quot;&quot;&quot;
+         control_session = self.client_control_session_of_profile_name(profile_name)
+         if component is None:
+-            return control_session.get_server_versions()
++            return control_session.get_server_versions(force=force)
+         else:
+             try:
+-                return control_session.get_server_versions()[component]
++                return control_session.get_server_versions(force=force)[component]
+             except KeyError:
+                 raise x2go_exceptions.X2GoClientException('No such component on X2Go Server')
++    __get_server_versions = get_server_versions
++    get_server_components = get_server_versions
++    __get_server_components = get_server_components
+ 
+-    def get_server_features(self, profile_name):
++    def get_server_features(self, profile_name, force=False):
+         &quot;&quot;&quot;\
+         Query the server configured in session profile &lt;profile_name&gt; for the list of server-side
+         X2Go features.
+ 
+         @param profile_name: use the control session of this profile to query the X2Go server for its feature list
+         @type profile_name: C{str}
++        @param force: refresh feature list by a query to the server
++        @type force: C{bool}
+ 
+         @return: list of server feature names (as returned by server-side command ,,x2gofeaturelist''
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         control_session = self.client_control_session_of_profile_name(profile_name)
+-        return control_session.get_server_features()
++        return control_session.get_server_features(force=force)
++    __get_server_features = get_server_features
+ 
+     def has_server_feature(self, profile_name, feature):
+         &quot;&quot;&quot;\
+@@ -2237,6 +2245,7 @@ class X2GoClient(object):
+         &quot;&quot;&quot;
+         control_session = self.client_control_session_of_profile_name(profile_name)
+         return feature in control_session.get_server_features()
++    __has_server_feature = has_server_feature
+ 
+     def client_registered_session_of_name(self, session_name, return_object=False):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022239.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-32-g3133baf
+</A></li>
+	<LI>Next message: <A HREF="022257.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-38-ge1f9afd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22246">[ date ]</a>
+              <a href="thread.html#22246">[ thread ]</a>
+              <a href="subject.html#22246">[ subject ]</a>
+              <a href="author.html#22246">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

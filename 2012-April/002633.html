@@ -1,0 +1,219 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-2-g60ee340
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.0-2-g60ee340&In-Reply-To=%3C20120405091255.B25675DB17%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002632.html">
+   <LINK REL="Next"  HREF="002634.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-2-g60ee340</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.0-2-g60ee340&In-Reply-To=%3C20120405091255.B25675DB17%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-2-g60ee340">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Apr  5 11:12:55 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002632.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-1-gb026eb6
+</A></li>
+        <LI>Next message: <A HREF="002634.html">[X2go-Commits] x2goserver.git - backport-lenny (branch) updated:	3.1.0.1-39-g28ca81e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2633">[ date ]</a>
+              <a href="thread.html#2633">[ thread ]</a>
+              <a href="subject.html#2633">[ subject ]</a>
+              <a href="author.html#2633">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  60ee3404e96f23e81dfd45561405db53d3e316f5 (commit)
+      from  b026eb6b729095f6907a2a6a00f1c59de2664850 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 60ee3404e96f23e81dfd45561405db53d3e316f5
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at treuchtlingen.de</A>&gt;
+Date:   Thu Apr 5 11:12:50 2012 +0200
+
+    Not starting smart card daemon before users are loaded in LDAP mode.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    4 +++-
+ onmainwindow.cpp |   45 ++++++++++++++++++++++++++-------------------
+ onmainwindow.h   |    1 +
+ 3 files changed, 30 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2467f37..ee397c0 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,6 +1,8 @@
+ x2goclient (3.99.2.1-0~x2go1) UNRELEASED; urgency=low
+ 
+-  * Continue development...
++  [ Oleksandr Shneyder ]
++  * New upstream version (3.99.2.1):
++    - Not starting smart card daemon before users are loaded in LDAP mode.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 04 Apr 2012 11:55:57 +0200
+ 
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 4ba3231..309e9c2 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -56,6 +56,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     cleanAllFiles=false;
+     drawMenu=true;
+     usePGPCard=false;
++    PGPInited=false;
+     extLogin=false;
+     startMaximized=false;
+     startHidden=false;
+@@ -268,7 +269,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     }
+ 
+ 
+-    if ( usePGPCard )
++    if ( usePGPCard  &amp;&amp; !useLdap)
+     {
+         QTimer::singleShot ( 10, this, SLOT ( slotStartPGPAuth() ) );
+     }
+@@ -1035,8 +1036,8 @@ void ONMainWindow::trayIconInit()
+             trayIconActiveConnectionMenu-&gt;addAction(tr (&quot;Share folder...&quot; ),this, SLOT(slotExportDirectory()));
+             trayIconActiveConnectionMenu-&gt;addAction(tr(&quot;Suspend&quot;),this, SLOT(slotSuspendSessFromSt()));
+             trayIconActiveConnectionMenu-&gt;addAction(tr(&quot;Terminate&quot;),this, SLOT(slotTermSessFromSt()));
+-            connect (trayIconActiveConnectionMenu, SIGNAL(triggered(QAction*)), this, 
+-		     SLOT(slotAppMenuTriggered(QAction*)));
++            connect (trayIconActiveConnectionMenu, SIGNAL(triggered(QAction*)), this,
++                     SLOT(slotAppMenuTriggered(QAction*)));
+ 
+ 
+             if (sessionStatusDlg &amp;&amp; sessionStatusDlg-&gt;isVisible())
+@@ -1081,8 +1082,8 @@ QMenu* ONMainWindow::initTrayAppMenu(QString text, QPixmap icon)
+ void ONMainWindow::slotAppMenuTriggered(QAction* action)
+ {
+     x2goDebug&lt;&lt;&quot;slotAppMenuTriggered :&quot;&lt;&lt;action-&gt;data().toString()&lt;&lt;endl;
+-    if(action-&gt;data().toString() != &quot;&quot;)
+-      runApplication(action-&gt;data().toString());
++    if (action-&gt;data().toString() != &quot;&quot;)
++        runApplication(action-&gt;data().toString());
+ }
+ 
+ void ONMainWindow::plugAppsInTray()
+@@ -1095,18 +1096,18 @@ void ONMainWindow::plugAppsInTray()
+     topActions.clear();
+     foreach(Application app, applications)
+     {
+-      QAction* act;
+-      if(app.category==Application::TOP)
+-      {
+-	 act=new QAction(app.icon,app.name,trayIconActiveConnectionMenu);
+-         trayIconActiveConnectionMenu-&gt;insertAction(appSeparator, act);
+-	 topActions.append(act);
+-      }
+-      else
+-      {
+-        act=appMenu[app.category]-&gt;addAction(app.icon,app.name);
+-        appMenu[app.category]-&gt;menuAction()-&gt;setVisible(true);
+-      }
++        QAction* act;
++        if (app.category==Application::TOP)
++        {
++            act=new QAction(app.icon,app.name,trayIconActiveConnectionMenu);
++            trayIconActiveConnectionMenu-&gt;insertAction(appSeparator, act);
++            topActions.append(act);
++        }
++        else
++        {
++            act=appMenu[app.category]-&gt;addAction(app.icon,app.name);
++            appMenu[app.category]-&gt;menuAction()-&gt;setVisible(true);
++        }
+         act-&gt;setToolTip(app.comment);
+         act-&gt;setData(app.exec);
+         empty=false;
+@@ -1128,8 +1129,8 @@ void ONMainWindow::removeAppsFromTray()
+     }
+     foreach (QAction* act, topActions)
+     {
+-      trayIconActiveConnectionMenu-&gt;removeAction(act);
+-      delete act;
++        trayIconActiveConnectionMenu-&gt;removeAction(act);
++        delete act;
+     }
+     topActions.clear();
+     appSeparator-&gt;setVisible(false);
+@@ -1555,6 +1556,12 @@ void ONMainWindow::displayUsers()
+                  SLOT ( slotSnameChanged ( const QString&amp; ) ) );
+     connect ( uname,SIGNAL ( textEdited ( const QString&amp; ) ),this,
+               SLOT ( slotUnameChanged ( const QString&amp; ) ) );
++    if ( usePGPCard  &amp;&amp; !PGPInited)
++    {
++        PGPInited=true;
++        x2goDebug&lt;&lt;&quot;Users loaded, starting smart card daemon\n&quot;;
++        QTimer::singleShot ( 10, this, SLOT ( slotStartPGPAuth() ) );
++    }
+ }
+ 
+ void ONMainWindow::showPass ( UserButton* user )
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 4a17a92..7e9cb94 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -518,6 +518,7 @@ private:
+     bool showTbTooltip;
+     bool noSessionEdit;
+     bool cleanAllFiles;
++    bool PGPInited;
+     struct SshProxy sshProxy;
+     QString sshPort;
+     QString clientSshPort;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002632.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-1-gb026eb6
+</A></li>
+	<LI>Next message: <A HREF="002634.html">[X2go-Commits] x2goserver.git - backport-lenny (branch) updated:	3.1.0.1-39-g28ca81e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2633">[ date ]</a>
+              <a href="thread.html#2633">[ thread ]</a>
+              <a href="subject.html#2633">[ subject ]</a>
+              <a href="author.html#2633">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

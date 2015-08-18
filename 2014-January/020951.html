@@ -1,0 +1,1304 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-259-g7fdd38c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-259-g7fdd38c&In-Reply-To=%3C20140107151800.DE25B5DBB9%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020944.html">
+   <LINK REL="Next"  HREF="020957.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-259-g7fdd38c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-259-g7fdd38c&In-Reply-To=%3C20140107151800.DE25B5DBB9%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-259-g7fdd38c">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:18:00 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020944.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-256-gd4ec52b
+</A></li>
+        <LI>Next message: <A HREF="020957.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-254-g034f7d6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20951">[ date ]</a>
+              <a href="thread.html#20951">[ thread ]</a>
+              <a href="subject.html#20951">[ subject ]</a>
+              <a href="author.html#20951">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  7fdd38ce95451a7f174b95f18d584d41e560c21c (commit)
+      from  e891bfa901a9c32aa520e641fbb3c15e4a1f34af (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py  |  439 ++++++++++++++++++++++++++++++-------
+ x2go/backends/printing/_file.py   |    4 +-
+ x2go/backends/printing/_gconf.py  |   13 +-
+ x2go/backends/printing/_winreg.py |   13 +-
+ x2go/backends/profiles/_file.py   |    1 -
+ x2go/backends/profiles/_gconf.py  |    2 +-
+ x2go/backends/proxy/_nx3.py       |   21 +-
+ x2go/backends/proxy/base.py       |    8 +-
+ x2go/backends/settings/_file.py   |    8 +-
+ x2go/backends/settings/_gconf.py  |   15 +-
+ x2go/backends/settings/_winreg.py |   16 +-
+ x2go/sshproxy.py                  |   27 ++-
+ 12 files changed, 421 insertions(+), 146 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index f9be7da..5470c3d 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -56,13 +56,39 @@ from x2go.monkey_patch_paramiko import monkey_patch_paramiko
+ monkey_patch_paramiko()
+ 
+ def _rerewrite_blanks(cmd):
++    &quot;&quot;&quot;\
++    In command strings X2Go server scripts expects blanks being rewritten to ,,X2GO_SPACE_CHAR''.
++
++    @param cmd: command that is to be sent to an X2Go server script
++    @type cmd: C{str}
++
++    @return: the command with blanks replaced by ,,X2GO_SPACE_CHAR''
++    @rtype: C{str}
++
++    &quot;&quot;&quot;
+     # X2Go run command replace X2GO_SPACE_CHAR string with blanks
+     if cmd:
+         cmd = cmd.replace(&quot;X2GO_SPACE_CHAR&quot;, &quot; &quot;)
+     return cmd
+ 
+ def _rewrite_password(cmd, user=None, password=None):
++    &quot;&quot;&quot;\
++    In command strings Python X2Go replaces some macros with actual values:
++
++      - X2GO_USER -&gt; the user name under which the user is authenticated via SSH
++      - X2GO_PASSWORD -&gt; the password being used for SSH authentication
++
++    Both macros can be used to on-the-fly authenticate via RDP.
++
++    @param cmd: command that is to be sent to an X2Go server script
++    @type cmd: C{str}
++    @param user: the SSH authenticated user name
++    @type password: the password being used for SSH authentication
+ 
++    @return: the command with macros replaced
++    @rtype: C{str}
++
++    &quot;&quot;&quot;
+     # if there is a ,,-u X2GO_USER'' parameter in RDP options then we will replace 
+     # it by our X2Go session password
+     if cmd and user:
+@@ -76,14 +102,10 @@ def _rewrite_password(cmd, user=None, password=None):
+ 
+ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     &quot;&quot;&quot;\
+-    STILL UNDOCUMENTED
++    In the Python X2Go concept, X2Go sessions fall into two parts: a control session and one to many terminal sessions.
+ 
+-    @param logger: you can pass an L{X2goLogger} object to the
+-        L{X2goControlSessionSTDOUT} constructor
+-    @type logger: L{X2goLogger} instance
+-    @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+-        constructed with the given loglevel
+-    @type loglevel: int
++    The control session handles the SSH based communication between server and client. It is mainly derived from
++    C{paramiko.SSHClient} and adds on X2Go related functionality.
+ 
+     &quot;&quot;&quot;
+     associated_terminals = None
+@@ -101,11 +123,45 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                  ssh_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SSH_ROOTDIR),
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  published_applications_no_submenus=0,
+-                 *args, **kwargs):
++                 **kwargs):
+         &quot;&quot;&quot;\
+-        Initialize an X2Go session. With the L{X2goControlSessionSTDOUT} class you can start
+-        new X2Go sessions, resume suspended sessions or suspend resp. terminate
+-        currently running sessions on a connected X2Go server.
++        Initialize an X2Go control session. For each connected session profile there will be one SSH-based
++        control session and one to many terminal sessions that all server-client-communicate via this one common control
++        session.
++
++        A control session normally gets set up by an L{X2goSession} instance. Do not use it directly!!!
++
++        @param profile_name: the profile name of the session profile this control session works for
++        @type profile_name: C{str}
++        @param add_to_known_hosts: Auto-accept server host validity?
++        @type add_to_known_hosts: C{bool}
++        @param known_hosts: the underlying Paramiko/SSH systems C{known_hosts} file
++        @type known_hosts: C{str}
++        @param terminal_backend: X2Go terminal session backend to use
++        @type terminal_backend: C{class}
++        @param info_backend: backend for handling storage of server session information
++        @type info_backend: C{X2goServerSessionInfo*} instance
++        @param list_backend: backend for handling storage of session list information
++        @type list_backend: C{X2goServerSessionList*} instance
++        @param proxy_backend: backend for handling the X-proxy connections
++        @type proxy_backend: C{X2goProxy*} instance
++        @param client_rootdir: client base dir (default: ~/.x2goclient)
++        @type client_rootdir: C{str}
++        @param sessions_rootdir: sessions base dir (default: ~/.x2go)
++        @type sessions_rootdir: C{str}
++        @param ssh_rootdir: ssh base dir (default: ~/.ssh)
++        @type ssh_rootdir: C{str}
++        @param published_applications_no_submenus: published applications menus with less items than C{published_applications_no_submenus}
++            are rendered without submenus
++        @type published_applications_no_submenus: C{int}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goControlSessionSTDOUT} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++        @param kwargs: parameters passed through to C{SSHClient.__init__()}
++        @type kwargs: C{dict}
+ 
+         &quot;&quot;&quot;
+         self.associated_terminals = {}
+@@ -145,7 +201,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self._published_applications_menu = {}
+ 
+-        paramiko.SSHClient.__init__(self, *args, **kwargs)
++        paramiko.SSHClient.__init__(self, **kwargs)
+         if self.add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+@@ -157,22 +213,57 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self._transport_lock = threading.Lock()
+ 
+     def get_hostname(self):
++        &quot;&quot;&quot;\
++        Get the hostname as stored in the properties of this control session.
++
++        @return: the hostname of the connected X2Go server
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
+         return self.hostname
+ 
+     def get_port(self):
++        &quot;&quot;&quot;\
++        Get the port number of the SSH connection as stored in the properties of this control session.
++
++        @return: the server-side port number of the control session's SSH connection
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
+         return self.port
+ 
+     def load_session_host_keys(self):
++        &quot;&quot;&quot;\
++        Load known SSH host keys from the C{known_hosts} file.
++
++        If the file does not exist, create it first.
++
++        &quot;&quot;&quot;
+         if self.known_hosts is not None:
+             utils.touch_file(self.known_hosts)
+             self.load_host_keys(self.known_hosts)
+ 
+     def __del__(self):
++        &quot;&quot;&quot;\
++        On instance descruction, do a proper session disconnect from the server.
+ 
++        &quot;&quot;&quot;
+         self.disconnect()
+ 
+     def _x2go_sftp_put(self, local_path, remote_path):
++        &quot;&quot;&quot;
++        Put a local file on the remote server via sFTP.
++
++        During sFTP operations, remote command execution gets blocked.
+ 
++        @param local_path: full local path name of the file to be put on the server
++        @type local_path: C{str}
++        @param remote_path: full remote path name of the server-side target location, path names have to be Unix-compliant
++        @type remote_path: C{str}
++
++        @raise X2goControlSessionException: if the SSH connection dropped out
++
++        &quot;&quot;&quot;
+         ssh_transport = self.get_transport()
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+@@ -183,12 +274,24 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             except x2go_exceptions.SSHException, socket.error:
+                 # react to connection dropped error for SSH connections
+                 self._transport_lock.release()
+-                raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an SFTP put action.')
++                raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP put action.')
+             self.sftp_client = None
+         self._transport_lock.release()
+ 
+     def _x2go_sftp_write(self, remote_path, content):
++        &quot;&quot;&quot;
++        Create a text file on the remote server via sFTP.
+ 
++        During sFTP operations, remote command execution gets blocked.
++
++        @param remote_path: full remote path name of the server-side target location, path names have to be Unix-compliant
++        @type remote_path: C{str}
++        @param content: a text file, multi-line files use Unix-link EOL style
++        @type content: C{str}
++
++        @raise X2goControlSessionException: if the SSH connection dropped out
++
++        &quot;&quot;&quot;
+         ssh_transport = self.get_transport()
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+@@ -202,11 +305,22 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             except x2go_exceptions.SSHException, socket.error:
+                 self._transport_lock.release()
+                 self.logger('sFTP-write: opening remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
++                raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP write action.')
+             self.sftp_client = None
+         self._transport_lock.release()
+ 
+     def _x2go_sftp_remove(self, remote_path):
++        &quot;&quot;&quot;
++        Remote a remote file from the server via sFTP.
+ 
++        During sFTP operations, remote command execution gets blocked.
++
++        @param remote_path: full remote path name of the server-side file to be removed, path names have to be Unix-compliant
++        @type remote_path: C{str}
++
++        @raise X2goControlSessionException: if the SSH connection dropped out
++
++        &quot;&quot;&quot;
+         ssh_transport = self.get_transport()
+         self._transport_lock.acquire()
+         if ssh_transport and ssh_transport.is_authenticated():
+@@ -217,11 +331,32 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             except x2go_exceptions.SSHException, socket.error:
+                 self._transport_lock.release()
+                 self.logger('sFTP-write: removing remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
++                raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP remove action.')
+             self.sftp_client = None
+             self._transport_lock.release()
+ 
+     def _x2go_exec_command(self, cmd_line, loglevel=log.loglevel_INFO, timeout=20, **kwargs):
++        &quot;&quot;&quot;
++        Execute an X2Go server-side command via SSH.
++
++        During SSH command executions, sFTP operations get blocked.
++
++        @param cmd_line: the command to be executed on the remote server
++        @type cmd_line: C{str} or C{list}
++        @param loglevel: use this loglevel for reporting about remote command execution
++        @type loglevel: C{int}
++        @param timeout: if commands take longer than C{&lt;timeout&gt;} to be executed, consider the control session connection
++            to have died.
++        @type timeout: C{int}
++        @param kwargs: parameters that get passed through to the C{paramiko.SSHClient.exec_command()} method.
++        @type kwargs: C{dict}
++
++        @return: C{True} if the command could be successfully executed on the remote X2Go server
++        @rtype: C{bool}
++
++        @raise X2goControlSessionException: if the command execution failed (due to a lost connection)
+ 
++        &quot;&quot;&quot;
+         self._transport_lock.acquire()
+ 
+         _retval = None
+@@ -272,6 +407,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 timer.cancel()
+ 
+         else:
++            self._transport_lock.release()
+             raise x2go_exceptions.X2goControlSessionException('the X2Go control session is not connected')
+ 
+         self._transport_lock.release()
+@@ -279,6 +415,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     @property
+     def _x2go_server_features(self):
++        &quot;&quot;&quot;\
++        Render a list of server-side X2Go features. Results get cached once there has been one successfull query.
++
++        &quot;&quot;&quot;
+         if self._server_features is None:
+             (stdin, stdout, stderr) = self._x2go_exec_command('which x2gofeaturelist &gt;/dev/null &amp;&amp; x2gofeaturelist')
+             self._server_features = stdout.read().split('\n')
+@@ -288,12 +428,22 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return self._server_features
+ 
+     def query_server_features(self):
++        &quot;&quot;&quot;\
++        Do a query for the server-side list of X2Go features.
++
++        @return: list of X2Go feature names
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
+         return self._x2go_server_features
+     get_server_features = query_server_features
+ 
+     @property
+     def _x2go_remote_home(self):
++        &quot;&quot;&quot;\
++        Retrieve and cache the remote home directory location.
+ 
++        &quot;&quot;&quot;
+         if self._remote_home is None:
+             (stdin, stdout, stderr) = self._x2go_exec_command('echo $HOME')
+             self._remote_home = stdout.read().split()[0]
+@@ -303,7 +453,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return self._remote_home
+ 
+     def _x2go_remote_group(self, group):
++        &quot;&quot;&quot;\
++        Retrieve and cache the members of a server-side POSIX group.
++
++        @param group: remote POSIX group name
++        @type group: C{str}
+ 
++        @return: list of POSIX group members
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
+         if not self._remote_group.has_key(group):
+             (stdin, stdout, stderr) = self._x2go_exec_command('getent group %s | cut -d&quot;:&quot; -f4' % group)
+             self._remote_group[group] = stdout.read().split('\n')[0].split(',')
+@@ -313,6 +472,18 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return self._remote_group[group]
+ 
+     def is_x2gouser(self, username):
++        &quot;&quot;&quot;\
++        Is the remote user allowed to launch X2Go sessions?
++
++        FIXME: this method is currently non-functional.
++
++        @param username: remote user name
++        @type username: C{str}
++
++        @return: C{True} if the remote user is allowed to launch X2Go sessions
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         ###
+         ### FIXME:
+         ###
+@@ -322,13 +493,25 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         return True
+ 
+     def is_sshfs_available(self):
++        &quot;&quot;&quot;\
++        Check if the remote user is allowed to use SSHFS mounts.
++
++        @return: C{True} if the user is allowed to connect client-side shares to the X2Go session
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         if self.remote_username() in self._x2go_remote_group('fuse'):
+             return True
+         return False
+ 
+     def remote_username(self):
+         &quot;&quot;&quot;\
+-        Returns the control session's remote username.
++        Returns (and caches) the control session's remote username.
++
++        @return: SSH transport's user name
++        @rtype: C{str}
++
++        @raise X2goControlSessionException: on SSH connection loss
+ 
+         &quot;&quot;&quot;
+         if self._remote_username is None:
+@@ -341,7 +524,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def remote_peername(self):
+         &quot;&quot;&quot;\
+-        Returns the control session's remote host (name or ip).
++        Returns (and caches) the control session's remote host (name or ip).
++
++        @return: SSH transport's peer name
++        @rtype: C{tuple}
++
++        @raise X2goControlSessionException: on SSH connection loss
+ 
+         &quot;&quot;&quot;
+         if self._remote_peername is None:
+@@ -354,17 +542,36 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     @property
+     def _x2go_session_auth_rsakey(self):
++        &quot;&quot;&quot;\
++        Generate (and cache) a temporary RSA host key for the lifetime of this control session.
++
++        &quot;&quot;&quot;
+         if self._session_auth_rsakey is None:
+             self._session_auth_rsakey = paramiko.RSAKey.generate(defaults.RSAKEY_STRENGTH)
+         return self._session_auth_rsakey
+ 
+     def set_profile_name(self, profile_name):
++        &quot;&quot;&quot;\
++        Manipulate the control session's profile name.
++
++        @param profile_name: new profile name for this control session
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
+         self.profile_name = profile_name
+ 
+     def check_host(self, hostname, port=22):
+         &quot;&quot;&quot;\
+         Wraps around a Paramiko/SSH host key check.
+ 
++        @param hostname: the remote X2Go server's hostname
++        @type hostname: C{str}
++        @param port: the SSH port of the remote X2Go server
++        @type port: C{int}
++
++        @return: C{True} if the host key check succeeded, C{False} otherwise
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
+         # trailing whitespace tolerance
+         hostname = hostname.strip()
+@@ -383,15 +590,15 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 add_to_known_hosts=False, force_password_auth=False):
+         &quot;&quot;&quot;\
+         Connect to an X2Go server and authenticate to it. This method is directly
+-        inherited from the paramiko.SSHClient module. The features of the Paramiko 
+-        SSH client connect method are recited here. The parameters C{add_to_known_hosts}
+-        and C{force_password_auth} have been added as a parameter for X2Go.
+-
+-        The server's host key
+-        is checked against the system host keys (see C{load_system_host_keys})
+-        and any local host keys (C{load_host_keys}).  If the server's hostname
+-        is not found in either set of host keys, the missing host key policy
+-        is used (see C{set_missing_host_key_policy}).  The default policy is
++        inherited from the C{paramiko.SSHClient} class. The features of the Paramiko
++        SSH client connect method are recited here. The parameters C{add_to_known_hosts},
++        C{force_password_auth}, C{session_instance} and all SSH proxy related parameters
++        have been added as X2Go specific parameters
++
++        The server's host key is checked against the system host keys 
++        (see C{load_system_host_keys}) and any local host keys (C{load_host_keys}).
++        If the server's hostname is not found in either set of host keys, the missing host
++        key policy is used (see C{set_missing_host_key_policy}).  The default policy is
+         to reject the key and raise an C{SSHException}.
+ 
+         Authentication is attempted in the following order of priority:
+@@ -405,20 +612,20 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         passed in, that password will be used to attempt to unlock the key.
+ 
+         @param hostname: the server to connect to
+-        @type hostname: str
++        @type hostname: C{str}
+         @param port: the server port to connect to
+-        @type port: int
++        @type port: C{int}
+         @param username: the username to authenticate as (defaults to the
+             current local username)
+-        @type username: str
++        @type username: C{str}
+         @param password: a password to use for authentication or for unlocking
+             a private key
+-        @type password: str
++        @type password: C{str}
+         @param pkey: an optional private key to use for authentication
+         @type pkey: C{PKey}
+         @param key_filename: the filename, or list of filenames, of optional
+             private key(s) to try for authentication
+-        @type key_filename: str or list(str)
++        @type key_filename: C{str} or list(str)
+         @param timeout: an optional timeout (in seconds) for the TCP connect
+         @type timeout: float
+         @param allow_agent: set to False to disable connecting to the SSH agent
+@@ -436,6 +643,23 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @param session_instance: an instance L{X2goSession} using this L{X2goControlSessionSTDOUT}
+             instance.
+         @type session_instance: C{instance}
++        @param use_sshproxy: connect through an SSH proxy
++        @type use_sshproxy: C{True} if an SSH proxy is to be used for tunneling the connection
++        @param sshproxy_host: hostname of the SSH proxy server, use &lt;hostname&gt;:&lt;port&gt; to name a
++            non-standard SSH port
++        @type sshproxy_host: C{str}
++        @param sshproxy_user: username that we use for authenticating against C{&lt;sshproxy_host&gt;}
++        @type sshproxy_user: C{str}
++        @param sshproxy_password: a password to use for SSH proxy authentication or for unlocking
++            a private key
++        @type sshproxy_password: C{str}
++        @param sshproxy_key_filename: local file location of the private key file
++        @type sshproxy_key_filename: C{str}
++        @param sshproxy_tunnel: the SSH proxy tunneling parameters, format is: &lt;local-address&gt;:&lt;local-port&gt;:&lt;remote-address&gt;:&lt;remote-port&gt;
++        @type sshproxy_tunnel: C{str}
++
++        @return: C{True} if an authenticated SSH transport could be retrieved by this method
++        @rtype: C{bool}
+ 
+         @raise BadHostKeyException: if the server's host key could not be
+             verified
+@@ -443,6 +667,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @raise SSHException: if there was any other error connecting or
+             establishing an SSH session
+         @raise socket.error: if a socket error occurred while connecting
++        @raise X2goSSHProxyException: any SSH proxy exception is passed through while establishing the SSH proxy connection and tunneling setup
++        @raise X2goSSHAuthenticationException: any SSH proxy authentication exception is passed through while establishing the SSH proxy connection and tunneling setup
++        @raise X2goRemoteHomeException: if the remote home directory does not exist or is not accessible
+ 
+         &quot;&quot;&quot;
+         if use_sshproxy and sshproxy_host and sshproxy_user:
+@@ -491,9 +718,14 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+             try:
+                 self.logger('trying SSH pub/priv key authentication with server', loglevel=log.loglevel_DEBUG)
+-                paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=pkey,
+-                                           key_filename=key_filename, timeout=timeout, allow_agent=allow_agent, 
+-                                           look_for_keys=look_for_keys)
++                if password:
++                    paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=pkey, password=password,
++                                               key_filename=key_filename, timeout=timeout, allow_agent=allow_agent, 
++                                               look_for_keys=look_for_keys)
++                else:
++                    paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=pkey,
++                                               key_filename=key_filename, timeout=timeout, allow_agent=allow_agent, 
++                                               look_for_keys=look_for_keys)
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+                 t = self.get_transport()
+@@ -559,9 +791,6 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         ssh_transport = self.get_transport()
+         ssh_transport.reverse_tunnels = {}
+ 
+-        # if we succeed, we use the same credentials to create a second transport for sFTP client access
+-        self.sftp_client = paramiko.SFTPClient.from_transport(ssh_transport)
+-
+         # mark Paramiko/SSH transport as X2goControlSession
+         ssh_transport._x2go_session_marker = True
+         self._session_password = password
+@@ -576,7 +805,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def dissociate(self, terminal_session):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Drop an associated terminal session.
++
++        @param terminal_session: the terminal session object to remove from the list of associated terminals
++        @type terminal_session: C{X2goTerminalSession*}
+ 
+         &quot;&quot;&quot;
+         for t_name in self.associated_terminals.keys():
+@@ -587,7 +819,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def disconnect(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Disconnect this control session from the remote server.
++
++        @return: report success or failure after having disconnected
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.associated_terminals:
+@@ -632,6 +867,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return False
+ 
+     def home_exists(self):
++        &quot;&quot;&quot;\
++        Test if the remote home directory exists.
++
++        @return: C{True} if the home directory exists, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         (_stdin, _stdout, _stderr) = self._x2go_exec_command('stat -tL &quot;%s&quot;' % self._x2go_remote_home, loglevel=log.loglevel_DEBUG)
+         if _stdout.read():
+             return True
+@@ -639,17 +881,24 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+ 
+     def is_alive(self):
++        &quot;&quot;&quot;\
++        Test if the connection to the remote X2Go server is still alive.
++
++        @return: C{True} if the connection is still alive, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         if self._x2go_exec_command('echo', loglevel=log.loglevel_DEBUG):
+             return True
+         return False
+ 
+     def get_published_applications(self, lang=None, refresh=False, raw=False, very_raw=False, max_no_submenus=defaults.PUBAPP_MAX_NO_SUBMENUS):
+         &quot;&quot;&quot;\
+-        Retrieve the menu tree of published applications from X2Go server.
++        Retrieve the menu tree of published applications from the remote X2Go server.
+ 
+         The C{raw} option lets this method return a C{list} of C{dict} elements. Each C{dict} elements has a 
+-        C{desktop} key containing the text output of a .desktop file and an C{icon} key which contains the desktop
+-        icon data base64 encoded.
++        C{desktop} key containing a shortened version of the text output of a .desktop file and an C{icon} key
++        which contains the desktop base64-encoded icon data.
+ 
+         The {very_raw} lets this method return the output of the C{x2gogetapps} script as is.
+ 
+@@ -845,13 +1094,24 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def start(self, **kwargs):
+         &quot;&quot;&quot;\
+-        Start a new X2Go session. 
++        Start a new X2Go session.
+ 
+         The L{X2goControlSessionSTDOUT.start()} method accepts any parameter
+         that can be passed to any of the C{X2goTerminalSession} backend class
+         constructors.
+ 
++        @param kwargs: parameters that get passed through to the control session's
++            L{resume()} method, only the C{session_name} parameter will get removed
++            before pass-through
++        @type kwargs: C{dict}
++
++        @return: return value of the cascaded L{resume()} method, denoting the success or failure
++            of the session startup
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
++        if session_name in kwargs.keys():
++            del kwargs[session_name]
+         return self.resume(**kwargs)
+ 
+     def resume(self, session_name=None, session_instance=None, session_list=None, **kwargs):
+@@ -859,11 +1119,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Resume a running/suspended X2Go session. 
+ 
+         The L{X2goControlSessionSTDOUT.resume()} method accepts any parameter
+-        that can be passed to any of the C{X2goTerminalSession} backend class constructors.
++        that can be passed to any of the C{X2goTerminalSession*} backend class constructors.
+ 
+         @return: True if the session could be successfully resumed
+         @rtype: C{bool}
+ 
++        @raise X2goUserException: if the remote user is not allowed to launch/resume X2Go sessions.
++
+         &quot;&quot;&quot;
+         if not self.is_x2gouser(self.get_transport().get_username()):
+             raise x2go_exceptions.X2goUserException('remote user %s is not allowed to run X2Go commands' % self.get_transport().get_username())
+@@ -914,20 +1176,23 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Share another already running desktop session. Desktop sharing can be run
+         in two different modes: view-only and full-access mode.
+ 
+-        @param desktop: desktop ID of a sharable desktop in format &lt;user&gt;@&lt;display&gt;
++        @param desktop: desktop ID of a sharable desktop in format C{&lt;user&gt;@&lt;display&gt;}
+         @type desktop: C{str}
+         @param user: user name and display number can be given separately, here give the
+-            name of the user who wants to share a session with you.
++            name of the user who wants to share a session with you
+         @type user: C{str}
+         @param display: user name and display number can be given separately, here give the
+-            number of the display that a user allows you to be shared with.
++            number of the display that a user allows you to be shared with
+         @type display: C{str}
+-        @param share_mode: desktop sharing mode, 0 is VIEW-ONLY, 1 is FULL-ACCESS.
++        @param share_mode: desktop sharing mode, 0 stands for VIEW-ONLY, 1 for  FULL-ACCESS mode
+         @type share_mode: C{int}
+ 
+-        @return: True if the session could be successfully shared.
++        @return: True if the session could be successfully shared
+         @rtype: C{bool}
+ 
++        @raise X2goDesktopSharingException: if C{username} and C{dislpay} do not relate to a
++            sharable desktop session
++
+         &quot;&quot;&quot;
+         if desktop:
+             user = desktop.split('@')[0]
+@@ -948,12 +1213,15 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         granted desktop sharing) on the connected server.
+ 
+         @param raw: if C{True}, the raw output of the server-side X2Go command 
+-            C{x2godesktopsharing} is returned.
++            C{x2golistdesktops} is returned.
+         @type raw: C{bool}
+ 
+         @return: a list of X2Go desktops available for sharing
+         @rtype: C{list}
+ 
++        @raise X2goTimeOutException: on command execution timeouts, with the server-side C{x2golistdesktops}
++            command this can sometimes happen. Make sure you ignore these time-outs and to try again
++
+         &quot;&quot;&quot;
+         if raw:
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistdesktops&quot;)
+@@ -987,7 +1255,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @param session_name: name of a session to query a list of mounts for
+         @type session_name: C{str}
+         @param raw: if C{True}, the raw output of the server-side X2Go command 
+-            C{x2godesktopsharing} is returned.
++            C{x2golistmounts} is returned.
+         @type raw: C{bool}
+         @param maxwait: stop processing C{x2golistmounts} after C{&lt;maxwait&gt;} seconds
+         @type maxwait: C{int}
+@@ -995,6 +1263,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @return: a list of client-side mounts for X2Go session C{&lt;session_name&gt;} on the server
+         @rtype: C{list}
+ 
++        @raise X2goTimeOutException: on command execution timeouts, queries with the server-side
++            C{x2golistmounts} query should normally be processed quickly, a time-out may hint that the
++            control session has lost its connection to the X2Go server
++
+         &quot;&quot;&quot;
+         if raw:
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistmounts %s&quot; % session_name)
+@@ -1027,11 +1299,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             C{x2golistsessions} is returned.
+         @type raw: C{bool}
+ 
+-        @return: normally an instance of a C{X2goServerSessionList} backend Bis returned. However,
+-            if the raw argument is set, the plain text output of the x2golistsessions 
++        @return: normally an instance of a C{X2goServerSessionList*} backend is returned. However,
++            if the raw argument is set, the plain text output of the server-side C{x2golistsessions}
+             command is returned
+         @rtype: C{X2goServerSessionList} instance or str
+ 
++        @raise X2goControlSessionException: on command execution timeouts, if this happens the control session will
++            be interpreted as disconnected due to connection loss
+         &quot;&quot;&quot;
+         if raw:
+             (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;)
+@@ -1087,6 +1361,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Find X2Go terminals that have previously been started by the
+         connected user on the remote X2Go server and terminate them.
+ 
++        @param destroy_terminals: destroy the terminal session instances after cleanup
++        @type destroy_terminals: C{bool}
++        @param published_applications: also clean up published applications providing sessions
++        @type published_applications: C{bool}
++
+         &quot;&quot;&quot;
+         session_list = self.list_sessions()
+         if published_applications:
+@@ -1098,8 +1377,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def is_connected(self):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session is connected to the remote server (that
+-        is if it has a valid Paramiko Transport object).
++        Returns C{True} if this control session is connected to the remote server (that
++        is: if it has a valid Paramiko/SSH transport object).
+ 
+         @return: X2Go session connected?
+         @rtype: C{bool}
+@@ -1115,8 +1394,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @param session_name: X2Go name of the session to be queried
+         @type session_name: C{str}
+ 
+-        @return: X2Go session running?
+-        @rtype: C{bool}
++        @return: X2Go session running? If C{&lt;session_name&gt;} is not listable by the L{list_sessions()} method then C{None} is returned
++        @rtype: C{bool} or C{None}
+ 
+         &quot;&quot;&quot;
+         session_infos = self.list_sessions()
+@@ -1129,8 +1408,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Returns C{True} if the given X2Go session is in suspended state,
+         C{False} else.
+ 
+-        @return: X2Go session suspended?
+-        @rtype: C{bool}
++        @return: X2Go session suspended? If C{&lt;session_name&gt;} is not listable by the L{list_sessions()} method then C{None} is returned
++        @rtype: C{bool} or C{None}
+ 
+         &quot;&quot;&quot;
+         session_infos = self.list_sessions()
+@@ -1140,39 +1419,36 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def has_terminated(self, session_name):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session is not in the session list on the 
+-        connected server, C{False} else.
++        Returns C{True} if the X2Go session with name C{&lt;session_name&gt;} has been seen
++        by this control session and--in the meantime--has been terminated.
+ 
+-        Of course, if this command is called before session startup, it will also
+-        return C{True}.
++        If C{&lt;session_name&gt;} has not been seen, yet, the method will return C{None}.
+ 
+-        @return: X2Go session has terminate?
+-        @rtype: C{bool}
++        @return: X2Go session has terminated?
++        @rtype: C{bool} or C{None}
+ 
+         &quot;&quot;&quot;
+         session_infos = self.list_sessions()
+-        if session_name not in session_infos.keys():
+-            if session_name in self.terminated_terminals:
+-                return True
+-            else:
+-                # do a post-mortem tidy up
+-                if session_name in self.associated_terminals.keys():
+-                    self.terminate(session_name)
+-                return True
+-        return False
++        if session_name in self.terminated_terminals:
++            return True
++        if session_name not in session_infos.keys() and session_name in self.associated_terminals.keys():
++            # do a post-mortem tidy up
++            self.terminate(session_name)
++            return True
++        if self.is_suspended(session_name) or self.is_running(session_name):
++            return False
++
++        return None
+ 
+     def suspend(self, session_name):
+         &quot;&quot;&quot;\
+-        Suspend either this or another available X2Go session on the connected
++        Suspend X2Go session with name C{&lt;session_name&gt;} on the connected
+         server.
+ 
+-        If L{session_name} is given, L{X2goControlSessionSTDOUT.suspend()} tries to suspend the
+-        corresponding session.
+-
+         @param session_name: X2Go name of the session to be suspended
+         @type session_name: C{str}
+ 
+-        @return: True if the session could be successfully suspended
++        @return: C{True} if the session could be successfully suspended
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1203,16 +1479,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def terminate(self, session_name, destroy_terminals=True):
+         &quot;&quot;&quot;\
+-        Terminate either this or another available X2Go session on the connected
++        Terminate X2Go session with name C{&lt;session_name&gt;} on the connected
+         server.
+ 
+-        If L{session_name} is given, L{X2goControlSessionSTDOUT.terminate()} tries to terminate the
+-        corresponding session.
+-
+         @param session_name: X2Go name of the session to be terminated
+         @type session_name: C{str}
+ 
+-        @return: True if the session could be successfully terminate
++        @return: C{True} if the session could be successfully terminated
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1242,5 +1515,3 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             _ret = True
+ 
+         return _ret
+-
+-
+diff --git a/x2go/backends/printing/_file.py b/x2go/backends/printing/_file.py
+index 372624c..cd56045 100644
+--- a/x2go/backends/printing/_file.py
++++ b/x2go/backends/printing/_file.py
+@@ -60,11 +60,11 @@ _print_property_map = {
+ 
+ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    L{X2goClientPrinting} provides access to the X2Go ini-like file
++    L{X2goClientPrintingFILE} provides access to the X2Go ini-like file
+     &#187;printing&#171; as stored in C{~/.x2goclient/printing} resp. globally
+     C{/etc/x2goclient/printing}.
+ 
+-    An instance of L{X2goClientPrinting} is created on each incoming
++    An instance of L{X2goClientPrintingFILE} is created on each incoming
+     print job. This facilitates that on every print job the print action
+     for this job is derived from the &#187;printing&#171; configuration file.
+ 
+diff --git a/x2go/backends/printing/_gconf.py b/x2go/backends/printing/_gconf.py
+index 721ee07..56984aa 100644
+--- a/x2go/backends/printing/_gconf.py
++++ b/x2go/backends/printing/_gconf.py
+@@ -40,26 +40,21 @@ from x2go.x2go_exceptions import X2goNotImplementedYetException
+ 
+ class X2goClientPrintingGCONF(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    L{X2goClientPrinting} provides access to the X2Go ini-like file
+-    &#187;printing&#171; as stored in C{~/.x2goclient/printing} resp. globally
+-    C{/etc/x2goclient/printing}.
++    L{X2goClientPrintingGCONF} provides access to the GCONF based configuration
++    of the X2Go client printing setup.
+ 
+-    An instance of L{X2goClientPrinting} is created on each incoming
++    An instance of L{X2goClientPrintingGCONF} is created on each incoming
+     print job. This facilitates that on every print job the print action
+     for this job is derived from the &#187;printing&#171; configuration file.
+ 
+     Thus, changes on the file are active for the next incoming print job.
+ 
+     &quot;&quot;&quot;
+-    config_files = []
+     _print_action = None
+     defaultValues = _X2GO_CLIENTPRINTING_DEFAULTS
+ 
+-    def __init__(self, config_files=_X2GO_PRINTING_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        @param config_files: a list of configuration files names (e.g. a global filename and a user's home 
+-            directory filename)
+-        @type config_files: C{list}
+         @param defaults: a cascaded Python dicitionary structure with ini file defaults (to override 
+             Python X2go's hard coded defaults in L{defaults}
+         @type defaults: C{dict}
+diff --git a/x2go/backends/printing/_winreg.py b/x2go/backends/printing/_winreg.py
+index 3129987..b89c5b7 100644
+--- a/x2go/backends/printing/_winreg.py
++++ b/x2go/backends/printing/_winreg.py
+@@ -40,26 +40,21 @@ from x2go.x2go_exceptions import X2goNotImplementedYetException
+ 
+ class X2goClientPrintingWINREG(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    L{X2goClientPrinting} provides access to the X2Go ini-like file
+-    &#187;printing&#171; as stored in C{~/.x2goclient/printing} resp. globally
+-    C{/etc/x2goclient/printing}.
++    L{X2goClientPrintingWINREG} provides access to the Windows registry based configuration
++    of the X2Go client printing setup.
+ 
+-    An instance of L{X2goClientPrinting} is created on each incoming
++    An instance of L{X2goClientPrintingWINREG} is created on each incoming
+     print job. This facilitates that on every print job the print action
+     for this job is derived from the &#187;printing&#171; configuration file.
+ 
+     Thus, changes on the file are active for the next incoming print job.
+ 
+     &quot;&quot;&quot;
+-    config_files = []
+     _print_action = None
+     defaultValues = _X2GO_CLIENTPRINTING_DEFAULTS
+ 
+-    def __init__(self, config_files=_X2GO_PRINTING_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        @param config_files: a list of configuration files names (e.g. a global filename and a user's home 
+-            directory filename)
+-        @type config_files: C{list}
+         @param defaults: a cascaded Python dicitionary structure with ini file defaults (to override 
+             Python X2go's hard coded defaults in L{defaults}
+         @type defaults: C{dict}
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/_file.py
+index 0edd84b..586f262 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/_file.py
+@@ -44,7 +44,6 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+     defaultSessionProfile = _X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-
+     def __init__(self, config_files=_X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         Retrieve X2Go session profiles from a file, typically C{~/.x2goclient/sessions}.
+diff --git a/x2go/backends/profiles/_gconf.py b/x2go/backends/profiles/_gconf.py
+index 177c3a5..1926e44 100644
+--- a/x2go/backends/profiles/_gconf.py
++++ b/x2go/backends/profiles/_gconf.py
+@@ -41,7 +41,7 @@ class X2goSessionProfilesGCONF(inifiles.X2goIniFile):
+ 
+     def __init__(self, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        Retrieve X2Go session profiles from gconf daemon.
++        Retrieve X2Go session profiles from GConf daemon.
+ 
+         @param session_profile_defaults: a default session profile
+         @type session_profile_defaults: C{dict}
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index 271f318..ae22e84 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -95,12 +95,23 @@ class X2goProxyNX3(base.X2goProxyBASE):
+         self.PROXY_DISPLAY = self.session_info.display
+ 
+     def _update_local_proxy_socket(self, port):
++        &quot;&quot;&quot;\
++        Update the local proxy socket on port changes due to already-bound-to local TCP/IP port sockets.
++
++        @param port: new local TCP/IP socket port
++        @type port: C{int}
++
++        &quot;&quot;&quot;
++
+         for idx, a in enumerate(self.PROXY_OPTIONS):
+             if a.startswith('port='):
+                 self.PROXY_OPTIONS[idx] = 'port=%s' % port
+ 
+     def _generate_cmdline(self):
++        &quot;&quot;&quot;\
++        Generate the NX proxy command line for execution.
+ 
++        &quot;&quot;&quot;
+         if _X2GOCLIENT_OS == &quot;Windows&quot;:
+             _options_filename = os.path.join(self.session_info.local_container, 'options')
+             options = open(_options_filename, 'w')
+@@ -114,12 +125,14 @@ class X2goProxyNX3(base.X2goProxyBASE):
+         cmd_line.append(_proxy_options)
+         return cmd_line
+ 
+-    def process_proxy_options(self):
++    def start_proxy(self):
++        &quot;&quot;&quot;\
++        Start the thread runner and wait for the proxy to come up.
+ 
+-        # run the base variant of this method (basically for logging of ignored process_options)
+-        base.X2goProxyBASE.process_proxy_options(self)
++        @return: a subprocess instance that knows about the externally started proxy command.
++        @rtype: C{obj}
+ 
+-    def start_proxy(self):
++        &quot;&quot;&quot;
+         self.logger('starting local NX3 proxy...', loglevel=log.loglevel_INFO)
+         self.logger('NX3 Proxy mode is server, cookie=%s, host=127.0.0.1, port=%s.' % (self.session_info.cookie, self.session_info.graphics_port,), loglevel=log.loglevel_DEBUG)
+         self.logger('NX3 proxy writes session log to %s.' % os.path.join(self.session_info.local_container, 'session.log'), loglevel=log.loglevel_DEBUG)
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 028190a..610ef18 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -117,14 +117,14 @@ class X2goProxyBASE(threading.Thread):
+ 
+     def __del__(self):
+         &quot;&quot;&quot;\
+-        On instance destruction make sure the this proxy thread is stopped properly.
++        On instance destruction make sure this proxy thread is stopped properly.
+ 
+         &quot;&quot;&quot;
+         self.stop_thread()
+ 
+     def _tidy_up(self):
+         &quot;&quot;&quot;\
+-        Close any left open port forwarding tunnel, also close session log file, 
++        Close any left open port forwarding tunnel, also close session log file,
+         if left open.
+ 
+         &quot;&quot;&quot;
+@@ -260,7 +260,7 @@ class X2goProxyBASE(threading.Thread):
+         Start the thread runner and wait for the proxy to come up.
+ 
+         @return: a subprocess instance that knows about the externally started proxy command.
+-        @rtype: C{instance}
++        @rtype: C{obj}
+ 
+         &quot;&quot;&quot;
+         threading.Thread.start(self)
+@@ -289,7 +289,7 @@ class X2goProxyBASE(threading.Thread):
+         &quot;&quot;&quot;\
+         Check if a proxy instance is up and running.
+ 
+-        @return: Proxy state (C{True} or C{False})
++        @return: Proxy state, C{True} for proxy being up-and-running, C{False} otherwise
+         @rtype C{bool}
+ 
+         &quot;&quot;&quot;
+diff --git a/x2go/backends/settings/_file.py b/x2go/backends/settings/_file.py
+index 19a6c3b..14b5c56 100644
+--- a/x2go/backends/settings/_file.py
++++ b/x2go/backends/settings/_file.py
+@@ -37,18 +37,18 @@ import x2go.inifiles as inifiles
+ 
+ class X2goClientSettingsFILE(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    Configuration file based settings for X2goClient instances.
++    Configuration file based settings for L{X2goClient} instances.
+ 
+     &quot;&quot;&quot;
+     defaultValues = _X2GO_CLIENTSETTINGS_DEFAULTS
+ 
+     def __init__(self, config_files=_X2GO_SETTINGS_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        Constructs an L{X2goClientSettings} instance. This is normally done by an L{X2goClient} instance.
+-        You can retrieve this L{X2goClientSettings} instance with the L{X2goClient.get_client_settings()} 
++        Constructs an L{X2goClientSettingsFILE} instance. This is normally done from within an L{X2goClient} instance.
++        You can retrieve this L{X2goClientSettingsFILE} instance with the L{X2goClient.get_client_settings()} 
+         method.
+ 
+-        On construction the L{X2goClientSettings} object is filled with values from the configuration files::
++        On construction the L{X2goClientSettingsFILE} object is filled with values from the configuration files::
+ 
+             /etc/x2goclient/settings
+             ~/.x2goclient/settings
+diff --git a/x2go/backends/settings/_gconf.py b/x2go/backends/settings/_gconf.py
+index c3cc2ed..a20bcbb 100644
+--- a/x2go/backends/settings/_gconf.py
++++ b/x2go/backends/settings/_gconf.py
+@@ -38,25 +38,20 @@ from x2go.x2go_exceptions import X2goNotImplementedYetException
+ 
+ class X2goClientSettingsGCONF(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    Configuration file based settings for X2goClient instances.
++    Configure settings for L{X2goClient} instances with the GConf daemon.
+ 
+     &quot;&quot;&quot;
+     defaultValues = _X2GO_CLIENTSETTINGS_DEFAULTS
+ 
+     def __init__(self, config_files=_X2GO_SETTINGS_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        Constructs an L{X2goClientSettings} instance. This is normally done by an L{X2goClient} instance.
+-        You can retrieve this L{X2goClientSettings} instance with the L{X2goClient.get_client_settings()} 
++        Constructs an L{X2goClientSettingsGCONF} instance. This is normally done from within an L{X2goClient} instance.
++        You can retrieve this L{X2goClientSettingsGCONF} instance with the L{X2goClient.get_client_settings()} 
+         method.
+ 
+-        On construction the L{X2goClientSettings} object is filled with values from the configuration files::
++        On construction the L{X2goClientSettingsGCONF} object is filled with values as found in GConf::
+ 
+-            /etc/x2goclient/settings
+-            ~/.x2goclient/settings
+-
+-        The files are read in the specified order and config options of both files are merged. Options 
+-        set in the user configuration file (C{~/.x2goclient/settings}) override global options set in
+-        C{/etc/x2goclient/settings}.
++            &lt;GConf paths, FIXME: give proper locations here&gt;
+ 
+         &quot;&quot;&quot;
+         raise X2goNotImplementedYetException('GCONF backend support is not implemented yet')
+diff --git a/x2go/backends/settings/_winreg.py b/x2go/backends/settings/_winreg.py
+index 20f6bd2..c5f6f31 100644
+--- a/x2go/backends/settings/_winreg.py
++++ b/x2go/backends/settings/_winreg.py
+@@ -38,25 +38,21 @@ from x2go.x2go_exceptions import X2goNotImplementedYetException
+ 
+ class X2goClientSettingsWINREG(inifiles.X2goIniFile):
+     &quot;&quot;&quot;\
+-    Configuration file based settings for X2goClient instances.
++    Windows registry based settings for L{X2goClient} instances.
+ 
+     &quot;&quot;&quot;
+     defaultValues = _X2GO_CLIENTSETTINGS_DEFAULTS
+ 
+     def __init__(self, config_files=_X2GO_SETTINGS_CONFIGFILES, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        Constructs an L{X2goClientSettings} instance. This is normally done by an L{X2goClient} instance.
+-        You can retrieve this L{X2goClientSettings} instance with the L{X2goClient.get_client_settings()} 
++        Constructs an L{X2goClientSettingsWINREG} instance. This is normally done from within an L{X2goClient} instance.
++        You can retrieve this L{X2goClientSettingsWINREG} instance with the L{X2goClient.get_client_settings()} 
+         method.
+ 
+-        On construction the L{X2goClientSettings} object is filled with values from the configuration files::
++        On construction the L{X2goClientSettings} object is filled with values from the Windows registry::
+ 
+-            /etc/x2goclient/settings
+-            ~/.x2goclient/settings
+-
+-        The files are read in the specified order and config options of both files are merged. Options 
+-        set in the user configuration file (C{~/.x2goclient/settings}) override global options set in
+-        C{/etc/x2goclient/settings}.
++            &lt;HKLM path, FIXME: give proper locations here&gt;
++            &lt;HKCU path, FIXME: give proper locations here&gt;
+ 
+         &quot;&quot;&quot;
+         raise X2goNotImplementedYetException('WINREG backend support is not implemented yet')
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 9025eb5..5cecf17 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -70,7 +70,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+ 
+         @param username: login user name to be used on the SSH proxy host
+         @type username: C{str}
+-        @param password: user's password on the SSH proxy host
++        @param password: user's password on the SSH proxy host, with private key authentication it will be
++            used to unlock the key (if needed)
+         @type password: C{str}
+         @param key_filename: name of a SSH private key file
+         @type key_filename: C{str}
+@@ -195,13 +196,23 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         try:
+             if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+                 try:
+-                    self.connect(_hostname, port=self.port, 
+-                                 username=self.username, 
+-                                 key_filename=key_filename,
+-                                 pkey=pkey,
+-                                 look_for_keys=False,
+-                                 allow_agent=False,
+-                                )
++                    if password:
++                        self.connect(_hostname, port=self.port, 
++                                     username=self.username,
++                                     password=password,
++                                     key_filename=key_filename,
++                                     pkey=pkey,
++                                     look_for_keys=False,
++                                     allow_agent=False,
++                                    )
++                    else:
++                        self.connect(_hostname, port=self.port, 
++                                     username=self.username, 
++                                     key_filename=key_filename,
++                                     pkey=pkey,
++                                     look_for_keys=False,
++                                     allow_agent=False,
++                                    )
+ 
+                 except x2go_exceptions.AuthenticationException, e:
+                     self.close()
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020944.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-256-gd4ec52b
+</A></li>
+	<LI>Next message: <A HREF="020957.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-254-g034f7d6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20951">[ date ]</a>
+              <a href="thread.html#20951">[ thread ]</a>
+              <a href="subject.html#20951">[ subject ]</a>
+              <a href="author.html#20951">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

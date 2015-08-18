@@ -1,0 +1,871 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 81eeb4e708475585014567bb826564641777364b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%2081eeb4e708475585014567bb826564641777364b&In-Reply-To=%3C20130827112033.1CEF45DB05%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010132.html">
+   <LINK REL="Next"  HREF="010139.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 81eeb4e708475585014567bb826564641777364b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%2081eeb4e708475585014567bb826564641777364b&In-Reply-To=%3C20130827112033.1CEF45DB05%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 81eeb4e708475585014567bb826564641777364b">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:20:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010132.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 04ed83455e600017764b185eeb5eda65220b9432
+</A></li>
+        <LI>Next message: <A HREF="010139.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: ca778d094c8e95177f2ac87b06b522413d95c79a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10138">[ date ]</a>
+              <a href="thread.html#10138">[ thread ]</a>
+              <a href="subject.html#10138">[ subject ]</a>
+              <a href="author.html#10138">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  81eeb4e708475585014567bb826564641777364b (commit)
+      from  ca778d094c8e95177f2ac87b06b522413d95c79a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ SessionProfile.py  |  115 ++++++++++++++++----------
+ pyhocaguiImages.py |  147 ++++++++++++++++++++++++++++++++++
+ x2goLogon.py       |  226 +++++++++++++++++++++++++++++++++++++++++++---------
+ 3 files changed, 410 insertions(+), 78 deletions(-)
+ create mode 100644 pyhocaguiImages.py
+
+The diff of changes is:
+diff --git a/SessionProfile.py b/SessionProfile.py
+index 4a38f63..40ca343 100644
+--- a/SessionProfile.py
++++ b/SessionProfile.py
+@@ -31,6 +31,7 @@ import os
+ import ConfigParser
+ from types import *
+ import exceptions
++import x2go
+ 
+ class profileError(exceptions.StandardError): pass
+ 
+@@ -43,13 +44,14 @@ class processINI:
+     default values, so the resulting objects always contain
+     the same fields
+     &quot;&quot;&quot;
+-    def __init__(self, fileName):
++    def __init__(self, fileName, logger):
+         self.writeconfig = False
+         self.iniConfig = ConfigParser.SafeConfigParser()
++        logger('fileName %s' % fileName, x2go.loglevel_INFO, )
+         if fileName and os.path.exists(fileName):
++            logger('fileName %s found!' % fileName, x2go.loglevel_INFO, )
+             self.iniConfig.read(fileName)
+ 
+-
+     def fillDefaultsSection(self):
+         for section, sectionvalue in self.defaultValues.items():
+             for key, value in sectionvalue.items():
+@@ -105,18 +107,26 @@ class processINI:
+                 else:
+                     setattr(self, option, self.getValue(section, option))
+ 
++    def __repr__(self):
++        result = 'Ini('
++        for p in dir(self):
++            if '__' in p or not p in self.__dict__ or type(p) is InstanceType: continue
++            result += p + '=' + str(self.__dict__[p])
++        return result + ')'
++
+ class Settings(processINI):
+     &quot;&quot;&quot;
+     Settings object that  contains all data that is generally necessary
+     &quot;&quot;&quot;
+-    defaultValues = {       'LDAP':{'useldap':False,'port':389,'server':'localhost','port1':0,'port2':0}, \
+-                                'General':{'clientport':22,'autoresume':True}, \
+-                                'Authorization': {'newprofile':True,'suspend':True,'editprofile':True,'resume':True}
+-                        }
+-    def __init__(self, fileName=None):
++    defaultValues = {   'LDAP':{'useldap':False,'port':389,'server':'localhost','port1':0,'port2':0}, \
++                        'General':{'clientport':22,'autoresume':True}, \
++                        'Authorization': {'newprofile':True,'suspend':True,'editprofile':True,'resume':True}
++                    }
++    def __init__(self, logger, fileName=None):
++        self.logger = logger
+         if fileName is None:
+             fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/settings'))
+-        processINI.__init__(self, fileName)
++        processINI.__init__(self, fileName, logger)
+         self.fillDefaultsSection()
+         self.bldSessionObj()
+ 
+@@ -125,15 +135,15 @@ class Printing(processINI):
+     Printing object that  contains all data that is necessary for printing
+     &quot;&quot;&quot;
+     defaultValues = {       'General':  {'showdialog':False,'pdfview':False}, \
+-                                'print':    {'startcmd':False,'command':'lpr','stdin':False,'ps':False}, \
++                                'print':    {'startcmd':False,'command':'lpr','stdin':False,'ps':False,'print_action':'PDFVIEW','print_action_args':''}, \
+                                 'view':     {'open':True,'command':'xpdf'}, \
+                                 'CUPS':     {'defaultprinter':None, 'options':'@Invalid()'}
+                         }
+-    def __init__(self, fileName=None):
+-
++    def __init__(self, logger, fileName=None):
++        self.logger = logger
+         if fileName is None:
+             fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/printing'))
+-        processINI.__init__(self, fileName)
++        processINI.__init__(self, fileName, logger)
+         self.fillDefaultsSection()
+         self.bldSessionObj()
+ 
+@@ -148,12 +158,15 @@ class SessionProfiles(processINI):
+                    'setdpi':False,'usekbd':True,'layout':'us','type':'pc105/us','sound':False,'soundsystem':'pulse','startsoundsystem':True,'soundtunnel':True,
+                    'defsndport':True,'sndport':4713, 'printing':True,'name':None,'icon':':icons/128x128/x2gosession.png','host':None,'user':None, 'key':None,
+                    'sshport':22,'rootless':True,'applications':'dummy, WWWBROWSER, MAILCLIENT, OFFICE, TERMINAL','command':'dummy','rdpoptions':None,
+-                   'rdpserver':None,'default':False,'connected':False}
+-    def __init__(self, fileName=None):
++                   'rdpserver':None,'default':False,'connected':False,'add_to_known_hosts':True,'session_type':'application','link':'adsl',
++         }
++    def __init__(self, logger, fileName=None):
++        self.logger = logger
+         if fileName is None:
+             fileName = os.path.normpath(os.path.expanduser('~/.x2goclient/sessions'))
+-        processINI.__init__(self, fileName)
++        processINI.__init__(self, fileName, logger)
+         self.SessionProfiles = self.iniConfig.sections()
++        logger('SessionProfiles.SessionProfiles %s' % self.SessionProfiles, x2go.loglevel_INFO, )
+         for section in self.SessionProfiles:
+             for key, sectionvalue in self.defaultValues.items():
+                 if not self.iniConfig.has_option(section,key):
+@@ -174,12 +187,16 @@ class SessionProfiles(processINI):
+             self.storeValueTypes(name, key, value)
+ 
+ class SingleProfile:
+-    def __init__(self, prof, profiles):
++    def __init__(self, prof, profiles, logger, liblogger):
++        self.logger = logger
++        self.liblogger = liblogger
+         self.prof = prof
+         self.profiles = profiles
+         self.session_uuid = None
+         self.showConfigScreen = False
+         self.bldSessionObj()
++        self.c = None
++        self.connected = False
+         if self.host is None:
+             self.showConfigScreen = True
+ 
+@@ -197,8 +214,8 @@ class SingleProfile:
+     def Connect(self, parent):
+         printing = parent.printProfile
+         geometry = str(self.width) + 'x' + str(self.height)
+-        self.c = x2go.X2goClient(logger=parent.liblogger)
+-        self.session_uuid = c.register_session(self.host, port=self.sshport,
++        self.c = x2go.X2goClient(logger=self.liblogger)
++        self.x2go_session_hash = self.c.register_session(self.host, port=self.sshport,
+                                                         username=self.user,
+                                                         password=self.password,
+                                                         key_filename=self.key,
+@@ -208,20 +225,21 @@ class SingleProfile:
+                                                         link=self.link,
+                                                         geometry=geometry,
+                                                         pack=self.pack,
+-                                                        cache_type=self.cache_type,
++                                                        cache_type='unix-kde',
+                                                         kblayout=self.layout,
+                                                         kbtype=self.type,
+                                                         snd_system=self.sound,
+                                                         printing=self.printing,
+                                                         print_action=printing.print_action,
+                                                         print_action_args=printing.print_action_args,
+-                                                        cmd=printing.command)
++                                                        cmd=self.command)
++        self.with_session(self.x2go_session_hash).load_host_keys(ssh_known_hosts_filename)
+         self.c.session_start(session_uid)
+         self.profiles.updValue(self.prof, 'connected', True)
+         self.connected = True
+         self.profiles.writeIni()
+ 
+-    def Resume(self, parent, printing):
++    def Resume(self, parent):
+         pass
+ 
+     def DisConnect(self):
+@@ -230,15 +248,24 @@ class SingleProfile:
+         self.profiles.writeIni()
+ 
+     def isAlive(self):
+-        return self.c.session_ok(self.session_uuid)
++        if self.c:
++            return self.c.session_ok(self.session_uuid)
++        return False
++
++    def updValue(self, key, value):
++        setattr(self, key, value)
+ 
+ class x2goProfiles:
+-    def __init__(self):
++    def __init__(self, logger, liblogger):
++        self.logger = logger
++        self.liblogger = liblogger
+         self.x2goprofs = []
++        self.x2gonames = {}
+         self.there_is_a_default = 0
+-        self.profiles = SessionProfiles()
++        self.profiles = SessionProfiles(logger)
+         for prof in self.profiles.SessionProfiles:
+-            newSession = SingleProfile(prof, self.profiles)
++            logger('profiles %s' % self.profiles, x2go.loglevel_INFO, )
++            newSession = SingleProfile(prof, self.profiles, logger, liblogger)
+             if newSession.default:
+                 self.x2goprofs.insert(0,newSession)
+                 self.there_is_a_default += 1
+@@ -246,13 +273,16 @@ class x2goProfiles:
+                 self.x2goprofs.append(newSession)
+         if len(self.profiles.SessionProfiles):
+             self.current_profile = self.x2goprofs[0]
++        for idx, prof in enumerate(self.x2goprofs):
++            self.x2gonames[prof.name] = idx
+ 
+-    def Append(self, name, **kw):
++    def AddProfile(self, name, **kw):
+         if self.profileExists(name):
+             raise profileError('Profile %s already exists' % name)
+         else:
+             self.profiles.newProfile(name, kw)
+-            self.x2goprofs.append(SingleProfile(name, self.profiles))
++            self.x2goprofs.append(SingleProfile(name, self.profiles, self.logger, self.liblogger))
++            self.x2gonames[name] = len(self.x2goprofs) -1
+ 
+     def writeIni(self):
+         for s in self.x2goprofs:
+@@ -263,26 +293,21 @@ class x2goProfiles:
+         return self.there_is_a_default == 1
+ 
+     def profileExists(self, name):
+-        for profile in self.x2goprofs:
+-            if profile.prof == name or profile.name == name:
+-                self.current_profile = profile
+-                return True
+-        return False
++        return name in self.x2gonames
+ 
+     def runningSessions(self):
+         running = []
+-        for idx, profs in enumerate(self.profiles.iniConfig.sections()):
+-            connected = self.profiles.getValue(profs, 'connected', getType='bool')
+-            if connected:
+-                running.append(x2goprofs[idx])
++        for prof in self.x2goprofs:
++            if prof.connected:
++                running.append(prof)
+         return running
+ 
+     def suspendedSessions(self):
+         running = self.runningSessions()
+         suspended = []
+         for idx, run in enumerate(running):
+-            if running.isAlive(): continue
+-            suspended.appended(run)
++            if run.isAlive(): continue
++            suspended.append(run)
+         return suspended
+ 
+     def anyRunningSessions(self):
+@@ -290,8 +315,8 @@ class x2goProfiles:
+ 
+     def listAllAvailableSessions(self):
+         availableSessions = []
+-        for idx, profs in enumerate(self.profiles.iniConfig.sections()):
+-            availableSessions.append([self.profiles.getValue(profs, 'name'), self.profiles.getValue(profs, 'connected', getType='bool')])
++        for prof in self.x2goprofs:
++            availableSessions.append([prof.name, prof.connected, prof.isAlive() ])
+         return availableSessions
+ 
+     def listNonRunningProfiles(self):
+@@ -302,3 +327,13 @@ class x2goProfiles:
+                 nonrunning.append(self.profiles.getValue(profs,'name'))
+         return nonrunning
+ 
++    def getProfileByName(self, name):
++        if name in self.x2gonames:
++            return self.x2goprofs[self.x2gonames[name]]
++
++    def __repr__(self):
++        result = 'x2goProfiles('
++        for p in dir(self):
++            if '__' in p or not p in self.__dict__ or type(p) is InstanceType: continue
++            result += p + '=' + str(self.__dict__[p])
++        return result + ')'
+\ No newline at end of file
+diff --git a/pyhocaguiImages.py b/pyhocaguiImages.py
+new file mode 100644
+index 0000000..0590532
+--- /dev/null
++++ b/pyhocaguiImages.py
+@@ -0,0 +1,147 @@
++#----------------------------------------------------------------------
++# This file was generated by /usr/bin/img2py
++#
++from wx.lib.embeddedimage import PyEmbeddedImage
++from wx import ImageFromStream, BitmapFromImage
++from wx import EmptyIcon
++import cStringIO
++
++
++resume = PyEmbeddedImage(
++    &quot;iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAABmJLR0QAAAAAAAD5Q7t/AAAA&quot;
++    &quot;CXBIWXMAAAsNAAALDQHtB8AsAAAAB3RJTUUH0wkJEjknnEqmFQAABRlJREFUeNp9lU1sXNUV&quot;
++    &quot;x3/33vfefM84jj3YkAwObpzSKGnqKAs2FaJqSwqriFbiY4OIqrJjU3VftWLVBWKBqKVKaVop&quot;
++    &quot;SCiqxIKoaSUkRIE2mDoQkhCSYDuJPTOe73nzPu+9XUwS2jrKlc7q6vzOX+f8j47gPm/x5RUX&quot;
++    &quot;7DSYWazNgwVsgDWbbtpsLMRvxSdPnrxnrrgP9DHgZ2APIagh3AIAJhph9TqwIkz69sHk9x8E&quot;
++    &quot;QaBPnTp1f/DiyyvzIF5Buc8VC/mJmamyfGBnln1TA3Ku5mq7yNcNw1azadq9IDBp8IFrh795&quot;
++    &quot;NP7jh2EYpncKOP8HfRjE63jlo4ceyfGTIyUO7LZUJxRK7gDGzegMUq5tVuW7y2Hh/c86P4oD&quot;
++    &quot;sfuy9+yv9po/nwGS/1F8W+nrxXL5x08eqcinFz0mSwohIIpTrLUopVBKIsU4zQ81/7g44tR7&quot;
++    &quot;bdtoda94uv3SnuGJD6Mo0v+l2P4Sr3T0h4sVnvqei+sINrZ8dBLiuZJcxiVKNAYXx/VwHQlY&quot;
++    &quot;juzNkaST4sTfzMJooH9eKBRWMpnMUI3VfvKYUJlXvztfzh5ddJESojimktXseWiCXdUS1Z0F&quot;
++    &quot;JssZJsseN1sJcWIIE0ucWiaLEj92WGsmc1t698qsunxdLf7inAu8UiqVvv+DQwWxowhBEDJb&quot;
++    &quot;sezbM03Gc5BSAqCURCnJlZsBo8gSJeMIE4OnYq7VjeeHaaLS3vsOMA0cKpcrciKb0ulbHpww&quot;
++    &quot;zNemARgGmuWvhnQGmlJeYozl5lZCPjvudb2Xcm69QsfPM6AoDd39fVGrOcAsQtamSoIgNmQc&quot;
++    &quot;y9xMDkdJusOUdz5qE8YGgEZ37IqsSpmZLHNkoUjWk7z4JjR9wHFAqFmUV3OAPDJTyLsJXd/g&quot;
++    &quot;OZbq5HgXbjRj+r7G2PF4d3g9DizMMFV2eKha3L5tQoDM5IShdNcV/dCl3rPkPO72tD2SfLxa&quot;
++    &quot;IEolR7/T5YUnv70NZowFBELcNjkgMNIBG2CiUd3P4ess1ZKh3onZXc0xVXbQwqE+UvST5J6r&quot;
++    &quot;3/VT4lQhxNh+6DAUNo0k1mxi9XpvZOhFWdY6Hv+8kqCN5dFdDr9+RnNgl+XCRo6rN3rbwJ2h&quot;
++    &quot;xhiLKyGOI7C6IY2/Kd202QBWiNrGVRaL4syFLFc3U4SA+dkMv3ve8NufJszvqmxXPNRgNZ6j&quot;
++    &quot;EXHLOIRfTtjVDbkQvxULk76to17P1R2m8z5JFPKHvwd8sRYRRAbPdZjaUcJaGIaG1UZCEBus&quot;
++    &quot;hdbAUHBGuLqDCTt+VtfPVtRWW50/f56nF+WNWxzcI2x6uDbtUM6kWJNyaT2k2UtoD1LWmwmX&quot;
++    &quot;b4Z8dNHn7L99Gp2YVl9zYS1iOIpZ32gR+Z0zB8RfTgCNO67QyoxeGwzEt1Zv8fjBR4rSc8df&quot;
++    &quot;1zYirm9GCAFmbGeyLlyvx6w2YqI4ZfXW0Az7vU92mot/QlIHAgWwvLzMU4tuq2Vr53qBs78/&quot;
++    &quot;SudKeZfJkoPnSlxH4CqB53wTroKtbsJn13psNvvnptNPX63J5X8BW4BWd4Zw+PBhW+VSu2Xn&quot;
++    &quot;Pu0FKt/sJXODUeplnVQUcg6OlEgB1mpaHZ/Pvx6ZS2uDYbfbP7NTX3jjNrQBJEtLS9svyPHj&quot;
++    &quot;xyVQ+Fw880Qqi8cM7n4pxWwpp3IAg0CHRpuGQ/hlVtfP7uWvHxtj6lLKlpQyXVpauvdpOnbs&quot;
++    &quot;GOVyWQBeM35g2hcze61Q+2SmYqXyEmHTSBp/c8Kubnjxum+M6UZR5Ftr09OnT9/l/AccmJbz&quot;
++    &quot;TUskMwAAAABJRU5ErkJggg==&quot;)
++getresumeData = resume.GetData
++getresumeImage = resume.GetImage
++getresumeBitmap = resume.GetBitmap
++#----------------------------------------------------------------------
++
++network_disconnected_lan = PyEmbeddedImage(
++    &quot;iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAACsUlEQVR4nO2VPUtsRxiAn/k4&quot;
++    &quot;62Fx95jiFLexkY2KmCxuZyFkG7FLav9CSO1PCNj5L4wiJE1QC/u4iNegGFhh9TYJnnXPcb/O&quot;
++    &quot;2ePMpLg3chM8SUBIlRemmnmf+XjemYH/40OIoo6Dg4Pf2u2229ra+rJWq12urKwwmUye+5VS&quot;
++    &quot;CPE+3TkHgJQSY4zb29sb6CLw9fX1uzAMG/Pz899ubm5+6nkexhiMMXieR6/XI0kSrLWUSiVK&quot;
++    &quot;pRLWWjqdTqqU+qoQfHp6+sPGxkZjenq6sr6+/mY8HhNFEVprPM/j+PiYSqUCQL1eJ4oiwjDk&quot;
++    &quot;7u4OY8znheBms6nTNMU592StRSmFlJIsy8iyjKWlJQaDAdVqlTRNOTs7o9FooJQCELIIHAQB&quot;
++    &quot;1trn8wuCAOccWmvyPCfPc8rlMtZarq6ueHx8RAjB09MTQghXCDbGACCEIEkS8jwnTVOMMUgp&quot;
++    &quot;qVQqKKWYmZlheXmZZrNJrVYjyzIAdJH9LMtKxhi01ur+/p4kSdBac3NzQxzHzM3NIYQgjmNa&quot;
++    &quot;rRbD4ZDZ2VmkfL9WXWS/2+1WlFKsrq5+1mq1+DAJvu+TpilHR0f4vo/v+2RZxng85uLi4o8S&quot;
++    &quot;VPpf2Pe01mit/2T/9vaW/f39i3K5/DMghRCcnJxgrZVApF9jfzQa/TQajb4BPq4uATj5Svu3&quot;
++    &quot;wBjof9Qegb58pf07Cp6F5y1IKen1egyHQ3zfp91uE8cxtVoN51yhfcAVgoUQGGMIwxBjDHEc&quot;
++    &quot;U6/XOTw8pNPp0O/36ff7L9ovugdaCIEQAq21WlxcJE1TrLVIKVlYWGB3d5ednZ0fpZQPL9kv&quot;
++    &quot;BE9NTflCCKIoGmxvbw+stVop5SaTCUEQcH5+zsPDw3fA7kv2i8BibW3ti263+/Xl5eX3wK9A&quot;
++    &quot;9S8JCvgFeFsE+buoAp/8w5jCT+E/jd8BYeW2QhU9JDcAAAAASUVORK5CYII=&quot;)
++getnetwork_disconnected_lanData = network_disconnected_lan.GetData
++getnetwork_disconnected_lanImage = network_disconnected_lan.GetImage
++getnetwork_disconnected_lanBitmap = network_disconnected_lan.GetBitmap
++#----------------------------------------------------------------------
++
++x2goclient = PyEmbeddedImage(
++    &quot;iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAAZiS0dE&quot;
++    &quot;AP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9gKCQ83NL/ucHUAAAQ8&quot;
++    &quot;SURBVFjDxZdJiF1VEIa/vn3zXr/X07PTSToDzxARjVO0UFdRGhwQg7qQYFAadGVHNKgLNWI7&quot;
++    &quot;pEWIi6AhapuASBYGUXAi4oQ0CBFEShJFyMIBIRJDYhrNpD3owv9Icbl56VXnwKXevadOVZ36&quot;
++    &quot;q/5zXpuZXQM8BvwATDM3IwdWAJty4BFgrbufYA6HmXUBb2bA3rl2DuDux4Afc2BKEeVAF9AG&quot;
++    &quot;9EqvG2gHakAVmAecBL4CLmph/1t3n5bdAWCgTAeYyqU0T85bOe7UXDtQB4aAdcCSYPQ3YCfw&quot;
++    &quot;ZKinC4Fh4A69/wS8LR3ysLiiIHJF3AE09OTAUunNAKeA14EXgX0h8FF3f6mQ6nFg3Myu1dqr&quot;
++    &quot;3P2INv5fAO4+aWaHgL+07shpMpDgaQBN4GtgM/Bc2G1ZwQ0Ai4Ch5DyNLEAwP+y4T/Kc8K0R&quot;
++    &quot;nDeUrSbwKnBc9obMrLskhoeAvcCusn6MoyG5RJD0AT3CfIEyMaB1iwTTkHBfrwDvAbaG3S8G&quot;
++    &quot;HgDWufs/pQEIgj+Bn5WVCc2nmqgKjtghdQW5TLUwrPkNZrbN3Wekt1Gt/n4ZPBGCmqq/JxRg&quot;
++    &quot;VbKm771hri653N33Ax/K5nnALbLbBO4FnmlFiWmkOkC7ygMENWChdniudBanAM2sT1lYo7kH&quot;
++    &quot;gfeAEWCPu3/UMgBBcBSYlJOJWfBBowDTF8B3wCXAoJndDtwN3NCKEbMCEaVK7yykuSbZGfQS&quot;
++    &quot;FBXJpcpCGm8An4sHmA0EVRmvKN2RiCqq+lT91TBXFRw3AteJExZozZbZHIsJgmMiogrweyHN&quot;
++    &quot;nUp/RVmJc6kbKsD5wJiwB1gNfDxbCFIn1PW7ERwl7Osh5VnITuKKJvBJsD9sZrXZQpDarz/I&quot;
++    &quot;ekh1R0jtwiDrKtZuZWCzOD+TjSFg+5kCmAb+0HNSlf+rnLbLeKz4Dj2ZAgfYI721wP3Ay4mG&quot;
++    &quot;zWxHGQv+D4GcJNkeTsdUnOk915qOgD96/wV4FvjA3V8BxsMBdfOZMtAeMG/KSUpvjwgpHsmJ&quot;
++    &quot;qOZr16+pE24FrpTOFmAwENPuVl1wSkTUBvyt3R5oQTqpGzIgd/ftZvYO8K67fyPd3cB+4ALg&quot;
++    &quot;ejO7zN33teqCttBqBOf1QNV5SeoPmtkV4v+RcBGZAV4oHMmnhSALrbUsVHCXnn4F2CycAx1y&quot;
++    &quot;vAN4y92/L9jfCYxq/Z1mttHdD5YFMBP4Px2jh0LhdYVWzUIXfKnTbw1wacnN94SZjQFPyNZ6&quot;
++    &quot;4KmyLpgpyU6xGyrSj10wATwN7NKRXDbGwgX1PjPrLQsg9XO/bkPLgZXA5YCpmlcDtwFXA4d1&quot;
++    &quot;+hlwE/Bpi/v/AV3HkP1NrYgIdUEWIEgVnwjpsAw+qvYCeNzMGu6+rXAZXQncBVwcPm/QvXGk&quot;
++    &quot;yANJZqHqo4y0PQl8pieNqZIEHC3RS+N4inKUszTMbGsGrDKzyllwXgdWtJnZIPCwcJ3Lv+er&quot;
++    &quot;gOf/BaWXD+odPckfAAAAAElFTkSuQmCC&quot;)
++getx2goclientData = x2goclient.GetData
++getx2goclientImage = x2goclient.GetImage
++getx2goclientBitmap = x2goclient.GetBitmap
++#----------------------------------------------------------------------
++
++network_connected_lan_knc = PyEmbeddedImage(
++    &quot;iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAADGUlEQVR4nO2VTWwUZRjHf+/M&quot;
++    &quot;7Gxntzv71S6lCqTBNqARFDAeSNNsFQ7WoAQ/7l68GBJPhESNB2O8efKoB9MDKhes0aSHalEi&quot;
++    &quot;Niuhlo92S6FsLWzT3W7bHXZmd3bm9bBCUHfwQOLJ/+39eH55kt/z5oX/82dE0MGpUzMr8/PX&quot;
++    &quot;5bvvv/aycbh+uftVaNqtAilA1SDktda+bO0JFRQHuXAcSwsC5/MXlrYktu9PDvPR4ZOPDehq&quot;
++    &quot;B35T4MomMftRrJUG+cQkroSIiGOIOK5wKcwXHaHLo4HgXG7y6xeG39gfMSOxVwZHtiZvVdk3&quot;
++    &quot;vkGlS+HiliwTP02z8OIkvgrDqRGWN4tsi/YzOnca2SjvDQQPDb2uOY4Fnmg2PZVqRxfjB+5Q&quot;
++    &quot;FXXWwjkSL9XZZTxDn/0U287t4/vSx4ihKBphEAglCGyaaXzpIZH4MkxnZIB8j8/tTIQNvcyq&quot;
++    &quot;WSCuZBCOwYXFHNWKiyIN3KYPAhnYsec1AYGnKqSuraKnd1Cv2/SsDlBTLEQ0Qs1zSMe6yezp&quot;
++    &quot;Iy1T9Ca3M+aOA6AF2bco603h4BuKGrv6O1d21tDNbtbPhriauERXfxbRSFORCyz9cJOCscjz&quot;
++    &quot;T3ShqGoLHGT/V++dmGntYDA1sOdk+EcaS4IwUaL9aTb8Nc5PXcS8/SbOgc9x9+qsN2oYi0Zr&quot;
++    &quot;fgWq9kD7PVkmfpkOFZ48h6tCNnWE5c0iT0cHGZ09zfRnH/4mzogZhFQECt/IMaSHApS0h7Ev&quot;
++    &quot;y0zJkjwOaODf1SMAqZlmmmpp5T77O5npuQEygmOXKZlrxL377Lt/sX8Tid1OvvaQ9gt3O/wH&quot;
++    &quot;+N54hVQys0Vm+n8mGu/lztlOLidydO96Dt+OBdpvB70HFoBWd8k/uxvf1/Drq/QdSjJ26zyV&quot;
++    &quot;2UNUKj7lR9rbD3oHmhCAIghpQh3ZmiK0buF0ZjDdAkOPn+DTr77lvQ8mvhOqWGtnPxCs650d&quot;
++    &quot;NWzWl13r7U9GrbDta0LVpV+30NK9TF26grzGlxL5RTv7QWBx8OCxbKm0+dZcfuIM0isC5t8K&quot;
++    &quot;VARzSKaDIA+KCST/5U7gp/Cf5g+ZXZ0wbxji4wAAAABJRU5ErkJggg==&quot;)
++getnetwork_connected_lan_kncData = network_connected_lan_knc.GetData
++getnetwork_connected_lan_kncImage = network_connected_lan_knc.GetImage
++getnetwork_connected_lan_kncBitmap = network_connected_lan_knc.GetBitmap
++#----------------------------------------------------------------------
++
++def getSmallUpArrowData():
++    return \
++'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\
++\x00\x00\x00\x1f\xf3\xffa\x00\x00\x00\x04sBIT\x08\x08\x08\x08|\x08d\x88\x00\
++\x00\x00&lt;IDAT8\x8dcddbf\xa0\x040Q\xa4{h\x18\xf0\xff\xdf\xdf\xffd\x1b\x00\xd3\
++\x8c\xcf\x10\x9c\x06\xa0k\xc2e\x08m\xc2\x00\x97m\xd8\xc41\x0c \x14h\xe8\xf2\
++\x8c\xa3)q\x10\x18\x00\x00R\xd8#\xec\xb2\xcd\xc1Y\x00\x00\x00\x00IEND\xaeB`\
++\x82'
++
++def getSmallUpArrowBitmap():
++    return BitmapFromImage(getSmallUpArrowImage())
++
++def getSmallUpArrowImage():
++    stream = cStringIO.StringIO(getSmallUpArrowData())
++    return ImageFromStream(stream)
++
++#----------------------------------------------------------------------
++
++def getSmallDnArrowData():
++    return \
++&quot;\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\
++\x00\x00\x00\x1f\xf3\xffa\x00\x00\x00\x04sBIT\x08\x08\x08\x08|\x08d\x88\x00\
++\x00\x00HIDAT8\x8dcddbf\xa0\x040Q\xa4{\xd4\x00\x06\x06\x06\x06\x06\x16t\x81\
++\xff\xff\xfe\xfe'\xa4\x89\x91\x89\x99\x11\xa7\x0b\x90%\ti\xc6j\x00&gt;C\xb0\x89\
++\xd3.\x10\xd1m\xc3\xe5*\xbc.\x80i\xc2\x17.\x8c\xa3y\x81\x01\x00\xa1\x0e\x04e\
++?\x84B\xef\x00\x00\x00\x00IEND\xaeB`\x82&quot;
++
++def getSmallDnArrowBitmap():
++    return BitmapFromImage(getSmallDnArrowImage())
++
++def getSmallDnArrowImage():
++    stream = cStringIO.StringIO(getSmallDnArrowData())
++    return ImageFromStream(stream)
++
+diff --git a/x2goLogon.py b/x2goLogon.py
+index 4e823cb..de101e4 100644
+--- a/x2goLogon.py
++++ b/x2goLogon.py
+@@ -31,8 +31,11 @@ import wx
+ import time
+ import sys
+ import wx.lib.scrolledpanel as scrolled
++import wx.lib.mixins.listctrl as listmix
+ import SessionProfile
+ import x2go
++import pyhocaguiImages
++
+ try:
+     from agw import knobctrl as KC
+     knobctrlavailable = True
+@@ -46,8 +49,13 @@ except ImportError: # if it's not there locally, try the wxPython lib.
+ import wx.lib.sized_controls as sc
+ 
+ class menuActions(wx.Menu):
+-    def __init__(self, parent):
+-        self.parent = parent
++    def __init__(self, parent, fromTaskBarIcon=False, popupMenu=False):
++        if fromTaskBarIcon:
++            self.parent = parent.parent
++        else:
++            self.parent = parent
++        self.fromTaskBarIcon = fromTaskBarIcon
++        self.popupMenu = popupMenu
+         if hasattr(parent,'logger'):
+             self.logger = self.parent.logger
+         else:
+@@ -60,6 +68,10 @@ class menuActions(wx.Menu):
+             self.settingsProfile = parent.parent.settingsProfile
+             self.SessionProfiles = parent.parent.SessionProfiles
+             self.printProfile = parent.parent.printProfile
++        if hasattr(parent,'selected_profile'):
++            self.selected_profile = parent.selected_profile
++        else:
++            self.selected_profile = parent.parent.selected_profile
+ 
+         ADDPROFILEMENUTXT = &quot;Add &amp;New profile&quot;
+         OPENNEWMENUTXT = &quot;&amp;Open new Session&quot;
+@@ -80,33 +92,43 @@ class menuActions(wx.Menu):
+         wx.Menu.__init__(self)
+         self.logger('settingsProfile.newProfile %s' % dir(self.settingsProfile), x2go.loglevel_INFO, )
+         self.Append(MENU_NEWSESSION, OPENNEWMENUTXT)
+-        self.parent.Bind(wx.EVT_MENU, self.OnNewSession, id=MENU_NEWSESSION)
++        parent.Bind(wx.EVT_MENU, self.OnNewSession, id=MENU_NEWSESSION)
+         if self.settingsProfile.newprofile:
+             self.Append(MENU_NEWPROFILE, ADDPROFILEMENUTXT)
+-            self.parent.Bind(wx.EVT_MENU, self.OnAddProfile, id=MENU_NEWPROFILE)
+-        if self.SessionProfiles.runningSessions():
++            parent.Bind(wx.EVT_MENU, self.OnAddProfile, id=MENU_NEWPROFILE)
++        if self.SessionProfiles.runningSessions() and popupMenu is False:
+             self.Append(MENU_LISTSESSIONS, RUNNINGMENUTXT)
+-            self.parent.Bind(wx.EVT_MENU, self.OnListSessions, id=MENU_LISTSESSIONS)
++            parent.Bind(wx.EVT_MENU, self.OnListSessions, id=MENU_LISTSESSIONS)
++        if self.settingsProfile.suspend and ((popupMenu is False and self.SessionProfiles.runningSessions()) or (popupMenu and self.selected_profile.connected is False and self.selected_profile.isAlive())):
+             self.Append(MENU_SUSPEND, SUSPENDMENUTXT)
+-            self.parent.Bind(wx.EVT_MENU, self.OnSuspend, id=MENU_SUSPEND)
+-        if self.SessionProfiles.suspendedSessions() and self.settingsProfile.resume:
++            parent.Bind(wx.EVT_MENU, self.OnSuspend, id=MENU_SUSPEND)
++        if self.settingsProfile.resume and self.SessionProfiles.suspendedSessions():
+             self.Append(MENU_RESUME, RESUMEMENUTXT)
+-            self.parent.Bind(wx.EVT_MENU, self.OnResume, id=MENU_RESUME)
++            parent.Bind(wx.EVT_MENU, self.OnResume, id=MENU_RESUME)
+         if self.settingsProfile.editprofile:
+             self.AppendSeparator()
+             self.Append(MENU_EDITSESSION, UPDATEPROFMNUTEXT)
+-            self.parent.Bind(wx.EVT_MENU, self.OnUpdateProfile, id=MENU_EDITSESSION)
++            parent.Bind(wx.EVT_MENU, self.OnUpdateProfile, id=MENU_EDITSESSION)
+         self.AppendSeparator()
+         self.Append(MENU_EXIT, EXITMENUTXT)
+-        self.parent.Bind(wx.EVT_MENU, self.OnExit, id=MENU_EXIT)
+-        self.parent.Bind(wx.EVT_CLOSE, self.OnClose)
++        parent.Bind(wx.EVT_MENU, self.OnExit, id=MENU_EXIT)
++        #self.parent.Bind(wx.EVT_CLOSE, self.OnClose)
+ 
+     def OnAddProfile(self, evt):
+         self.logger('Add Profile started', x2go.loglevel_INFO, )
+ 
+     def OnNewSession(self, evt):
+-        self.logger('NewSession started', x2go.loglevel_INFO, )
+-        X2GoChooseSessionScrn(self.parent)
++        self.logger('NewSession started for self.parent.__class__.__name__ %s, len(self.SessionProfiles.x2goprofs) %s' % (self.parent.__class__.__name__, len(self.SessionProfiles.x2goprofs)), x2go.loglevel_INFO, )
++        if hasattr(self.parent,'selected_profile') and 1==0:
++            X2GoPasswordScrn(self.parent)
++        elif len(self.SessionProfiles.x2goprofs) &gt; 1:
++            self.logger('self.parent.IsIconized() %s' % self.parent.IsIconized(), x2go.loglevel_INFO, )
++            if self.parent.IsIconized() or not self.parent.IsShown():
++                self.parent.Iconize(False)
++                if not self.parent.IsShown():
++                    self.parent.Show(True)
++                self.parent.Raise()
++                self.parent.SetFocus()
+ 
+     def OnListSessions(self, evt):
+         self.logger('List Sessions started', x2go.loglevel_INFO, )
+@@ -162,7 +184,7 @@ class X2GoResumeSessions(sc.SizedFrame):
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+ 
+ class X2GoPasswordScrn(sc.SizedFrame):
+-    def __init__(self, parent, Iconize):
++    def __init__(self, parent, Iconize=False):
+         &quot;&quot;&quot;
+         Screen to enter the userid and password for the session
+ 
+@@ -189,12 +211,11 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         self.Main_MenuBar = wx.MenuBar()
+         self.SetMenuBar(self.Main_MenuBar)
+         self.Main_MenuBar.Append(menuActions(self), '&amp;Connection')
+-        self.tb = X2GoLogonTaskBarIcon(self)
+-        self.Bind(wx.EVT_CLOSE, self.OnCancel)
++        #self.Bind(wx.EVT_CLOSE, self.OnCancel)
+         if Iconize:
+             if not self.IsIconized():
+                 self.Iconize(True)
+-            if parent.args.password and parent.args.username and parent.args.profile and SessionProfiles.profileExists(parent.args.profile):
++            if parent.parent.args.password and parent.parent.args.username and parent.parent.args.profile and SessionProfiles.profileExists(parent.parent.args.profile):
+                 self.onConnect()
+             elif parent.args.profile:
+                 Message(self, 'Not all credentials are available')
+@@ -210,13 +231,14 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         if hasattr(self.current_profile,'username'):
+             self.username_ctl.SetValue(self.SessionProfile.username)
+         else:
+-            self.username_ctl.SetValue(self.parent.args.username)
++            self.username_ctl.SetValue(self.parent.parent.args.username)
+ 
+         wx.StaticText(pnl, -1, 'Password'),
+         self.passwd_ctl = wx.TextCtrl(pnl, -1, style=wx.TE_PASSWORD)
+ 
+         self.ConnectButton = wx.Button(pnl, -1, &quot;Connect&quot;)
+         self.ConnectButton.Bind(wx.EVT_BUTTON, self.OnOK)
++        self.ConnectButton.SetDefault()
+ 
+         self.CancelButton = wx.Button(pnl, -1, &quot;Cancel&quot;)
+         self.CancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
+@@ -230,7 +252,7 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         if len(password) == 0:
+             Message(self,'Password is required')
+             return
+-        self.current_profile.updValue('server','username',username)
++        self.current_profile.updValue('username',username)
+         self.current_profile.password = password
+         self.onConnect()
+ 
+@@ -251,29 +273,155 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         return
+ 
+     def OnCancel(self, evt):
+-        if not self.SessionProfiles.anyRunningSessions():
+-        #self.Close()
+-            self.tb.Destroy()
+         self.Destroy()
+ 
++class X2GoListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.ColumnSorterMixin):
++    def __init__(self, parent, ID, pos=wx.DefaultPosition,
++                 size=wx.DefaultSize, style=0):
++        wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
++        listmix.ListCtrlAutoWidthMixin.__init__(self)
++        self.sm_up = parent.il.Add(pyhocaguiImages.getSmallUpArrowBitmap())
++        self.sm_dn = parent.il.Add(pyhocaguiImages.getSmallDnArrowBitmap())
++        listmix.ColumnSorterMixin.__init__(self, 2)
++        self.SortListItems(0, True)
++
++    # Used by the ColumnSorterMixin, see wx/lib/mixins/listctrl.py
++    def GetListCtrl(self):
++        return self
++
++    # Used by the ColumnSorterMixin, see wx/lib/mixins/listctrl.py
++    def GetSortImages(self):
++        return (self.sm_dn, self.sm_up)
++
++
+ class X2GoChooseSessionScrn(wx.Frame):
+-    def __init__(self, parent):
+-        wx.Frame.__init__(self)
++    def __init__(self, parent, Iconize=False):
++        self.parent = parent
+         self.logger = parent.logger
++        self.settingsProfile = parent.settingsProfile
++        self.SessionProfiles = parent.SessionProfiles
++        self.current_profile = parent.SessionProfiles.current_profile
++        self.selected_profile = None
++        self.printProfile = parent.printProfile
+         self.logger('Choose Session screen started', x2go.loglevel_INFO, )
++        wx.Frame.__init__(self, None, -1)
++        self.CentreOnScreen()
++        self.il = wx.ImageList(16, 16)
++        self.list = X2GoListCtrl(self, -1,
++                                 style=wx.LC_REPORT | wx.BORDER_NONE | wx.LC_SORT_ASCENDING
++                                 )
++        self.idx1 = self.il.Add(pyhocaguiImages.getnetwork_disconnected_lanBitmap())
++        self.idx2 = self.il.Add(pyhocaguiImages.getnetwork_connected_lan_kncBitmap())
++        self.idx3 = self.il.Add(pyhocaguiImages.getresumeBitmap())
++
++        self.list.SetImageList(self.il, wx.IMAGE_LIST_SMALL)
++
++        self.PopulateList()
++
++        self.Main_MenuBar = wx.MenuBar()
++        self.SetMenuBar(self.Main_MenuBar)
++        self.Main_MenuBar.Append(menuActions(self), '&amp;Connection')
++        self.tb = X2GoLogonTaskBarIcon(self)
++
++        self.Bind(wx.EVT_SIZE, self.OnSize)
+ 
+-        wx.SingleChoiceDialog(self, 'Choose profile', choices=parent.SessionProfiles.listNonRunningProfiles(), style=wx.CHOICEDLG_STYLE )
++        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnItemSelected, self.list)
++        self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnItemActivated, self.list)
+ 
+-class X2GoSessionDefScrn(sc.SizedDialog):
++        self.list.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
++        self.list.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
++
++        # for wxMSW
++        self.list.Bind(wx.EVT_COMMAND_RIGHT_CLICK, self.OnRightClick)
++
++        # for wxGTK
++        self.list.Bind(wx.EVT_RIGHT_UP, self.OnRightClick)
++
++        self.Bind(wx.EVT_CLOSE, self.OnCancel)
++        if Iconize:
++            if not self.IsIconized():
++                self.Iconize(True)
++        else:
++            self.Show(True)
++
++    def OnSize(self, event):
++        w,h = self.GetClientSizeTuple()
++        self.list.SetDimensions(0, 0, w, h)
++
++    def PopulateList(self):
++        sessions = self.parent.SessionProfiles.listAllAvailableSessions()
++        info = wx.ListItem()
++        info.m_mask = wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT
++        info.m_image = -1
++        info.m_format = 0
++        info.m_text = &quot;Profile&quot;
++        self.list.InsertColumnInfo(0, info)
++
++        info.m_format = wx.LIST_FORMAT_RIGHT
++        info.m_text = &quot;Status&quot;
++        self.list.InsertColumnInfo(1, info)
++        for profilename, connected, alive in sessions:
++            if connected and alive:
++                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx2)
++                self.list.SetStringItem(index, 1, 'Connected')
++            elif not connected and alive:
++                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx3)
++                self.list.SetStringItem(index, 1, 'Suspended')
++            else:
++                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx1)
++                self.list.SetStringItem(index, 1, 'Not Connected')
++
++        self.list.SetColumnWidth(0, wx.LIST_AUTOSIZE)
++
++    def OnRightDown(self, event):
++        x = event.GetX()
++        y = event.GetY()
++        item, flags = self.list.HitTest((x, y))
++
++        if flags &amp; wx.LIST_HITTEST_ONITEM:
++            self.list.Select(item)
++        event.Skip()
++
++    def OnItemSelected(self, event):
++        ##print event.GetItem().GetTextColour()
++        self.currentItem = event.m_itemIndex
++        self.selected_profile = self.parent.SessionProfiles.getProfileByName(self.list.GetItemText(self.currentItem))
++
++    def OnDoubleClick(self, event):
++        self.logger('DoubleClick', x2go.loglevel_INFO, )
++        event.Skip()
++
++    def OnItemActivated(self, event):
++        self.currentItem = event.m_itemIndex
++        self.selected_profile = self.parent.SessionProfiles.getProfileByName(self.list.GetItemText(self.currentItem))
++
++    def OnRightClick(self, event):
++        # only do this part the first time so the events are only bound once
++
++        # Popup the menu.  If an item is selected then its handler
++        # will be called before PopupMenu returns.
++        self.PopupMenu(menuActions(self, popupMenu=True))
++
++    def OnCancel(self, evt):
++        if not self.SessionProfiles.anyRunningSessions():
++        #self.Close()
++            self.tb.Destroy()
++        self.Destroy()
++
++class X2GoSessionDefScrn(wx.Frame):
+     SESSIONNOTEBOOK = wx.NewId()
+     TypeList = ['GNOME','LXDE','Connect to Windows terminal server','Custom desktop','Server security','Single application']
+     CommandList = ['Internet Browser','Email client','OpenOffice','Terminal']
+     ConnectList = ['Modem','ISDN','ADSL','WAN','LAN']
+     CommpressionList = ['nopack','64k','256k','2m','256-rdp','32k-rdp','64k-rdp','16m-rdp','16m-rdp-compressed','64k-tight','2m-tight','4k-jpeg','16m-jpeg','64k-png-jpeg','16m-png-jpeg','64k-png','16m-png','16m-rgb','16m-rle']
+-    def __init__(self, parent):
++    def __init__(self, parent, directCall=False):
+ 
+         parent.logger('Session definition screen started', x2go.loglevel_INFO, )
+-        self.pnl = wx.Panel(self, -1)
++        if directCall:
++            wx.Frame.__init__(self, parent=None, id=-1)
++        else:
++            wx.Frame.__init__(self, parent=parent, id=-1)
++        self.pnl = sc.SizedDialog(self, -1)
+         if self.current_profile and self.current_profile.connected:
+             self.StatusText = self.current_profile.StatusText
+             self.Environment = self.current_profile.Environment
+@@ -418,7 +566,7 @@ class X2GoLogonTaskBarIcon(wx.TaskBarIcon):
+         the menu how you want it and return it from this function,
+         the base class takes care of the rest.
+         &quot;&quot;&quot;
+-        menu = menuActions(self)
++        menu = menuActions(self, fromTaskBarIcon=True)
+         return menu
+ 
+     def MakeIcon(self, img):
+@@ -498,32 +646,34 @@ def startX2Go(parent):
+     &quot;&quot;&quot;
+     parent.logger('starting a new X2go GUI session', x2go.loglevel_INFO, )
+ 
+-    parent.printProfile = SessionProfile.Printing()
+-    parent.settingsProfile = SessionProfile.Settings()
+-    parent.SessionProfiles = SessionProfile.x2goProfiles()
++    parent.printProfile = SessionProfile.Printing(parent.logger)
++    parent.settingsProfile = SessionProfile.Settings(parent.logger)
++    parent.SessionProfiles = SessionProfile.x2goProfiles(parent.logger, parent.liblogger)
+     noSessionsDefined = len(parent.SessionProfiles.x2goprofs) == 0
+     moreSessionsDefined = len(parent.SessionProfiles.x2goprofs) &gt; 1
+ 
+     #checkArgs(parent, parent.args, SessionProfiles)
++    parent.logger('parent.SessionProfiles %s' % parent.SessionProfiles, x2go.loglevel_INFO, )
+     sessionsSuspended = parent.SessionProfiles.suspendedSessions()
+     if len(sessionsSuspended) and parent.settingsProfile.autoresume:
+         parent.logger('autoresume sessionsSuspended %s' % sessionsSuspended, x2go.loglevel_INFO, )
++        ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
+         for suspended in sessionsSuspended:
+-            suspended.Resume()
++            suspended.Resume(parent)
+     elif len(sessionsSuspended):
+         parent.logger('Choose SuspendedSessions %s' % sessionsSuspended, x2go.loglevel_INFO, )
+         X2GoResumeSessions(parent, sessionsSuspended)
+     else:
+         if parent.args.minimized:
+             parent.logger('Start minimized', x2go.loglevel_INFO, )
+-            pwScrn = X2GoPasswordScrn(parent, Iconize=True)
++            ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
+         else:
+-            if not noSessionsDefined and (not moreSessionsDefined or SessionProfiles.defaultAvailable()):
++            if not noSessionsDefined and (not moreSessionsDefined or parent.SessionProfiles.defaultAvailable()):
+                 parent.logger('Start password entry normally', x2go.loglevel_INFO, )
+-                pwScrn = X2GoPasswordScrn(parent)
++                ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
+             elif noSessionsDefined:
+                 parent.logger('Start Profile Definition', x2go.loglevel_INFO, )
+-                defScrn = X2GoSessionDefScrn(parent)
++                defScrn = X2GoSessionDefScrn(parent, directCall=True)
+             else:
+                 parent.logger('Start Profile choice', x2go.loglevel_INFO, )
+                 choiceScrn = X2GoChooseSessionScrn(parent)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010132.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 04ed83455e600017764b185eeb5eda65220b9432
+</A></li>
+	<LI>Next message: <A HREF="010139.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: ca778d094c8e95177f2ac87b06b522413d95c79a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10138">[ date ]</a>
+              <a href="thread.html#10138">[ thread ]</a>
+              <a href="subject.html#10138">[ subject ]</a>
+              <a href="author.html#10138">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

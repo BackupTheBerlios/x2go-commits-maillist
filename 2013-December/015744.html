@@ -1,0 +1,193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.2-1-g95ed41f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.2-1-g95ed41f&In-Reply-To=%3C20131204051835.3F0775DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015743.html">
+   <LINK REL="Next"  HREF="015745.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.2-1-g95ed41f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.2-1-g95ed41f&In-Reply-To=%3C20131204051835.3F0775DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.2-1-g95ed41f">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:18:35 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015743.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.3-6-gc34a486
+</A></li>
+        <LI>Next message: <A HREF="015745.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.3-2-g15860d2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15744">[ date ]</a>
+              <a href="thread.html#15744">[ thread ]</a>
+              <a href="subject.html#15744">[ subject ]</a>
+              <a href="author.html#15744">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  95ed41f7d7cf129ca635fcd78959b9f41db2244c (commit)
+      from  02ce6b450e39d07617d95e6a334573f3dd31ee8d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    7 +++++++
+ x2goserver/sbin/x2gocleansessions |   26 +++++++++++++++-----------
+ 2 files changed, 22 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2798097..a1e4b4b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,3 +1,10 @@
++x2goserver (4.0.1.3-0~x2go1) UNRELEASED; urgency=low
++
++  * New upstream version (4.0.1.3):
++    - Improve session status management in x2gocleansessions.
++
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 22 Jun 2013 14:30:46 +0200
++
+ x2goserver (4.0.1.2-0~x2go1) unstable; urgency=low
+ 
+   * New upstream version (4.0.1.2):
+diff --git a/x2goserver/sbin/x2gocleansessions b/x2goserver/sbin/x2gocleansessions
+index 2a69281..e2a784a 100755
+--- a/x2goserver/sbin/x2gocleansessions
++++ b/x2goserver/sbin/x2gocleansessions
+@@ -95,13 +95,12 @@ sub catch_term
+ }
+ 
+ my $uname;
+-#my $serv=$ENV{'HOSTNAME'};
+ my $serv = hostname;
+ my $pid = fork();
+ if (not defined $pid) 
+ {
+ 	print &quot;resources not avilable.\n&quot;;
+-} 
++}
+ elsif ($pid != 0) 
+ {
+ 	open (F,&quot;&gt;/var/run/x2goserver.pid&quot;);
+@@ -116,7 +115,8 @@ elsif ($pid == 0 )
+ 	$SIG{TERM}=\&amp;catch_term;
+ 	$SIG{CHLD} = sub { wait };
+ 
+-	my %remembered_sessions = ();
++	my %remembered_sessions_status = ();
++	my %remembered_sessions_since = ();
+ 
+ 	while(sleep 2)
+ 	{
+@@ -124,11 +124,12 @@ elsif ($pid == 0 )
+ 		my @outp=split(&quot;\n&quot;,&quot;$outp&quot;);
+ 
+ 		# forget earlier remembered blocked sessions
+-		while ( my ($session, $remembered_time) = each(%remembered_sessions) )
++		while ( my ($session, $remembered_since) = each(%remembered_sessions_since) )
+ 		{
+ 			if (! join(',', @outp)=~m/$session/)
+ 			{
+-				delete $remembered_sessions{$session};
++				delete $remembered_sessions_status{$session};
++				delete $remembered_sessions_since{$session};
+ 			}
+ 		}
+ 
+@@ -137,22 +138,25 @@ elsif ($pid == 0 )
+ 
+ 			my @sinfo=split('\\|',&quot;@outp[$i]&quot;);
+ 
+-			if (defined $remembered_sessions{ @sinfo[1] })
++			if (defined $remembered_sessions_since{ @sinfo[1] } &amp;&amp; ($remembered_sessions_status{ @sinfo[1] } =~m/@sinfo[4]/ ))
+ 			{
+-				$remembered_sessions{ @sinfo[1] } += 2;
++				$remembered_sessions_since{ @sinfo[1] } += 2;
+ 			} else {
+-				$remembered_sessions{ @sinfo[1] } = 0;
++				$remembered_sessions_status{ @sinfo[1] } = @sinfo[4];
++				$remembered_sessions_since{ @sinfo[1] } = 0;
+ 			}
+ 
++			#print @sinfo[1], ': ', $remembered_sessions_since{@sinfo[1]},' ',$remembered_sessions_status{@sinfo[1]},&quot;\n&quot;;
++
+ 			if (@sinfo[4]eq 'F')
+ 			{
+ 				syslog('debug', &quot;@sinfo[1] is blocked&quot;);
+-				if ($remembered_sessions{@sinfo[1]} ge 20)
++				if ($remembered_sessions_since{@sinfo[1]} ge 20)
+ 				{
+ 					# send SIGKILL to dangling X-server processes
+ 					syslog('warning', &quot;@sinfo[1]: found stale X-server process (@sinfo[0]), sending SIGKILL&quot;);
+ 					qw(kill -9 @sinfo[0]);
+-					delete $remembered_sessions{@sinfo[1]};
++					delete $remembered_sessions_since{@sinfo[1]};
+ 				}
+ 				syslog('debug', &quot;@sinfo[1]: unmounting all shares&quot;);
+ 				system( &quot;su @sinfo[11] -c \&quot;export HOSTNAME &amp;&amp; x2goumount-session @sinfo[1]\&quot; 2&gt; /dev/null&quot;);
+@@ -167,7 +171,7 @@ elsif ($pid == 0 )
+ 			}
+ 			else
+ 			{ 
+-				if ( (@sinfo[4] eq 'R') &amp;&amp; ( $remembered_sessions{ @sinfo[1] } ge 2 ))
++				if ( (@sinfo[4] eq 'R') &amp;&amp; ( $remembered_sessions_since{ @sinfo[1] } ge 2 ))
+ 				{
+ 					if (is_suspended(@sinfo[1]<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sinfo</A>[11]))
+ 					{
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015743.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.3-6-gc34a486
+</A></li>
+	<LI>Next message: <A HREF="015745.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.3-2-g15860d2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15744">[ date ]</a>
+              <a href="thread.html#15744">[ thread ]</a>
+              <a href="subject.html#15744">[ subject ]</a>
+              <a href="author.html#15744">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

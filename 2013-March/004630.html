@@ -1,0 +1,1250 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient2.git - master (branch) updated:	23b595523da9554529cb2874112b3b3dad4614db
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%0923b595523da9554529cb2874112b3b3dad4614db&In-Reply-To=%3C20130312165748.6AB025DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004629.html">
+   <LINK REL="Next"  HREF="004631.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient2.git - master (branch) updated:	23b595523da9554529cb2874112b3b3dad4614db</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%0923b595523da9554529cb2874112b3b3dad4614db&In-Reply-To=%3C20130312165748.6AB025DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient2.git - master (branch) updated:	23b595523da9554529cb2874112b3b3dad4614db">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Mar 12 17:57:48 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004629.html">[X2Go-Commits] page changed: start
+</A></li>
+        <LI>Next message: <A HREF="004631.html">[X2Go-Commits] page changed: doc:installation:x2goserver
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4630">[ date ]</a>
+              <a href="thread.html#4630">[ thread ]</a>
+              <a href="subject.html#4630">[ subject ]</a>
+              <a href="author.html#4630">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  23b595523da9554529cb2874112b3b3dad4614db (commit)
+      from  3f2d20b4cc2804a5cd0b68e6f3113c1d9bbf53e4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 23b595523da9554529cb2874112b3b3dad4614db
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Tue Mar 12 17:57:13 2013 +0100
+
+    Add class X2GoSession. Continue development
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ configuratorserver.cpp                |    8 +--
+ profile.cpp                           |   84 +++++++++++++++++++++++++++---
+ profile.h                             |   22 ++++++--
+ sessionform.cpp                       |    1 +
+ sessionstatusframe.cpp                |   25 +++++++++
+ sessionstatusframe.h                  |    5 ++
+ sessionstatusframeapplications.cpp    |    6 +++
+ sessionstatusframeapplications.h      |    5 ++
+ sessionstatusframestatus.cpp          |   71 ++++++++++++++++----------
+ sessionstatusframestatus.h            |    6 +++
+ sshconnection.cpp                     |   46 ++++++++++++-----
+ sshconnection.h                       |    3 ++
+ sshconnectionguiinteraction.cpp       |   22 ++++----
+ sshconnectionguiinteraction.h         |   14 +++--
+ x2gobroker.cpp                        |   90 ++++++++++++++++++++++++++++++---
+ x2gobroker.h                          |    4 ++
+ x2goclient2.pro                       |    6 ++-
+ x2gosession.cpp                       |   81 +++++++++++++++++++++++++++++
+ sessionstatusframe.h =&gt; x2gosession.h |   40 ++++++++-------
+ 19 files changed, 447 insertions(+), 92 deletions(-)
+ create mode 100644 x2gosession.cpp
+ copy sessionstatusframe.h =&gt; x2gosession.h (66%)
+
+The diff of changes is:
+diff --git a/configuratorserver.cpp b/configuratorserver.cpp
+index 54606ca..749d9b4 100644
+--- a/configuratorserver.cpp
++++ b/configuratorserver.cpp
+@@ -44,9 +44,9 @@ void ConfiguratorServer::apply()
+ 
+     profile-&gt;set_proxy(cbProxy-&gt;isChecked());
+     if(rbProxySSH-&gt;isChecked())
+-        profile-&gt;set_proxyType(Profile::SSH);
++        profile-&gt;set_proxyType(SshConnection::PROXYSSH);
+     else
+-        profile-&gt;set_proxyType(Profile::HTTP);
++        profile-&gt;set_proxyType(SshConnection::PROXYHTTP);
+     profile-&gt;set_proxyHost(leProxyHost-&gt;text());
+     profile-&gt;set_proxyPort(sbProxyPort-&gt;value());
+     profile-&gt;set_proxySameLogin(cbSameLogin-&gt;isChecked());
+@@ -86,8 +86,8 @@ void ConfiguratorServer::init()
+     leKey-&gt;setText(profile-&gt;get_key());
+     cbAutoLogin-&gt;setChecked(profile-&gt;get_autoLogin());
+     cbProxy-&gt;setChecked(profile-&gt;get_proxy());
+-    rbProxySSH-&gt;setChecked(profile-&gt;get_proxyType()!=Profile::HTTP);
+-    rbProxyHTTP-&gt;setChecked(profile-&gt;get_proxyType()==Profile::HTTP);
++    rbProxySSH-&gt;setChecked(profile-&gt;get_proxyType()!=SshConnection::PROXYHTTP);
++    rbProxyHTTP-&gt;setChecked(profile-&gt;get_proxyType()==SshConnection::PROXYHTTP);
+     leProxyHost-&gt;setText(profile-&gt;get_proxyHost());
+     sbProxyPort-&gt;setValue(profile-&gt;get_proxyPort());
+     cbSameLogin-&gt;setChecked(profile-&gt;get_proxySameLogin());
+diff --git a/profile.cpp b/profile.cpp
+index 0ea82ec..36a02de 100644
+--- a/profile.cpp
++++ b/profile.cpp
+@@ -26,6 +26,8 @@
+ #include &quot;x2goclientconfig.h&quot;
+ #include &quot;x2goclientconfigdetail.h&quot;
+ #include &quot;x2gosettings.h&quot;
++#include &quot;x2gosession.h&quot;
++#include &quot;x2gobroker.h&quot;
+ #include &lt;QDebug&gt;
+ #include &lt;QPushButton&gt;
+ #include &lt;QScrollBar&gt;
+@@ -49,6 +51,7 @@ Profile::Profile(QString id, QWidget* parent, Qt::WindowFlags f): QFrame(parent,
+     startDragPoint=-1;
+     f2SettingsConnector=0;
+     setFixedWidth(PROFILE_HEIGHT);
++    session=new X2GoSession(this);
+ 
+     connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalViewPortResized()), this, SLOT(slotUpdateProfileWidget()));
+     connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalProfilesScrolled()), this, SLOT(slotUpdateProfileWidget()));
+@@ -58,12 +61,13 @@ Profile::Profile(QString id, QWidget* parent, Qt::WindowFlags f): QFrame(parent,
+     connect(this, SIGNAL(signalDragFinished()), X2GoApplication::instance()-&gt;get_workArea(), SLOT(slotScrollToNearestForm()));
+     connect(this, SIGNAL(signalSelected(Profile*)), X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)));
+     connect(X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)),this, SLOT(slotProfileSelected(Profile*)));
++    connect(session, SIGNAL(signalStatusChanged(X2GoSession::SessionStatus)), this, SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
+ }
+ 
+ 
+ Profile::~Profile()
+ {
+-
++    delete session;
+ }
+ 
+ void Profile::setDefaultValues()
+@@ -106,6 +110,7 @@ void Profile::setDefaultValues()
+     exportFSTunnel=true;
+     encodeFS=false;
+     remoteFSEncoding=&quot;UTF-8&quot;;
++    brokerSelectSessionRequestId=-1;
+ #ifdef Q_OS_WIN
+     localFSEncoding=tr ( &quot;WINDOWS-1252&quot; );
+ #endif
+@@ -117,6 +122,39 @@ void Profile::setDefaultValues()
+ #endif
+ }
+ 
++
++void Profile::slotSessionStatusChanged(X2GoSession::SessionStatus status)
++{
++    switch(status)
++    {
++    case X2GoSession::NOTRUNNING:
++        lSessionStatus-&gt;setText(tr(&quot;not running&quot;));
++        break;
++    case X2GoSession::STARTING:
++        lSessionStatus-&gt;setText(tr(&quot;starting&quot;));
++        break;
++    case X2GoSession::RESUMING:
++        lSessionStatus-&gt;setText(tr(&quot;resuming&quot;));
++        break;
++    case X2GoSession::TERMINATING:
++        lSessionStatus-&gt;setText(tr(&quot;terminating&quot;));
++        break;
++    case X2GoSession::SUSPENDING:
++        lSessionStatus-&gt;setText(tr(&quot;susepnding&quot;));
++        break;
++    case X2GoSession::RUNNING:
++        lSessionStatus-&gt;setText(tr(&quot;running&quot;));
++        break;
++    }
++}
++
++
++void Profile::slotBrokerProfileSelectRequestFinished(bool success, QString answer, int pid)
++{
++    X2GoApplication::instance()-&gt;get_broker()-&gt;profileSelected(success, answer, pid, this);
++}
++
++
+ int Profile::getProfileIndex()
+ {
+     QList&lt;Profile*&gt;* profiles=X2GoApplication::instance()-&gt;getProfiles();
+@@ -213,12 +251,46 @@ void Profile::initWidget()
+     lProfileShort-&gt;setStyleSheet(&quot;border-image: url(:svg/transparent.svg); \
+                             border-top: 0px transparent; border-bottom: 0px transparent; \
+                              border-right: 0px transparent; border-left: 0px transparent&quot;);
+-    connect(pbSettings, SIGNAL(clicked(bool)), this, SLOT(slotSelectProfile()));
+-    connect(pbSettings, SIGNAL(clicked(bool)), X2GoApplication::instance()-&gt;get_workArea(), SLOT(slotScrollToProfileSettingsForm()));
++
++    connect(pbSettings, SIGNAL(clicked(bool)), this, SLOT(slotConfigProfile()));
++    connect(pbStart, SIGNAL(clicked(bool)), this, SLOT(slotStartSession()));
++    connect(pbTerminate, SIGNAL(clicked(bool)), this, SLOT(slotTerminateSession()));
++    connect(pbSuspend, SIGNAL(clicked(bool)), this, SLOT(slotSuspendSession()));
++
+     pbSettings-&gt;setDisabled(X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_disallowSessionEdit().get_value().toBool());
++    pbSuspend-&gt;setEnabled(false);
++    pbTerminate-&gt;setEnabled(false);
+     updateProfileDetails();
+ }
+ 
++void Profile::slotConfigProfile()
++{
++    slotSelectProfile();
++    X2GoApplication::instance()-&gt;get_workArea()-&gt;slotScrollToProfileSettingsForm();
++}
++
++void Profile::slotStartSession()
++{
++    session-&gt;slotStartSession();
++    slotSwitchToSession();
++}
++
++void Profile::slotSuspendSession()
++{
++    slotSwitchToSession();
++}
++
++void Profile::slotTerminateSession()
++{
++    slotSwitchToSession();
++}
++
++void Profile::slotSwitchToSession()
++{
++    slotSelectProfile();
++    X2GoApplication::instance()-&gt;get_workArea()-&gt;slotScrollToSessionForm();
++}
++
+ void Profile::updateProfileDetails()
+ {
+     QFontMetrics fm(lSessionInfo-&gt;font());
+@@ -422,9 +494,9 @@ void Profile::loadProfile()
+     LOAD_VALUE(String, remoteFSEncoding, &quot;iconvto&quot;);
+     settings-&gt;endGroup();
+     if(confProxyType==&quot;SSH&quot;)
+-        proxyType=SSH;
++        proxyType=SshConnection::PROXYSSH;
+     else
+-        proxyType=HTTP;
++        proxyType=SshConnection::PROXYHTTP;
+ }
+ 
+ void Profile::saveProfile()
+@@ -433,7 +505,7 @@ void Profile::saveProfile()
+     settings-&gt;beginGroup(profileId);
+ 
+     QString confProxyType=&quot;SSH&quot;;
+-    if(proxyType==HTTP)
++    if(proxyType==SshConnection::PROXYHTTP)
+         confProxyType=&quot;HTTP&quot;;
+ 
+     QByteArray ba;
+diff --git a/profile.h b/profile.h
+index 3d9b610..ca02fae 100644
+--- a/profile.h
++++ b/profile.h
+@@ -1,5 +1,5 @@
+ /**************************************************************************
+-*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   Copyright (C) 2005-2013 by Oleksandr Shneyder                         *
+ *   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+@@ -23,16 +23,18 @@
+ 
+ #include &lt;QFrame&gt;
+ #include &quot;x2goapplication.h&quot;
++#include &quot;sshconnection.h&quot;
+ #include &lt;QPixmap&gt;
+ #include &quot;ui_profile.h&quot;
++#include &quot;x2gosession.h&quot;
+ #define PROFILE_HEIGHT 90
+ 
+ class Profile : public QFrame, public Ui_Profile
+ {
+     Q_OBJECT
+ public:
+-    enum ProxyType {SSH, HTTP};
+     enum SpeedType {MODEM, ISDN, ADSL, WAN, LAN};
++    X2GO_PROPERTY(int, brokerSelectSessionRequestId)
+ 
+     X2GO_PROPERTY(QString, profileName)
+     X2GO_PROPERTY(QString, profileId)
+@@ -44,7 +46,7 @@ public:
+     X2GO_PROPERTY(QString, key)
+     X2GO_PROPERTY(bool, autoLogin)
+     X2GO_PROPERTY(bool, proxy)
+-    X2GO_PROPERTY(ProxyType, proxyType)
++    X2GO_PROPERTY(SshConnection::ProxyType, proxyType)
+     X2GO_PROPERTY(QString, proxyHost)
+     X2GO_PROPERTY(int, proxyPort)
+     X2GO_PROPERTY(QString, proxyLogin)
+@@ -93,6 +95,9 @@ public:
+     X2GO_PROPERTY(bool, encodeFS)
+     X2GO_PROPERTY(QString, localFSEncoding)
+     X2GO_PROPERTY(QString, remoteFSEncoding)
++
++    X2GO_RO_PROPERTY(X2GoSession*, session)
++
+ public:
+     Profile(QString id, QWidget* parent = 0, Qt::WindowFlags f = 0);
+     virtual ~Profile();
+@@ -104,6 +109,13 @@ public slots:
+     void slotUpdateProfileWidget();
+     void slotProfileSelected(Profile* profile);
+     void slotSelectProfile();
++    void slotConfigProfile();
++    void slotSwitchToSession();
++    void slotStartSession();
++    void slotTerminateSession();
++    void slotSuspendSession();
++    void slotBrokerProfileSelectRequestFinished(bool success, QString answer, int pid);
++
+ private:
+     bool inited;
+     bool selected;
+@@ -115,6 +127,10 @@ private:
+     void setupRegularWidget();
+     void setupSelectedWidget();
+     void setDefaultValues();
++
++private slots:
++    void slotSessionStatusChanged(X2GoSession::SessionStatus status);
++
+ protected:
+     virtual void  mouseMoveEvent ( QMouseEvent * event );
+     virtual void  mousePressEvent ( QMouseEvent * event );
+diff --git a/sessionform.cpp b/sessionform.cpp
+index 3db5c57..9194f60 100644
+--- a/sessionform.cpp
++++ b/sessionform.cpp
+@@ -68,4 +68,5 @@ SessionForm::~SessionForm()
+ void SessionForm::updateProfile()
+ {
+     profileName-&gt;setText(profile-&gt;get_profileName());
++    statusFrame-&gt;setSession(profile-&gt;get_session());
+ }
+diff --git a/sessionstatusframe.cpp b/sessionstatusframe.cpp
+index 6ad9691..8a3a794 100644
+--- a/sessionstatusframe.cpp
++++ b/sessionstatusframe.cpp
+@@ -23,11 +23,14 @@
+ #include &quot;sessionstatusframestatus.h&quot;
+ #include &quot;sessionstatusframeapplications.h&quot;
+ 
++#include &quot;x2gosession.h&quot;
+ 
+ SessionStatusFrame::SessionStatusFrame(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+ {
+     setupUi(this);
+ 
++    session=0;
++
+     frStatus=new SessionStatusFrameStatus(this);
+     frApps=new SessionStatusFrameApplications(this);
+     ((QVBoxLayout*)layout())-&gt;addWidget(frStatus);
+@@ -57,3 +60,25 @@ void SessionStatusFrame::setFrame(QPushButton* button)
+     frStatus-&gt;setVisible(pbStatus-&gt;isChecked());
+     frApps-&gt;setVisible(pbApps-&gt;isChecked());
+ }
++
++
++void SessionStatusFrame::setSession(X2GoSession* session)
++{
++    if(this-&gt;session)
++        disconnect(this-&gt;session, SIGNAL(signalStatusChanged(X2GoSession::SessionStatus)),
++                   this, SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
++    this-&gt;session=session;
++    connect(session, SIGNAL(signalStatusChanged(X2GoSession::SessionStatus)),
++            this, SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
++    frApps-&gt;setSession(session);
++    frStatus-&gt;setSession(session);
++    slotSessionStatusChanged(session-&gt;get_status());
++}
++
++void SessionStatusFrame::slotSessionStatusChanged(X2GoSession::SessionStatus status)
++{
++    pbStatus-&gt;setChecked(true);
++    setFrame(pbStatus);
++    pbApps-&gt;setVisible(status== X2GoSession::RUNNING);
++    pbFolders-&gt;setVisible(status== X2GoSession::RUNNING);
++}
+diff --git a/sessionstatusframe.h b/sessionstatusframe.h
+index 39f9be9..9845544 100644
+--- a/sessionstatusframe.h
++++ b/sessionstatusframe.h
+@@ -21,6 +21,8 @@
+ #ifndef SESSIONSTATUSFRAME_H
+ #define SESSIONSTATUSFRAME_H
+ 
++#include &quot;x2goapplication.h&quot;
++#include &quot;x2gosession.h&quot;
+ #include &lt;QFrame&gt;
+ #include &quot;ui_sessionstatusframe.h&quot;
+ 
+@@ -30,11 +32,14 @@ class SessionStatusFrameApplications;
+ class SessionStatusFrame : public QFrame, public Ui_SessionStatusFrame
+ {
+     Q_OBJECT
++    X2GO_RO_PROPERTY(X2GoSession*, session)
+ public:
+     explicit SessionStatusFrame(QWidget* parent = 0, Qt::WindowFlags f = 0);
+     virtual ~SessionStatusFrame();
++    void setSession(X2GoSession* session);
+ private slots:
+     void slotSetTabFrames();
++    void slotSessionStatusChanged(X2GoSession::SessionStatus status);
+ private:
+     void setFrame(QPushButton* button);
+ private:
+diff --git a/sessionstatusframeapplications.cpp b/sessionstatusframeapplications.cpp
+index 249bbcc..f6a827e 100644
+--- a/sessionstatusframeapplications.cpp
++++ b/sessionstatusframeapplications.cpp
+@@ -23,6 +23,7 @@
+ 
+ SessionStatusFrameApplications::SessionStatusFrameApplications(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+ {
++    session=0;
+     setupUi(this);
+ }
+ 
+@@ -30,3 +31,8 @@ SessionStatusFrameApplications::~SessionStatusFrameApplications()
+ {
+ 
+ }
++
++void SessionStatusFrameApplications::setSession(X2GoSession* session)
++{
++    this-&gt;session=session;
++}
+diff --git a/sessionstatusframeapplications.h b/sessionstatusframeapplications.h
+index 4fc8567..58d6a8f 100644
+--- a/sessionstatusframeapplications.h
++++ b/sessionstatusframeapplications.h
+@@ -22,15 +22,20 @@
+ #ifndef SESSIONSTATUSFRAMEAPPLICATIONS_H
+ #define SESSIONSTATUSFRAMEAPPLICATIONS_H
+ 
++
+ #include &lt;QFrame&gt;
+ #include &quot;ui_sessionstatusframeapplications.h&quot;
+ 
++class X2GoSession;
+ class SessionStatusFrameApplications : public QFrame, public Ui_SessionStatusFrameApplications
+ {
+     Q_OBJECT
+ public:
+     explicit SessionStatusFrameApplications(QWidget* parent = 0, Qt::WindowFlags f = 0);
+     virtual ~SessionStatusFrameApplications();
++    void setSession(X2GoSession* session);
++private:
++    X2GoSession* session;
+ };
+ 
+ #endif // SESSIONSTATUSFRAMEAPPLICATIONS_H
+diff --git a/sessionstatusframestatus.cpp b/sessionstatusframestatus.cpp
+index 66926c9..9178742 100644
+--- a/sessionstatusframestatus.cpp
++++ b/sessionstatusframestatus.cpp
+@@ -23,38 +23,15 @@
+ #include &lt;QScrollBar&gt;
+ #include &quot;x2goapplication.h&quot;
+ #include &quot;workarea.h&quot;
++#include &quot;x2gosession.h&quot;
++#include &quot;profile.h&quot;
+ 
+ SessionStatusFrameStatus::SessionStatusFrameStatus(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+ {
++    session=0;
+     setupUi(this);
+     teAdvancedStatus-&gt;hide();
+ 
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-    teAdvancedStatus-&gt;append(&quot;yxcyxjcbnmsdbamfnbsdmnfbmnsad\nardjgjhasdgjhasdg\nasdhaskjdhjkasd&quot;);
+-
+     teAdvancedStatus-&gt;verticalScrollBar()-&gt;setStyleSheet(
+         &quot;background-color:transparent;border-top:0px;border-left:0px;border-right:0px;border-bottom:0px&quot;);
+     connect(cbDetails, SIGNAL(clicked()), this, SLOT(SlotDetailCliecked()));
+@@ -76,3 +53,45 @@ void SessionStatusFrameStatus::checkWorkAreaScrolling()
+     X2GoApplication::instance()-&gt;get_workArea()-&gt;set_animateNextScroll(false);
+     X2GoApplication::instance()-&gt;get_workArea()-&gt;slotScrollToSessionForm();
+ }
++
++void SessionStatusFrameStatus::setSession(X2GoSession* session)
++{
++    if(this-&gt;session)
++        disconnect(this-&gt;session, SIGNAL(signalStatusChanged(X2GoSession::SessionStatus)),
++                   this, SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
++    this-&gt;session=session;
++    connect(session, SIGNAL(signalStatusChanged(X2GoSession::SessionStatus)), this,
++            SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
++    this-&gt;session=session;
++    slotSessionStatusChanged(session-&gt;get_status());
++    lServer-&gt;setText(session-&gt;get_profile()-&gt;get_server());
++    lLogin-&gt;setText(session-&gt;get_profile()-&gt;get_user());
++    lSID-&gt;setText(QString::null);
++    lDisplay-&gt;setText(QString::null);
++    lCrTime-&gt;setText(QString::null);
++}
++
++void SessionStatusFrameStatus::slotSessionStatusChanged(X2GoSession::SessionStatus status)
++{
++    switch(status)
++    {
++    case X2GoSession::NOTRUNNING:
++        lStatus-&gt;setText(tr(&quot;not running&quot;));
++        break;
++    case X2GoSession::STARTING:
++        lStatus-&gt;setText(tr(&quot;starting&quot;));
++        break;
++    case X2GoSession::RESUMING:
++        lStatus-&gt;setText(tr(&quot;resuming&quot;));
++        break;
++    case X2GoSession::TERMINATING:
++        lStatus-&gt;setText(tr(&quot;terminating&quot;));
++        break;
++    case X2GoSession::SUSPENDING:
++        lStatus-&gt;setText(tr(&quot;susepnding&quot;));
++        break;
++    case X2GoSession::RUNNING:
++        lStatus-&gt;setText(tr(&quot;running&quot;));
++        break;
++    }
++}
+diff --git a/sessionstatusframestatus.h b/sessionstatusframestatus.h
+index 0a1d17c..35bbb11 100644
+--- a/sessionstatusframestatus.h
++++ b/sessionstatusframestatus.h
+@@ -23,6 +23,7 @@
+ 
+ #include &lt;QFrame&gt;
+ #include &quot;ui_sessionstatusframestatus.h&quot;
++#include &quot;x2gosession.h&quot;
+ 
+ class SessionStatusFrameStatus : public QFrame, public Ui_SessionStatusFrameStatus
+ {
+@@ -31,8 +32,13 @@ public:
+     explicit SessionStatusFrameStatus(QWidget* parent = 0, Qt::WindowFlags f = 0);
+     virtual ~SessionStatusFrameStatus();
+     void checkWorkAreaScrolling();
++    void setSession(X2GoSession* session);
++public slots:
++    void slotSessionStatusChanged(X2GoSession::SessionStatus status);
+ private slots:
+     void SlotDetailCliecked();
++private:
++    X2GoSession* session;
+ };
+ 
+ #endif // SESSIONSTATUSFRAMESTATUS_H
+diff --git a/sshconnection.cpp b/sshconnection.cpp
+index 29f22cf..899faea 100644
+--- a/sshconnection.cpp
++++ b/sshconnection.cpp
+@@ -90,10 +90,12 @@ SshConnection::SshConnection(QObject* parent, QString host, int port, bool accep
+     reverseTunnel=false;
+     kerberos=krbLogin;
+     kerberos=false;
++
+     if(!guiInteractor)
+     {
+         guiInteractor=new SshConnectionGuiInteraction(parent);
+     }
++    connect(guiInteractor, SIGNAL(signalInteraction(SshConnection*)), this, SLOT(slotSignalInteractionRecived(SshConnection*)));
+ }
+ 
+ //private constructor for reverse tunnel connections
+@@ -165,17 +167,25 @@ SshConnection::~SshConnection()
+     qDebug()&lt;&lt;&quot;ssh connection destructor&quot;;
+ }
+ 
++void SshConnection::slotSignalInteractionRecived(SshConnection* requester)
++{
++    if(requester==this)
++        emit signalInteraction();
++}
++
++
+ void SshConnection::run()
+ {
+     disconnectSessionFlag=false;
+ #warning implement ssh proxy code
+     if ( !isLibSshInited )
+     {
++        qDebug()&lt;&lt;&quot;initing libssh&quot;&lt;&lt;endl;
+         if ( ssh_init() !=0 )
+         {
+             QString err=tr ( &quot;Can not initialize libssh&quot; );
+             qDebug()&lt;&lt;err&lt;&lt;endl;
+-            guiInteractor-&gt;critical(err, MessageBox::OK);
++            guiInteractor-&gt;critical(this, err, MessageBox::OK);
+             emit signalError ( (int)CONNECTION, err );
+             return;
+         }
+@@ -195,7 +205,7 @@ void SshConnection::run()
+     {
+         QString err=tr ( &quot;Can not create ssh session&quot; );
+         qDebug()&lt;&lt;err&lt;&lt;endl;
+-        guiInteractor-&gt;critical(err, MessageBox::OK);
++        guiInteractor-&gt;critical(this, &quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot;+err, MessageBox::OK);
+         emit signalError ( (int)CONNECTION, err);
+         if ( reverseTunnel )
+             emit signalIoError ( reverseTunnelCreator, err, &quot;&quot; );
+@@ -221,9 +231,9 @@ void SshConnection::run()
+         proxysocket = tcpProxySocket-&gt;socketDescriptor();
+         if (!tcpProxySocket-&gt;waitForConnected(30000))
+         {
+-            QString message=tr ( &quot;Can not connect to proxy server&quot; );
++            QString message=tr ( &quot;Can not connect to proxy server&quot; )+&quot;(&quot;+proxyServer+&quot;:&quot;+proxyPort+&quot;)&quot;;
+             qDebug()&lt;&lt;message&lt;&lt;endl;
+-            guiInteractor-&gt;critical(message, MessageBox::OK);
++            guiInteractor-&gt;critical(this, &quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot;+message, MessageBox::OK);
+             emit signalError ( (int)CONNECTION, message );
+             ssh_free ( my_ssh_session );
+             my_ssh_session=0;
+@@ -239,7 +249,7 @@ void SshConnection::run()
+         QString message=tr ( &quot;Can not connect to &quot; ) +host+&quot;:&quot;+QString::number ( port );
+         message+=&quot; - &quot;+err;
+         qDebug()&lt;&lt;message;
+-        guiInteractor-&gt;critical(message, MessageBox::OK);
++        guiInteractor-&gt;critical(this, message, MessageBox::OK);
+         emit signalError ((int)CONNECTION, message);
+         if ( reverseTunnel )
+             emit signalIoError ( reverseTunnelCreator, message, err);
+@@ -251,7 +261,7 @@ void SshConnection::run()
+     int state=serverAuth ( errMsg );
+     if ( state != SSH_SERVER_KNOWN_OK )
+     {
+-        guiInteractor-&gt;critical(errMsg, MessageBox::OK);
++        guiInteractor-&gt;critical(this, &quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot;+errMsg, MessageBox::OK);
+         emit signalError ((int)SERVERAUTH, errMsg);
+         ssh_disconnect ( my_ssh_session );
+         ssh_free ( my_ssh_session );
+@@ -275,7 +285,7 @@ void SshConnection::run()
+         if (!kerberos)
+             err=ssh_get_error ( my_ssh_session );
+         QString message=tr ( &quot;Authentication failed&quot; );
+-        guiInteractor-&gt;critical(message, MessageBox::OK);
++        guiInteractor-&gt;critical(this, &quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot;+message, MessageBox::OK);
+         message+=&quot; - &quot;+err+&quot;\n&quot;+authErrors.join ( &quot;\n&quot; );
+         qDebug()&lt;&lt;message;
+         emit signalError ((int)USERAUTH,  message );
+@@ -305,7 +315,7 @@ void SshConnection::run()
+             QString message=tr ( &quot;channel_forward_listen failed&quot; );
+             message+=&quot; - &quot;+err;
+             qDebug()&lt;&lt;message;
+-            guiInteractor-&gt;critical(message, MessageBox::OK);
++            guiInteractor-&gt;critical(this, &quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot;+message, MessageBox::OK);
+             emit signalIoError ( reverseTunnelCreator, message, err );
+             ssh_disconnect ( my_ssh_session );
+             ssh_free ( my_ssh_session );
+@@ -400,7 +410,7 @@ int SshConnection::serverAuth(QString&amp; errorMsg)
+             errorMsg= tr ( &quot;The server is unknown: &quot;)+ host+&quot;:&quot;+QString::number(port)+&quot;\n&quot;+
+                       tr(&quot;Do you trust the host key?\nPublic key hash: &quot; )+ &quot; - &quot;+hexa;
+             free ( hexa );
+-            if(guiInteractor-&gt;warning(errorMsg, MessageBox::YES| MessageBox::NO) != MessageBox::YES)
++            if(guiInteractor-&gt;warning(this, errorMsg, MessageBox::YES| MessageBox::NO) != MessageBox::YES)
+             {
+                 errorMsg=tr ( &quot;Host key verification failed&quot; );
+                 break;
+@@ -420,8 +430,12 @@ int SshConnection::serverAuth(QString&amp; errorMsg)
+ bool SshConnection::userAuth()
+ {
+     if(user.length()&lt;=0)
+-        if  (guiInteractor-&gt;input(tr(&quot;Enter user name&quot;),tr(&quot;User:&quot;),user,QLineEdit::Password)!=MessageBox::OK)
++    {
++        if  (guiInteractor-&gt;input(this, tr(&quot;Enter user name for connection to &quot;)+&quot;&lt;b&gt;&quot;+host+&quot;&lt;/b&gt;&quot;,tr(&quot;User:&quot;),
++                                  user,QLineEdit::Password)!=MessageBox::OK)
+             return false;
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_USER, user.toAscii() );
++    }
+     if ( autoLogin )
+         if ( userAuthAuto() )
+             return true;
+@@ -438,7 +452,8 @@ bool SshConnection::userAuthAuto()
+     int rc = ssh_userauth_autopubkey ( my_ssh_session, &quot;&quot; );
+     while(rc != SSH_AUTH_SUCCESS)
+     {
+-        if(guiInteractor-&gt;input(tr(&quot;Enter passphrase to decrypt a key&quot;),tr(&quot;Passphrase:&quot;), keyPhrase,QLineEdit::Password)!=MessageBox::OK)
++        if(guiInteractor-&gt;input(this, tr(&quot;Enter passphrase to decrypt a key for &quot;)+&quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&quot;,tr(&quot;Passphrase:&quot;),
++                                keyPhrase,QLineEdit::Password)!=MessageBox::OK)
+             return false;
+         rc = ssh_userauth_autopubkey ( my_ssh_session, keyPhrase.toAscii() );
+     }
+@@ -472,7 +487,8 @@ bool SshConnection::userAuthWithKey()
+     ssh_private_key prkey=privatekey_from_file(my_ssh_session, keyName.toAscii(), 0,&quot;&quot;);
+     while(!prkey)
+     {
+-        if(guiInteractor-&gt;input(tr(&quot;Enter passphrase to decrypt a key&quot;),tr(&quot;Passphrase:&quot;), keyPhrase, QLineEdit::Password)!=MessageBox::OK)
++        if(guiInteractor-&gt;input(this, tr(&quot;Enter passphrase to decrypt a key for &quot;)+&quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&quot;,
++                                tr(&quot;Passphrase:&quot;), keyPhrase, QLineEdit::Password)!=MessageBox::OK)
+             break;
+         prkey=privatekey_from_file(my_ssh_session, keyName.toAscii(), 0,keyPhrase.toAscii());
+     }
+@@ -516,13 +532,15 @@ bool SshConnection::userAuthWithKey()
+ bool SshConnection::userAuthWithPass()
+ {
+     if(pass.length()&lt;=0)
+-        if(guiInteractor-&gt;input(tr(&quot;Enter password&quot;),tr(&quot;Password:&quot;), pass, QLineEdit::Password)!=MessageBox::OK)
++        if(guiInteractor-&gt;input(this, tr(&quot;Enter password for &quot;)+&quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&quot;,tr(&quot;Password:&quot;),
++                                pass, QLineEdit::Password)!=MessageBox::OK)
+             return false;
+ 
+     int rc = ssh_userauth_password ( my_ssh_session, NULL, pass.toAscii() );
+     while ( rc != SSH_AUTH_SUCCESS )
+     {
+-        if(guiInteractor-&gt;input(tr(&quot;Enter password&quot;),tr(&quot;Password:&quot;), pass, QLineEdit::Password)!=MessageBox::OK)
++        if(guiInteractor-&gt;input(this, tr(&quot;Enter password for &quot;)+&quot;&lt;b&gt;&quot;+user+&quot;@&quot;+host+&quot;&lt;/b&gt;&quot;,tr(&quot;Password:&quot;),
++                                pass, QLineEdit::Password)!=MessageBox::OK)
+         {
+ 
+             QString err=ssh_get_error ( my_ssh_session );
+diff --git a/sshconnection.h b/sshconnection.h
+index 81171ab..80e16ca 100644
+--- a/sshconnection.h
++++ b/sshconnection.h
+@@ -145,6 +145,8 @@ private:
+     void copy();
+ protected:
+     void run();
++private slots:
++    void slotSignalInteractionRecived(SshConnection* requester);
+ signals:
+     void signalError(int, QString);
+     void signalIoError(SshProcess* caller, QString error, QString lastSessionError);
+@@ -157,6 +159,7 @@ signals:
+ 
+     void signalConnectionOk( QString host);
+     void signalReverseListenOk(SshProcess* creator);
++    void signalInteraction();
+ };
+ 
+ #endif // SSHCONNECTION_H
+diff --git a/sshconnectionguiinteraction.cpp b/sshconnectionguiinteraction.cpp
+index d70d166..3c061f8 100644
+--- a/sshconnectionguiinteraction.cpp
++++ b/sshconnectionguiinteraction.cpp
+@@ -34,41 +34,42 @@ SshConnectionGuiInteraction::~SshConnectionGuiInteraction()
+ 
+ }
+ 
+-MessageBox::Buttons SshConnectionGuiInteraction::critical(QString text, int buttons)
++MessageBox::Buttons SshConnectionGuiInteraction::critical(SshConnection* requester, QString text, int buttons)
+ {
+-    unsigned long int id=addRequest(CRITICAL, text, buttons);
++    unsigned long int id=addRequest(requester, CRITICAL, text, buttons);
+     QString input;
+     return result(id, input);
+ }
+ 
+-MessageBox::Buttons SshConnectionGuiInteraction::information(QString text, int buttons)
++MessageBox::Buttons SshConnectionGuiInteraction::information(SshConnection* requester, QString text, int buttons)
+ {
+-    unsigned long int id=addRequest(INFORMATION, text, buttons);
++    unsigned long int id=addRequest(requester, INFORMATION, text, buttons);
+     QString input;
+     return result(id, input);
+ }
+ 
+-MessageBox::Buttons SshConnectionGuiInteraction::warning(QString text, int buttons)
++MessageBox::Buttons SshConnectionGuiInteraction::warning(SshConnection* requester, QString text, int buttons)
+ {
+-    unsigned long int id=  addRequest(WARNING, text, buttons);
++    unsigned long int id=  addRequest(requester, WARNING, text, buttons);
+     QString input;
+     return result(id, input);
+ }
+ 
+ 
+-MessageBox::Buttons SshConnectionGuiInteraction::input(QString text, QString inputLabel, QString&amp; input,
++MessageBox::Buttons SshConnectionGuiInteraction::input(SshConnection* requester, QString text, QString inputLabel, QString&amp; input,
+         QLineEdit::EchoMode echoMode, QString pixPath)
+ {
+-    unsigned long int id= addRequest(INPUT, text, MessageBox::OK| MessageBox::CANCEL, inputLabel, input, echoMode, pixPath);
++    unsigned long int id= addRequest(requester, INPUT, text, MessageBox::OK| MessageBox::CANCEL, inputLabel, input, echoMode, pixPath);
+     return result(id, input);
+ }
+ 
+-long unsigned int SshConnectionGuiInteraction::addRequest(SshConnectionGuiInteraction::BoxType type,
++long unsigned int SshConnectionGuiInteraction::addRequest(SshConnection* requester, SshConnectionGuiInteraction::BoxType type,
+         QString text, int buttons, QString inputLabel,
+         QString input, QLineEdit::EchoMode echoMode,
+         QString pixPath)
+ {
+     InteractionRequest req;
++    req.requester=requester;
+     req.processed=false;
+     req.boxType=type;
+     req.text=text;
+@@ -122,6 +123,7 @@ void SshConnectionGuiInteraction::slotCheckRequests()
+     QLineEdit::EchoMode echoMode;
+     QString pixPath;
+     unsigned long int id;
++    SshConnection* requester;
+     mutex.lock();
+     foreach (InteractionRequest req, requests)
+     {
+@@ -134,11 +136,13 @@ void SshConnectionGuiInteraction::slotCheckRequests()
+         echoMode=req.echoMode;
+         pixPath=req.pixPath;
+         id=req.id;
++	requester=req.requester;
+         break;
+     }
+     mutex.unlock();
+     if(haveReq)
+     {
++        emit signalInteraction(requester);
+         switch(boxType)
+         {
+         case INFORMATION:
+diff --git a/sshconnectionguiinteraction.h b/sshconnectionguiinteraction.h
+index df462c9..3d14052 100644
+--- a/sshconnectionguiinteraction.h
++++ b/sshconnectionguiinteraction.h
+@@ -29,16 +29,17 @@ GUI thread and can not use GUI elements
+ #include &lt;QTimer&gt;
+ #include &lt;QThread&gt;
+ 
++class SshConnection;
+ class SshConnectionGuiInteraction: public QThread
+ {
+     Q_OBJECT
+ public:
+     explicit SshConnectionGuiInteraction(QObject* parent = 0);
+     virtual ~SshConnectionGuiInteraction();
+-    MessageBox::Buttons critical(QString text, int buttons);
+-    MessageBox::Buttons warning(QString text, int buttons);
+-    MessageBox::Buttons information(QString text, int buttons);
+-    MessageBox::Buttons input(QString text, QString inputLabel, QString&amp; input,
++    MessageBox::Buttons critical(SshConnection* requester, QString text, int buttons);
++    MessageBox::Buttons warning(SshConnection* requester, QString text, int buttons);
++    MessageBox::Buttons information(SshConnection* requester, QString text, int buttons);
++    MessageBox::Buttons input(SshConnection* requester, QString text, QString inputLabel, QString&amp; input,
+                               QLineEdit::EchoMode echoMode=QLineEdit::Normal, QString pixPath=QString::null);
+ private:
+     enum BoxType {WARNING, CRITICAL, INFORMATION, INPUT};
+@@ -50,6 +51,7 @@ private:
+         QString text;
+         QString inputLabel;
+         QString input;
++        SshConnection* requester;
+         QLineEdit::EchoMode echoMode;
+         QString pixPath;
+         unsigned long int id;
+@@ -62,7 +64,7 @@ private:
+     unsigned long int currentId;
+     QMutex mutex;
+ private:
+-    unsigned long int addRequest(BoxType type, QString text, int buttons, QString inputLabel=QString::null,
++    unsigned long int addRequest(SshConnection* requester, BoxType type, QString text, int buttons, QString inputLabel=QString::null,
+                                  QString input=QString::null,
+                                  QLineEdit::EchoMode echoMode=QLineEdit::Normal,
+                                  QString pixPath=QString::null);
+@@ -70,6 +72,8 @@ private:
+ 
+ private slots:
+     void slotCheckRequests();
++signals:
++    void signalInteraction(SshConnection* requester);
+ };
+ 
+ #endif // SSHCONNECTIONGUIINTERACTION_H
+diff --git a/x2gobroker.cpp b/x2gobroker.cpp
+index 555f8ff..80a1bf7 100644
+--- a/x2gobroker.cpp
++++ b/x2gobroker.cpp
+@@ -28,6 +28,8 @@
+ #include &quot;x2goclientconfig.h&quot;
+ #include &quot;messagebox.h&quot;
+ #include &quot;sshconnection.h&quot;
++#include &quot;profile.h&quot;
++#include &quot;x2gosession.h&quot;
+ 
+ X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
+ {
+@@ -50,7 +52,10 @@ X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
+     }
+     if(brokerType==SSH)
+     {
+-        sshConnection=new SshConnection(this, url.host(), url.port(), cfg-&gt;get_autoAddToKnownHosts().get_value().toBool(),
++        int port=22;
++        if(url.port()!=-1)
++            port=url.port();
++        sshConnection=new SshConnection(this, url.host(), port, cfg-&gt;get_autoAddToKnownHosts().get_value().toBool(),
+                                         user, pass, cfg-&gt;get_brokerSSHKey().get_value().toString(),
+                                         cfg-&gt;get_defaultBrockerAutoLogin().get_value().toBool());
+         connect(sshConnection, SIGNAL(signalConnectionOk(QString)), this, SLOT(slotSshConnectionOk()));
+@@ -150,6 +155,30 @@ void X2GoBroker::slotGetUserSessions()
+     }
+ }
+ 
++void X2GoBroker::selectProfile(Profile* profile)
++{
++    if(brokerType==HTTP)
++    {
++        QString req;
++        QTextStream ( &amp;req ) &lt;&lt;
++                             &quot;task=selectsession&amp;&quot;&lt;&lt;
++                             &quot;sid=&quot;&lt;&lt;profile-&gt;get_profileId()&lt;&lt;&quot;&amp;&quot;&lt;&lt;
++                             &quot;user=&quot;&lt;&lt;user&lt;&lt;&quot;&amp;&quot;&lt;&lt;
++                             &quot;password=&quot;&lt;&lt;pass&lt;&lt;&quot;&amp;&quot;&lt;&lt;
++                             &quot;authid=&quot;&lt;&lt;authId;
++        httpSessionAnswer.close();
++        httpSessionAnswer.setData ( 0,0 );
++        profile-&gt;set_brokerSelectSessionRequestId(http-&gt;post ( url.path(),req.toUtf8(),&amp;httpSessionAnswer ));
++    }
++    if(brokerType==SSH)
++    {
++        sshConnection-&gt;executeCommand ( url.path() +&quot; --authid &quot;+
++                                        X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_authId().get_value().toString()+
++                                        &quot; --task selectsession --sid \\\&quot;&quot;+profile-&gt;get_profileId()+&quot;\\\&quot;&quot;,
++                                        profile, SLOT (slotBrokerProfileSelectRequestFinished(bool, QString, int )));
++    }
++}
++
+ void X2GoBroker::slotRequestFinished(int id, bool error)
+ {
+     if ( error )
+@@ -165,10 +194,60 @@ void X2GoBroker::slotRequestFinished(int id, bool error)
+     {
+         slotListSessions(true, answer,0);
+     }
+-//     if (id == selSessRequest)
+-//     {
+-//         slotSelectSession(true,answer,0);
+-//     }
++    else
++    {
++        foreach( Profile* pr, *(X2GoApplication::instance()-&gt;getProfiles()))
++        {
++            if(pr-&gt;get_brokerSelectSessionRequestId()==id)
++            {
++                profileSelected(true, answer,0, pr);
++            }
++            break;
++        }
++    }
++}
++
++void X2GoBroker::profileSelected(bool success, QString answer, int, Profile* profile)
++{
++    if(!success)
++    {
++        MessageBox::critical(&quot;&lt;b&gt;&quot;+tr(&quot;Error&quot;)+&quot;&lt;/b&gt;&lt;br&gt;&quot;+answer,MessageBox::OK);
++        X2GoApplication::exit(-1);
++    }
++    if(!checkAccess(answer))
++    {
++        getLoginData();
++        slotGetUserSessions();
++        return;
++    }
++    QString sinfo=answer;
++    QStringList lst=sinfo.split(&quot;SERVER:&quot;,QString::SkipEmptyParts);
++    int keyStartPos=sinfo.indexOf(&quot;-----BEGIN DSA PRIVATE KEY-----&quot;);
++    if(keyStartPos==-1)
++        keyStartPos=sinfo.indexOf(&quot;-----BEGIN RSA PRIVATE KEY-----&quot;);
++    QString endStr=&quot;-----END DSA PRIVATE KEY-----&quot;;
++    int keyEndPos=sinfo.indexOf(endStr);
++    if(keyEndPos==-1)
++    {
++        endStr=&quot;-----END RSA PRIVATE KEY-----&quot;;
++        keyEndPos=sinfo.indexOf(endStr);
++    }
++    if (! (keyEndPos == -1 || keyStartPos == -1 || lst.size()==0))
++        profile-&gt;set_key(sinfo.mid(keyStartPos, keyEndPos+endStr.length()-keyStartPos));;
++    QString serverLine=(lst[1].split(&quot;\n&quot;))[0];
++    QStringList words=serverLine.split(&quot;:&quot;,QString::SkipEmptyParts);
++    profile-&gt;set_server(words[0]);
++    if (words.count()&gt;1)
++        profile-&gt;set_SSHPort(words[1].toUInt());
++
++#warning read session data for suspended sessions
++    /*    if (sinfo.indexOf(&quot;SESSION_INFO&quot;)!=-1)
++        {
++            QStringList lst=sinfo.split(&quot;SESSION_INFO:&quot;,QString::SkipEmptyParts);
++            config-&gt;sessiondata=(lst[1].split(&quot;\n&quot;))[0];
++            x2goDebug&lt;&lt;&quot;session data: &quot;&lt;&lt;config-&gt;sessiondata&lt;&lt;&quot;\n&quot;;
++        }*/
++    profile-&gt;get_session()-&gt;startSession();
+ }
+ 
+ void X2GoBroker::slotListSessions(bool success, QString answer, int)
+@@ -186,7 +265,6 @@ void X2GoBroker::slotListSessions(bool success, QString answer, int)
+     }
+     createIniFile(answer);
+     emit signalSessionsLoaded();
+-
+ }
+ 
+ void X2GoBroker::createIniFile(const QString&amp; content)
+diff --git a/x2gobroker.h b/x2gobroker.h
+index a101f40..c1d3828 100644
+--- a/x2gobroker.h
++++ b/x2gobroker.h
+@@ -29,6 +29,8 @@
+ #include &lt;QTime&gt;
+ #include &quot;x2goapplication.h&quot;
+ #include &quot;sshconnection.h&quot;
++
++class Profile;
+ class QHttp;
+ 
+ class X2GoBroker : public QObject
+@@ -39,6 +41,8 @@ class X2GoBroker : public QObject
+ public:
+     explicit X2GoBroker(QObject* parent = 0);
+     virtual ~X2GoBroker();
++    void selectProfile(Profile* profile);
++    void profileSelected( bool success, QString answer, int pid, Profile* profile);
+ private:
+     enum {SSH,HTTP} brokerType;
+     QString user;
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index 59167ba..bbd5e5e 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -64,7 +64,8 @@ SOURCES += main.cpp \
+            sessionstatusframe.cpp \
+            sessionstatusframestatus.cpp \
+            sessionstatusframeapplications.cpp \
+-           profile.cpp
++           profile.cpp \
++           x2gosession.cpp
+ 
+ HEADERS += mainwindow.h \
+            workarea.h \
+@@ -97,7 +98,8 @@ HEADERS += mainwindow.h \
+            sessionstatusframe.h \
+            sessionstatusframestatus.h \
+            sessionstatusframeapplications.h \
+-           profile.h
++           profile.h \
++           x2gosession.h
+ 
+ LIBS += -lssh
+ 
+diff --git a/x2gosession.cpp b/x2gosession.cpp
+new file mode 100644
+index 0000000..6610b49
+--- /dev/null
++++ b/x2gosession.cpp
+@@ -0,0 +1,81 @@
++/**************************************************************************
++*   Copyright (C) 2005-2013 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++#include &quot;x2gosession.h&quot;
++#include &quot;profile.h&quot;
++#include &quot;sshconnection.h&quot;
++#include &quot;x2goclientconfig.h&quot;
++#include &quot;messagebox.h&quot;
++#include &quot;workarea.h&quot;
++#include &quot;sessionform.h&quot;
++#include &quot;x2gobroker.h&quot;
++
++X2GoSession::X2GoSession(Profile* profile)
++{
++    this-&gt;profile=profile;
++    status=NOTRUNNING;
++    sshConnection=0;
++}
++
++X2GoSession::~X2GoSession()
++{
++
++}
++
++
++void X2GoSession::slotStartSession()
++{
++    status=STARTING;
++    emit signalStatusChanged(status);
++    if(sshConnection)
++        delete sshConnection;
++    if(X2GoApplication::instance()-&gt;get_broker())
++        X2GoApplication::instance()-&gt;get_broker()-&gt;selectProfile(profile);
++    else
++        startSession();
++
++}
++void X2GoSession::startSession()
++{
++    sshConnection=new SshConnection(this, profile-&gt;get_server(), profile-&gt;get_SSHPort(),
++                                    X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_autoAddToKnownHosts().get_value().toBool(),
++                                    profile-&gt;get_user(),
++                                    QString::null/*pass*/, profile-&gt;get_key(),profile-&gt;get_autoLogin(), false /*krblogin*/,
++                                    profile-&gt;get_proxy(), profile-&gt;get_proxyType(), profile-&gt;get_proxyHost(), profile-&gt;get_proxyPort(),
++                                    profile-&gt;get_proxyLogin(), QString::null/*proxyPassword*/, profile-&gt;get_proxyKey(),
++                                    profile-&gt;get_proxyAutoLogin());
++
++    connect(sshConnection, SIGNAL(signalConnectionOk(QString)), this, SLOT(slotSshConnectionOk(QString)));
++    connect(sshConnection, SIGNAL(signalError(int,QString)), this, SLOT(slotSshConnectionFailed(int,QString)));
++    sshConnection-&gt;start();
++}
++
++
++void X2GoSession::slotSshConnectionFailed(int, QString)
++{
++    status=NOTRUNNING;
++    emit signalStatusChanged(status);
++}
++
++
++void X2GoSession::slotSshConnectionOk(QString)
++{
++
++}
+diff --git a/sessionstatusframe.h b/x2gosession.h
+similarity index 66%
+copy from sessionstatusframe.h
+copy to x2gosession.h
+index 39f9be9..bc43fdc 100644
+--- a/sessionstatusframe.h
++++ b/x2gosession.h
+@@ -18,28 +18,34 @@
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ 
+-#ifndef SESSIONSTATUSFRAME_H
+-#define SESSIONSTATUSFRAME_H
++#ifndef X2GOSESSION_H
++#define X2GOSESSION_H
+ 
+-#include &lt;QFrame&gt;
+-#include &quot;ui_sessionstatusframe.h&quot;
++#include &lt;QObject&gt;
++#include &quot;x2goapplication.h&quot;
++#include &quot;sshconnection.h&quot;
+ 
+-class SessionStatusFrameStatus;
+-class SessionStatusFrameApplications;
+-
+-class SessionStatusFrame : public QFrame, public Ui_SessionStatusFrame
++class Profile;
++class X2GoSession : public QObject
+ {
+     Q_OBJECT
+ public:
+-    explicit SessionStatusFrame(QWidget* parent = 0, Qt::WindowFlags f = 0);
+-    virtual ~SessionStatusFrame();
+-private slots:
+-    void slotSetTabFrames();
+-private:
+-    void setFrame(QPushButton* button);
++    typedef enum {NOTRUNNING, STARTING, RESUMING, TERMINATING, SUSPENDING, RUNNING} SessionStatus;
+ private:
+-    SessionStatusFrameStatus* frStatus;
+-    SessionStatusFrameApplications* frApps;
++    X2GO_RO_PROPERTY(Profile*, profile)
++    X2GO_RO_PROPERTY(SessionStatus, status)
++    X2GO_RO_PROPERTY(SshConnection*, sshConnection)
++public:
++    X2GoSession(Profile* profile);
++    virtual ~X2GoSession();
++    void startSession();
++public slots:
++    void slotStartSession();
++private slots:
++    void slotSshConnectionOk(QString);
++    void slotSshConnectionFailed(int, QString errorMessage);
++signals:
++    void signalStatusChanged(X2GoSession::SessionStatus status);
+ };
+ 
+-#endif // SESSIONSTATUSFRAME_H
++#endif // X2GOSESSION_H
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004629.html">[X2Go-Commits] page changed: start
+</A></li>
+	<LI>Next message: <A HREF="004631.html">[X2Go-Commits] page changed: doc:installation:x2goserver
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4630">[ date ]</a>
+              <a href="thread.html#4630">[ thread ]</a>
+              <a href="subject.html#4630">[ subject ]</a>
+              <a href="author.html#4630">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,279 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-214-g39feab0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.99-2-214-g39feab0&In-Reply-To=%3C20110907220323.092C25DB1B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001405.html">
+   <LINK REL="Next"  HREF="001407.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-214-g39feab0</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.99-2-214-g39feab0&In-Reply-To=%3C20110907220323.092C25DB1B%40ymir%3E"
+       TITLE="[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-214-g39feab0">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Sep  8 00:03:22 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001405.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-18-g2a54f66
+</A></li>
+        <LI>Next message: <A HREF="001407.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-218-gcfbadba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1406">[ date ]</a>
+              <a href="thread.html#1406">[ thread ]</a>
+              <a href="subject.html#1406">[ subject ]</a>
+              <a href="author.html#1406">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  39feab07aa3bfaa30de5f35e7f13f2c61d435e66 (commit)
+      from  103e231b27adfe1f557cfd097eb1c4eeb853dbe4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 39feab07aa3bfaa30de5f35e7f13f2c61d435e66
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Sep 8 00:04:27 2011 +0200
+
+    Partially revert setgid changes committed earlier.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/x2goserver.install                      |    1 -
+ debian/x2goserver.postinst                     |   12 ++--
+ debian/x2goserver.postrm                       |    3 -
+ x2goserver/VERSION.x2goserver                  |    2 +-
+ x2goserver/{lib/x2goprint.pl =&gt; bin/x2goprint} |    2 +-
+ x2goserver/lib/x2gosqlitewrapper.pl            |    2 +
+ x2goserver/x2goprint.c                         |   79 ------------------------
+ 7 files changed, 10 insertions(+), 91 deletions(-)
+ rename x2goserver/{lib/x2goprint.pl =&gt; bin/x2goprint} (97%)
+ delete mode 100644 x2goserver/x2goprint.c
+
+The diff of changes is:
+diff --git a/debian/x2goserver.install b/debian/x2goserver.install
+index 9b7c34c..5f1395a 100644
+--- a/debian/x2goserver.install
++++ b/debian/x2goserver.install
+@@ -5,5 +5,4 @@ x2goserver/etc/x2gosql/sql              /etc/x2go/x2gosql/
+ x2goserver/etc/x2goserver.conf          /etc/x2go/
+ x2goserver/VERSION.x2goserver           /usr/share/x2go/versions/
+ x2goserver/x2gosqlitewrapper            /usr/lib/x2go/
+-x2goserver/x2goprint                    /usr/bin/
+ 
+diff --git a/debian/x2goserver.postinst b/debian/x2goserver.postinst
+index c3b5a3f..961fdc1 100755
+--- a/debian/x2goserver.postinst
++++ b/debian/x2goserver.postinst
+@@ -121,13 +121,13 @@ case &quot;$1&quot; in
+ 		# egid x2goprint needs write access to the spool dir
+ 		chmod 0770 /var/spool/x2goprint
+ 
+-		### setgid section for x2goprint (X2go printing)
+-
+-		# the x2goprint command can only be run by users that are in group x2goprint
+-		if ! dpkg-statoverride --list /usr/bin/x2goprint &gt;/dev/null; then
+-		    dpkg-statoverride --add --update root x2goprint 2755 /usr/bin/x2goprint
++		# we may be upgrading versions of x2goserver that had
++		# /usr/bin/x2goprint was set to setuid x2goprint.
++		if dpkg-statoverride --list /usr/bin/x2goprint &gt;/dev/null; then
++			dpkg-statoverride --remove /usr/bin/x2goprint
++			chown root:root /usr/bin/x2goprint
++			chmod 0755 /usr/bin/x2goprint
+ 		fi
+-		;;
+ 
+ 
+ 	abort-upgrade|abort-remove|abort-deconfigure)
+diff --git a/debian/x2goserver.postrm b/debian/x2goserver.postrm
+index 423d45e..e99c2c9 100755
+--- a/debian/x2goserver.postrm
++++ b/debian/x2goserver.postrm
+@@ -28,9 +28,6 @@ case &quot;$1&quot; in
+ 		getent group x2gouser &gt;/dev/null &amp;&amp; delgroup x2gouser
+ 		getent group x2gousers &gt;/dev/null &amp;&amp; delgroup x2gousers
+ 
+-		if dpkg-statoverride --list /usr/bin/x2goprint &gt;/dev/null; then
+-			dpkg-statoverride --remove /usr/bin/x2goprint
+-		fi
+ 		getent passwd x2goprint &gt;/dev/null &amp;&amp; deluser x2goprint
+ 		getent group x2goprint &gt;/dev/null &amp;&amp; delgroup x2goprint
+ 		;;
+diff --git a/x2goserver/VERSION.x2goserver b/x2goserver/VERSION.x2goserver
+index 34936c7..36a9e31 100644
+--- a/x2goserver/VERSION.x2goserver
++++ b/x2goserver/VERSION.x2goserver
+@@ -1 +1 @@
+-3.0.99.5
+\ No newline at end of file
++3.0.99.6
+\ No newline at end of file
+diff --git a/x2goserver/lib/x2goprint.pl b/x2goserver/bin/x2goprint
+similarity index 97%
+rename from x2goserver/lib/x2goprint.pl
+rename to x2goserver/bin/x2goprint
+index 8b913ea..ea35584 100755
+--- a/x2goserver/lib/x2goprint.pl
++++ b/x2goserver/bin/x2goprint
+@@ -30,7 +30,7 @@ use x2godbwrapper;
+ 
+ if (scalar(@ARGV) ==1)
+ {
+-	system (&quot;su @ARGV[0] -c \&quot;x2golistsessions --all-servers\&quot; &quot;);
++	db_listsessions_all @ARGV[0];
+ }
+ elsif (scalar(@ARGV) != 4)
+ {
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index 9e40d3e..79f10af 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -279,6 +279,7 @@ elsif($cmd eq  &quot;listsessions&quot;)
+ 
+ elsif($cmd eq  &quot;listsessions_all&quot;)
+ {
++        my $user=shift and $realuser = $user;
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid, session_id, display, server, status,
+ 	                       substr(strftime('%d.%m.%Y*%H:%M:%S',init_time),0,6)||substr(strftime('%d.%m.%Y*%H:%M:%S',init_time),9,11),
+@@ -287,6 +288,7 @@ elsif($cmd eq  &quot;listsessions_all&quot;)
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions 
+ 	                       where status !='F' and uname=? and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
++	
+ 	$sth-&gt;execute($realuser)or die;
+ 	fetchrow_printall_array($sth);
+ }
+diff --git a/x2goserver/x2goprint.c b/x2goserver/x2goprint.c
+deleted file mode 100644
+index 9151d17..0000000
+--- a/x2goserver/x2goprint.c
++++ /dev/null
+@@ -1,79 +0,0 @@
+-/*
+- * This file is part of the  X2go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
+- * Copyright (C) 2011 Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt; 
+- * Copyright (C) 2011 Moritz 'Morty' Str&#252;be &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">morty at gmx.net</A>&gt;
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the
+- * Free Software Foundation, Inc.,
+- * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * 
+- */
+-
+-#include &lt;stdio.h&gt;
+-#include &lt;stdlib.h&gt;
+-#include &lt;unistd.h&gt;
+-#include &lt;libgen.h&gt;
+-#include &lt;errno.h&gt;
+-
+-
+-int main( int argc, char *argv[] ) {
+-	char * x2goprint = NULL;
+-	size_t path_max;
+-	
+-/*
+-	The following snippet is taken from the realpath manpage
+-*/
+-#ifdef PATH_MAX
+-	path_max = PATH_MAX;
+-#else
+-	path_max = pathconf (&quot;.&quot;, _PC_PATH_MAX);
+-	if (path_max &lt;= 0){
+-		path_max = 4096;
+-	}
+-#endif
+-	{
+-		// allocate dynamic buffer in stack: this needs C99 or gnu??
+-		char buffer[path_max];
+-		ssize_t rvrl;
+-		int rvap;
+-
+-		// resolve link of /proc/self/exe to find out where we are
+-		rvrl = readlink(&quot;/proc/self/exe&quot;, buffer, path_max);
+-		if(rvrl == -1){
+-			perror(&quot;readlink(\&quot;/proc/self/exe\&quot;,buffer,path_max)&quot;);
+-			exit(EXIT_FAILURE);
+-		}
+-		if(rvrl &gt;= path_max){
+-			fprintf(stderr, &quot;Could not resolve the path of this file using \&quot;/proc/self/exe\&quot;. The path is too long (&gt; %i)&quot;, path_max);
+-			exit(EXIT_FAILURE);
+-		}
+-
+-		// derive the full path of x2goprint.pl from path of this binary
+-		rvap = asprintf(&amp;x2goprint, &quot;%s/lib/x2go/%s&quot;, dirname(dirname(buffer)), &quot;x2goprint.pl&quot;);
+-		if(rvap == -1){
+-			fprintf(stderr, &quot;Failed to allocate memory calling asprintf\n&quot;);
+-			exit(EXIT_FAILURE);
+-		}
+-
+-		// execute the script, running with user-rights of this binary 
+-		execv(x2goprint, argv);
+-
+-	}
+-
+-	// ...fail
+-	fprintf(stderr, &quot;Failed to execute %s: %s\n&quot;, x2goprint, strerror(errno));
+-	return EXIT_FAILURE;
+-
+-}
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2go Server).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001405.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-18-g2a54f66
+</A></li>
+	<LI>Next message: <A HREF="001407.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-218-gcfbadba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1406">[ date ]</a>
+              <a href="thread.html#1406">[ thread ]</a>
+              <a href="subject.html#1406">[ subject ]</a>
+              <a href="author.html#1406">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,329 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-140-gea7ea65
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.1.4-140-gea7ea65&In-Reply-To=%3C20140107152102.EFCF25E0D9%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021804.html">
+   <LINK REL="Next"  HREF="021751.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-140-gea7ea65</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.1.4-140-gea7ea65&In-Reply-To=%3C20140107152102.EFCF25E0D9%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-140-gea7ea65">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:02 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021804.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-134-ga34ffe9
+</A></li>
+        <LI>Next message: <A HREF="021751.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-148-g7067c12
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21808">[ date ]</a>
+              <a href="thread.html#21808">[ thread ]</a>
+              <a href="subject.html#21808">[ subject ]</a>
+              <a href="author.html#21808">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  ea7ea6507c14479933a643257d9496fa58727da9 (commit)
+      from  5c9619b3f1a8c241a5ede97b644c2794e512113c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    2 ++
+ x2go/backends/control/_stdout.py |   15 ++++++++++++++-
+ x2go/session.py                  |    2 +-
+ 3 files changed, 17 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9550438..59fedfd 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -46,6 +46,8 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Render and cache dictionary based published applications menu tree in
+       Python X2Go. Cache the tree once rendered.
+     - Fix availablity check of client-side folder sharing.
++    - Add support for published applications with no category submenus. Fix
++      default language in published applications menu tree.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 4366f5f..fbf0844 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -34,6 +34,7 @@ import copy
+ import string
+ import random
+ import re
++import locale
+ 
+ from gevent import socket
+ 
+@@ -596,7 +597,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return True
+         return False
+ 
+-    def get_published_applications(self, lang='en', refresh=False, raw=False, very_raw=False):
++    def get_published_applications(self, lang=None, refresh=False, raw=False, very_raw=False, max_no_submenus=0):
+         &quot;&quot;&quot;\
+         Retrieve the menu tree of published applications from X2Go server.
+ 
+@@ -619,6 +620,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
++        if defaults.X2GOCLIENT_OS != 'Windows' and lang is None:
++            lang = locale.getdefaultlocale()[0]
++        elif lang is None:
++            lang = 'en'
+ 
+         if 'X2GO_PUBLISHED_APPLICATIONS' in self._x2go_server_features:
+             if self._published_applications_menu is {} or not self._published_applications_menu.has_key(lang) or raw or very_raw or refresh:
+@@ -654,6 +659,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     self.logger('published applications query for %s finished, returning raw output' % self.profile_name, loglevel=log.loglevel_NOTICE)
+                     return _menu
+ 
++                if max_no_submenus and len(_menu) &gt; max_no_submenus:
++                    _render_submenus = True
++                else:
++                    _render_submenus = False
+ 
+                 # STAGE 3: create menu structure in a Python dictionary
+ 
+@@ -669,6 +678,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                         'System': [],
+                         'Utilities': [],
+                         'Other Applications': [],
++                        'NO_SUBMENUS': [],
+                     }
+                 }
+                 _empty_menus = _category_map[lang].keys()
+@@ -729,6 +739,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     if not _menu_entry_cat:
+                         _menu_entry_cat = 'Other Applications'
+ 
++                    if not _render_submenus:
++                        _menu_entry_cat = 'NO_SUBMENUS'
++
+                     if _menu_entry_cat in _empty_menus:
+                         _empty_menus.remove(_menu_entry_cat)
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 8a05bee..5644888 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -1225,7 +1225,7 @@ class X2goSession(object):
+             return self.terminal_session.is_desktop_session()
+         return False
+ 
+-    def get_published_applications(self, lang='en', refresh=False, raw=False, very_raw=False):
++    def get_published_applications(self, lang=None, refresh=False, raw=False, very_raw=False, max_no_submenus=0):
+         &quot;&quot;&quot;\
+         Return a list of published menu items from the X2Go server
+         for session type published applications.
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021804.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-134-ga34ffe9
+</A></li>
+	<LI>Next message: <A HREF="021751.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-148-g7067c12
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21808">[ date ]</a>
+              <a href="thread.html#21808">[ thread ]</a>
+              <a href="subject.html#21808">[ subject ]</a>
+              <a href="author.html#21808">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

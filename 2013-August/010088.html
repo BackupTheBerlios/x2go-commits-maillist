@@ -1,0 +1,798 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-6-g476605f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-6-g476605f&In-Reply-To=%3C20130819091450.807465DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010084.html">
+   <LINK REL="Next"  HREF="010089.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-6-g476605f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-6-g476605f&In-Reply-To=%3C20130819091450.807465DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-6-g476605f">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Aug 19 11:14:50 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010084.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-7-g9400264
+</A></li>
+        <LI>Next message: <A HREF="010089.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-10-g739ad7f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10088">[ date ]</a>
+              <a href="thread.html#10088">[ thread ]</a>
+              <a href="subject.html#10088">[ subject ]</a>
+              <a href="author.html#10088">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  476605f12aee58e407dba0f28e76e879b775e76a (commit)
+      from  2c7e30c92dc63ee44792d10c260411aa6965102d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 476605f12aee58e407dba0f28e76e879b775e76a
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Aug 18 20:01:02 2013 +0200
+
+    Add SSH support to X2Go Session Broker. (Fixes: #153).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ README                                             |   26 ++-
+ debian/changelog                                   |    5 +-
+ etc/x2gobroker.conf                                |    2 +-
+ sbin/x2gobroker                                    |  166 +++++++++++++-------
+ x2gobroker/agent.py                                |   21 ++-
+ x2gobroker/brokers/base_broker.py                  |   10 +-
+ x2gobroker/brokers/inifile_broker.py               |    9 +-
+ x2gobroker/{authmechs =&gt; client}/__init__.py       |    0
+ x2gobroker/{web =&gt; client}/plain.py                |  101 ++++--------
+ x2gobroker/defaults.py                             |    2 +-
+ x2gobroker/loggers.py                              |    2 +-
+ ...web_plain_base.py =&gt; test_client_plain_base.py} |   84 +++++-----
+ x2gobroker/x2gobroker_exceptions.py                |    1 +
+ 13 files changed, 236 insertions(+), 193 deletions(-)
+ copy x2gobroker/{authmechs =&gt; client}/__init__.py (100%)
+ copy x2gobroker/{web =&gt; client}/plain.py (59%)
+ copy x2gobroker/tests/{test_web_plain_base.py =&gt; test_client_plain_base.py} (56%)
+
+The diff of changes is:
+diff --git a/README b/README
+index 4675864..71e43d0 100644
+--- a/README
++++ b/README
+@@ -1,8 +1,8 @@
+ README for X2Go Session Broker
+ ==============================
+ 
+-X2Go Session Broker is a Web project that provides
+-session brokerage for X2Go via HTTP(S).
++X2Go Session Broker is an X2Go component that provides
++session brokerage for X2Go via HTTP(S) and/or SSH.
+ 
+ Dependencies:
+ 
+@@ -11,7 +11,20 @@ Dependencies:
+  * This version X2Go Session Broker works with X2Go Client
+    (&gt;= 4.0.0.0) and Python X2Go (&gt;= 0.5.0.0, not yet available)
+    as client.
+- * Python modules: python-pampy, python-netaddr
++ * Python modules:
++    - python-setuptools (build-dependency)
++    - python-argparse
++    - python-netaddr
++    - python-pampy
++    - python-paramiko
++    - python-setproctitle
++    - python-tornado
++    - python-wsgilog
++
++Extra Unittest Dependencies:
++  * Python modules:
++    - python-nose,
++    - python-paste,
+ 
+ Available features:
+ 
+@@ -32,7 +45,7 @@ Available backends:
+ 
+ Configuration files:
+ 
+-  /etc/default/x2gobroker-daemon
++  /etc/default/{x2gobroker-daemon,python-x2gobroker,x2gobroker-authservice}
+   /etc/x2go/x2gobroker.conf
+   /etc/x2go/broker/**
+ 
+@@ -56,6 +69,9 @@ Environment variables (and their defaults):
+   # path to the X2Go Session Broker's agent command
+   X2GOBROKER_AGENT_CMD=/usr/lib/x2go/x2gobroker-agent
+ 
++  # The unix socket file for communication between the broker and the authentication service.
++  X2GOBROKER_AUTHSERVICE_SOCKET=/run/x2gobroker/x2gobroker-authservice.socket
+ 
+ light+love,
+-Mike Gabriel, 20130129
++Mike Gabriel, 20130818
++
+diff --git a/debian/changelog b/debian/changelog
+index fc20c94..f4e87f8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,6 +1,7 @@
+-x2gobroker (0.0.2.4-0~x2go1) UNRELEASED; urgency=low
++x2gobroker (0.0.3.0-0~x2go1) UNRELEASED; urgency=low
+ 
+-  * New upstream version (0.0.2.4):
++  * New upstream version (0.0.3.0):
++    - Add SSH support to X2Go Session Broker. (Fixes: #153).
+     - Fix logrotate script: x2gobroker-wsgi. (Fixes: #275).
+   * /debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index c98b6e1..2337f9d 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -157,7 +157,7 @@
+ #
+ # The agent query mode can be configured on a per-broker-backend basis, the
+ # below value is the default.
+-#default-agent-query-mode=LOCAL
++#default-agent-query-mode=NONE
+ 
+ ###
+ ### BACKEND section
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index 0b130d4..99d4422 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -54,10 +54,10 @@ logger_broker.info('  X2GOBROKER_DEFAULT_BACKEND: {value}'.format(value=x2gobrok
+ logger_broker.info('  X2GOBROKER_SSL_CERTFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE))
+ logger_broker.info('  X2GOBROKER_SSL_KEYFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE))
+ 
++interactive_mode_warning = False
+ # check effective UID the broker runs as and complain appropriately...
+ if x2gobroker.defaults.X2GOBROKER_USER != x2gobroker.defaults.X2GOBROKER_DAEMON_USER and os.geteuid() != 0:
+-    logger_broker.warn('X2Go Session Broker has been started interactively by user {username}, better run as user {daemon_username}.'.format(username=x2gobroker.defaults.X2GOBROKER_USER, daemon_username=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
+-    logger_broker.info('Automatically switching to DEBUG mode due to interactive launch of this application.')
++    interactive_mode_warning = True
+ elif x2gobroker.defaults.X2GOBROKER_DAEMON_USER != 'root' and os.geteuid() == 0:
+     logger_broker.warn('X2Go Session Broker should not be run as root, better run as user {daemon_username}.'.format(daemon_username=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
+ elif os.geteuid() == 0:
+@@ -69,17 +69,29 @@ if __name__ == &quot;__main__&quot;:
+     import setproctitle
+     setproctitle.setproctitle(os.path.basename(sys.argv[0]))
+ 
+-    daemon_options = [
++    general_options = [
++        {'args':['-M','--mode'], 'default': 'SSH', 'metavar': 'BROKER_MODE', 'help': 'Mode of the X2Go Session Broker to run ins (available: SSH, HTTP)', },
+         {'args':['-C','--config-file'], 'default': None, 'metavar': 'CONFIG_FILE', 'help': 'Specify a special configuration file name, default is: {default}'.format(default=x2gobroker.defaults.X2GOBROKER_CONFIG), },
+-        {'args':['-b', '--bind'], 'default': '127.0.0.1:8080', 'metavar': 'BIND_ADDRESS', 'help': 'The [address:]port that the web.py http-engine shall bind to (default: 127.0.0.1:8080)', },
+         {'args':['-d','--debug'], 'default': False, 'action': 'store_true', 'help': 'enable debugging code; also: allow testing in web browser (make http\'s POST method available as GET method, as well)', },
+     ]
++    daemon_options = [
++        {'args':['-b', '--bind'], 'default': None, 'metavar': 'BIND_ADDRESS', 'help': 'The [address:]port that the web.py http-engine shall bind to (default: 127.0.0.1:8080)', },
++    ]
++    sshbroker_options = [
++        {'args':['--user'], 'default': None, 'metavar': 'USER_NAME', 'help': 'Operate on behalf of this user name', },
++        {'args':['--auth-cookie', '--authid', ], 'default': '127.0.0.1:8080', 'metavar': 'AUTH_ID', 'help': 'Pre-shared authentication ID', },
++        {'args':['--task'], 'default': None, 'metavar': 'BROKER_TASK', 'help': 'broker task (listsessions, selectsession, setpass, testcon', },
++        {'args':['--profile-id', '--sid', ], 'default': None, 'metavar': 'PROFILE_ID', 'help': 'for task: the profile ID selected from the list of available session profiles', },
++        {'args':['--backend'], 'default': None, 'metavar': 'BROKER_BACKEND', 'help': 'select a non-default broker backend', },
++    ]
+     p = argparse.ArgumentParser(description='X2Go Session Broker (Standalone Daemon)',\
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, \
+                                 add_help=True, argument_default=None)
+-    p_daemon = p.add_argument_group('standalone-daemon arguments')
++    p_general = p.add_argument_group('general arguments')
++    p_daemon = p.add_argument_group('arguments for standalone HTTP(s) daemon mode')
++    p_sshbroker = p.add_argument_group('arguments for command line SSH broker mode')
+ 
+-    for (p_group, opts) in ( (p_daemon, daemon_options), ):
++    for (p_group, opts) in ( (p_general, general_options), (p_daemon, daemon_options), (p_sshbroker, sshbroker_options), ):
+         for opt in opts:
+             args = opt['args']
+             del opt['args']
+@@ -94,58 +106,104 @@ if __name__ == &quot;__main__&quot;:
+     if cmdline_args.debug:
+         x2gobroker.defaults.X2GOBROKER_DEBUG = cmdline_args.debug
+ 
+-    # some people just give the port but prepend a colon, webpy does not like this, so we strip if off
+-    cmdline_args.bind = cmdline_args.bind.lstrip('*')
+-    cmdline_args.bind = cmdline_args.bind.lstrip(':')
+-
+-    if ':' in cmdline_args.bind:
+-        bind_address, bind_port = cmdline_args.bind.split(':')[0:2]
+-        bind_port = int(bind_port)
+-    else:
+-        bind_address = None
+-        bind_port = int(cmdline_args.bind)
+-
+-# import classes serving the different web.py URLs
+-import x2gobroker.web.plain
+-import x2gobroker.web.uccs
+-#import x2gobroker.web.json
+-#import x2gobroker.web.html
+-import x2gobroker.web.extras
+-
+-# define the web.py URLs
+-urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
+-         ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
+-         ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
+-         ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
+-       )
+-
+-settings = {
+-    'log_function': tornado_log_request,
+-}
++    if cmdline_args.mode.upper() not in ('SSH', 'HTTP'):
++        logger_broker.error('Invalid mode selected. Available: SSH or HTTP.')
++        sys.exit(-1)
++    elif cmdline_args.mode.upper() == 'SSH':
++        if cmdline_args.bind: logger_broker.warn('ignoring non-valid option --bind for broker mode SSH...')
++        if cmdline_args.profile_id and cmdline_args.task != 'selectsession':
++            logger_broker.warn('ignoring option --sid as it only has a meaning with ,,--task selectsession\'\'')
++        if cmdline_args.user is None:
++            cmdline_args.user = os.environ['LOGNAME']
++    elif cmdine_args.mode.upper() == 'HTTP':
++        if interactive_mode_warning:
++            logger_broker.warn('X2Go Session Broker has been started interactively by user {username}, better run as user {daemon_username}.'.format(username=x2gobroker.defaults.X2GOBROKER_USER, daemon_username=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
++            logger_broker.info('Automatically switching to DEBUG mode due to interactive launch of this application.')
++        if cmdline_args.bind is None: cmdline_args.bind = '127.0.0.1:8080'
++        if cmdline_args.user:        logger_broker.warn('ignoring non-valid option --user for broker mode HTTP...')
++        if cmdline_args.auth_cookie: logger_broker.warn('ignoring non-valid option --auth-cookie for broker mode HTTP...')
++        if cmdline_args.task:        logger_broker.warn('ignoring non-valid option --task for broker mode HTTP...')
++        if cmdline_args.profile_id:  logger_broker.warn('ignoring non-valid option --profile-id for broker mode HTTP...')
++
++        # some people just give the port but prepend a colon, webpy does not like this, so we strip if off
++        cmdline_args.bind = cmdline_args.bind.lstrip('*')
++        cmdline_args.bind = cmdline_args.bind.lstrip(':')
++
++        if ':' in cmdline_args.bind:
++            bind_address, bind_port = cmdline_args.bind.split(':')[0:2]
++            bind_port = int(bind_port)
++        else:
++            bind_address = None
++            bind_port = int(cmdline_args.bind)
++
++url = ()
++settings = {}
++
++def prep_http_mode():
++
++    global url
++    global settings
++
++    # import classes serving the different web.py URLs
++    import x2gobroker.web.plain
++    import x2gobroker.web.uccs
++    import x2gobroker.web.extras
++
++    # define the web.py URLs
++    urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
++             ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
++             ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
++             ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
++           )
++    settings = {
++        'log_function': tornado_log_request,
++    }
+ 
+ # run the web.py standalone daemon...
+ if __name__ == &quot;__main__&quot;:
+-    import tornado.web
+-    import tornado.httpserver
+-    import tornado.ioloop
+-    application = tornado.web.Application(urls, **settings)
+-    try:
+-        if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
+-            # switch on <A HREF="https://">https://</A> mode
+-            http_server = tornado.httpserver.HTTPServer(application,
+-                                                        ssl_options={
+-                                                            &quot;certfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE,
+-                                                            &quot;keyfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE,
+-                                                        },
+-            )
+-        else:
+-            # run without https
+-            http_server = tornado.httpserver.HTTPServer(application)
+-        http_server.listen(bind_port, address=bind_address)
+-        tornado.ioloop.IOLoop.instance().start()
+-    except socket.error, e:
+-        print (e)
++
++    if cmdline_args.mode.upper() == 'HTTP':
++
++        ### launch as standalone HTTP daemon ###
++
++        prep_http_mode()
++
++        import tornado.web
++        import tornado.httpserver
++        import tornado.ioloop
++        application = tornado.web.Application(urls, **settings)
++        try:
++            if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
++                # switch on <A HREF="https://">https://</A> mode
++                http_server = tornado.httpserver.HTTPServer(application,
++                                                            ssl_options={
++                                                                &quot;certfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE,
++                                                                &quot;keyfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE,
++                                                            },
++                )
++            else:
++                # run without https
++                http_server = tornado.httpserver.HTTPServer(application)
++            http_server.listen(bind_port, address=bind_address)
++            tornado.ioloop.IOLoop.instance().start()
++        except socket.error, e:
++            print (e)
++
++    elif cmdline_args.mode.upper() == 'SSH':
++
++        ### run interactively from the command line (i.e. via SSH) ###
++
++        import x2gobroker.client.plain
++        cmdline_client = x2gobroker.client.plain.X2GoBrokerClient()
++        output = cmdline_client.get(cmdline_args)
++        if output: print(output)
++
+ else:
++
++    ### launch as WSGI application ###
++
++    prep_http_mode()
++
+     import tornado.wsgi
+     import wsgilog
+     _tornado_application = tornado.wsgi.WSGIApplication(urls, **settings)
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index e88c805..639afd3 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -73,14 +73,19 @@ def call_local_broker_agent(username, mode, cmdline_args=[]):
+         cmd_line.append('\'{arg}\''.format(arg=cmdline_arg))
+ 
+     logger_broker.debug('Executing agent command locally: {cmd}'.format(cmd=&quot; &quot;.join(cmd_line)))
+-    agent_process = subprocess.Popen(cmd_line,
+-                                     stdin=None,
+-                                     stdout=subprocess.PIPE,
+-                                     stderr=subprocess.STDOUT,
+-                                     shell=False,
+-    )
+-
+-    result = agent_process.stdout.read().split('\n')
++    result = ['FAILED']
++    try:
++        agent_process = subprocess.Popen(cmd_line,
++                                         stdin=None,
++                                         stdout=subprocess.PIPE,
++                                         stderr=subprocess.STDOUT,
++                                         shell=False,
++        )
++
++        result = agent_process.stdout.read().split('\n')
++    except OSError:
++        pass
++
+     if result[0].startswith('OK'):
+         return [ r for r in result[1:] if r ]
+ 
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 16919b1..8c25da7 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -859,10 +859,12 @@ class X2GoBroker(object):
+                 remote_agent = self.get_remote_agent(profile_id)
+                 agent_query_mode = ( remote_agent == u'LOCAL') and u'LOCAL' or u'SSH'
+                 if remote_agent:
+-                    running_sessions, suspended_sessions = x2gobroker.agent.has_sessions(username, query_mode=agent_query_mode, remote_agent=remote_agent)
+-
+-                    if set(profile['host']).intersection(set(running_sessions)): profile['status'] = u'R'
+-                    if set(profile['host']).intersection(set(suspended_sessions)): profile['status'] = u'S'
++                    try:
++                        running_sessions, suspended_sessions = x2gobroker.agent.has_sessions(username, query_mode=agent_query_mode, remote_agent=remote_agent)
++                        if set(profile['host']).intersection(set(running_sessions)): profile['status'] = u'R'
++                        if set(profile['host']).intersection(set(suspended_sessions)): profile['status'] = u'S'
++                    except x2gobroker.x2gobroker_exceptions.X2GoBrokerAgentException:
++                        pass
+ 
+                 profile['host'] = [profile['host'][0]]
+                 list_of_profiles.update({profile_id: profile, })
+diff --git a/x2gobroker/brokers/inifile_broker.py b/x2gobroker/brokers/inifile_broker.py
+index a7c6537..e8113e6 100644
+--- a/x2gobroker/brokers/inifile_broker.py
++++ b/x2gobroker/brokers/inifile_broker.py
+@@ -34,6 +34,9 @@ import re
+ import base_broker as base
+ import x2gobroker.config
+ import x2gobroker.defaults
++import x2gobroker.x2gobroker_exceptions
++
++from ConfigParser import NoSectionError
+ 
+ class X2GoBroker(base.X2GoBroker):
+ 
+@@ -67,7 +70,11 @@ class X2GoBroker(base.X2GoBroker):
+ 
+     def get_profile(self, profile_id):
+ 
+-        profile = self.session_profiles.get_section(profile_id)
++        try:
++            profile = self.session_profiles.get_section(profile_id)
++        except NoSectionError:
++            raise x2gobroker.x2gobroker_exceptions.X2GoBrokerProfileException('No such session profile ID: {profile_id}'.format(profile_id=profile_id))
++
+         profile_defaults = self.get_profile_defaults()
+         for key in profile_defaults.keys():
+             if key not in profile.keys():
+diff --git a/x2gobroker/authmechs/__init__.py b/x2gobroker/client/__init__.py
+similarity index 100%
+copy from x2gobroker/authmechs/__init__.py
+copy to x2gobroker/client/__init__.py
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/client/plain.py
+similarity index 59%
+copy from x2gobroker/web/plain.py
+copy to x2gobroker/client/plain.py
+index 6fdfffe..73bc210 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/client/plain.py
+@@ -21,91 +21,52 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ # modules
++import os
+ import types
+-import tornado.web
+-from tornado.escape import native_str, parse_qs_bytes
+ 
+ # Python X2Go Broker modules
+ import x2gobroker.defaults
+ 
+ from x2gobroker.loggers import logger_broker, logger_error
+ 
+-class X2GoBrokerWeb(tornado.web.RequestHandler):
++class X2GoBrokerClient(object):
+ 
+-    http_header_items = {
+-        'Content-Type': 'text/plain; charset=utf-8',
+-        'Expires': '+1h',
+-    }
+-
+-    def _gen_http_header(self):
+-
+-        for http_header_item in self.http_header_items.keys():
+-            self.set_header(http_header_item, self.http_header_items[http_header_item])
+-
+-    def get(self, backend):
+-        if x2gobroker.defaults.X2GOBROKER_DEBUG:
+-            logger_broker.warn('GET http request detected, if unwanted: disable X2GOBROKER_DEBUG')
+-            return self.post(backend)
+-        raise tornado.web.HTTPError(405)
+-
+-    def post(self, backend):
+-
+-        self._gen_http_header()
++    def get(self, args):
++        backend = args.backend
+ 
+         if not backend:
+             backend = x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND
+-        else:
+-            backend = backend.rstrip('/')
+-            if '/' in backend:
+-                backend = backend.split('/')[0]
+ 
+         # silence pyflakes...
+         broker_backend = None
+         try:
+-            # dynamically detect broker backend from given URL
++            # dynamically detect broker backend from given backend
+             exec(&quot;import x2gobroker.brokers.{backend}_broker&quot;.format(backend=backend))
+             exec(&quot;broker_backend = x2gobroker.brokers.{backend}_broker.X2GoBroker()&quot;.format(backend=backend))
+         except ImportError:
+-            # throw a 404 if the backend does not exist
+-            raise tornado.web.HTTPError(404)
+-
+-        global_config = broker_backend.get_global_config()
+-
+-        # throw a 404 if the WebUI is not enabled
+-        if not global_config['enable-plain-output']:
+-            raise tornado.web.HTTPError(404)
+-
+-        # if the broker backend is disabled in the configuration, pretend to have nothing on offer
+-        if not broker_backend.is_enabled():
+-            raise tornado.web.HTTPError(404)
+-
+-        # FIXME: this is to work around a bug in X2Go Client (<A HREF="http://bugs.x2go.org/138">http://bugs.x2go.org/138</A>)
+-        content_type = self.request.headers.get(&quot;Content-Type&quot;, &quot;&quot;)
+-        if not content_type.startswith(&quot;application/x-www-form-urlencoded&quot;):
+-            for name, values in parse_qs_bytes(native_str(self.request.body)).iteritems():
+-                self.request.arguments.setdefault(name, []).extend(values)
+-
+-        # set the client address for the broker backend
+-        ip = self.request.remote_ip
+-        if ip:
+-            logger_broker.info('client address is {address}'.format(address=ip))
+-            broker_backend.set_client_address(ip)
+-        elif not x2gobroker.defaults.X2GOBROKER_DEBUG:
+-            # if the client IP is not set, we pretend to have nothing on offer
+-            logger_error.error('client could not provide an IP address, pretending: 404 Not Found')
+-            raise tornado.web.HTTPError(404)
+-
+-        username = self.get_argument('user', default='')
+-        password = self.get_argument('password', default='')
+-        cookie = self.get_argument('cookie', default='')
+-        task = self.get_argument('task', default='')
+-        profile_id = self.get_argument('sid', default='')
+-        new_password = self.get_argument('newpass', default='')
+-
+-        output = ''
+-
+-        logger_broker.debug ('username: {username}, password: {password}, task: {task}, profile_id: {profile_id}'.format(username=username, password='XXXXX', task=task, profile_id=profile_id))
+-        if broker_backend.check_access(username=username, password=password, cookie=cookie):
++            logger_broker.error('unknown backend: {backend}'.format(backend=backend))
++
++        if broker_backend.is_enabled():
++
++            global_config = broker_backend.get_global_config()
++
++            if os.environ.has_key('SSH_CLIENT'):
++                ip = os.environ['SSH_CLIENT']
++            else:
++                ip = '127.0.0.1'
++
++            if ip:
++                logger_broker.info('client address is {address}'.format(address=ip))
++                broker_backend.set_client_address(ip)
++
++            username = args.user
++            cookie = args.auth_cookie
++            task = args.task
++            profile_id = args.profile_id
++
++            output = ''
++
++            logger_broker.debug ('username: {username}, task: {task}, profile_id: {profile_id}'.format(username=username, task=task, profile_id=profile_id))
+ 
+             ###
+             ### CONFIRM SUCCESSFUL AUTHENTICATION FIRST
+@@ -172,8 +133,8 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+                             output += &quot;SESSION_INFO:&quot;
+                             output += profile_info['session_info'] + &quot;\n&quot;
+ 
+-            self.write(output)
+-            return
++            return output
++
++        logger_broker.warn ('broker backend ,,{backend}\'\' is disabled on this system'.format(backend=backend))
+ 
+-        raise tornado.web.HTTPError(401)
+ 
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 3ce7269..8348b47 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -128,7 +128,7 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'ignore-primary-group-memberships': True,
+         u'default-session-autologin': False,
+         u'default-authorized-keys': u'%h/.x2go/authorized_keys',
+-        u'default-agent-query-mode': u'LOCAL',
++        u'default-agent-query-mode': u'NONE',
+     },
+     'zeroconf': {
+         u'enable': True,
+diff --git a/x2gobroker/loggers.py b/x2gobroker/loggers.py
+index 1600419..dd5e258 100644
+--- a/x2gobroker/loggers.py
++++ b/x2gobroker/loggers.py
+@@ -36,7 +36,7 @@ else:
+     X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
+ 
+ # standalone daemon mode (x2gobroker-daemon) or interactive mode (called from the cmdline)?
+-if getpass.getuser() in (X2GOBROKER_DAEMON_USER, 'root'):
++if getpass.getuser() in (X2GOBROKER_DAEMON_USER, 'root') and os.path.exists(X2GOBROKER_LOGCONFIG):
+ 
+     # we run in standalone daemon mode, so let's use the system configuration for logging
+     logging.config.fileConfig(X2GOBROKER_LOGCONFIG)
+diff --git a/x2gobroker/tests/test_web_plain_base.py b/x2gobroker/tests/test_client_plain_base.py
+similarity index 56%
+copy from x2gobroker/tests/test_web_plain_base.py
+copy to x2gobroker/tests/test_client_plain_base.py
+index 91f1928..6e64441 100644
+--- a/x2gobroker/tests/test_web_plain_base.py
++++ b/x2gobroker/tests/test_client_plain_base.py
+@@ -19,22 +19,31 @@
+ 
+ import unittest
+ import tempfile
+-from paste.fixture import TestApp
+-from nose.tools import *
+-import tornado.wsgi
+ 
+ # Python X2GoBroker modules
+ import x2gobroker.defaults
+-import x2gobroker.web.plain
++import x2gobroker.client.plain
++
++from nose.tools import *
++
++class args():
++    def __init__(self):
++        self.user = None
++        self.auth_cookie = None
++        self.task = None
++        self.profile_id = None
++        self.backend = 'base'
+ 
+-urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,) ,)
+-application = tornado.wsgi.WSGIApplication(urls)
+ 
+-class TestX2GoBrokerWebPlainBase(unittest.TestCase):
++class TestX2GoBrokerClientPlainBase(unittest.TestCase):
+ 
+     ### TEST RESPONSE: is enabled?
+ 
+     def test_isenabled(self):
++
++        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
++
++        a = args()
+         _config = &quot;&quot;&quot;
+ [base]
+ enable = false
+@@ -42,11 +51,9 @@ enable = false
+         tf = tempfile.NamedTemporaryFile()
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+-        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(application)
+-        r = testApp.get('/plain/base/', expect_errors=True)
+-        assert_equal(r.status, 404)
++        r = x2gobroker.client.plain.X2GoBrokerClient().get(a)
++        assert_equal(r, None)
+         tf.close()
+         _config = &quot;&quot;&quot;
+ [base]
+@@ -55,57 +62,42 @@ enable = true
+         tf = tempfile.NamedTemporaryFile()
+         print &gt;&gt; tf, _config
+         tf.seek(0)
++        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(application)
+-        r = testApp.get('/plain/base/', expect_errors=True)
+-        assert_equal(r.status, 401)
++        r = x2gobroker.client.plain.X2GoBrokerClient().get(a)
++        assert_equal(r, &quot;Access granted\n&quot;)
+         tf.close()
++
+         x2gobroker.defaults.X2GOBROKER_CONFIG = _cf_bak
+ 
+     ### TEST RESPONSE: simple authentication (check_access)
+ 
+-    def test_checkaccess(self):
+-        testApp = TestApp(application)
+-        r = testApp.get('/plain/base/', expect_errors=True)
+-        assert_equal(r.status, 401)
+-        _config = &quot;&quot;&quot;
+-[base]
+-enable = true
+-auth-mech = testsuite
+-&quot;&quot;&quot;
+-        tf = tempfile.NamedTemporaryFile()
+-        print &gt;&gt; tf, _config
+-        tf.seek(0)
+-        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+-        x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        r = testApp.get('/plain/base/', params={'user': 'test', 'password': 'sweet', }, expect_errors=True)
+-        assert_equal(r.status, 200)
+-        r.mustcontain('Access granted')
+-        x2gobroker.defaults.X2GOBROKER_CONFIG = _cf_bak
+-
+     ### TEST TASK: listsessions (nothing should be returned for the base backend)
+ 
+     def test_listsessions(self):
++
++        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
++
++        a = args()
+         _config = &quot;&quot;&quot;
+ [base]
+ enable = true
+-auth-mech = testsuite
+ &quot;&quot;&quot;
+         tf = tempfile.NamedTemporaryFile()
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+-        _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(application)
+-        r = testApp.get('/plain/base/', params={'user': 'test', 'password': 'sweet',  'task': 'listsessions', }, expect_errors=True)
+-        assert_equal(r.status, 200)
+-        r.mustcontain('Access granted')
+-        r.mustcontain(no='START_USER_SESSIONS')
+-        r.mustcontain(no='END_USER_SESSIONS')
+-        r.mustcontain(no='&lt;BR&gt;',)
+-        r.mustcontain(no='&lt;br&gt;',)
+-        r.mustcontain(no='&lt;BR /&gt;', )
+-        r.mustcontain(no='&lt;br /&gt;', )
++
++        r = x2gobroker.client.plain.X2GoBrokerClient().get(a)
++
++        assert_true('Access granted' in r)
++        assert_false('START_USER_SESSIONS' in r)
++        assert_false('END_USER_SESSIONS' in r)
++        assert_false('&lt;BR&gt;' in r)
++        assert_false('&lt;br&gt;' in r)
++        assert_false('&lt;BR /&gt;' in r)
++        assert_false('&lt;br /&gt;' in r)
++
+         x2gobroker.defaults.X2GOBROKER_CONFIG = _cf_bak
+ 
+ 
+@@ -113,5 +105,5 @@ auth-mech = testsuite
+ def test_suite():
+     from unittest import TestSuite, makeSuite
+     suite = TestSuite()
+-    suite.addTest(makeSuite(TestX2GoBrokerWebPlainBase))
++    suite.addTest(makeSuite(TestX2GoBrokerClientPlainBase))
+     return suite
+diff --git a/x2gobroker/x2gobroker_exceptions.py b/x2gobroker/x2gobroker_exceptions.py
+index 440b797..6e68147 100644
+--- a/x2gobroker/x2gobroker_exceptions.py
++++ b/x2gobroker/x2gobroker_exceptions.py
+@@ -26,3 +26,4 @@ class X2GoBrokerBaseException(BaseException):
+         logger_error.error('An exceptional problem occurred: {exception}(&quot;{msg}&quot;)'.format(exception=type(self).__name__, msg=str(self)))
+ 
+ class X2GoBrokerAgentException(X2GoBrokerBaseException): pass
++class X2GoBrokerProfileException(X2GoBrokerBaseException): pass
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010084.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-7-g9400264
+</A></li>
+	<LI>Next message: <A HREF="010089.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-10-g739ad7f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10088">[ date ]</a>
+              <a href="thread.html#10088">[ thread ]</a>
+              <a href="subject.html#10088">[ subject ]</a>
+              <a href="author.html#10088">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

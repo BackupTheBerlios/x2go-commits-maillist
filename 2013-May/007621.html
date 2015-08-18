@@ -1,0 +1,324 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-5-g9557b67
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.6-5-g9557b67&In-Reply-To=%3C20130519110500.2F1B15DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007620.html">
+   <LINK REL="Next"  HREF="007622.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-5-g9557b67</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.6-5-g9557b67&In-Reply-To=%3C20130519110500.2F1B15DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-5-g9557b67">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:05:00 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007620.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-9-gfe61669
+</A></li>
+        <LI>Next message: <A HREF="007622.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-10-g8e73d26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7621">[ date ]</a>
+              <a href="thread.html#7621">[ thread ]</a>
+              <a href="subject.html#7621">[ subject ]</a>
+              <a href="author.html#7621">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  9557b67570875897d1f45f61f174461c45b1a7c6 (commit)
+      from  d4054a17444c93618020c4412e8b49361371f3cf (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    3 +-
+ x2gobroker/brokers/base_broker.py |   27 ++++++++++
+ x2gobroker/tests/test_utils.py    |  102 +++++++++++++++++++++++++++++++++++++
+ x2gobroker/utils.py               |   45 ++++++++++++++++
+ 4 files changed, 176 insertions(+), 1 deletion(-)
+ create mode 100644 x2gobroker/tests/test_utils.py
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a5b6be6..d8c0c3c 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -2,7 +2,8 @@ x2gobroker (0.0.0.7-0~x2go1) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+   * New upstream version (0.0.0.7):
+-    Continue development...
++    - Add algorithm to ,,normalize'' hostnames used in session profiles
++      vs. those returned by the broker agent. (Fixes: #133).
+   * /debian/control:
+     + Build-Depend on python-paste, python-nose (testsuite needs them).
+ 
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 2b10bda..081960f 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -813,10 +813,37 @@ class X2GoBroker(object):
+             remote_agent_port = profile[u'sshport']
+             remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
+ 
++        # detect best X2Go server for this user if load balancing is configured
+         if len(server_list) &gt;= 2 and username:
+ 
+             busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent = remote_agent)
+ 
++            # when detecting the server load we have to support handling of differing subdomains (config
++            # file vs. server load returned by x2gobroker agent). Best approach: all members of a multi-node
++            # server farm either (a) do not have a subdomain in their hostname or (b) the subdomain is
++            # is identical.
++
++            # Example:
++            #
++            #    ts01, ts02 - hostnames as returned by agent
++            #    ts01.intern, ts02.intern - hostnames configured in session profile option ,,host''
++            #    -&gt; this will result in the subdomain .intern being stripped off from the hostnames before detecting
++            #       the best server for this user
++
++            ### NORMALIZE (=reduce to hostname only) X2Go server names (as found in config) if possible
++            server_list_normalized, subdomains_config = x2gobroker.utils.normalize_hostnames(server_list)
++
++            ### NORMALIZE X2Go server names (as returned by x2gobroker agent)--only if the hostnames in the config share the same subdomain
++            if len(subdomains_config) == 1:
++
++                busy_servers_normalized, subdomains_agent = x2gobroker.utils.normalize_hostnames(busy_servers)
++                if len(subdomains_agent) == 1:
++
++                    # all X2Go servers in the multi-node server farm are in the same DNS subdomain
++                    # we can operate on hostname-only hostnames
++                    server_list = server_list_normalized
++                    busy_servers = busy_servers_normalized
++
+             for server in server_list:
+                 if server not in busy_servers.keys():
+                     busy_servers[server] = 0
+diff --git a/x2gobroker/tests/test_utils.py b/x2gobroker/tests/test_utils.py
+new file mode 100644
+index 0000000..871dca7
+--- /dev/null
++++ b/x2gobroker/tests/test_utils.py
+@@ -0,0 +1,102 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import unittest
++import tempfile
++
++# Python X2GoBroker modules
++import x2gobroker.utils
++
++class TestX2GoBrokerUtils(unittest.TestCase):
++
++    ### TEST FUNCTION: normalize_hostnames() with server lists (ListType)
++
++    def test_normalize_hostnames_listtype(self):
++
++        server_list = ['ts01', 'ts02', 'ts03',]
++        expected_server_list = ['ts01', 'ts02', 'ts03',]
++        server_list_n, subdomains = x2gobroker.utils.normalize_hostnames(server_list)
++        server_list_n.sort()
++        self.assertEqual(expected_server_list, server_list_n)
++        self.assertEqual([], subdomains)
++
++        server_list = ['ts01.intern', 'ts02.intern', 'ts03.intern',]
++        expected_server_list = ['ts01', 'ts02', 'ts03',]
++        server_list_n, subdomains = x2gobroker.utils.normalize_hostnames(server_list)
++        server_list_n.sort()
++        self.assertEqual(expected_server_list, server_list_n)
++        self.assertEqual(['intern'], subdomains)
++
++        server_list = ['ts01.intern', 'ts02.intern', 'ts03.extern',]
++        expected_server_list = ['ts01.intern', 'ts02.intern', 'ts03.extern',]
++        server_list_n, subdomains = x2gobroker.utils.normalize_hostnames(server_list)
++        server_list_n.sort()
++        subdomains.sort()
++        self.assertEqual(expected_server_list, server_list_n)
++        self.assertEqual(['extern', 'intern'], subdomains)
++
++        server_tuple = ('ts01.intern', 'ts02.intern', 'ts03.extern',)
++        expected_server_list = ['ts01.intern', 'ts02.intern', 'ts03.extern',]
++        server_list_n, subdomains = x2gobroker.utils.normalize_hostnames(server_tuple)
++        server_list_n.sort()
++        subdomains.sort()
++        self.assertEqual(expected_server_list, server_list_n)
++        self.assertEqual(['extern', 'intern'], subdomains)
++
++    ### TEST FUNCTION: normalize_hostnames() with server load (DictType)
++
++    def test_normalize_hostnames_dicttype(self):
++
++        server_load = {'ts01': 10, 'ts02': 20, 'ts03': 30,}
++        expected_server_load = {'ts01': 10, 'ts02': 20, 'ts03': 30,}
++        server_load_n, subdomains = x2gobroker.utils.normalize_hostnames(server_load)
++        sln_keys = server_load_n.keys()
++        esl_keys = expected_server_load.keys()
++        sln_keys.sort()
++        esl_keys.sort()
++        self.assertEqual(esl_keys, sln_keys)
++        self.assertEqual([], subdomains)
++
++        server_load = {'ts01.intern': 10, 'ts02.intern': 20, 'ts03.intern': 30,}
++        expected_server_load = {'ts01': 10, 'ts02': 20, 'ts03': 30,}
++        server_load_n, subdomains = x2gobroker.utils.normalize_hostnames(server_load)
++        sln_keys = server_load_n.keys()
++        esl_keys = expected_server_load.keys()
++        sln_keys.sort()
++        esl_keys.sort()
++        self.assertEqual(esl_keys, sln_keys)
++        self.assertEqual(['intern'], subdomains)
++
++        server_load = {'ts01.intern': 10, 'ts02.intern': 20, 'ts03.extern': 30,}
++        expected_server_load = {'ts01.intern': 10, 'ts02.intern': 20, 'ts03.extern': 30,}
++        server_load_n, subdomains = x2gobroker.utils.normalize_hostnames(server_load)
++        sln_keys = server_load_n.keys()
++        esl_keys = expected_server_load.keys()
++        sln_keys.sort()
++        esl_keys.sort()
++        subdomains.sort()
++        self.assertEqual(esl_keys, sln_keys)
++        self.assertEqual(['extern', 'intern'], subdomains)
++
++
++def test_suite():
++    from unittest import TestSuite, makeSuite
++    suite = TestSuite()
++    suite.addTest(makeSuite(TestX2GoBrokerUtils))
++    return suite
+diff --git a/x2gobroker/utils.py b/x2gobroker/utils.py
+index 79f5ed3..0874cf5 100644
+--- a/x2gobroker/utils.py
++++ b/x2gobroker/utils.py
+@@ -23,6 +23,7 @@ import os
+ import sys
+ import types
+ import locale
++import netaddr
+ import distutils.version
+ 
+ def _checkConfigFileDefaults(data_structure):
+@@ -103,3 +104,47 @@ def compare_versions(version_a, op, version_b):
+ 
+     return eval(&quot;ver_a %s ver_b&quot; % op)
+ 
++
++def normalize_hostnames(servers):
++    &quot;&quot;&quot;\
++    &quot;&quot;&quot;
++
++    # test the data type of servers
++    arg_is_dict = False
++    servers_normalized = []
++    if type(servers) is types.DictType:
++        arg_is_dict = True
++        servers_normalized = {}
++    elif type(servers) is types.TupleType:
++        servers=list(servers)
++    elif type(servers) not in (types.ListType, types.TupleType):
++        raise ValueError('only lists, tuples and dictionaries are valid for x2gobroker.utils.normalize_hostnames()')
++
++    subdomains = []
++    for server in servers:
++
++        # do not deal with IPv4 or IPv6 addresses
++        if netaddr.valid_ipv4(server) or netaddr.valid_ipv6(server):
++            continue
++        else:
++            _server = server
++            if '.' not in _server:
++                _server += '.'
++            hostname, subdomain = _server.split('.', 1)
++            if arg_is_dict:
++                servers_normalized[hostname] = servers[server]
++            else:
++                servers_normalized.append(hostname)
++
++            # collect the list of subdomains used in all server names
++            if subdomain and subdomain not in subdomains:
++                subdomains.append(subdomain)
++            # stop processing if we have more than one subdomain
++            if len(subdomains) &gt; 1:
++                break
++
++    # return the original servers dict/list/tuple
++    if len(subdomains) &gt; 1:
++        servers_normalized = servers
++
++    return servers_normalized, subdomains
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007620.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-9-gfe61669
+</A></li>
+	<LI>Next message: <A HREF="007622.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.6-10-g8e73d26
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7621">[ date ]</a>
+              <a href="thread.html#7621">[ thread ]</a>
+              <a href="subject.html#7621">[ subject ]</a>
+              <a href="author.html#7621">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

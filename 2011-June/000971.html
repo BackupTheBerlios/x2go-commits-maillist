@@ -1,0 +1,346 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-16-ga93a351
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.3-16-ga93a351&In-Reply-To=%3C20110620212345.1CD965DB38%40ymir.das-netzwerkteam.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000970.html">
+   <LINK REL="Next"  HREF="000972.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-16-ga93a351</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.3-16-ga93a351&In-Reply-To=%3C20110620212345.1CD965DB38%40ymir.das-netzwerkteam.de%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-16-ga93a351">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Jun 20 23:23:44 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000970.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.2-12-g82b4fe8
+</A></li>
+        <LI>Next message: <A HREF="000972.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.2-13-gdd455a3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#971">[ date ]</a>
+              <a href="thread.html#971">[ thread ]</a>
+              <a href="subject.html#971">[ subject ]</a>
+              <a href="author.html#971">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  a93a3515718f8308feff5a704bfded92df932e1f (commit)
+      from  116df2c20b8f779dacec59d7b389911c9f053c70 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a93a3515718f8308feff5a704bfded92df932e1f
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Jun 20 23:24:03 2011 +0200
+
+    Add X2goSession status property ,,faulty''.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/registry.py |   19 +++++++++++--------
+ x2go/session.py  |   25 +++++++++++++++++++++++--
+ 3 files changed, 35 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 28d517c..2ff1b74 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,7 @@ python-x2go (0.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix SSH authentication failures (close session on failure).
+     - Close SSH connection first, then close down SSH proxy.
+     - Make sure SSH proxy password gets forgotten between two sessions.
++    - Add X2goSession status property ,,faulty''.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Mon, 20 Jun 2011 14:16:54 +0200
+ 
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 3dec99a..e2665d7 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -106,7 +106,10 @@ class X2goSessionRegistry(object):
+         @rtype: L{X2goSession} instance
+ 
+         &quot;&quot;&quot;
+-        return self.registry[session_uuid]
++        try:
++            return self.registry[session_uuid]
++        except KeyError:
++            raise X2goSessionException('No session found for UUID %s' % session_uuid)
+ 
+     def get_profile_id(self, session_uuid):
+         &quot;&quot;&quot;\
+@@ -231,7 +234,7 @@ class X2goSessionRegistry(object):
+                 if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
+                     del self.registry[_session_uuid]
+ 
+-            elif _last_status['running'] == False and _current_status['running'] == True:
++            elif _last_status['running'] == False and _current_status['running'] == True and not _current_status['faulty']:
+                 # session has started
+                 if _last_status['connected']:
+                     if self(_session_uuid).has_terminal_session():
+@@ -252,11 +255,11 @@ class X2goSessionRegistry(object):
+                     # from a suspended state
+                     self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+ 
+-            elif _last_status['connected'] == True and (_last_status['suspended'] == False and _current_status['suspended'] == True):
++            elif _last_status['connected'] == True and (_last_status['suspended'] == False and _current_status['suspended'] == True) and not _current_status['faulty']:
+                 # session has been suspended
+                 self(_session_uuid).session_cleanup()
+                 self.client_instance.HOOK_on_session_has_been_suspended(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-            elif _last_status['connected'] == True and (_last_status['terminated'] == False and _current_status['terminated'] == True):
++            elif _last_status['connected'] == True and (_last_status['terminated'] == False and _current_status['terminated'] == True) and not _current_status['faulty']:
+                 # session has terminated
+                 self.client_instance.HOOK_on_session_has_terminated(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                 self(_session_uuid).session_cleanup()
+@@ -288,7 +291,7 @@ class X2goSessionRegistry(object):
+ 
+             # make sure the session registry gets updated before registering new session
+             # (if the server name has changed, this will kick out obsolete X2goSessions)
+-            self.update_status(profile_name=profile_name, session_list=session_list, force_update=True)
++            self.update_status(profile_name=profile_name, session_list=session_list)
+             for session_name in session_list.keys():
+                 if session_name not in _session_names:
+                     server = _ctrl_session.get_server_hostname()
+@@ -326,7 +329,7 @@ class X2goSessionRegistry(object):
+                                                      **kwargs
+                                                     )
+                         self(session_uuid).connected = True
+-            self.update_status(profile_name=profile_name, session_list=session_list, force_update=True)
++                        self.update_status(session_uuid=session_uuid, session_list=session_list, force_update=True)
+ 
+     def register(self, server, profile_id, profile_name,
+                  session_name=None,
+@@ -399,7 +402,7 @@ class X2goSessionRegistry(object):
+             self(session_uuid).update_params(_params)
+             self(session_uuid).set_server(server)
+             self(session_uuid).set_profile_name(profile_name)
+-            self.logger('using already initially-registered yet-unused session %s' % session_uuid, log.loglevel_NOTICE)
++            self.logger('using already initially-registered yet-unused session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+             return session_uuid
+ 
+         try:
+@@ -409,7 +412,7 @@ class X2goSessionRegistry(object):
+             self(session_uuid).update_params(_params)
+             self(session_uuid).set_server(server)
+             self(session_uuid).set_profile_name(profile_name)
+-            self.logger('using already registered-by-session-name session %s' % session_uuid, log.loglevel_NOTICE)
++            self.logger('using already registered-by-session-name session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+             return session_uuid
+ 
+         except X2goSessionException:
+diff --git a/x2go/session.py b/x2go/session.py
+index 4420ed2..7278e34 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -114,7 +114,7 @@ class X2goSession(object):
+                  add_to_known_hosts=False,
+                  known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+-                 virgin=True, running=None, suspended=None, terminated=None,
++                 virgin=True, running=None, suspended=None, terminated=None, faulty=None,
+                  client_instance=None,
+                  **params):
+         &quot;&quot;&quot;\
+@@ -176,6 +176,8 @@ class X2goSession(object):
+         @type suspended: C{bool}
+         @param terminated: manipulate session state &#187;terminated&#171; by giving a pre-set value
+         @type terminated: C{bool}
++        @param faulty: manipulate session state &#187;faulty&#171; by giving a pre-set value
++        @type faulty: C{bool}
+         @param client_instance: if available, the underlying L{X2goClient} instance
+         @type client_instance: C{X2goClient} instance
+         @param params: further control session, terminal session and SSH proxy class options
+@@ -197,6 +199,7 @@ class X2goSession(object):
+         self.running = running
+         self.suspended = suspended
+         self.terminated = terminated
++        self.faulty = faulty
+         self.keep_controlsession_alive = keep_controlsession_alive
+ 
+         self.profile_id = profile_id
+@@ -212,6 +215,7 @@ class X2goSession(object):
+             'running': self.running,
+             'suspended': self.suspended,
+             'terminated': self.terminated,
++            'faulty': self.faulty,
+         }
+         self._last_status = None
+ 
+@@ -286,6 +290,9 @@ class X2goSession(object):
+         @type chain_port: C{str}
+ 
+         &quot;&quot;&quot;
++        # mark session as faulty
++        self.faulty = True
++
+         if self.client_instance:
+             self.client_instance.HOOK_forwarding_tunnel_setup_failed(profile_name=self.profile_name, session_name=self.session_name, chain_host=chain_host, chain_port=chain_port)
+         else:
+@@ -391,6 +398,7 @@ class X2goSession(object):
+                     'running': self.running,
+                     'suspended': self.suspended,
+                     'terminated': self.terminated,
++                    'faulty': self.faulty,
+                 }
+                 self._last_status = None
+                 self.session_name = None
+@@ -729,6 +737,7 @@ class X2goSession(object):
+         self.running = None
+         self.suspended = None
+         self.terminated = None
++        self.faults = None
+         retval = self.control_session.disconnect()
+         try:
+             self.update_status()
+@@ -861,6 +870,7 @@ class X2goSession(object):
+                 self.running = None
+                 self.suspended = None
+                 self.terminated = None
++                self.faulty = None
+ 
+         if self.connected:
+             try:
+@@ -886,9 +896,10 @@ class X2goSession(object):
+             'running': self.running,
+             'suspended': self.suspended,
+             'terminated': self.terminated,
++            'faulty': self.faulty,
+         }
+ 
+-        if not self.connected and e:
++        if (not self.connected or self.faulty) and e:
+             raise e
+ 
+     __update_status = update_status
+@@ -953,6 +964,7 @@ class X2goSession(object):
+                 self.suspended = False
+                 self.running = True
+                 self.terminated = False
++                self.faulty = False
+ 
+                 self.terminal_session = _terminal
+                 return True
+@@ -1016,6 +1028,7 @@ class X2goSession(object):
+                 self.suspended = False
+                 self.running = True
+                 self.terminated = False
++                self.faulty = False
+ 
+                 return self.running
+             else:
+@@ -1041,6 +1054,7 @@ class X2goSession(object):
+                     self.running = False
+                     self.suspended = True
+                     self.terminated = False
++                    self.faults = False
+                     self.session_cleanup()
+                     return True
+ 
+@@ -1050,6 +1064,7 @@ class X2goSession(object):
+                     self.running = False
+                     self.suspended = True
+                     self.terminated = False
++                    self.faulty = False
+                     self.session_cleanup()
+                     return True
+ 
+@@ -1077,6 +1092,7 @@ class X2goSession(object):
+                     self.running = False
+                     self.suspended = False
+                     self.terminated = True
++                    self.faulty = False
+                     self.session_cleanup()
+                     return True
+ 
+@@ -1086,6 +1102,7 @@ class X2goSession(object):
+                     self.running = False
+                     self.suspended = False
+                     self.terminated = True
++                    self.faulty = False
+                     self.session_cleanup()
+                     return True
+             else:
+@@ -1151,6 +1168,7 @@ class X2goSession(object):
+             self.running = None
+             self.suspended = None
+             self.terminated = None
++            self.faulty = None
+         return self.connected
+     __is_connected = is_connected
+ 
+@@ -1167,6 +1185,7 @@ class X2goSession(object):
+             if self.running:
+                 self.suspended = False
+                 self.terminated = False
++                self.faulty = False
+             if self.virgin and not self.running:
+                 self.running = None
+         return self.running
+@@ -1185,6 +1204,7 @@ class X2goSession(object):
+             if self.suspended:
+                 self.running = False
+                 self.terminated = False
++                self.faulty = False
+             if self.virgin and not self.suspended:
+                 self.suspended = None
+         return self.suspended
+@@ -1203,6 +1223,7 @@ class X2goSession(object):
+             if self.terminated:
+                 self.running = False
+                 self.suspended = False
++                self.faulty = False
+             if self.virgin and not self.terminated:
+                 self.terminated = None
+         return self.has_terminated
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2go Client API).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000970.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.2-12-g82b4fe8
+</A></li>
+	<LI>Next message: <A HREF="000972.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.2-13-gdd455a3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#971">[ date ]</a>
+              <a href="thread.html#971">[ thread ]</a>
+              <a href="subject.html#971">[ subject ]</a>
+              <a href="author.html#971">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

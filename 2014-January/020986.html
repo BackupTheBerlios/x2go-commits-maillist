@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-248-g86aa11e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-248-g86aa11e&In-Reply-To=%3C20140107151759.3552F5DBAD%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020981.html">
+   <LINK REL="Next"  HREF="020991.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-248-g86aa11e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-248-g86aa11e&In-Reply-To=%3C20140107151759.3552F5DBAD%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-248-g86aa11e">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:59 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020981.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-250-g0294d5b
+</A></li>
+        <LI>Next message: <A HREF="020991.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20986">[ date ]</a>
+              <a href="thread.html#20986">[ thread ]</a>
+              <a href="subject.html#20986">[ subject ]</a>
+              <a href="author.html#20986">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  86aa11e89f7d667813ddadd61209466c57b843d7 (commit)
+      from  476c6f3d70767ca3d4fe3fe98064427d47e46d92 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/client.py   |    8 ++++++--
+ x2go/registry.py |   12 ++++++++----
+ 3 files changed, 15 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 3e16857..1ce0966 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -135,6 +135,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+       and make the notifiable via hooks.
+     - Properly set setkbd value for x2gostartagent and x2goresume-session.
+     - Fix local folder sharing when the master session changes during runtime.
++    - Add support for re-registering sessions after session profile changes.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/client.py b/x2go/client.py
+index 5bbdb17..2f50823 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -2861,21 +2861,25 @@ class X2goClient(object):
+ 
+     __update_cache_all_profiles = update_cache_all_profiles
+ 
+-    def register_available_server_sessions_by_profile_name(self, profile_name):
++    def register_available_server_sessions_by_profile_name(self, profile_name, re_register=False):
+         &quot;&quot;&quot;\
+         Register available sessions that are found on the X2Go server the profile
+         of name C{profile_name} is connected to.
+ 
+         @param profile_name: the X2Go session profile name
+         @type profile_name: C{str}
++        @param re_register: re-register available sessions, needs to be done after session profile changes
++        @type re_register: C{bool}
+ 
+         &quot;&quot;&quot;
++        if profile_name not in self.client_connected_profiles(return_profile_names=True):
++            return
+         session_list = self.list_sessions(profile_name=profile_name, 
+                                           update_sessionregistry=False,
+                                           register_sessions=False,
+                                          )
+         try:
+-            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list)
++            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list, re_register=re_register)
+         except x2go_exceptions.X2goControlSessionException:
+             self.HOOK_on_control_session_death(profile_name)
+             self.disconnect_profile(profile_name)
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 87026a4..324e2c4 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -357,7 +357,7 @@ class X2goSessionRegistry(object):
+ 
+         return True
+ 
+-    def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False):
++    def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False, re_register=False):
+         &quot;&quot;&quot;\
+         Register server-side available X2Go sessions with this L{X2goSessionRegistry} instance for a given profile name.
+ 
+@@ -366,12 +366,16 @@ class X2goSessionRegistry(object):
+         @param session_list: an optional C{X2goServerSessionList*} instance (as returned by the L{X2goClient.list_sessions()} command can
+             be passed to this method.
+         @type session_list: C{X2goServerSessionList*} instance
++        @param newly_connected: give a hint that the session profile got newly connected
++        @type newly_connected: C{bool}
++        @param re_register: re-register available sessions, needs to be done after changes to the session profile
++        @type re_register: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self._last_available_session_registration is not None:
+             _now = time.time()
+             _time_delta = _now - self._last_available_session_registration
+-            if _time_delta &lt; 2:
++            if _time_delta &lt; 2 and not re_register:
+                 self.logger('registration interval too short (%s), skipping automatic session registration...' % _time_delta, loglevel=log.loglevel_DEBUG)
+                 return
+             self._last_available_session_registration = _now
+@@ -392,7 +396,7 @@ class X2goSessionRegistry(object):
+             # (if the server name has changed, this will kick out obsolete X2goSessions)
+             self.update_status(profile_name=profile_name, session_list=session_list, force_update=True)
+             for session_name in session_list.keys():
+-                if session_name not in _session_names and not self._skip_auto_registration:
++                if (session_name not in _session_names and not self._skip_auto_registration) or re_register:
+                     server = _ctrl_session.get_server_hostname()
+                     profile_id = _ctrl_session.get_profile_id()
+ 
+@@ -421,7 +425,7 @@ class X2goSessionRegistry(object):
+                     except: pass
+ 
+                     # this if clause catches problems when x2golistsessions commands give weird results
+-                    if not self.has_session_of_session_name(session_name):
++                    if not self.has_session_of_session_name(session_name) or re_register:
+                         session_uuid = self.register(server, profile_id, profile_name,
+                                                      session_name=session_name, virgin=False,
+                                                      **kwargs
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020981.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-250-g0294d5b
+</A></li>
+	<LI>Next message: <A HREF="020991.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20986">[ date ]</a>
+              <a href="thread.html#20986">[ thread ]</a>
+              <a href="subject.html#20986">[ subject ]</a>
+              <a href="author.html#20986">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

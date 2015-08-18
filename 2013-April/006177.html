@@ -1,0 +1,297 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	6f64adfc81105b9e76c3df530ebf6a5f401f7899
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%096f64adfc81105b9e76c3df530ebf6a5f401f7899&In-Reply-To=%3C20130424164728.7DBD15DB25%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006174.html">
+   <LINK REL="Next"  HREF="006185.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	6f64adfc81105b9e76c3df530ebf6a5f401f7899</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%096f64adfc81105b9e76c3df530ebf6a5f401f7899&In-Reply-To=%3C20130424164728.7DBD15DB25%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	6f64adfc81105b9e76c3df530ebf6a5f401f7899">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Apr 24 18:47:28 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006174.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	58d01c2ab63c6e8ff3797e0b8a04117e413fa111
+</A></li>
+        <LI>Next message: <A HREF="006185.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	b3857b0cb9d0ad808a40b39ae099feaac82d8b2b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6177">[ date ]</a>
+              <a href="thread.html#6177">[ thread ]</a>
+              <a href="subject.html#6177">[ subject ]</a>
+              <a href="author.html#6177">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, x2gosession has been updated
+       via  6f64adfc81105b9e76c3df530ebf6a5f401f7899 (commit)
+      from  e552688b70889a4879ef16ce38bc8c95e6f447c7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ configure.ac |   26 ++++++++++++++++++
+ m4/gcov.m4   |   86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ m4/gtest.m4  |   63 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 175 insertions(+)
+ create mode 100644 m4/gcov.m4
+ create mode 100644 m4/gtest.m4
+
+The diff of changes is:
+diff --git a/configure.ac b/configure.ac
+index a83d9bf..cee665d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -5,6 +5,8 @@ AM_INIT_AUTOMAKE([1.11 -Wno-portability])
+ AM_SILENT_RULES([yes])
+ 
+ AC_PROG_CC
++# the Google Test targets are cpp
++AC_PROG_CXX
+ AC_PROG_LIBTOOL
+ 
+ LT_INIT([disable-static])
+@@ -46,6 +48,30 @@ else
+ fi
+ AC_SUBST(PAMMODULEDIR)
+ 
++###########################
++# Google Test Dependencies
++###########################
++
++m4_include([m4/gtest.m4])
++CHECK_GTEST
++if test &quot;x$have_gtest&quot; != &quot;xyes&quot;; then
++   AC_MSG_ERROR([tests were requested but gtest is not installed.])
++fi
++
++###########################
++# gcov coverage reporting
++###########################
++
++m4_include([m4/gcov.m4])
++AC_TDD_GCOV
++AM_CONDITIONAL([HAVE_GCOV], [test &quot;x$ac_cv_check_gcov&quot; = xyes])
++AM_CONDITIONAL([HAVE_LCOV], [test &quot;x$ac_cv_check_lcov&quot; = xyes])
++AM_CONDITIONAL([HAVE_GCOVR], [test &quot;x$ac_cv_check_gcovr&quot; = xyes])
++AC_SUBST(COVERAGE_CFLAGS)
++AC_SUBST(COVERAGE_CXXFLAGS)
++AC_SUBST(COVERAGE_LDFLAGS)
++
++
+ 
+ AC_CONFIG_FILES([
+   Makefile
+diff --git a/m4/gcov.m4 b/m4/gcov.m4
+new file mode 100644
+index 0000000..3163584
+--- /dev/null
++++ b/m4/gcov.m4
+@@ -0,0 +1,86 @@
++# Checks for existence of coverage tools:
++#  * gcov
++#  * lcov
++#  * genhtml
++#  * gcovr
++# 
++# Sets ac_cv_check_gcov to yes if tooling is present
++# and reports the executables to the variables LCOV, GCOVR and GENHTML.
++AC_DEFUN([AC_TDD_GCOV],
++[
++  AC_ARG_ENABLE(gcov,
++  AS_HELP_STRING([--enable-gcov],
++		 [enable coverage testing with gcov]),
++  [use_gcov=$enableval], [use_gcov=no])
++
++  if test &quot;x$use_gcov&quot; = &quot;xyes&quot;; then
++  # we need gcc:
++  if test &quot;$GCC&quot; != &quot;yes&quot;; then
++    AC_MSG_ERROR([GCC is required for --enable-gcov])
++  fi
++
++  # Check if ccache is being used
++  AC_CHECK_PROG(SHTOOL, shtool, shtool)
++  case `$SHTOOL path $CC` in
++    *ccache*[)] gcc_ccache=yes;;
++    *[)] gcc_ccache=no;;
++  esac
++
++  if test &quot;$gcc_ccache&quot; = &quot;yes&quot; &amp;&amp; (test -z &quot;$CCACHE_DISABLE&quot; || test &quot;$CCACHE_DISABLE&quot; != &quot;1&quot;); then
++    AC_MSG_ERROR([ccache must be disabled when --enable-gcov option is used. You can disable ccache by setting environment variable CCACHE_DISABLE=1.])
++  fi
++
++  lcov_version_list=&quot;1.6 1.7 1.8 1.9&quot;
++  AC_CHECK_PROG(LCOV, lcov, lcov)
++  AC_CHECK_PROG(GENHTML, genhtml, genhtml)
++
++  if test &quot;$LCOV&quot;; then
++    AC_CACHE_CHECK([for lcov version], glib_cv_lcov_version, [
++      glib_cv_lcov_version=invalid
++      lcov_version=`$LCOV -v 2&gt;/dev/null | $SED -e 's/^.* //'`
++      for lcov_check_version in $lcov_version_list; do
++        if test &quot;$lcov_version&quot; = &quot;$lcov_check_version&quot;; then
++          glib_cv_lcov_version=&quot;$lcov_check_version (ok)&quot;
++        fi
++      done
++    ])
++  else
++    lcov_msg=&quot;To enable code coverage reporting you must have one of the following lcov versions installed: $lcov_version_list&quot;
++    AC_MSG_ERROR([$lcov_msg])
++  fi
++
++  case $glib_cv_lcov_version in
++    &quot;&quot;|invalid[)]
++      lcov_msg=&quot;You must have one of the following versions of lcov: $lcov_version_list (found: $lcov_version).&quot;
++      AC_MSG_ERROR([$lcov_msg])
++      LCOV=&quot;exit 0;&quot;
++      ;;
++  esac
++
++  if test -z &quot;$GENHTML&quot;; then
++    AC_MSG_ERROR([Could not find genhtml from the lcov package])
++  fi
++
++  ac_cv_check_gcov=yes
++  ac_cv_check_lcov=yes
++
++  # Remove all optimization flags from CFLAGS
++  changequote({,})
++  CFLAGS=`echo &quot;$CFLAGS&quot; | $SED -e 's/-O[0-9]*//g'`
++  changequote([,])
++
++  # Add the special gcc flags
++  COVERAGE_CFLAGS=&quot;-O0 -fprofile-arcs -ftest-coverage&quot;
++  COVERAGE_CXXFLAGS=&quot;-O0 -fprofile-arcs -ftest-coverage&quot;	
++  COVERAGE_LDFLAGS=&quot;-lgcov&quot;
++
++  # Check availability of gcovr
++  AC_CHECK_PROG(GCOVR, gcovr, gcovr)
++  if test -z &quot;$GCOVR&quot;; then
++    ac_cv_check_gcovr=no
++  else
++    ac_cv_check_gcovr=yes
++  fi
++
++fi
++]) # AC_TDD_GCOV
+diff --git a/m4/gtest.m4 b/m4/gtest.m4
+new file mode 100644
+index 0000000..2de334c
+--- /dev/null
++++ b/m4/gtest.m4
+@@ -0,0 +1,63 @@
++# Copyright (C) 2012 Canonical, Ltd.
++#
++# Permission is hereby granted, free of charge, to any person obtaining a copy
++# of this software and associated documentation files (the &quot;Software&quot;), to deal
++# in the Software without restriction, including without limitation the rights
++# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++# copies of the Software, and to permit persons to whom the Software is
++# furnished to do so, subject to the following conditions:
++#
++# The above copyright notice and this permission notice (including the next
++# paragraph) shall be included in all copies or substantial portions of the
++# Software.
++#
++# THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++# SOFTWARE.
++
++# Checks whether the gtest source is available on the system. Allows for
++# adjusting the include and source path. Sets have_gtest=yes if the source is
++# present. Sets GTEST_CPPFLAGS and GTEST_SOURCE to the preprocessor flags and
++# source location respectively.
++AC_DEFUN([CHECK_GTEST],
++[
++  AC_ARG_WITH([gtest-include-path],
++              [AS_HELP_STRING([--with-gtest-include-path],
++                              [location of the Google test headers])],
++              [GTEST_CPPFLAGS=&quot;-I$withval&quot;])
++
++  AC_ARG_WITH([gtest-source-path],
++              [AS_HELP_STRING([--with-gtest-source-path],
++                              [location of the Google test sources, defaults to /usr/src/gtest])],
++              [GTEST_SOURCE=&quot;$withval&quot;],
++              [GTEST_SOURCE=&quot;/usr/src/gtest&quot;])
++
++  GTEST_CPPFLAGS=&quot;$GTEST_CPPFLAGS -I$GTEST_SOURCE&quot;
++
++  AC_LANG_PUSH([C++])
++
++  tmp_CPPFLAGS=&quot;$CPPFLAGS&quot;
++  CPPFLAGS=&quot;$CPPFLAGS $GTEST_CPPFLAGS&quot;
++
++  AC_CHECK_HEADER([gtest/gtest.h])
++
++  CPPFLAGS=&quot;$tmp_CPPFLAGS&quot;
++
++  AC_LANG_POP
++
++  AC_CHECK_FILES([$GTEST_SOURCE/src/gtest-all.cc]
++                 [$GTEST_SOURCE/src/gtest_main.cc],
++                 [have_gtest_source=yes],
++                 [have_gtest_source=no])
++
++  AS_IF([test &quot;x$ac_cv_header_gtest_gtest_h&quot; = xyes -a \
++              &quot;x$have_gtest_source&quot; = xyes],
++        [have_gtest=yes]
++        [AC_SUBST(GTEST_CPPFLAGS)]
++        [AC_SUBST(GTEST_SOURCE)],
++        [have_gtest=no])
++]) # CHECK_GTEST
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006174.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	58d01c2ab63c6e8ff3797e0b8a04117e413fa111
+</A></li>
+	<LI>Next message: <A HREF="006185.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	b3857b0cb9d0ad808a40b39ae099feaac82d8b2b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6177">[ date ]</a>
+              <a href="thread.html#6177">[ thread ]</a>
+              <a href="subject.html#6177">[ subject ]</a>
+              <a href="author.html#6177">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

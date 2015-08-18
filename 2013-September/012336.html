@@ -1,0 +1,461 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	462262d97120ce16afdc10c550d5bc4f64078187
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09462262d97120ce16afdc10c550d5bc4f64078187&In-Reply-To=%3C20130914135417.683335DB35%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012329.html">
+   <LINK REL="Next"  HREF="012337.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	462262d97120ce16afdc10c550d5bc4f64078187</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09462262d97120ce16afdc10c550d5bc4f64078187&In-Reply-To=%3C20130914135417.683335DB35%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	462262d97120ce16afdc10c550d5bc4f64078187">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:17 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012329.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	64e0edf77904253dfeb00a188b6696e7a3f4d3ff
+</A></li>
+        <LI>Next message: <A HREF="012337.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	4dfbdb8a54aad666747e2b5d3d33376da187a9ca
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12336">[ date ]</a>
+              <a href="thread.html#12336">[ thread ]</a>
+              <a href="subject.html#12336">[ subject ]</a>
+              <a href="author.html#12336">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  462262d97120ce16afdc10c550d5bc4f64078187 (commit)
+      from  4dfbdb8a54aad666747e2b5d3d33376da187a9ca (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py      |  120 ++++++++++++++++++++++++-----------------
+ pyhoca/wxgui/logon.py         |   12 +++--
+ pyhoca/wxgui/menus_taskbar.py |   16 ++++--
+ pyhoca/wxgui/taskbar.py       |   17 ++++--
+ 4 files changed, 107 insertions(+), 58 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 25012a3..ea4d702 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -93,6 +93,8 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         x2go.X2goClient.__init__(self, logger=self._pyhoca_liblogger)
+         wx.App.__init__(self)
++        # panel is a generic panel that allows to influence the mouse cursor when it hovers 
++        # above the tray icon (and any other element on the desktop we created)
+         self.Bind(wx.EVT_IDLE, self.OnIdle)
+ 
+     def OnInit(self):
+@@ -112,7 +114,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        gevent.sleep(.01)
++        gevent.sleep(.02)
+         evt.RequestMore()
+         return True
+ 
+@@ -142,6 +144,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         self._sub_windows = []
+         self._eventid_profilenames_map = {}
+         self._eventid_sessionnames_map = {}
++        self._temp_disabled_profile_names = []
+ 
+         # We register one session per available session profile.
+         # These registered sessions will be used to access the profile's 
+@@ -185,8 +188,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+     # wx.App's OnExit method
+     def OnExit(self):
+-        x2go.x2go_cleanup()
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
+ 
++        &quot;&quot;&quot;
++        x2go.x2go_cleanup()
++        wx.EndBusyCursor()
+         # close open password dialogs (or other remaining windows)
+         for _win in self._sub_windows:
+             _win.Destroy()
+@@ -247,37 +254,49 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         if not _resumed and self.start_on_connect:
+             self._start_on_connect(evt, session_uuid)
+ 
+-    def OnSessionAuthenticate(self, evt):
+-        &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
+-
+-        &quot;&quot;&quot;
+-        self.current_profile_name = self._eventid_profilenames_map[evt.GetId()]
+-        session_uuid = self._X2goClient__register_session(profile_name=self.current_profile_name)
+-
++    def _do_authenticate(self, evt, session_uuid):
++        profile_name = self.current_profile_name
+         try:
+             self._X2goClient__connect_session(session_uuid, add_to_known_hosts=True)
+             if not self._X2goClient__server_valid_x2gouser(session_uuid):
+-                self.notifier.send('%s - connect failure' % self.current_profile_name, 'User is not allowed to start X2go sessions!', icon='session_warning', timeout=10000)
++                self.notifier.send('%s - connect failure' % profile_name, 'User is not allowed to start X2go sessions!', icon='session_warning', timeout=10000)
+                 self._X2goClient__disconnect(session_uuid)
++                self._temp_disabled_profile_names.remove(profile_name)
+             else:
+-                self.notifier.send('%s - connect' % self.current_profile_name, 'Public SSH key authentication has been successful.', icon='auth_success', timeout=4000)
++                self.notifier.send('%s - connect' % profile_name, 'Public SSH key authentication has been successful.', icon='auth_success', timeout=4000)
+                 _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+                 self._post_authenticate(evt, session_uuid)
++                self._temp_disabled_profile_names.remove(profile_name)
+         except x2go.AuthenticationException:
+             self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, self.current_profile_name, caller=self )
++            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self )
+             self._sub_windows.append(_logon_window)
+         except x2go.SSHException, e:
+-            self.notifier.send('%s - connect error' % self.current_profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++            self.notifier.send('%s - connect error' % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
+         except gevent.dns.DNSError, e:
+-            self.notifier.send('%s - connect error' % self.current_profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self.notifier.send('%s - connect error' % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
+         except gevent.socket.error, e:
+-            self.notifier.send('%s - connect error' % self.current_profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self.notifier.send('%s - connect error' % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
+         except:
+-            self.notifier.send('%s - connect error' % self.current_profile_name, 'An unknown error occurred!', icon='auth_error', timeout=4000)
++            self.notifier.send('%s - connect error' % profile_name, 'An unknown error occurred during authentication!', icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        self.taskbar.SetIconIdle()
+ 
+ 
++    def OnSessionAuthenticate(self, evt):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self.current_profile_name = self._eventid_profilenames_map[evt.GetId()]
++        self.taskbar.SetIconConnecting(self.current_profile_name)
++        session_uuid = self._X2goClient__register_session(profile_name=self.current_profile_name)
++        self._temp_disabled_profile_names.append(self.current_profile_name)
++        gevent.spawn(self._do_authenticate, evt, session_uuid)
++
+     def OnSessionStart(self, evt):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -290,9 +309,6 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             gevent.spawn(self._X2goClient__start_session, session_uuid)
+             self.notifier.send(self.current_profile_name, 'New X2go session starting up...', icon='session_start', timeout=10000)
+             _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-        else:
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH session has died! Try to re-connect to the server.', icon='session_error', timeout=10000)
+-
+ 
+     def OnSessionResume(self, evt):
+         &quot;&quot;&quot;\
+@@ -305,13 +321,22 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+         if self._X2goClient__server_is_alive(session_uuid):
+             gevent.spawn(self._X2goClient__resume_session, session_uuid, session_name=session_name)
+-            self.notifier.send(self.current_profile_name, 'Resuming X2go session...\nSession: %s' % session_name, icon='session_resume', timeout=10000)
++            self.notifier.send(self.current_profile_name, 'Resuming X2go session...\n%s' % session_name, icon='session_resume', timeout=10000)
+             _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-        else:
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH session has died! Try to re-connect to the server.', icon='session_error', timeout=10000)
+         self._eventid_sessionnames_map = {}
+ 
+ 
++    def _do_suspend(self, evt, session_uuid, session_name):
++        profile_name = self.current_profile_name
++        self._X2goClient__suspend_session(session_uuid, session_name=session_name)
++        if self._X2goClient__server_is_alive(session_uuid):
++            i=0
++            while not self._X2goClient__is_session_suspended(session_uuid, session_name) and i &lt;= 10:
++                i +=1
++                gevent.sleep(1)
++            self.notifier.send(profile_name, 'X2go session has been suspended...\n%s' % session_name, icon='session_suspend', timeout=8000)
++            _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
++
+     def OnSessionSuspend(self, evt):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+@@ -321,15 +346,19 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         _control_session = self._X2goClient__client_registered_sessions_of_name(self.current_profile_name)[0]
+         session_uuid = _control_session.get_uuid()
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+-        gevent.spawn(self._X2goClient__suspend_session, session_uuid, session_name=session_name)
+-        gevent.sleep(2)
++        gevent.spawn(self._do_suspend, evt, session_uuid, session_name)
++        self._eventid_sessionnames_map = {}
++
++    def _do_terminate(self, evt, session_uuid, session_name):
++        profile_name = self.current_profile_name
++        self._X2goClient__terminate_session(session_uuid, session_name=session_name)
+         if self._X2goClient__server_is_alive(session_uuid):
+-            if self._X2goClient__is_session_suspended(session_uuid, session_name):
+-                self.notifier.send(self.current_profile_name, 'X2go session has been suspended.\nSession: %s' % session_name, icon='session_suspend', timeout=8000)
++            i=0
++            while not self._X2goClient__has_session_terminated(session_uuid, session_name) and i &lt;= 10:
++                i +=1
++                gevent.sleep(1)
++            self.notifier.send(profile_name, 'X2go session has terminated...\n%s' % session_name, icon='session_suspend', timeout=8000)
+             _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-        else:
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH transport session has died!', icon='session_error', timeout=10000)
+-        self._eventid_sessionnames_map = {}
+ 
+     def OnSessionTerminate(self, evt):
+         &quot;&quot;&quot;\
+@@ -340,15 +369,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         _control_session = self._X2goClient__client_registered_sessions_of_name(self.current_profile_name)[0]
+         session_uuid = _control_session.get_uuid()
+         session_name = self._eventid_sessionnames_map[evt.GetId()]
+-        gevent.spawn(self._X2goClient__terminate_session, session_uuid, session_name=session_name)
+-        gevent.sleep(2)
+-        if self._X2goClient__server_is_alive(session_uuid):
+-            if self._X2goClient__has_session_terminated(session_uuid, session_name):
+-                self.notifier.send(self.current_profile_name, 'X2go session has terminated.\nSession: %s' % session_name, icon='session_terminate', timeout=8000)
+-            _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-        else:
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH session has died! Try to re-connect to the server.', icon='session_error', timeout=10000)
+-
++        gevent.spawn(self._do_terminate, evt, session_uuid, session_name)
+         self._eventid_sessionnames_map = {}
+ 
+     def OnCleanSessions(self, evt):
+@@ -364,11 +385,9 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             if session_names:
+                 _notify_text = 'Cleaning X2go sessions...'
+                 for session_name in session_names:
+-                    _notify_text += '\nSession: %s' % session_name
++                    _notify_text += '\n%s' % session_name
+                 self.notifier.send(self.current_profile_name, _notify_text, icon='session_cleanall', timeout=10000)
+             gevent.spawn(self._X2goClient__clean_sessions, session_uuid)
+-        else:
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH session has died! Try to re-connect to the server.', icon='session_error', timeout=10000)
+ 
+     def OnSessionDisconnect(self, evt):
+         &quot;&quot;&quot;\
+@@ -379,16 +398,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         _control_session = self._X2goClient__client_registered_sessions_of_name(self.current_profile_name)[0]
+         session_uuid = _control_session.get_uuid()
+ 
+-        # disconnect control session
++        # disconnect all profile sessions
+         if self._X2goClient__server_is_alive(session_uuid):
+-            self._X2goClient__disconnect_session(session_uuid)
++            self._X2goClient__disconnect_profile(profile_name)
+             gevent.sleep(2)
+             if not self._X2goClient__is_session_connected(session_uuid):
+                 self.notifier.send('%s - disconnect' % self.current_profile_name, 'X2go Profile is now disconnected.', icon='auth_disconnect', timeout=4000)
+-        else:
+-            # do a disconnect anyway...
+-            self._X2goClient__disconnect_session(session_uuid)
+-            self.notifier.send(self.current_profile_name, 'Paramiko/SSH session has already died!', icon='session_warning', timeout=10000)
+ 
+     def OnProfileAdd(self, evt):
+         &quot;&quot;&quot;\
+@@ -429,3 +444,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         &quot;&quot;&quot;
+         self.OnExit(evt)
++
++    ##
++    ## Python X2go (X2goClient) notification HOOK's...
++    ##
++
++    # this hook gets called from Python X2go classes if profile_name's control session has died...
++    def HOOK_on_control_session_death(self, profile_name):
++        self.notifier.send('%s - channel error' % profile_name, 'Lost connection to server %s unexpectedly! Try to re-connect to the server...' % profile_name, icon='session_warning', timeout=10000)
++
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index a076849..dd7c366 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -99,7 +99,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+ 
+         self._PyHocaGUI = _PyHocaGUI
+         self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
+-        self._pyhoca_logger('password dialog box started', x2go.loglevel_INFO, )
++        self._pyhoca_logger('password dialog box started', loglevel=x2go.loglevel_INFO, )
+ 
+         self.current_profile_name = profile_name
+         self.current_profile_config = self._PyHocaGUI.session_profiles.get_profile_config(profile_name)
+@@ -167,6 +167,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+ 
+         session_uuid = self._PyHocaGUI._X2goClient__client_registered_sessions_of_name(self.current_profile_name)[0].get_uuid()
+         try:
++            wx.BeginBusyCursor()
+             self._PyHocaGUI._X2goClient__connect_session(session_uuid, username=username, password=password, force_password_auth=True)
+             print 'TEST: %s' % self._PyHocaGUI._X2goClient__server_valid_x2gouser(session_uuid)
+             if not self._PyHocaGUI._X2goClient__server_valid_x2gouser(session_uuid):
+@@ -201,7 +202,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         except:
+             self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
+                                              title='%s - connect error' % self.current_profile_name, 
+-                                             text='An unknown error occured!',
++                                             text='An unknown error occured during authentication!',
+                                              icon='auth_error')
+ 
+ 
+@@ -209,7 +210,8 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         if self._PyHocaGUI._X2goClient__is_session_connected(session_uuid):
+             _dummy = self._PyHocaGUI.list_sessions(session_uuid, refresh_cache=True)
+             self._PyHocaGUI._post_authenticate(evt, session_uuid)
+-
++        wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
++        wx.EndBusyCursor()
+         self.Destroy()
+ 
+     def OnCancel(self, evt):
+@@ -217,6 +219,10 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+ 
+     def Destroy(self):
+         self._PyHocaGUI._sub_windows.remove(self)
++        try:
++            self._PyHocaGUI._temp_disabled_profile_names.remove(self.current_profile_name)
++        except ValueError:
++            pass
+         wx.Dialog.Destroy(self)
+ 
+ 
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 1826b4a..eeb0e44 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -161,8 +161,8 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+ 
+         self.Append(id=ID_SESSIONSTART, text=&quot;Start &amp;new Session&quot;)
+ 
+-        _query_session = self._PyHocaGUI.client_registered_sessions_of_name(profile_name)[0]
+-        _session_list = self._PyHocaGUI.list_sessions(_query_session.get_uuid())
++        _query_session_uuid = self._PyHocaGUI.client_connected_sessions_of_name(profile_name)[0]
++        _session_list = self._PyHocaGUI.list_sessions(_query_session_uuid)
+ 
+         if _session_list:
+ 
+@@ -199,7 +199,7 @@ class PyHocaGUI_Menu_TaskbarProfileNames(wx.Menu):
+     STILL UNDOCUMENTED
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, caller=None, filter_profiles=None, bind_method=None, submenu=None):
++    def __init__(self, _PyHocaGUI, caller=None, filter_profiles=None, disabled_profiles=None, bind_method=None, submenu=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+@@ -222,6 +222,16 @@ class PyHocaGUI_Menu_TaskbarProfileNames(wx.Menu):
+                 self.Append(text=profile_name, id=_this_id)
+                 if bind_method is not None:
+                     self.Bind(wx.EVT_MENU, bind_method, id=_this_id)
++                    self._PyHocaGUI.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=_this_id)
++
++    def OnUpdateUI(self, evt):
++        profile_name = self._PyHocaGUI._eventid_profilenames_map[evt.GetId()]
++        if profile_name in self._PyHocaGUI._temp_disabled_profile_names:
++            self._pyhoca_logger('Updating UI, temporarily disabling session profile %s' % profile_name)
++            self.Enable(id=evt.GetId(), enable=False)
++        elif profile_name not in self._PyHocaGUI._temp_disabled_profile_names:
++            self._pyhoca_logger('Updating UI, re-enabling session profile %s' % profile_name)
++            self.Enable(id=evt.GetId(), enable=True)
+ 
+ 
+ class PyHocaGUI_Menu_TaskbarSessionManager(wx.Menu):
+diff --git a/pyhoca/wxgui/taskbar.py b/pyhoca/wxgui/taskbar.py
+index a2e8c9b..36b3024 100644
+--- a/pyhoca/wxgui/taskbar.py
++++ b/pyhoca/wxgui/taskbar.py
+@@ -79,17 +79,25 @@ class PyHocaGUI_TaskBarIcon(wx.TaskBarIcon):
+         self._PyHocaGUI = _PyHocaGUI
+         self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
+         self._pyhoca_logger('start TaskBarIcon of type: %s' % (wx.PlatformInfo, ), loglevel=x2go.loglevel_INFO)
+-        icon = self.MakeIcon(images.getx2goclientImage())
+-        self.SetIcon(icon, &quot;PyHoca-GUI (Python X2go Client)&quot;)
++        self.SetIconIdle()
+         self.imgidx = 1
+         self.tooltip = &quot;&quot;
+ 
++    def SetIconConnecting(self, profile_name):
++        self.icon = self.MakeIcon(images.getx2goclientImage())
++        self.SetIcon(self.icon, &quot;PyHoca-GUI - connecting to %s...&quot; % profile_name)
++
++    def SetIconIdle(self):
++        self.icon = self.MakeIcon(images.getx2goclientImage())
++        self.SetIcon(self.icon, &quot;PyHoca-GUI (Python X2go Client)&quot;)
++
+     def CreateSessionManagerPopupMenu(self, evt):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        self.PopupMenu(menus_taskbar.PyHocaGUI_Menu_TaskbarSessionManager(self._PyHocaGUI, caller=self))
++        self.menu_sessionmanager = self.PopupMenu(menus_taskbar.PyHocaGUI_Menu_TaskbarSessionManager(self._PyHocaGUI, caller=self))
++        return self.menu_sessionmanager
+ 
+     def CreatePopupMenu(self):
+         &quot;&quot;&quot;\
+@@ -101,7 +109,8 @@ class PyHocaGUI_TaskBarIcon(wx.TaskBarIcon):
+         return self.CreateProfileManagerPopupMenu()
+ 
+     def CreateProfileManagerPopupMenu(self):
+-        return menus_taskbar.PyHocaGUI_Menu_TaskbarOptionsManager(self._PyHocaGUI, caller=self)
++        self.menu_optionsmanager = menus_taskbar.PyHocaGUI_Menu_TaskbarOptionsManager(self._PyHocaGUI, caller=self)
++        return self.menu_optionsmanager
+ 
+     def MakeIcon(self, img):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012329.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	64e0edf77904253dfeb00a188b6696e7a3f4d3ff
+</A></li>
+	<LI>Next message: <A HREF="012337.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	4dfbdb8a54aad666747e2b5d3d33376da187a9ca
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12336">[ date ]</a>
+              <a href="thread.html#12336">[ thread ]</a>
+              <a href="subject.html#12336">[ subject ]</a>
+              <a href="author.html#12336">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

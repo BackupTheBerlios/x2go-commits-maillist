@@ -1,0 +1,369 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-16-gc89c4c1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.0.1-16-gc89c4c1&In-Reply-To=%3C20131204052204.F2C065DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016291.html">
+   <LINK REL="Next"  HREF="016293.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-16-gc89c4c1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.0.1-16-gc89c4c1&In-Reply-To=%3C20131204052204.F2C065DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-16-gc89c4c1">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:22:04 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016291.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-12-g06145b0
+</A></li>
+        <LI>Next message: <A HREF="016293.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-15-g76d0c2f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16292">[ date ]</a>
+              <a href="thread.html#16292">[ thread ]</a>
+              <a href="subject.html#16292">[ subject ]</a>
+              <a href="author.html#16292">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  c89c4c1b3f57a5f8fb1cf476839f48ecc54ab479 (commit)
+      from  76d0c2fb0339c299f8f9dbaa617e82439cd8dbd6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2goserver/lib/x2gosqlitewrapper.pl |  136 +++++++++++++++++++++--------------
+ 1 file changed, 84 insertions(+), 52 deletions(-)
+
+The diff of changes is:
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index 32e0b7b..c8752e1 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -39,15 +39,17 @@ my $realuser=$uname;
+ my $dbh=DBI-&gt;connect(&quot;dbi:SQLite:dbname=$dbfile&quot;,&quot;&quot;,&quot;&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 
+ my $cmd=shift or die &quot;command not specified&quot;;
+-my $rc=0
++my $rc=0;
+ 
+ if($cmd eq  &quot;rmsessionsroot&quot;)
+ {
+ 	checkroot();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id=?&quot;);
+-	$rc = $sth-&gt;execute($sid) or {
+-		syslog('error', &quot;rmsessionsroot (SQLite3 session db backend) failed with exitcode: $rc&quot;);
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;rmsessionsroot (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
+ 		die;
+ 	}
+ 	$sth-&gt;finish();
+@@ -65,9 +67,10 @@ elsif($cmd eq  &quot;listsessionsroot&quot;)
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
+ 	                       where server=?  order by status desc&quot;);
+-	$rc = $sth-&gt;execute($server) or {
+-		syslog('error', &quot;listsessionsroot (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($server);
++	if ($sth-&gt;err()) {
++		syslog('error', &quot;listsessionsroot (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	fetchrow_printall_array($sth);
+ }
+@@ -83,9 +86,11 @@ elsif($cmd eq  &quot;listsessionsroot_all&quot;)
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
+ 	                       order by status desc&quot;);
+-	$rc = $sth-&gt;execute() or {
+-		syslog('error', &quot;listsessionsroot_all (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute();
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;listsessionsroot_all (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	fetchrow_printall_array($sth);
+ }
+@@ -96,8 +101,10 @@ elsif($cmd eq  &quot;getmounts&quot;)
+ 	check_user($sid);
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id=?&quot;);
+-	$rc = $sth-&gt;execute($sid) or {
+-		syslog('error', &quot;getmounts (SQLite3 session db backend) failed with exitcode: $rc&quot;);
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getmounts (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
+ 		die;
+ 	}
+ 	fetchrow_printall_array($sth);
+@@ -109,9 +116,11 @@ elsif($cmd eq  &quot;deletemount&quot;)
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=? and path=?&quot;);
+-	$rc = $sth-&gt;execute($sid, $path) or {
+-		syslog('error', &quot;deletemount (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($sid, $path);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;deletemount (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -124,11 +133,11 @@ elsif($cmd eq  &quot;insertmount&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  (?, ?, ?)&quot;);
+ 	$sth-&gt;execute($sid, $path, $client);
+-	if(!$sth-&gt;err())
++	if(! $sth-&gt;err())
+ 	{
+ 		print &quot;ok&quot;;
+ 	} else {
+-		syslog('debug', &quot;insertmount (SQLite3 session db backend) failed with exitcode: $rc, this issue will be interpreted as: SSHFS share already mounted&quot;);
++		syslog('debug', &quot;insertmount (SQLite3 session db backend) failed with exitcode: $sth-&gt;err(), this issue will be interpreted as: SSHFS share already mounted&quot;);
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -158,9 +167,11 @@ elsif($cmd eq  &quot;createsession&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
+-	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $realuser) or {
+-		syslog('error', &quot;createsession (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;createsession (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ 	print &quot;ok&quot;;
+@@ -173,9 +184,11 @@ elsif($cmd eq  &quot;insertport&quot;)
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  (?, ?, ?)&quot;);
+ 	check_user($sid);
+-	$sth-&gt;execute($server, $sid, $sshport) or {
+-		syslog('error', &quot;insertport (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($server, $sid, $sshport);
++	if ($sth-err())
++	{
++		syslog('error', &quot;insertport (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -187,9 +200,10 @@ elsif($cmd eq  &quot;rmport&quot;)
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server=? and session_id=? and port=?&quot;);
+ 	check_user($sid);
+-	$sth-&gt;execute($server, $sid, $sshport) or {
+-		syslog('error', &quot;rmport (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($server, $sid, $sshport);
++	if ($sth-&gt;err()) {
++		syslog('error', &quot;rmport (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -204,9 +218,11 @@ elsif($cmd eq  &quot;resume&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),status='R',
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id = ? and uname=?&quot;);
+-	$sth-&gt;execute($client, $gr_port, $sound_port, $fs_port, $sid, $realuser) or {
+-		syslog('error', &quot;resume (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($client, $gr_port, $sound_port, $fs_port, $sid, $realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;resume (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -218,9 +234,11 @@ elsif($cmd eq  &quot;changestatus&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),
+ 	                       status=? where session_id = ? and uname=?&quot;);
+-	$sth-&gt;execute($status, $sid, $realuser) or {
+-		syslog('error', &quot;changestatus (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($status, $sid, $realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;changestatus (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	$sth-&gt;finish();
+ }
+@@ -230,9 +248,11 @@ elsif($cmd eq  &quot;getdisplays&quot;)
+ 	#ignore $server
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions&quot;);
+-	$sth-&gt;execute() or {
+-		syslog('error', &quot;getdisplays (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute();
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getdisplays (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	my @data;
+ 	my $i=0;
+@@ -251,9 +271,11 @@ elsif($cmd eq  &quot;getports&quot;)
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select port from used_ports&quot;);
+-	$sth-&gt;execute() or {
+-		syslog('error', &quot;getports (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute();
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getports (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	my @data;
+ 	my $i=0;
+@@ -269,9 +291,11 @@ elsif($cmd eq  &quot;getservers&quot;)
+ {
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select server,count(*) from sessions where status != 'F' group by server&quot;);
+-	$sth-&gt;execute() or {
+-		syslog('error', &quot;getservers (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute();
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getservers (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	my @data;
+ 	my $i=0;
+@@ -290,9 +314,11 @@ elsif($cmd eq  &quot;getagent&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions
+ 	                       where session_id=?&quot;);
+-	$sth-&gt;execute($sid) or {
+-		syslog('error', &quot;getagent (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getagent (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	my @data;
+ 	my $i=0;
+@@ -311,9 +337,11 @@ elsif($cmd eq  &quot;getdisplay&quot;)
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions
+ 	                       where session_id =?&quot;);
+-	$sth-&gt;execute($sid) or {
+-		syslog('error', &quot;getdisplay (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;getdisplay (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	my @data;
+ 	my $i=0;
+@@ -337,9 +365,11 @@ elsif($cmd eq  &quot;listsessions&quot;)
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
+ 	                       where status !='F' and server=? and uname=?
+ 	                       and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
+-	$sth-&gt;execute($server, $realuser) or {
+-		syslog('error', &quot;listsessions (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($server, $realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;listsessions (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	fetchrow_printall_array($sth);
+ }
+@@ -355,9 +385,11 @@ elsif($cmd eq  &quot;listsessions_all&quot;)
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions 
+ 	                       where status !='F' and uname=? and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
+ 	
+-	$sth-&gt;execute($realuser) or {
+-		syslog('error', &quot;listsessions_all (SQLite3 session db backend) failed with exitcode: $rc&quot;);
+-		die;
++	$sth-&gt;execute($realuser);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;listsessions_all (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
+ 	}
+ 	fetchrow_printall_array($sth);
+ }
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016291.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-12-g06145b0
+</A></li>
+	<LI>Next message: <A HREF="016293.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-15-g76d0c2f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16292">[ date ]</a>
+              <a href="thread.html#16292">[ thread ]</a>
+              <a href="subject.html#16292">[ subject ]</a>
+              <a href="author.html#16292">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

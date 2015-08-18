@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.7-11-g2eaa28d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20release/0.1.1.x%20%28branch%29%20updated%3A%0A%090.1.1.7-11-g2eaa28d&In-Reply-To=%3C20110927184929.088A15DB33%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001627.html">
+   <LINK REL="Next"  HREF="001629.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.7-11-g2eaa28d</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20release/0.1.1.x%20%28branch%29%20updated%3A%0A%090.1.1.7-11-g2eaa28d&In-Reply-To=%3C20110927184929.088A15DB33%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.7-11-g2eaa28d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Sep 27 20:49:28 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001627.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-61-g6126afe
+</A></li>
+        <LI>Next message: <A HREF="001629.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-12-g37b57f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1628">[ date ]</a>
+              <a href="thread.html#1628">[ thread ]</a>
+              <a href="subject.html#1628">[ subject ]</a>
+              <a href="author.html#1628">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.1.1.x has been updated
+       via  2eaa28d9aac14d7aa40f315084013bf2346665a5 (commit)
+       via  c19244a46d5323607653a98d186d9f370efcbbd9 (commit)
+      from  da6002f82aca5764b23e1bd0cf6b55fc50fe0be7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2eaa28d9aac14d7aa40f315084013bf2346665a5
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Sep 27 20:48:38 2011 +0200
+
+    Always disconnect from X2goSession instance.
+
+commit c19244a46d5323607653a98d186d9f370efcbbd9
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Sep 27 20:47:53 2011 +0200
+
+    Catch failures on sftp_write in control session instance.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    2 ++
+ x2go/backends/control/_stdout.py |   12 +++++++-----
+ x2go/session.py                  |    3 +++
+ 3 files changed, 12 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 3cea1fb..bdb7124 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -6,6 +6,8 @@ python-x2go (0.1.1.8-0-x2go1) UNRELEASED; urgency=low
+     - Unshare local folders during session cleanup.
+     - Remove local session cache folders after sessions have terminated.
+     - Fix missing import of socket module in backends/control/_stdout.py.
++    - Catch failures on sftp_write in control session instance.
++    - Always disconnect from X2goSession instance.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sun, 25 Sep 2011 02:08:11 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 25c2068..57df4f7 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -160,10 +160,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     def _x2go_sftp_write(self, remote_path, content):
+ 
+         self.logger('sFTP-write: opening remote file %s on host %s for writing' % (remote_path, self.get_transport().getpeername()), loglevel=log.loglevel_DEBUG)
+-        remote_fileobj = self.sftp_client.open(remote_path, 'w')
+-        self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
+-        remote_fileobj.write(content)
+-        remote_fileobj.close()
++        try:
++            remote_fileobj = self.sftp_client.open(remote_path, 'w')
++            self.logger('sFTP-write: writing content: %s' % content, loglevel=log.loglevel_DEBUG_SFTPXFER)
++            remote_fileobj.write(content)
++            remote_fileobj.close()
++        except SSHException:
++            self.logger('sFTP-write: opening remote file %s on host %s failed' % (remote_path, self.get_transport().getpeername()), loglevel=log.loglevel_WARN)
+ 
+     def _x2go_sftp_remove(self, remote_path):
+ 
+@@ -495,7 +498,6 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self.session_died = False
+ 
+         if not self.home_exists():
+-            self.disconnect()
+             raise x2go_exceptions.X2goRemoteHomeException('remote home directory does not exist')
+ 
+         return (self.get_transport() is not None)
+diff --git a/x2go/session.py b/x2go/session.py
+index f700c03..f8d2ace 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -773,6 +773,9 @@ class X2goSession(object):
+                                                               **_params)
+             except X2goControlSessionException, e:
+                 raise X2goSessionException(str(e))
++            except X2goRemoteHomeException, e:
++                self.disconnect()
++                raise e
+             except:
+                 # remove credentials immediately
+                 self.control_params['password'] = ''
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2go Client API).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001627.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-61-g6126afe
+</A></li>
+	<LI>Next message: <A HREF="001629.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-12-g37b57f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1628">[ date ]</a>
+              <a href="thread.html#1628">[ thread ]</a>
+              <a href="subject.html#1628">[ subject ]</a>
+              <a href="author.html#1628">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

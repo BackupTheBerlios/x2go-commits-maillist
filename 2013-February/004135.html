@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] nx-libs.git - master (branch) updated:	redist-server/3.5.0.17-5-gd439556
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-February/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20master%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.17-5-gd439556&In-Reply-To=%3C20130212071205.C98495DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004134.html">
+   <LINK REL="Next"  HREF="004136.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] nx-libs.git - master (branch) updated:	redist-server/3.5.0.17-5-gd439556</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20master%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.17-5-gd439556&In-Reply-To=%3C20130212071205.C98495DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] nx-libs.git - master (branch) updated:	redist-server/3.5.0.17-5-gd439556">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Feb 12 08:12:05 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004134.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.1.1-43-ga93d4f2
+</A></li>
+        <LI>Next message: <A HREF="004136.html">[X2go-Commits] nx-libs.git - master (branch) updated:	redist-server/3.5.0.17-6-g258902b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4135">[ date ]</a>
+              <a href="thread.html#4135">[ thread ]</a>
+              <a href="subject.html#4135">[ subject ]</a>
+              <a href="author.html#4135">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d439556ff1b83aecb10991cf0f031fd4da23494e (commit)
+      from  cf521a4b6c4362a7160adbbcc83e3771e671d5d4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d439556ff1b83aecb10991cf0f031fd4da23494e
+Author: Orion Poplawski &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">orion at cora.nwra.com</A>&gt;
+Date:   Tue Feb 12 08:13:37 2013 +0100
+
+    Fix wrong symlink direction of libNX_* files. (Fixes: #107).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/Makefile.nx-libs |   14 +++++---------
+ debian/changelog        |    4 ++++
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/Makefile.nx-libs b/debian/Makefile.nx-libs
+index 93c7627..74f0d3a 100644
+--- a/debian/Makefile.nx-libs
++++ b/debian/Makefile.nx-libs
+@@ -92,22 +92,18 @@ install-full:
+ 	# copy headers (for libnx-x11-dev)
+ 	cp -aL nx-X11/exports/include/* nx-X11/.build-exports/include
+ 
+-	# copy libs (for libnx-x11)
+-	find nx-X11/exports/lib/ | egrep &quot;^.*\.so$$&quot; | while read libpath; do \
++	# copy libs (for libnx-x11), we want the targets of the links
++	find nx-X11/exports/lib/ | grep -F &quot;.so&quot; | while read libpath; do \
+ 	    libfile=$$(basename $$libpath); \
+ 	    libdir=$$(dirname $$libpath); \
++	    link=$$(readlink $$libpath); \
+ 	\
+ 	    mkdir -p $${libdir//exports/.build-exports}; \
+-	    cp -L $$libpath $${libdir//exports/.build-exports}; \
+-	\
+-	    find $$libdir/$$libfile.* | while read symlink; do \
+-	        ln -s $$libfile $${libdir//exports/.build-exports}/$$(basename $$symlink); \
+-	    done; \
++	    cp -a $${libpath/$$libfile/$$link} $${libdir//exports/.build-exports}; \
+ 	done;
+ 
+ 	$(INSTALL_DIR) $(DESTDIR)$(NXLIBDIR)/X11
+-	$(INSTALL_FILE) nx-X11/.build-exports/lib/*.so $(DESTDIR)$(NXLIBDIR)/X11/
+-	$(COPY_SYMLINK) nx-X11/.build-exports/lib/*.so.* $(DESTDIR)$(NXLIBDIR)/X11/
++	$(COPY_SYMLINK) nx-X11/.build-exports/lib/*.so* $(DESTDIR)$(NXLIBDIR)/X11/
+ 
+ 	find nx-X11/.build-exports/include/ -type d | grep -v &quot;include/X11/bitmaps&quot; | \
+ 	    while read dirname; do \
+diff --git a/debian/changelog b/debian/changelog
+index b7f95fe..e437dc2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,8 +1,12 @@
+ nx-libs (2:3.5.0.18-0) UNRELEASED; urgency=low
+ 
++  [ Mike Gabriel ]
+   * Remove duplicate install of nxproxy from main Makefile. Spotted by Jan
+     Engelhard.
+ 
++  [ Orion Poplawski ]
++  * Fix wrong symlink direction of libNX_* files. (Fixes: #107).
++
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Fri, 04 Jan 2013 13:27:05 +0100
+ 
+ nx-libs (2:3.5.0.17-0) unstable; urgency=low
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004134.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.1.1-43-ga93d4f2
+</A></li>
+	<LI>Next message: <A HREF="004136.html">[X2go-Commits] nx-libs.git - master (branch) updated:	redist-server/3.5.0.17-6-g258902b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4135">[ date ]</a>
+              <a href="thread.html#4135">[ thread ]</a>
+              <a href="subject.html#4135">[ subject ]</a>
+              <a href="author.html#4135">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

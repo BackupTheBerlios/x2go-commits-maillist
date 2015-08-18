@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-219-g7f7ec2c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-219-g7f7ec2c&In-Reply-To=%3C20131204052134.D02BA5DB41%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016017.html">
+   <LINK REL="Next"  HREF="016021.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-219-g7f7ec2c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-219-g7f7ec2c&In-Reply-To=%3C20131204052134.D02BA5DB41%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-219-g7f7ec2c">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:21:34 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016017.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-212-g7c22803
+</A></li>
+        <LI>Next message: <A HREF="016021.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-214-g39feab0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16020">[ date ]</a>
+              <a href="thread.html#16020">[ thread ]</a>
+              <a href="subject.html#16020">[ subject ]</a>
+              <a href="author.html#16020">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  7f7ec2c82959950ef5ef2186b2c2ff658f8508ca (commit)
+      from  cfbadbad8aa07a623c38313799170feae6f63936 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    1 +
+ x2goserver/bin/x2goprint |   68 +++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 53 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 8a9626e..87b6158 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -35,6 +35,7 @@ x2goserver (3.0.99.5-0~x2go3) UNRELEASED; urgency=low
+   * Create x2goprint user/group on package installation, add same info to 
+     INSTALL howto.
+   * Add sanity checks to x2goprint, script can only be run as root.
++  * Fix x2goprint, add syslogging, add inline comments.
+ 
+   [ Martin Oehler ]
+   * Removes old debug code fragment, fixes x2golistsessions parsing.
+diff --git a/x2goserver/bin/x2goprint b/x2goserver/bin/x2goprint
+index 89028af..8d0da56 100755
+--- a/x2goserver/bin/x2goprint
++++ b/x2goserver/bin/x2goprint
+@@ -23,44 +23,57 @@
+ use File::Basename;
+ use File::Copy;
+ use File::Path;
++use Sys::Syslog qw( :DEFAULT setlogsock);
+ use strict;
+ 
+ use lib `echo -n \$(x2gobasepath)/lib/x2go`;
+ use x2godbwrapper;
+ 
++setlogsock('unix');
++openlog($0,'cons,pid','user');
++
+ sub check_root
+ {
+ 	my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid($&lt;);
+ 	my $realuser=$uname;
+ 	if ($realuser ne &quot;root&quot;)
+ 	{
++		syslog('err', &quot;x2goprint was called by user $realuser directly, x2goprint exits now!&quot;);
+ 		die &quot;$realuser, you cannot use x2goprint as non-root user...&quot;;
+ 	}
+ }
+ 
+-sub usage
++sub check_usage
+ {
+ 	if (scalar(@ARGV) == 1)
+ 	{
++		syslog('info', &quot;x2goprint was called with only one cmd line arg, running in x2golistsessions wrapper mode&quot;);
+ 		system (&quot;su @ARGV[0] -c \&quot;x2golistsessions --all-servers\&quot;&quot;);
+ 		exit 0;
+ 	}
+ 	elsif (scalar(@ARGV) != 4)
+ 	{
++		syslog('err', &quot;x2goprint was called with a wrong number of cmd line args, x2goprint exits now!&quot;);
+ 		print STDERR &quot;ERROR: Usage:\nx2goprint user session file titleFile\nx2goprint user\n&quot;;
+ 		exit 1;
+ 	}
+ }
+ 
++# sanity check, this script has to be run with root privileges
+ check_root();
+-usage();
+ 
+-my ($user, $session, $file, $titleFile)=@ARGV;
++# check number of cmd line args
++check_usage();
++
++# get options from the command line
++my ($user, $session, $pdfFile, $titleFile)=@ARGV;
+ 
++# location for incoming jobs is ~x2goprint
+ my ($tm,$tm,$uid,$gid,$tm,$tm,$tm,$homedir)=getpwnam(&quot;x2goprint&quot;);
+ my $printdir=$homedir;
+ 
+-my $title;
++# extract necessary information from title file and drop it afterwards
++my $title='UNTITLED';
+ if( -e &quot;$printdir/$titleFile&quot;)
+ {
+ 	open (TITLE,&quot;&lt;$printdir/$titleFile&quot;);
+@@ -68,8 +81,11 @@ if( -e &quot;$printdir/$titleFile&quot;)
+ 	close (TITLE);
+ 	unlink(&quot;$printdir/$titleFile&quot;);
+ }
++syslog('info', &quot;x2goprint is processing $printdir/$pdfFile with print job title ,,$title\''&quot;);
+ 
+-
++# temp location for placing incoming spool files, so that
++# they can can be picked by the session user and further processed
++# with user privileges
+ ($tm,$tm,$uid,$gid,$tm,$tm,$tm,$homedir)=getpwnam($user);
+ 
+ my $spoolbase=&quot;/tmp/spool_$user&quot;;
+@@ -79,21 +95,41 @@ mkpath($spooltmp);
+ chown $uid, $gid, &quot;$spooltmp&quot;;
+ chmod 0700, &quot;$spooltmp&quot;;
+ 
++# this last part mainly uses the session user's privileges
+ my ($mounts)=db_getmounts($session);
+ if ( $mounts=~m/$spooldir/)
+ {
+-	move(&quot;$printdir/$file&quot;, &quot;$spooltmp&quot;) or die &quot;$!: Can't move $file to $spooltmp/&quot;;
+-	chown $uid, $gid, &quot;$spooltmp/$file&quot;;
+ 
+-	system(&quot;su $user -c \&quot;mv $spooltmp/$file $spooldir\&quot;&quot;);
+-	open (RFILE,&quot;&gt;$spooltmp/$file.ready&quot;);
+-	print RFILE &quot;$file\n$title&quot;;
++	# if the client side spool dir (the directory where x2goclient
++	# waits for incoming print job files) is mounted in the session
++	# we will copy the print files from the temp location above to
++	# the SSHFS share mounted from the client system.
++
++	syslog('info', &quot;client-side spool dir is mounted, transferring printable file $pdfFile to X2go client system&quot;);
++
++	if (not move(&quot;$printdir/$pdfFile&quot;, &quot;$spooltmp&quot;)) {
++		syslog('err', &quot;x2goprint failed to process print spool job for file $pdfFile&quot;);
++		die &quot;$0: Can't move $printdir/$pdfFile to $spooltmp/&quot;;
++	}
++	chown $uid, $gid, &quot;$spooltmp/$pdfFile&quot;;
++
++	system(&quot;su $user -c \&quot;mv $spooltmp/$pdfFile $spooldir\&quot;&quot;);
++	syslog('debug', &quot;x2goprint moved file $pdfFile to X2go client's spool dir&quot;);
++
++	open (RFILE,&quot;&gt;$spooltmp/$pdfFile.ready&quot;);
++	print RFILE &quot;$pdfFile\n$title&quot;;
+ 	close (RFILE);
+ 
+-	chown $uid, $gid, &quot;$spooltmp/$file.ready&quot;;
+-	system (&quot;su $user -c \&quot;mv $spooltmp/$file.ready $spooldir\&quot;&quot;);
+-}
+-else
+-{
+-	unlink(&quot;$printdir/$file&quot;);
++	chown $uid, $gid, &quot;$spooltmp/$pdfFile.ready&quot;;
++	system (&quot;su $user -c \&quot;mv $spooltmp/$pdfFile.ready $spooldir\&quot;&quot;);
++	syslog('debug', &quot;x2goprint moved file $pdfFile.ready to X2go client's spool dir, X2go client should start the print dialog very soon&quot;);
++
++} else {
++
++	# if the client-side spool dir is not mounted via SSHFS, we will simply drop the
++	# printable PDF file
++
++	syslog('info', &quot;client-side spool dir is _not_ mounted, dropping spool job $pdfFile&quot;);
++
++	unlink(&quot;$printdir/$pdfFile&quot;);
+ }
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016017.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-212-g7c22803
+</A></li>
+	<LI>Next message: <A HREF="016021.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-214-g39feab0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16020">[ date ]</a>
+              <a href="thread.html#16020">[ thread ]</a>
+              <a href="subject.html#16020">[ subject ]</a>
+              <a href="author.html#16020">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

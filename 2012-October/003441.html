@@ -1,0 +1,589 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient2.git - master (branch) updated:	ed0a622e995d6e2cdd7cd99b073ea3c631055e47
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09ed0a622e995d6e2cdd7cd99b073ea3c631055e47&In-Reply-To=%3C20121030105258.5CC185DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003440.html">
+   <LINK REL="Next"  HREF="003442.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient2.git - master (branch) updated:	ed0a622e995d6e2cdd7cd99b073ea3c631055e47</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09ed0a622e995d6e2cdd7cd99b073ea3c631055e47&In-Reply-To=%3C20121030105258.5CC185DB18%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient2.git - master (branch) updated:	ed0a622e995d6e2cdd7cd99b073ea3c631055e47">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Oct 30 11:52:58 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003440.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	b0d8a8de03376664323c178374eae7bf71ba3031
+</A></li>
+        <LI>Next message: <A HREF="003442.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	a992a08cf9c3f1a00b213f9bce08071154faffba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3441">[ date ]</a>
+              <a href="thread.html#3441">[ thread ]</a>
+              <a href="subject.html#3441">[ subject ]</a>
+              <a href="author.html#3441">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  ed0a622e995d6e2cdd7cd99b073ea3c631055e47 (commit)
+      from  b0d8a8de03376664323c178374eae7bf71ba3031 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ed0a622e995d6e2cdd7cd99b073ea3c631055e47
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Tue Oct 30 11:52:35 2012 +0100
+
+    implemented HelpDialog
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ configuratorspeed.cpp =&gt; helpdialog.cpp |   70 +++++++++----------
+ searchbar.h =&gt; helpdialog.h             |   26 +++----
+ helpdialog.ui                           |  116 +++++++++++++++++++++++++++++++
+ main.cpp                                |    3 +-
+ workarea.cpp                            |    3 -
+ x2goapplication.cpp                     |   38 +++++++---
+ x2goapplication.h                       |    7 +-
+ x2goclient2.pro                         |    5 +-
+ x2goclientconfig.cpp                    |    7 +-
+ x2goclientconfig.h                      |    2 +
+ 10 files changed, 206 insertions(+), 71 deletions(-)
+ copy configuratorspeed.cpp =&gt; helpdialog.cpp (61%)
+ copy searchbar.h =&gt; helpdialog.h (81%)
+ create mode 100644 helpdialog.ui
+
+The diff of changes is:
+diff --git a/configuratorspeed.cpp b/helpdialog.cpp
+similarity index 61%
+copy from configuratorspeed.cpp
+copy to helpdialog.cpp
+index 4bd3460..a48cdcc 100644
+--- a/configuratorspeed.cpp
++++ b/helpdialog.cpp
+@@ -18,64 +18,62 @@
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ 
+-#include &quot;configuratorspeed.h&quot;
+-#include &quot;profile.h&quot;
++
++#include &quot;helpdialog.h&quot;
++#include &quot;x2goapplication.h&quot;
++#include &quot;x2goclientconfig.h&quot;
++#include &lt;QScrollBar&gt;
++#include &lt;QTimer&gt;
+ #include &lt;QFile&gt;
+ #include &lt;QTextStream&gt;
+ 
+-ConfiguratorSpeed::ConfiguratorSpeed(Profile* profile, QWidget* parent, Qt::WindowFlags f): ProfileDetailConfigurator(profile, parent, f)
++HelpDialog::HelpDialog(QWidget* parent, Qt::WindowFlags f): QDialog(parent, f)
+ {
+     setupUi(this);
++}
++
++HelpDialog::~HelpDialog()
++{
++
++}
++
++void HelpDialog::showPacks()
++{
++    textBrowser-&gt;append (&quot;&lt;b&gt;&quot;+tr (&quot;Available pack methodes:&quot; )+&quot;&lt;/b&gt;&quot;);
+     QFile file ( &quot;:/txt/packs&quot; );
+     if ( !file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
+         return;
+     QTextStream in ( &amp;file );
++    QString msg;
+     while ( !in.atEnd() )
+     {
+         QString pc=in.readLine();
+         if ( pc.indexOf ( &quot;-%&quot; ) !=-1 )
+         {
+             pc=pc.left ( pc.indexOf ( &quot;-%&quot; ) );
+-            methods&lt;&lt;pc;
++            pc+=&quot;-[0-9]&quot;;
+         }
+-        cbMethod-&gt;addItem ( pc );
++        msg+=pc+&quot;&lt;br&gt;&quot;;
+     }
++    textBrowser-&gt;append(msg);
+     file.close();
+-    init();
+-}
+-
+-ConfiguratorSpeed::~ConfiguratorSpeed()
+-{
+-
+-}
+-
+-void ConfiguratorSpeed::apply()
+-{
+-    profile-&gt;set_speed((Profile::SpeedType)hsSpeed-&gt;value());
+-    profile-&gt;set_quality(sbQuality-&gt;value());
+-    profile-&gt;set_method(cbMethod-&gt;currentText());
+-    ProfileDetailConfigurator::apply();
++    QTimer::singleShot(1,this, SLOT(slotScrollToBegin()));
++    exec();
+ }
+ 
+-void ConfiguratorSpeed::defaults()
++void HelpDialog::showHelp()
+ {
+-    hsSpeed-&gt;setValue(2);
+-    sbQuality-&gt;setValue(9);
+-    cbMethod-&gt;setCurrentIndex(cbMethod-&gt;findText(&quot;16m-jpeg&quot;));
+-    ProfileDetailConfigurator::defaults();
+-}
+-
+-void ConfiguratorSpeed::init()
+-{
+-    hsSpeed-&gt;setValue(profile-&gt;get_speed());
+-    sbQuality-&gt;setValue(profile-&gt;get_quality());
+-    cbMethod-&gt;setCurrentIndex(cbMethod-&gt;findText(profile-&gt;get_method()));
+-    slotMethodChanged(profile-&gt;get_method());
++    foreach (X2GoClientConfigDetail* detail, X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_configDetails())
++    {
++        if(detail-&gt;get_commandLineParameter()==QString::null||detail-&gt;get_description()==QString::null)
++            continue;
++        textBrowser-&gt;append(&quot;&lt;b&gt;&quot;+detail-&gt;get_commandLineParameter()+&quot;&lt;/b&gt;&lt;br&gt;&quot;+detail-&gt;get_description()+&quot;&lt;br&gt;&quot;);
++    }
++    QTimer::singleShot(1,this, SLOT(slotScrollToBegin()));
++    exec();
+ }
+ 
+-void ConfiguratorSpeed::slotMethodChanged(QString method)
++void HelpDialog::slotScrollToBegin()
+ {
+-  bool haveQuality=methods.contains(method);
+-  sbQuality-&gt;setEnabled(haveQuality);
+-  lQuality-&gt;setEnabled(haveQuality);
++    textBrowser-&gt;verticalScrollBar()-&gt;setValue(0);
+ }
+diff --git a/searchbar.h b/helpdialog.h
+similarity index 81%
+copy from searchbar.h
+copy to helpdialog.h
+index 725e341..7e79c54 100644
+--- a/searchbar.h
++++ b/helpdialog.h
+@@ -18,23 +18,23 @@
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ 
+-#ifndef SEARCHBAR_H
+-#define SEARCHBAR_H
+ 
+-#include &quot;svgframe.h&quot;
+-#include &quot;ui_searchbar.h&quot;
++#ifndef HELPDIALOG_H
++#define HELPDIALOG_H
+ 
+-class SearchBar : public SVGFrame, public Ui_searchBar
++#include &lt;QDialog&gt;
++#include &quot;ui_helpdialog.h&quot;
++
++class HelpDialog: public QDialog, public Ui_HelpDialog
+ {
+     Q_OBJECT
+ public:
+-    SearchBar(QWidget* parent = 0, Qt::WindowFlags f = 0);
+-    ~SearchBar();
+-    QLineEdit* getLineEdit()
+-    {
+-        return lineEdit;
+-    }
+-
++    HelpDialog(QWidget* parent = 0, Qt::WindowFlags f = 0);
++    virtual ~HelpDialog();
++    void showHelp();
++    void showPacks();
++private slots:
++    void slotScrollToBegin();
+ };
+ 
+-#endif // SEARCHBAR_H
++#endif // HELPDIALOG_H
+diff --git a/helpdialog.ui b/helpdialog.ui
+new file mode 100644
+index 0000000..401507c
+--- /dev/null
++++ b/helpdialog.ui
+@@ -0,0 +1,116 @@
++&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
++&lt;ui version=&quot;4.0&quot;&gt;
++ &lt;class&gt;HelpDialog&lt;/class&gt;
++ &lt;widget class=&quot;QDialog&quot; name=&quot;HelpDialog&quot;&gt;
++  &lt;property name=&quot;geometry&quot;&gt;
++   &lt;rect&gt;
++    &lt;x&gt;0&lt;/x&gt;
++    &lt;y&gt;0&lt;/y&gt;
++    &lt;width&gt;729&lt;/width&gt;
++    &lt;height&gt;442&lt;/height&gt;
++   &lt;/rect&gt;
++  &lt;/property&gt;
++  &lt;property name=&quot;windowTitle&quot;&gt;
++   &lt;string&gt;X2Go Client&lt;/string&gt;
++  &lt;/property&gt;
++  &lt;property name=&quot;windowIcon&quot;&gt;
++   &lt;iconset resource=&quot;resources.qrc&quot;&gt;
++    &lt;normaloff&gt;:/icons/128x128/x2go.png&lt;/normaloff&gt;:/icons/128x128/x2go.png&lt;/iconset&gt;
++  &lt;/property&gt;
++  &lt;layout class=&quot;QVBoxLayout&quot; name=&quot;verticalLayout&quot;&gt;
++   &lt;item&gt;
++    &lt;widget class=&quot;QTextBrowser&quot; name=&quot;textBrowser&quot;&gt;
++     &lt;property name=&quot;frameShape&quot;&gt;
++      &lt;enum&gt;QFrame::StyledPanel&lt;/enum&gt;
++     &lt;/property&gt;
++     &lt;property name=&quot;frameShadow&quot;&gt;
++      &lt;enum&gt;QFrame::Plain&lt;/enum&gt;
++     &lt;/property&gt;
++     &lt;property name=&quot;lineWrapMode&quot;&gt;
++      &lt;enum&gt;QTextEdit::NoWrap&lt;/enum&gt;
++     &lt;/property&gt;
++    &lt;/widget&gt;
++   &lt;/item&gt;
++   &lt;item&gt;
++    &lt;layout class=&quot;QHBoxLayout&quot; name=&quot;horizontalLayout&quot;&gt;
++     &lt;item&gt;
++      &lt;spacer name=&quot;horizontalSpacer&quot;&gt;
++       &lt;property name=&quot;orientation&quot;&gt;
++        &lt;enum&gt;Qt::Horizontal&lt;/enum&gt;
++       &lt;/property&gt;
++       &lt;property name=&quot;sizeHint&quot; stdset=&quot;0&quot;&gt;
++        &lt;size&gt;
++         &lt;width&gt;40&lt;/width&gt;
++         &lt;height&gt;20&lt;/height&gt;
++        &lt;/size&gt;
++       &lt;/property&gt;
++      &lt;/spacer&gt;
++     &lt;/item&gt;
++     &lt;item&gt;
++      &lt;widget class=&quot;QDialogButtonBox&quot; name=&quot;buttonBox&quot;&gt;
++       &lt;property name=&quot;orientation&quot;&gt;
++        &lt;enum&gt;Qt::Horizontal&lt;/enum&gt;
++       &lt;/property&gt;
++       &lt;property name=&quot;standardButtons&quot;&gt;
++        &lt;set&gt;QDialogButtonBox::Ok&lt;/set&gt;
++       &lt;/property&gt;
++       &lt;property name=&quot;centerButtons&quot;&gt;
++        &lt;bool&gt;true&lt;/bool&gt;
++       &lt;/property&gt;
++      &lt;/widget&gt;
++     &lt;/item&gt;
++     &lt;item&gt;
++      &lt;spacer name=&quot;horizontalSpacer_2&quot;&gt;
++       &lt;property name=&quot;orientation&quot;&gt;
++        &lt;enum&gt;Qt::Horizontal&lt;/enum&gt;
++       &lt;/property&gt;
++       &lt;property name=&quot;sizeHint&quot; stdset=&quot;0&quot;&gt;
++        &lt;size&gt;
++         &lt;width&gt;40&lt;/width&gt;
++         &lt;height&gt;20&lt;/height&gt;
++        &lt;/size&gt;
++       &lt;/property&gt;
++      &lt;/spacer&gt;
++     &lt;/item&gt;
++    &lt;/layout&gt;
++   &lt;/item&gt;
++  &lt;/layout&gt;
++ &lt;/widget&gt;
++ &lt;resources&gt;
++  &lt;include location=&quot;resources.qrc&quot;/&gt;
++ &lt;/resources&gt;
++ &lt;connections&gt;
++  &lt;connection&gt;
++   &lt;sender&gt;buttonBox&lt;/sender&gt;
++   &lt;signal&gt;accepted()&lt;/signal&gt;
++   &lt;receiver&gt;HelpDialog&lt;/receiver&gt;
++   &lt;slot&gt;accept()&lt;/slot&gt;
++   &lt;hints&gt;
++    &lt;hint type=&quot;sourcelabel&quot;&gt;
++     &lt;x&gt;259&lt;/x&gt;
++     &lt;y&gt;275&lt;/y&gt;
++    &lt;/hint&gt;
++    &lt;hint type=&quot;destinationlabel&quot;&gt;
++     &lt;x&gt;157&lt;/x&gt;
++     &lt;y&gt;274&lt;/y&gt;
++    &lt;/hint&gt;
++   &lt;/hints&gt;
++  &lt;/connection&gt;
++  &lt;connection&gt;
++   &lt;sender&gt;buttonBox&lt;/sender&gt;
++   &lt;signal&gt;rejected()&lt;/signal&gt;
++   &lt;receiver&gt;HelpDialog&lt;/receiver&gt;
++   &lt;slot&gt;reject()&lt;/slot&gt;
++   &lt;hints&gt;
++    &lt;hint type=&quot;sourcelabel&quot;&gt;
++     &lt;x&gt;259&lt;/x&gt;
++     &lt;y&gt;281&lt;/y&gt;
++    &lt;/hint&gt;
++    &lt;hint type=&quot;destinationlabel&quot;&gt;
++     &lt;x&gt;286&lt;/x&gt;
++     &lt;y&gt;274&lt;/y&gt;
++    &lt;/hint&gt;
++   &lt;/hints&gt;
++  &lt;/connection&gt;
++ &lt;/connections&gt;
++&lt;/ui&gt;
+diff --git a/main.cpp b/main.cpp
+index 07debfb..c4184cc 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -46,8 +46,7 @@ int main(int argc, char *argv[])
+     }
+     else
+     {
+-        MainWindow* mw = new MainWindow;
+-        mw-&gt;show();
++        new MainWindow;
+         return app.exec();
+     }
+     return 0;
+diff --git a/workarea.cpp b/workarea.cpp
+index bb8dbbc..baf4317 100644
+--- a/workarea.cpp
++++ b/workarea.cpp
+@@ -60,10 +60,7 @@ WorkArea::WorkArea(QWidget* parent, Qt::WindowFlags f): QWidget( parent, f)
+     X2GoApplication::instance()-&gt;set_profileDetailConfiguratorForm(profileDetailConfiguratorForm);
+ 
+     QTimer::singleShot(100, this, SLOT(slotResizeChildForms()));
+-    QTimer::singleShot(400, X2GoApplication::instance(), SLOT(slotInitProfiles()));
+     formToScroll=profileForm;
+-//     QPushButton* b1=new QPushButton(&quot;to profile&quot;, sessionForm);
+-//     connect(b1, SIGNAL(clicked()), this, SLOT(slotScrollToProfileForm()));
+ }
+ 
+ WorkArea::~WorkArea()
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index deeff4c..117dee2 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -20,14 +20,17 @@
+ 
+ #include &lt;QDebug&gt;
+ #include &lt;QTimer&gt;
++#include &lt;QScrollBar&gt;
++#include &lt;QMessageBox&gt;
+ 
+ #include &quot;x2goapplication.h&quot;
+ #include &quot;profile.h&quot;
+ #include &quot;profileform.h&quot;
+ #include &quot;workarea.h&quot;
+ #include &quot;messagebox.h&quot;
+-#include &lt;QScrollBar&gt;
+ #include &quot;x2goclientconfig.h&quot;
++#include &quot;helpdialog.h&quot;
++#include &quot;mainwindow.h&quot;
+ 
+ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplication(argc, argv, flags)
+ {
+@@ -47,13 +50,7 @@ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplicatio
+     addTranslator (appNames, &quot;MAILCLIENT&quot;,tr ( &quot;Email client&quot; ) );
+     addTranslator (appNames, &quot;OFFICE&quot;,tr ( &quot;Office&quot; ) );
+     addTranslator (appNames, &quot;TERMINAL&quot;,tr ( &quot;Terminal&quot; ) );
+-    clientConfig=new X2GoClientConfig;
+-    clientConfig-&gt;loadConfigFiles();
+-    if(!clientConfig-&gt;parseCommandLineArguments(arguments()))
+-    {
+-      qDebug()&lt;&lt;&quot;error parsing command line arguments&quot;;
+-      ::exit(-1);
+-    }
++    QTimer::singleShot(1,this,SLOT(slotInitApplication()));
+ }
+ 
+ X2GoApplication::~X2GoApplication()
+@@ -62,6 +59,31 @@ X2GoApplication::~X2GoApplication()
+     qDebug()&lt;&lt;&quot;X2Go Application exited&quot;;
+ }
+ 
++void X2GoApplication::slotInitApplication()
++{
++    clientConfig=new X2GoClientConfig;
++    clientConfig-&gt;loadConfigFiles();
++    if(!clientConfig-&gt;parseCommandLineArguments(arguments()))
++    {
++        QMessageBox::critical(0,tr(&quot;Error&quot;), tr(&quot;Error parsing command line arguments&quot;));
++        exit(-1);
++    }
++    if(clientConfig-&gt;get_showHelp().get_value().toBool())
++    {
++        HelpDialog dialog(0);
++        dialog.showHelp();
++        exit(-1);
++    }
++    if(clientConfig-&gt;get_showHelpPack().get_value().toBool())
++    {
++        HelpDialog dialog(0);
++        dialog.showPacks();
++        exit(-1);
++    }
++    slotInitProfiles();
++    mainWindow-&gt;show();
++}
++
+ X2GoApplication* X2GoApplication::instance()
+ {
+     return (X2GoApplication*) QApplication::instance();
+diff --git a/x2goapplication.h b/x2goapplication.h
+index a715154..7f8fd5b 100644
+--- a/x2goapplication.h
++++ b/x2goapplication.h
+@@ -29,10 +29,7 @@ public: TYPE get_##NAME(){return NAME;}
+ #define X2GO_RO_PROPERTY(TYPE,NAME)  private: TYPE NAME; \
+ public: TYPE get_##NAME(){return NAME;}
+ 
+-
+ #define X2GO_PROPERTY_GETTER(TYPE,NAME) public: TYPE get_##NAME(){return NAME;}
+-#define X2GO_PROPERTY_SETTER(TYP,NAME) public: void set_##NAME(TYPE val){NAME=val;}
+-
+ 
+ class SessionForm;
+ class WorkArea;
+@@ -58,7 +55,7 @@ class X2GoApplication: public QApplication
+     X2GO_PROPERTY(SessionForm*, sessionForm)
+     X2GO_PROPERTY(MainWindow*, mainWindow)
+     X2GO_PROPERTY(ProfileDetailConfiguratorForm*, profileDetailConfiguratorForm)
+-    X2GO_PROPERTY_GETTER(X2GoClientConfig*, clientConfig)
++    X2GO_RO_PROPERTY(X2GoClientConfig*, clientConfig)
+ public:
+     ~X2GoApplication();
+     X2GoApplication(int&amp; argc, char** argv, int  = ApplicationFlags);
+@@ -70,11 +67,11 @@ public:
+     void updateProfiles();
+ public slots:
+     void slotInitProfiles();
++    void slotInitApplication();
+ private:
+     QList&lt;Profile*&gt; profiles;
+     QList&lt;nameTranslator&gt; desktopNames;
+     QList&lt;nameTranslator&gt; appNames;
+-    X2GoClientConfig* clientConfig;
+ private:
+     const nameTranslator* getTranslator(QList&lt;nameTranslator&gt;&amp; list, int index);
+     QString getInternName(QList&lt;nameTranslator&gt;&amp; list, QString readableName);
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index 9f723f0..4484450 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -8,7 +8,7 @@
+ CONFIG += $$(X2GO_CLIENT_TARGET)
+ CONFIG += $$(X2GO_LINUX_STATIC)
+ #CONFIG += console
+-
++CONFIG += debug
+ FORMS += mainwindow.ui \
+          workarea.ui \
+          profileform.ui \
+@@ -26,6 +26,7 @@ FORMS += mainwindow.ui \
+          configuratorprinting.ui \
+          configuratorsharing.ui \
+          messagebox.ui \
++         helpdialog.ui \
+          profile.ui
+ 
+ SOURCES += main.cpp \
+@@ -53,6 +54,7 @@ SOURCES += main.cpp \
+            x2goclientconfig.cpp \
+            x2goclientconfigdetail.cpp \
+            x2gosettings.cpp \
++           helpdialog.cpp \
+            profile.cpp
+ 
+ HEADERS += mainwindow.h \
+@@ -79,6 +81,7 @@ HEADERS += mainwindow.h \
+            x2goclientconfig.h \
+            x2goclientconfigdetail.h \
+            x2gosettings.h \
++           helpdialog.h \
+            profile.h
+ 
+ LIBS += -lssh
+diff --git a/x2goclientconfig.cpp b/x2goclientconfig.cpp
+index 1f68995..ca399da 100644
+--- a/x2goclientconfig.cpp
++++ b/x2goclientconfig.cpp
+@@ -28,6 +28,9 @@
+ 
+ X2GoClientConfig::X2GoClientConfig()
+ {
++    initDetail(&amp;showHelp, (bool)false, &quot;--help&quot;, QString::null, tr(&quot;show help and exit&quot;));
++    initDetail(&amp;showHelpPack, (bool)false,&quot;--help-pack&quot;,QString::null,tr(&quot;show available pack methods and exit&quot;));
++
+     initDetail(&amp;printShowDialog, (bool)true, QString::null, &quot;printing.General.showdialog&quot;, tr(&quot;Display printing dialog&quot;));
+     initDetail(&amp;printPDFView, (bool)false, QString::null, &quot;printing.General.pdfview&quot;, tr(&quot;View PDF instead of printing&quot;));
+     initDetail(&amp;printCustomCommand, (bool)false, QString::null, &quot;printing.print.startcmd&quot;, tr(&quot;Use custom printer command&quot;));
+@@ -55,10 +58,8 @@ X2GoClientConfig::X2GoClientConfig()
+     initDetail(&amp;windowPosition, QPoint(800,600), QString::null, &quot;sizes.mainwindow.pos&quot;, tr(&quot;Position of main window&quot;));
+     initDetail(&amp;windowShowMaximized, (bool)false, &quot;--maximize&quot;, &quot;sizes.mainwindow.maximized&quot;, tr(&quot;Maximize main window&quot;));
+ 
+-    initDetail(&amp;showHelp, (bool)false, &quot;--help&quot;, QString::null, tr(&quot;show help and exit&quot;));
+-    initDetail(&amp;showHelpPack, (bool)false,&quot;--help-pack&quot;,QString::null,tr(&quot;show available pack methods and exit&quot;));
+     initDetail(&amp;portableMode, (bool)false, &quot;--portable&quot;, QString::null, tr(&quot;start in \&quot;portable\&quot; mode&quot;));
+-    initDetail(&amp;cleanFilesOnExit, (bool)false, &quot;--clean-all-files&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;cleanFilesOnExit, (bool)false, &quot;--clean-all-files&quot;, QString::null, tr(&quot;clean files in .ssh directory (portable mode)&quot;));
+     initDetail(&amp;hideMenu, (bool)false, &quot;--no-menu&quot;, QString::null, tr(&quot;hide menu bar&quot;));
+     initDetail(&amp;defaultXinerama, (bool)false, &quot;--xinerama&quot;, QString::null, tr(&quot;use Xinerama by default&quot;));
+     initDetail(&amp;thinClientMode, (bool)false, &quot;--thinclient&quot;, QString::null, tr(&quot;run without window manager&quot;));
+diff --git a/x2goclientconfig.h b/x2goclientconfig.h
+index 37ee80d..3b750c9 100644
+--- a/x2goclientconfig.h
++++ b/x2goclientconfig.h
+@@ -103,6 +103,8 @@ class X2GoClientConfig: public QObject
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, homeDirectory)
+ 
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, readExportsFrom)
++
++    X2GO_PROPERTY_GETTER(QList&lt;X2GoClientConfigDetail*&gt;, configDetails)
+ public:
+     X2GoClientConfig();
+     bool parseCommandLineArguments(QStringList arguments);
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003440.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	b0d8a8de03376664323c178374eae7bf71ba3031
+</A></li>
+	<LI>Next message: <A HREF="003442.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	a992a08cf9c3f1a00b213f9bce08071154faffba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3441">[ date ]</a>
+              <a href="thread.html#3441">[ thread ]</a>
+              <a href="subject.html#3441">[ subject ]</a>
+              <a href="author.html#3441">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

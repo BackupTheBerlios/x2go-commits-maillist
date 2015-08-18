@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.1-9-ga2d95c0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.1-9-ga2d95c0&In-Reply-To=%3C20120808093514.159923BCDF%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="003059.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.1-9-ga2d95c0</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.1-9-ga2d95c0&In-Reply-To=%3C20120808093514.159923BCDF%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.1-9-ga2d95c0">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Aug  8 11:35:14 CEST 2012</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="003059.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.1-11-ga0461e2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3058">[ date ]</a>
+              <a href="thread.html#3058">[ thread ]</a>
+              <a href="subject.html#3058">[ subject ]</a>
+              <a href="author.html#3058">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  a2d95c0c106923162bb510c88806b7384786b97d (commit)
+      from  3335fca16afaa0792207228115e31630894dee71 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit a2d95c0c106923162bb510c88806b7384786b97d
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Wed Aug 8 11:34:37 2012 +0200
+
+    Cleaning code: double click on running session. Instead of using function &quot;sleep&quot; starting resume-session after suspend-session is returned
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    6 ++++--
+ onmainwindow.cpp |   27 ++++++++++++++++++---------
+ onmainwindow.h   |    1 +
+ 3 files changed, 23 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 443d9d2..31fa55d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,4 +1,4 @@
+-x2goclient (3.99.2.2-0~x2go1) UNRELEASED; urgency=low
++x2goclient (3.99.2.2-0~x2go2) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+   * New upstream version (3.99.2.2):
+@@ -18,8 +18,10 @@ x2goclient (3.99.2.2-0~x2go1) UNRELEASED; urgency=low
+ 
+   [ Oleksandr Shneyder ]
+   * Fixing X2Go Plugin
++  * Cleaning code: double click on running session. Instead of using function &quot;sleep&quot;
++    starting resume-session after suspend-session is returned
+ 
+- -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Fri, 08 Jun 2012 23:17:02 +0200
++ -- Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;  Wed, 08 Aug 2012 11:32:08 +0200
+ 
+ x2goclient (3.99.2.1-0~x2go1) unstable; urgency=low
+ 
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 965cbf8..1bded10 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -101,6 +101,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     noSessionEdit=false;
+     lastSession=0l;
+     changeBrokerPass=false;
++    resumeAfterSuspending=false;
+ 
+     appSeparator=0;
+ 
+@@ -3956,15 +3957,19 @@ void ONMainWindow::slotResumeSess()
+ {
+     x2goSession s=getSelectedSession();
+     QDesktopWidget wd;
+-    if ( isColorDepthOk ( wd.depth(),s.colorDepth ) ) {
+-        if ( s.status==&quot;R&quot; ) {
+-            suspendSession ( s.sessionId );
+-            x2goDebug &lt;&lt; &quot;sleeping for two seconds between suspending and resuming&quot;;
+-            int sleeptime = 2;
+-            while ((sleeptime = sleep (sleeptime))) {};
++    if ( isColorDepthOk ( wd.depth(),s.colorDepth ) )
++    {
++        if ( s.status==&quot;R&quot; &amp;&amp; ! resumeAfterSuspending)
++        {
++            resumeAfterSuspending=true;
++            slotSuspendSess();
++            return;
+         }
++        resumeAfterSuspending=false;
+         resumeSession ( s );
+-    } else {
++    }
++    else
++    {
+         QString depth=QString::number ( s.colorDepth );
+         int res;
+         if ( s.colorDepth==24 || s.colorDepth==32 )
+@@ -4131,6 +4136,10 @@ void ONMainWindow::slotRetSuspSess ( bool result, QString output,
+     }
+     if ( selectSessionDlg-&gt;isVisible() )
+         selectSessionDlg-&gt;setEnabled ( true );
++    if (resumeAfterSuspending)
++    {
++        slotResumeSess();
++    }
+ }
+ 
+ 
+@@ -8950,8 +8959,8 @@ void ONMainWindow::startSshd()
+ 
+ void ONMainWindow::setProxyWinTitle()
+ {
+-  if(embedMode)
+-    return;
++    if (embedMode)
++        return;
+ 
+     QString title;
+ 
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 66b21e8..2d75273 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -520,6 +520,7 @@ private:
+     bool noSessionEdit;
+     bool cleanAllFiles;
+     bool PGPInited;
++    bool resumeAfterSuspending;
+     struct SshProxy sshProxy;
+     QString sshPort;
+     QString clientSshPort;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="003059.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.1-11-ga0461e2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3058">[ date ]</a>
+              <a href="thread.html#3058">[ thread ]</a>
+              <a href="subject.html#3058">[ subject ]</a>
+              <a href="author.html#3058">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

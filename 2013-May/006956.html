@@ -1,0 +1,270 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1bcff08085a4d7816d8258bb972ead1688b068e5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091bcff08085a4d7816d8258bb972ead1688b068e5&In-Reply-To=%3C20130519110307.423225DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006951.html">
+   <LINK REL="Next"  HREF="006959.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1bcff08085a4d7816d8258bb972ead1688b068e5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091bcff08085a4d7816d8258bb972ead1688b068e5&In-Reply-To=%3C20130519110307.423225DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1bcff08085a4d7816d8258bb972ead1688b068e5">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:03:07 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006951.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	16e9356345684e24cf259701a79a28934762c867
+</A></li>
+        <LI>Next message: <A HREF="006959.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	bf53dfab0b17eb1ab474fddccf7220dd14c1ba81
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6956">[ date ]</a>
+              <a href="thread.html#6956">[ thread ]</a>
+              <a href="subject.html#6956">[ subject ]</a>
+              <a href="author.html#6956">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  1bcff08085a4d7816d8258bb972ead1688b068e5 (commit)
+      from  16e9356345684e24cf259701a79a28934762c867 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker.conf                              |    5 ++
+ x2gobroker/brokers/base_broker.py                |   22 +++++--
+ x2gobroker/defaults.py                           |    1 +
+ x2gobroker/nameservices/testsuite_nameservice.py |    7 ++-
+ x2gobroker/tests/test_broker_base.py             |   70 ++++++++++++++++++++++
+ 5 files changed, 98 insertions(+), 7 deletions(-)
+
+The diff of changes is:
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index 024c388..0999376 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -85,6 +85,11 @@
+ #default-user-db = libnss
+ #default-group-db = libnss
+ 
++# on large deployments it is recommended to ignore primary group memberships
++# traversing into all user accounts for primary group detection can be quite
++# CPU intensive on the X2Go Broker server.
++#ignore-primary-group-memberships = True
++
+ ###
+ ### BACKEND section
+ ###
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index be2aa89..85984d3 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -86,6 +86,20 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;
+         return self.config.get_section('global')
+ 
++    def get_global_value(self, option):
++        &quot;&quot;&quot;\
++        Get the configuration setting for an option in the global section of the
++        configuration file.
++
++        @param option: option name in the global configuration section
++        @type option: C{unicode}
++
++        @return: the value for the given global C{option}
++        @rtype: C{bool}, C{unicode}, C{int} or C{list}
++
++        &quot;&quot;&quot;
++        return self.config.get_value('global', option)
++
+     def get_backend_config(self):
+         &quot;&quot;&quot;\
+         Get the configuration section of a specific backend.
+@@ -102,12 +116,12 @@ class X2GoBroker(object):
+         C{option}.
+ 
+         @param backend: the name of the backend
+-        @type backend: C{str}
++        @type backend: C{unicode}
+         @param option: option name of the backend's configuration section
+-        @type option: C{str}
++        @type option: C{unicode}
+ 
+         @return: the value for the given C{backend} C{option}
+-        @rtype: C{dict}
++        @rtype: C{bool}, C{unicode}, C{int} or C{list}
+ 
+         &quot;&quot;&quot;
+         return self.config.get_value(backend, option)
+@@ -266,7 +280,7 @@ class X2GoBroker(object):
+             _allow_group = False
+             _deny_group = False
+ 
+-            _user_groups = [u'ALL'] + self.get_user_groups(username, primary_groups=True)
++            _user_groups = [u'ALL'] + self.get_user_groups(username, primary_groups=not self.get_global_value('ignore-primary-group-memberships'))
+ 
+             _allow_group = bool(len(set(_user_groups).intersection( set(_acls[u'acl-groups-allow']) )))
+             _deny_group = bool(len(set(_user_groups).intersection( set(_acls[u'acl-groups-deny']) )))
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index f2b67e4..81dc346 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -60,6 +60,7 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'default-auth-mech': u'pam',
+         u'default-user-db': u'libnss',
+         u'default-group-db': u'libnss',
++        u'ignore-primary-group-memberships': True,
+     },
+     'zeroconf': {
+         u'enable': True,
+diff --git a/x2gobroker/nameservices/testsuite_nameservice.py b/x2gobroker/nameservices/testsuite_nameservice.py
+index a0ea7e2..90c9b33 100644
+--- a/x2gobroker/nameservices/testsuite_nameservice.py
++++ b/x2gobroker/nameservices/testsuite_nameservice.py
+@@ -46,8 +46,9 @@ class X2GoBrokerNameService(base.X2GoBrokerNameService):
+         _members = []
+         if group in _groups.keys():
+             _members.extend(_groups[group])
+-        for username in self.get_users():
+-            if unicode(group) == self.get_primary_group(username):
+-                _members.append(username)
++        if primary_groups:
++            for username in self.get_users():
++                if unicode(group) == self.get_primary_group(username):
++                    _members.append(username)
+         return _members
+ 
+diff --git a/x2gobroker/tests/test_broker_base.py b/x2gobroker/tests/test_broker_base.py
+index 14a9e21..8891103 100644
+--- a/x2gobroker/tests/test_broker_base.py
++++ b/x2gobroker/tests/test_broker_base.py
+@@ -504,6 +504,76 @@ enable = true
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), False)
+ 
++    def test_checkprofileacls_group_primarygroups(self):
++        username_f = 'flip' # is a male grasshopper
++        username_m = 'maja' # is a female bee
++        username_w = 'willi' # is a drone (male bee)
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        acls = {
++            'acl-groups-allow': ['bees','flip'],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++ignore-primary-group-memberships = true
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        acls = {
++            'acl-groups-allow': ['bees','flip'],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++ignore-primary-group-memberships = false
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        acls = {
++            'acl-groups-allow': ['bees','flip'],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++
+     def test_checkprofileacls_group_combitests(self):
+         _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
+         _config = &quot;&quot;&quot;
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006951.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	16e9356345684e24cf259701a79a28934762c867
+</A></li>
+	<LI>Next message: <A HREF="006959.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	bf53dfab0b17eb1ab474fddccf7220dd14c1ba81
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6956">[ date ]</a>
+              <a href="thread.html#6956">[ thread ]</a>
+              <a href="subject.html#6956">[ subject ]</a>
+              <a href="author.html#6956">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

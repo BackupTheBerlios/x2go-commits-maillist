@@ -1,0 +1,456 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-8-gb9e0f34
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-8-gb9e0f34&In-Reply-To=%3C20120904101449.8BE3D5DB1F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003118.html">
+   <LINK REL="Next"  HREF="003120.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-8-gb9e0f34</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-8-gb9e0f34&In-Reply-To=%3C20120904101449.8BE3D5DB1F%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-8-gb9e0f34">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Sep  4 12:14:49 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003118.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-30-g9e756ed
+</A></li>
+        <LI>Next message: <A HREF="003120.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-9-g4658ef3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3119">[ date ]</a>
+              <a href="thread.html#3119">[ thread ]</a>
+              <a href="subject.html#3119">[ subject ]</a>
+              <a href="author.html#3119">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  b9e0f3498b4b681341f6bb4bfad28a64d2afee37 (commit)
+      from  4adfcbf0aa5f34283089786032b47727530e5d78 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b9e0f3498b4b681341f6bb4bfad28a64d2afee37
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Tue Sep 4 12:14:43 2012 +0200
+
+    Implement direct RDP connection using standalone client
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog   |    5 +-
+ onmainwindow.cpp   |  139 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ onmainwindow.h     |    2 +
+ sessionbutton.cpp  |   35 +++++++++++--
+ settingswidget.cpp |    2 +-
+ 5 files changed, 173 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 753b008..3dfcf1d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,4 +1,4 @@
+-x2goclient (3.99.2.3-0~x2go2) UNRELEASED; urgency=low
++x2goclient (3.99.2.3-0~x2go3) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+   * New upstream version (3.99.2.2):
+@@ -10,8 +10,9 @@ x2goclient (3.99.2.3-0~x2go2) UNRELEASED; urgency=low
+ 
+   [ Oleksandr Shneyder ]
+   * Add settings for direct RDP connection 
++  * Implement direct RDP connection using standalone client
+ 
+- -- Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;  Thu, 30 Aug 2012 18:10:57 +0300
++ -- Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;  Tue, 04 Sep 2012 12:13:43 +0200
+ 
+ x2goclient (3.99.2.2-0~x2go2) unstable; urgency=low
+ 
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 1bded10..7294d56 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2950,6 +2950,7 @@ void ONMainWindow::slotSshUserAuthError ( QString error )
+ 
+ void ONMainWindow::slotSessEnter()
+ {
++
+     if ( useLdap )
+     {
+         slotPassEnter();
+@@ -3005,10 +3006,102 @@ void ONMainWindow::continueLDAPSession()
+     proc-&gt;startNormal ( &quot;x2gogetservers&quot; );
+ }
+ 
++void ONMainWindow::startDirectRDP()
++{
++
++    X2goSettings st ( &quot;sessions&quot; );
++    QString sid;
++    if ( !embedMode )
++        sid=lastSession-&gt;id();
++    else
++        sid=&quot;embedded&quot;;
++
++
++    bool fullscreen=st.setting()-&gt;value ( sid+&quot;/fullscreen&quot;,
++                                          ( QVariant )
++                                          defaultFullscreen ).toBool();
++    bool maxRes=st.setting()-&gt;value ( sid+&quot;/maxdim&quot;,
++                                      ( QVariant )
++                                      false ).toBool();
++    int height=st.setting()-&gt;value ( sid+&quot;/height&quot;,
++                                     ( QVariant ) defaultHeight ).toInt();
++    int width=st.setting()-&gt;value ( sid+&quot;/width&quot;,
++                                    ( QVariant ) defaultWidth ).toInt();
++
++    QString client=st.setting()-&gt;value ( sid+&quot;/rdpclient&quot;,
++                                         ( QVariant ) &quot;rdesktop&quot;).toString();
++    QString host=st.setting()-&gt;value ( sid+&quot;/host&quot;,
++                                       ( QVariant ) &quot;&quot;).toString();
++    QString port=st.setting()-&gt;value ( sid+&quot;/rdpport&quot;,
++                                       ( QVariant ) &quot;3389&quot;).toString();
++    QString params=st.setting()-&gt;value ( sid+&quot;/directrdpsettings&quot;,
++                                         ( QVariant ) &quot;&quot;).toString();
++    QString user=login-&gt;text();
++    QString password=pass-&gt;text();
++
++    nxproxy=new QProcess;
++    connect ( nxproxy,SIGNAL ( error ( QProcess::ProcessError ) ),this,
++              SLOT ( slotProxyError ( QProcess::ProcessError ) ) );
++    connect ( nxproxy,SIGNAL ( finished ( int,QProcess::ExitStatus ) ),this,
++              SLOT ( slotProxyFinished ( int,QProcess::ExitStatus ) ) );
++    connect ( nxproxy,SIGNAL ( readyReadStandardError() ),this,
++              SLOT ( slotProxyStderr() ) );
++    connect ( nxproxy,SIGNAL ( readyReadStandardOutput() ),this,
++              SLOT ( slotProxyStdout() ) );
++
++
++    QString userOpt;
++    if (user.length()&gt;0)
++    {
++        userOpt=&quot; -u &quot;;
++        userOpt+=user+&quot; &quot;;
++    }
++
++    QString passOpt;
++    if (password.length()&gt;0)
++    {
++        passOpt=&quot; -p \&quot;&quot;;
++        passOpt+=password+&quot;\&quot; &quot;;
++    }
++
++    QString grOpt;
++
++    if (fullscreen)
++    {
++        grOpt=&quot; -f &quot;;
++    }
++    else if (maxRes)
++    {
++        QDesktopWidget wd;
++        grOpt=&quot; -D -g &quot;+QString::number( wd.screenGeometry().width())+&quot;x&quot;+QString::number(wd.screenGeometry().height())+&quot; &quot;;
++    }
++    else
++    {
++        grOpt=&quot; -g &quot;+QString::number(width)+&quot;x&quot;+QString::number(height);
++    }
++
++    QString proxyCmd=client +&quot; &quot;+params+ grOpt +userOpt+passOpt + host +&quot;:&quot;+port ;
++    nxproxy-&gt;start ( proxyCmd );
++
++    resumingSession.display=&quot;RDP&quot;;
++    resumingSession.server=host;
++    resumingSession.sessionId=lastSession-&gt;name();
++    resumingSession.crTime=QDateTime::currentDateTime().toString(&quot;dd.MM.yy HH:mm:ss&quot;);
++
++    showSessionStatus();
++//     QTimer::singleShot ( 30000,this,SLOT ( slotRestartProxy() ) );
++
++}
++
++
++
++
++
+ 
+ bool ONMainWindow::startSession ( const QString&amp; sid )
+ {
+     setEnabled ( false );
++    directRDP=false;
+     QString passwd;
+     QString user;
+     QString host;
+@@ -3040,6 +3133,13 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+                                         ( QVariant ) false ).toBool();
+         krblogin=st.setting()-&gt;value ( sid+&quot;/krblogin&quot;,
+                                        ( QVariant ) false ).toBool();
++        directRDP=st.setting()-&gt;value ( sid+&quot;/directrdp&quot;,
++                                        ( QVariant ) false ).toBool();
++        if (cmd ==&quot;RDP&quot; &amp;&amp; directRDP)
++        {
++            startDirectRDP();
++            return true;
++        }
+         if ( cmd==&quot;SHADOW&quot; )
+             shadowSession=true;
+     }
+@@ -4021,6 +4121,12 @@ void ONMainWindow::slotResumeSess()
+ void ONMainWindow::slotSuspendSess()
+ {
+ 
++    if (directRDP)
++    {
++        nxproxy-&gt;terminate();
++        return;
++    }
++
+     QString passwd;
+     QString user=getCurrentUname();
+ 
+@@ -4069,6 +4175,12 @@ void ONMainWindow::slotSuspendSess()
+ 
+ void ONMainWindow::slotSuspendSessFromSt()
+ {
++    x2goDebug&lt;&lt;&quot;suspend from st&quot;;
++    if (directRDP)
++    {
++        nxproxy-&gt;terminate();
++        return;
++    }
+     QString passwd;
+     QString user=getCurrentUname();
+     passwd=getCurrentPass();
+@@ -4085,7 +4197,12 @@ void ONMainWindow::slotSuspendSessFromSt()
+ 
+ void ONMainWindow::slotTermSessFromSt()
+ {
+-
++    x2goDebug&lt;&lt;&quot;term from st&quot;;
++    if (directRDP)
++    {
++        nxproxy-&gt;terminate();
++        return;
++    }
+     /*	x2goDebug &lt;&lt;&quot;disconnect export&quot;&lt;&lt;endl;
+     	disconnect ( sbExp,SIGNAL ( clicked() ),this,
+     	             SLOT ( slot_exportDirectory() ) );*/
+@@ -4147,6 +4264,13 @@ void ONMainWindow::slotRetSuspSess ( bool result, QString output,
+ void ONMainWindow::slotTermSess()
+ {
+ 
++    if (directRDP)
++    {
++        nxproxy-&gt;terminate();
++        return;
++    }
++
++
+     selectSessionDlg-&gt;setEnabled ( false );
+ 
+ 
+@@ -4950,7 +5074,10 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+             }
+         }
+         x2goDebug&lt;&lt;&quot;nxproxy not running&quot;&lt;&lt;endl;
+-        delete nxproxy;
++        if (!directRDP)
++            delete nxproxy;
++        else
++            nxproxy=0;
+     }
+ #endif
+     x2goDebug&lt;&lt;&quot;proxy deleted&quot;&lt;&lt;endl;
+@@ -4960,6 +5087,14 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+     nxproxy=0l;
+     proxyWinId=0;
+ 
++    if (directRDP)
++    {
++        pass-&gt;setText ( &quot;&quot; );
++        QTimer::singleShot ( 2000,this,
++                             SLOT ( slotShowPassForm() ) );
++        return;
++    }
++
+     if ( !shadowSession &amp;&amp; !usePGPCard &amp;&amp; ! ( embedMode &amp;&amp;
+             ( config.checkexitstatus==false ) ) )
+         check_cmd_status();
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 2d75273..2fadcfd 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -670,6 +670,7 @@ private:
+     bool ldapOnly;
+     bool isScDaemonOk;
+     bool parecTunnelOk;
++    bool directRDP;
+ 
+ 
+     bool startSessSound;
+@@ -1027,6 +1028,7 @@ private:
+     void printSshDError();
+     void loadPulseModuleNativeProtocol();
+     void initEmbedToolBar();
++    void startDirectRDP();
+     bool isServerRunning ( int port );
+     void filterDesktops ( const QString&amp; filter,
+                           bool strict=false );
+diff --git a/sessionbutton.cpp b/sessionbutton.cpp
+index f53d82a..4ece426 100644
+--- a/sessionbutton.cpp
++++ b/sessionbutton.cpp
+@@ -345,6 +345,7 @@ void SessionButton::redraw()
+ 
+     cmdBox-&gt;addItems ( par-&gt;transApplicationsNames() );
+ 
++    bool directRDP=false;
+     QPixmap cmdpix;
+     if ( command==&quot;KDE&quot; )
+     {
+@@ -374,6 +375,9 @@ void SessionButton::redraw()
+     }
+     else if ( command ==&quot;RDP&quot; )
+     {
++        if (st-&gt;setting()-&gt;value ( sid+&quot;/directrdp&quot;,
++                                   ( QVariant ) false ).toBool())
++            directRDP=true;
+         cmdpix.load ( par-&gt;iconsPath ( &quot;/16x16/rdp.png&quot; ) );
+         cmdBox-&gt;setCurrentIndex ( RDP );
+         command=tr ( &quot;RDP connection&quot; );
+@@ -413,10 +417,11 @@ void SessionButton::redraw()
+     geomBox-&gt;clear();
+     geomBox-&gt;addItem ( tr ( &quot;fullscreen&quot; ) );
+     uint displays=QApplication::desktop()-&gt;numScreens();
+-    for (uint i=0;i&lt;displays;++i)
+-    {
+-        geomBox-&gt;addItem ( tr( &quot;Display &quot; )+QString::number(i+1));
+-    }
++    if (!directRDP)
++        for (uint i=0;i&lt;displays;++i)
++        {
++            geomBox-&gt;addItem ( tr( &quot;Display &quot; )+QString::number(i+1));
++        }
+ #ifndef Q_WS_HILDON
+     geomBox-&gt;addItem ( &quot;1440x900&quot; );
+     geomBox-&gt;addItem ( &quot;1280x1024&quot; );
+@@ -432,7 +437,7 @@ void SessionButton::redraw()
+     }
+     else
+         if (st-&gt;setting()-&gt;value ( sid+&quot;/multidisp&quot;,
+-                                   ( QVariant ) false ).toBool())
++                                   ( QVariant ) false ).toBool() &amp;&amp; !directRDP)
+         {
+             uint disp=st-&gt;setting()-&gt;value ( sid+&quot;/display&quot;,
+                                              ( QVariant ) 1 ).toUInt();
+@@ -468,6 +473,17 @@ void SessionButton::redraw()
+ #endif
+         }
+ 
++    if (directRDP)
++    {
++        geomBox-&gt;addItem ( tr(&quot;Maximum&quot;) );
++        if (st-&gt;setting()-&gt;value ( sid+&quot;/maxdim&quot;,
++                                   ( QVariant ) false ).toBool())
++        {
++            geom-&gt;setText ( tr(&quot;Maximum&quot;) );
++            geomBox-&gt;setCurrentIndex ( geomBox-&gt;findText ( tr(&quot;Maximum&quot;) ));
++        }
++    }
++
+ 
+     snd=st-&gt;setting()-&gt;value ( sid+&quot;/sound&quot;, ( QVariant ) true ).toBool();
+     if ( snd )
+@@ -710,6 +726,13 @@ void SessionButton::slot_geom_change ( const QString&amp; new_g )
+     {
+         st.setting()-&gt;setValue ( sid+&quot;/fullscreen&quot;, ( QVariant ) true );
+         st.setting()-&gt;setValue ( sid+&quot;/multidisp&quot;, ( QVariant ) false );
++        st.setting()-&gt;setValue ( sid+&quot;/maxdim&quot;, ( QVariant ) false );
++    }
++    else if ( new_g==tr ( &quot;Maximum&quot; ))
++    {
++        st.setting()-&gt;setValue ( sid+&quot;/fullscreen&quot;, ( QVariant ) false );
++        st.setting()-&gt;setValue ( sid+&quot;/multidisp&quot;, ( QVariant ) false );
++        st.setting()-&gt;setValue ( sid+&quot;/maxdim&quot;, ( QVariant ) true );
+     }
+     else
+         if (new_g.indexOf(tr(&quot;Display &quot;))==0)
+@@ -719,6 +742,7 @@ void SessionButton::slot_geom_change ( const QString&amp; new_g )
+             st.setting()-&gt;setValue ( sid+&quot;/multidisp&quot;, ( QVariant ) true );
+             st.setting()-&gt;setValue ( sid+&quot;/display&quot;, ( QVariant ) g.toUInt());
+             st.setting()-&gt;setValue ( sid+&quot;/fullscreen&quot;, ( QVariant ) false );
++            st.setting()-&gt;setValue ( sid+&quot;/maxdim&quot;, ( QVariant ) false );
+         }
+         else
+         {
+@@ -728,6 +752,7 @@ void SessionButton::slot_geom_change ( const QString&amp; new_g )
+ #endif
+             st.setting()-&gt;setValue ( sid+&quot;/fullscreen&quot;, ( QVariant ) false );
+             st.setting()-&gt;setValue ( sid+&quot;/multidisp&quot;, ( QVariant ) false );
++            st.setting()-&gt;setValue ( sid+&quot;/maxdim&quot;, ( QVariant ) false );
+             QStringList lst=new_geom.split ( 'x' );
+             st.setting()-&gt;setValue ( sid+&quot;/width&quot;, ( QVariant ) lst[0] );
+             st.setting()-&gt;setValue ( sid+&quot;/height&quot;, ( QVariant ) lst[1] );
+diff --git a/settingswidget.cpp b/settingswidget.cpp
+index 5439059..2529a76 100644
+--- a/settingswidget.cpp
++++ b/settingswidget.cpp
+@@ -739,7 +739,7 @@ void SettingsWidget::updateCmdLine()
+     }
+     if (maxRes-&gt;isChecked())
+     {
+-        grOpt=&quot; -g &lt;maxW&gt;x&lt;maxH&gt;&quot;;
++        grOpt=&quot; -D -g &lt;maxW&gt;x&lt;maxH&gt;&quot;;
+     }
+     if (custom-&gt;isChecked())
+     {
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003118.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-30-g9e756ed
+</A></li>
+	<LI>Next message: <A HREF="003120.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-9-g4658ef3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3119">[ date ]</a>
+              <a href="thread.html#3119">[ thread ]</a>
+              <a href="subject.html#3119">[ subject ]</a>
+              <a href="author.html#3119">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

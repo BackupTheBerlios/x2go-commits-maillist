@@ -1,0 +1,666 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	e77e74374b3f18f4ee272605a8352b99c9221b09
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%09e77e74374b3f18f4ee272605a8352b99c9221b09&In-Reply-To=%3C20130604190927.208195DB27%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007884.html">
+   <LINK REL="Next"  HREF="007883.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	e77e74374b3f18f4ee272605a8352b99c9221b09</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%09e77e74374b3f18f4ee272605a8352b99c9221b09&In-Reply-To=%3C20130604190927.208195DB27%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	e77e74374b3f18f4ee272605a8352b99c9221b09">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:09:27 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007884.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	b3c10d7e36590aaa5b1de35313c6e2bbdadb5018
+</A></li>
+        <LI>Next message: <A HREF="007883.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	d84d3a9f90b808da5730048100abf8a34e3787aa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7880">[ date ]</a>
+              <a href="thread.html#7880">[ thread ]</a>
+              <a href="subject.html#7880">[ subject ]</a>
+              <a href="author.html#7880">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  e77e74374b3f18f4ee272605a8352b99c9221b09 (commit)
+      from  b3c10d7e36590aaa5b1de35313c6e2bbdadb5018 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker.conf                                |    8 +-
+ sbin/x2gobroker                                    |    6 +-
+ x2gobroker/backends/base.py                        |   55 ++++++--
+ x2gobroker/backends/ldap.py                        |   12 --
+ .../{__init__.py =&gt; backends/loadbalancer.py}      |   12 +-
+ x2gobroker/backends/simple.py                      |   10 --
+ x2gobroker/backends/zeroconf.py                    |   60 ++++++--
+ x2gobroker/defaults.py                             |    6 +-
+ x2gobroker/web/html.py                             |   50 ++-----
+ x2gobroker/web/plain.py                            |  143 ++++++++++++++++++++
+ 10 files changed, 265 insertions(+), 97 deletions(-)
+ copy x2gobroker/{__init__.py =&gt; backends/loadbalancer.py} (78%)
+ create mode 100644 x2gobroker/web/plain.py
+
+The diff of changes is:
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index ec6f4a9..d7a3d6a 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -69,18 +69,22 @@ authid = &lt;aaaavveeeerrrrryyyyylooonnnnggggssttrrriiinnnggg&gt;
+ # X2Go Session Broker knows about two output formats: a text/html based output
+ # and a text/json based output. The different outputs run under different URLs
+ 
+-# enable {base_url}/html/
+-enable-html-output = true
++# enable {base_url}/plain/
++enable-plain-output = true
+ 
+ # enable {base_url}/json/ (THIS IS FUTURE, mg-20121129)
+ enable-json-output = false
+ 
++# enable {base_url}/html/ (THIS IS FUTURE, mg-20121129)
++enable-html-output = false
++
+ ###
+ ### configurations for individual session brokers
+ ###
+ 
+ [zeroconf]
+ enable = true
++desktop-shell = KDE
+ 
+ [simple]
+ enable = false
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index 0a67c34..b64fd13 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -60,12 +60,14 @@ if __name__ == &quot;__main__&quot;:
+     }
+ 
+ # import classes serving the different web.py URLs
+-from x2gobroker.web.html import *
++from x2gobroker.web.plain import *
+ #from x2gobroker.web.json import *
++#from x2gobroker.web.html import *
+ 
+ # define the web.py URLs
+-urls = ( '/html/(.*)', 'X2GoBrokerWebHtml',
++urls = ( '/plain/(.*)', 'X2GoBrokerWebPlain',
+ #         '/json/(.*)', 'X2GoBrokerWebJson',
++         '/html/(.*)', 'X2GoBrokerWebHtml',
+        )
+ 
+ # run the web.py standalone daemon...
+diff --git a/x2gobroker/backends/base.py b/x2gobroker/backends/base.py
+index f5228f7..06b7150 100644
+--- a/x2gobroker/backends/base.py
++++ b/x2gobroker/backends/base.py
+@@ -27,20 +27,22 @@ __NAME__ = 'x2gobroker-pylib'
+ # modules
+ import types
+ import uuid
++import pam
+ 
+ # X2Go Broker modules
+ import x2gobroker.config
+ 
+ class X2GoBroker(object):
+     &quot;&quot;&quot;\
+-    X2GoBrokerBASE is an abstract class for X2Go broker implementations.
++    L{base.X2GoBroker} is an abstract class for X2Go broker implementations.
+ 
+     This class needs to be inherited from a concrete broker class.
+ 
+     Currently available broker classes are::
+-        L{zeroconf.X2GoBroker}
+-        L{simple.X2GoBroker}
+-        L{ldap.X2GoBroker}
++        L{zeroconf.X2GoBroker} (working)
++        L{simple.X2GoBroker} (in prep)
++        L{ldap.X2GoBroker} (in prep)
++        L{loadbalancer.X2GoBroker} (in prep)
+ 
+     &quot;&quot;&quot;
+ 
+@@ -84,6 +86,22 @@ class X2GoBroker(object):
+         &quot;&quot;&quot;
+         return self.config.get_backend_config(backend=backend)
+ 
++    def get_backend_value(self, backend='zeroconf', option='enabled'):
++        &quot;&quot;&quot;\
++        Get the configuration setting for backend C{backend} and option
++        C{option}.
++
++        @param backend: the name of the backend
++        @type backend: C{str}
++        @param option: option name of the backend's configuration section
++        @type option: C{str}
++
++        @return: the value for the given C{backend} C{option}
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return self.config.get_value(backend, option)
++
+     def test_connection(self):
+         #if($cgi-&gt;param('task') eq 'testcon')
+         #{
+@@ -96,6 +114,14 @@ class X2GoBroker(object):
+         #}
+         return 'OK'
+ 
++    def _check_access(self, username='', password='', authid=None):
++
++        # do a simple PAM authentication against the PAM service ,,x2gobroker''
++        if username and password:
++            if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
++                return True
++        return False
++
+     def check_access(self, username='', password='', authid=None, ):
+         &quot;&quot;&quot;\
+         Check if a given user with a given password may gain access to the
+@@ -165,30 +191,31 @@ class X2GoBroker(object):
+         except KeyError:
+             return None
+ 
+-    def list_sessions(self, username):
++    def list_profiles(self, username):
+         &quot;&quot;&quot;\
+-        Retrieve a list of running/suspended sessions for the user that has authenticated to this
+-        L{X2GoBroker} instance 
++        Retrieve a list of available session profiles for the authenticated user.
+ 
+         @param username: query session list for this user
+         @type username: C{unicode}
+ 
+-        return: list of session objects
+-        rtype: C{obj}
++        return: list of profile dictionaries
++        rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+-        return []
++        return {}
+ 
+-    def select_session(self, session_name=None):
++    def select_profile(self, profile_name='DEFAULT'):
+         &quot;&quot;&quot;\
+-        Select a running/suspended session to be transferred/resumed to the requesting X2Go Client.
+-        If no C{session_name} is given, a new X2Go session is launched for the authenticated user.
++        Start/resume a session by selecting a profile name offered by the X2Go client.
+ 
+         The X2Go server that the session is launched on is selected automatically by the X2Go session
+         broker.
+ 
++        @param profile_name: a dictionary object containing information on a selected session profile
++        @type profile_name: C{dict}
++
+         &quot;&quot;&quot;
+-        return None
++        return {}
+ 
+     def change_password(self, new='', old=''):
+         &quot;&quot;&quot;\
+diff --git a/x2gobroker/backends/ldap.py b/x2gobroker/backends/ldap.py
+index 25fc8b4..62b9801 100644
+--- a/x2gobroker/backends/ldap.py
++++ b/x2gobroker/backends/ldap.py
+@@ -31,15 +31,3 @@ class X2GoBroker(x2gobroker.base.X2GoBroker):
+     &quot;&quot;&quot;\
+ 
+     &quot;&quot;&quot;
+-    def __init__(self):
+-        &quot;&quot;&quot;\
+-
+-        &quot;&quot;&quot;
+-        x2gobroker.base.X2GoBroker.__init__(self)
+-
+-    def __del__(self):
+-        &quot;&quot;&quot;\
+-
+-        &quot;&quot;&quot;
+-        x2gobroker.base.X2GoBroker.__del__(self)
+-
+diff --git a/x2gobroker/__init__.py b/x2gobroker/backends/loadbalancer.py
+similarity index 78%
+copy from x2gobroker/__init__.py
+copy to x2gobroker/backends/loadbalancer.py
+index ad8c1e4..6be2f18 100644
+--- a/x2gobroker/__init__.py
++++ b/x2gobroker/backends/loadbalancer.py
+@@ -18,6 +18,16 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-__VERSION__ = '0.0.0.1'
++&quot;&quot;&quot;\
++X2goBrokerLOADBALANCER class - a simple load balancer example for n X2Go Server with the same session profile
+ 
++&quot;&quot;&quot;
++__NAME__ = 'x2gobroker-pylib'
+ 
++# modules
++import x2gobroker.base
++
++class X2GoBroker(x2gobroker.base.X2GoBroker):
++    &quot;&quot;&quot;\
++
++    &quot;&quot;&quot;
+diff --git a/x2gobroker/backends/simple.py b/x2gobroker/backends/simple.py
+index 923676e..3596f88 100644
+--- a/x2gobroker/backends/simple.py
++++ b/x2gobroker/backends/simple.py
+@@ -25,7 +25,6 @@ X2goBrokerSIMPLE class - a simple X2GoBroker implementations that uses text-base
+ __NAME__ = 'x2gobroker-pylib'
+ 
+ # modules
+-import pam
+ 
+ # Python X2GoBroker modules
+ import x2gobroker.base
+@@ -34,12 +33,3 @@ class X2GoBroker(x2gobroker.base.X2GoBroker):
+     &quot;&quot;&quot;\
+ 
+     &quot;&quot;&quot;
+-    def check_access(self, username='', password='', authid=None):
+-
+-        # do a simple PAM authentication against the PAM service ,,x2gobroker''
+-        if username and password:
+-            if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
+-                return True
+-        return False
+-
+-        return x2gobroker.base.X2GoBroker.check_access(self, username=username, password=password, authid=authid)
+diff --git a/x2gobroker/backends/zeroconf.py b/x2gobroker/backends/zeroconf.py
+index 3598e68..4e6a21d 100644
+--- a/x2gobroker/backends/zeroconf.py
++++ b/x2gobroker/backends/zeroconf.py
+@@ -25,8 +25,8 @@ X2goBrokerZEROCONF class - a demo X2GoBroker implementations that needs not conf
+ __NAME__ = 'x2gobroker-pylib'
+ 
+ # modules
+-import pam
+ import subprocess
++import uuid
+ 
+ import base
+ 
+@@ -34,19 +34,53 @@ from x2gobroker.defaults import X2GOBROKER_AGENT_CMD as _X2GOBROKER_AGENT_CMD
+ 
+ class X2GoBroker(base.X2GoBroker):
+ 
+-    def _check_access(self, username='', password='', authid=None):
++    backend_name = 'zeroconf'
+ 
+-        # do a simple PAM authentication against the PAM service ,,x2gobroker''
+-        if username and password:
+-            if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
+-                return True
+-        return False
++    def list_profiles(self, username):
+ 
+-    def list_sessions(self, username):
++        list_of_profiles = {
++            uuid.uuid4(): {
++                'user': u'',
++                'defsndport': True,
++                'useiconv': False,
++                'iconvfrom': u'UTF-8',
++                'height': 600,
++                'export': u'',
++                'quality': 9,
++                'fullscreen': False,
++                'layout': u'',
++                'useexports': 1,
++                'width': 800,
++                'speed': 2,
++                'soundsystem': u'pulse',
++                'print': True,
++                'type': u'auto',
++                'sndport': 4713,
++                'xinerama': True,
++                'variant': u'',
++                'usekbd': True,
++                'fstunnel': True,
++                'applications': [u'TERMINAL',u'WWWBROWSER',u'MAILCLIENT',u'OFFICE',],
++                'host': u'localhost',
++                'multidisp': 0,
++                'sshproxyport': 22,
++                'sound': True,
++                'rootless': 0,
++                'name': u'LOCALHOST',
++                'iconvto': u'UTF-8',
++                'soundtunnel': True,
++                'command': self.get_backend_value(self.backend_name, u'desktop-shell'),
++                'dpi': 96,
++                'sshport': 22,
++                'setdpi': 0,
++                'pack': u'16m-jpeg',
++            },
++        }
++        return list_of_profiles
+ 
+-        # simply call the local x2gobroker-agent to retrieve a session list for &lt;username&gt;
+-        cmd_line = [ _X2GOBROKER_AGENT_CMD, username, &quot;listsessions&quot; ]
+-        broker_agent = subprocess.Popen(cmd_line)
+-
+-        return broker_agent.stdout()
++    def select_profile(self, profile_name):
+ 
++        selectprofile_output = {
++            'server': 'localhost:22',
++        }
++        return selectprofile_output
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index b9dc3c6..017021c 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -27,7 +27,7 @@ import uuid
+ X2GOBROKER_HOME = os.path.normpath(os.path.expanduser('~'))
+ 
+ # FIXME: this path must not be hard-coded
+-X2GOBROKER_AGENT_CMD=&quot;/usr/lib/x2gobroker-agent&quot;
++X2GOBROKER_AGENT_CMD=&quot;/usr/lib/x2go/x2gobroker-agent&quot;
+ 
+ # defaults for X2Go Sessino Broker configuration file
+ X2GOBROKER_CONFIG_DEFAULTS = {
+@@ -37,11 +37,13 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         'use-authid': False,
+         'use-static-authid': True,
+         'authid': uuid.uuid4(),
+-        'enable-html-output':  True,
++        'enable-plain-output': True,
+         'enable-json-output': False,
++        'enable-html-output':  False,
+     },
+     'zeroconf': {
+         'enable': True,
++        'desktop-shell': 'KDE',
+     },
+     'simple': {
+         'enable': False,
+diff --git a/x2gobroker/web/html.py b/x2gobroker/web/html.py
+index b3b3ce2..429c4f8 100644
+--- a/x2gobroker/web/html.py
++++ b/x2gobroker/web/html.py
+@@ -60,6 +60,9 @@ $output
+         for http_header_item in self.http_header_items.keys():
+             web.header(http_header_item, self.http_header_items[http_header_item])
+ 
++    def GET(self, backend):
++        return self.POST(backend)
++
+     def POST(self, backend):
+ 
+         if not backend:
+@@ -92,55 +95,20 @@ $output
+ 
+         self._gen_http_header()
+ 
+-        # FIXME: the ,,testcon'' task can be object to DoS attacks...
+-        if task == 'testcon':
++        if broker_backend.check_access(username=username, password=password, authid=authid):
+ 
+             ###
+-            ### TEST THE CONNECTION
++            ### CONFIRM SUCCESSFUL AUTHENTICATION FIRST
+             ###
+ 
+-            return broker_backend.test_connection()
+-
+-        if broker_backend.check_access(username=username, password=password, authid=authid):
+-
+-            if not task:
+-
+-                ###
+-                ### PERFORM A TEST AUTHENTICATION
+-                ###
+-
+-                if global_config['use-authid']:
+-
+-                    ### FIXME: make up a nice protocol for this, disabled for now
+-                    #output += &quot;AUTHID: {authid}&lt;br /&gt;&quot;.format(authid=broker_backend.get_next_authid(username=data.user))
+-                    pass
++            output += &quot;&lt;strong&gt;Access granted&lt;/strong&gt;&lt;br&gt;&quot;
+ 
+-                output += &quot;&lt;strong&gt;Access granted&lt;/strong&gt;&lt;br /&gt;&quot;
+-                return self.page(self.html_header_items, output)
+-
+-            else:
++            if task:
+ 
+                 ###
+-                ### X2GO BROKER TASKS
++                ### WORK TODO HERE!!!
+                 ###
+ 
+-                if task == 'listsessions':
+-
+-                    output += broker_backend.list_sessions()
+-
+-                if task == 'selectsession':
+-
+-                    if session_name:
+-
+-                        output += broker_backend.select_session(session_name=session_name)
+-
+-                if task == 'setpass':
+-
+-                    if new_password:
+-
+-                        output += broker_backend.change_password(new_password=new_password)
+-
+             return self.page(self.html_header_items, output)
+ 
+-        else:
+-            return self.page(self.html_header_items, &quot;&lt;hr&gt;Access denied&quot;)
++        return self.page(self.html_header_items, &quot;&lt;hr&gt;Access denied&quot;)
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/plain.py
+new file mode 100644
+index 0000000..8819e73
+--- /dev/null
++++ b/x2gobroker/web/plain.py
+@@ -0,0 +1,143 @@
++#!/usr/bin/env python
++
++# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
++# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++# modules
++import web
++import types
++
++class X2GoBrokerWebPlain:
++
++    http_header_items = {
++        'Content-Type': 'text/plain; charset=utf-8',
++        'Expires': '+1h',
++    }
++
++    def _gen_http_header(self):
++
++        for http_header_item in self.http_header_items.keys():
++            web.header(http_header_item, self.http_header_items[http_header_item])
++
++    def GET(self, backend):
++        return self.POST(backend)
++
++    def POST(self, backend):
++
++        if not backend:
++            backend = 'zeroconf'
++        else:
++            backend = backend.rstrip('/')
++
++        # silence pyflakes...
++        broker_backend = None
++        exec(&quot;import x2gobroker.backends.{backend}&quot;.format(backend=backend))
++        exec(&quot;broker_backend = x2gobroker.backends.{backend}.X2GoBroker()&quot;.format(backend=backend))
++        global_config = broker_backend.get_global_config()
++        backend_config = broker_backend.get_backend_config(backend)
++
++        data = web.input()
++        try: username = data.user
++        except AttributeError: username = ''
++        try: password = data.password
++        except AttributeError: password = ''
++        try: authid = data.authid
++        except AttributeError: authid = ''
++        try: task = data.task
++        except AttributeError: task = ''
++        try: profile_name = data.sid
++        except AttributeError: profile_name = ''
++        try: new_password = data.newpass
++        except AttributeError: new_password = ''
++
++        output = ''
++
++        self._gen_http_header()
++
++        if broker_backend.check_access(username=username, password=password, authid=authid):
++
++            ###
++            ### CONFIRM SUCCESSFUL AUTHENTICATION FIRST
++            ###
++
++            if global_config['use-authid']:
++
++                ### FIXME: make up a nice protocol for this, disabled for now
++                #output += &quot;AUTHID: {authid}&lt;br /&gt;&quot;.format(authid=broker_backend.get_next_authid(username=data.user))
++                pass
++
++            output += &quot;Access granted\n&quot;
++
++            ###
++            ### X2GO BROKER TASKS
++            ###
++
++            # FIXME: the ,,testcon'' task can be object to DoS attacks...
++            if task == 'testcon':
++
++                ###
++                ### TEST THE CONNECTION
++                ###
++
++                return broker_backend.test_connection()
++
++            if task == 'listsessions':
++
++                profiles = broker_backend.list_profiles(username)
++                if profiles:
++                    # FIXME (in x2goclient): accept \n as EOL
++                    #output += &quot;START_USER_SESSIONS\n&quot;
++                    output += &quot;START_USER_SESSIONS&lt;br&gt;&quot;
++                    for profile_id in profiles:
++                        output += &quot;[{profile_id}]&quot;.format(profile_id=profile_id)
++                        for key in profiles[profile_id].keys():
++                            if type(profiles[profile_id][key]) in (types.UnicodeType, types.StringType):
++                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(profiles[profile_id][key]))
++                            elif type(profiles[profile_id][key]) in (types.ListType, types.TupleType):
++                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(&quot;,&quot;.join(profiles[profile_id][key])))
++                            else:
++                                output += &quot;{key}={value}&quot;.format(key=key, value=unicode(int(profiles[profile_id][key])))
++
++                            # FIXME (in x2goclient): accept \n as EOL
++                            # output += &quot;\n&quot;
++                            output += &quot;&lt;br&gt;&quot;
++
++                    output += &quot;\n&quot;
++                    # FIXME (in x2goclient): accept \n as EOL
++                    #output += &quot;END_USER_SESSIONS\n&quot;
++                    output += &quot;END_USER_SESSIONS&lt;br&gt;&quot;
++
++            if task == 'selectsession':
++
++                if profile_name:
++
++                    profile_info = broker_backend.select_profile(profile_name=profile_name)
++                    if profile_info.has_key('server'):
++                        output += &quot;SERVER:&quot;
++                        output += profile_info['server'] + &quot;\n&quot;
++                        if profile_info.has_key('authentication_key'):
++                            output += &quot;&quot;
++                        if profile_info.has_key('session_info'):
++                            output += &quot;SESSION_INFOS:\n&quot;
++                            output += &quot;\n&quot;.join(profile_info['session_info']) + &quot;\n&quot;
++
++            return output
++
++        return &quot;Access denied&quot;
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007884.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	b3c10d7e36590aaa5b1de35313c6e2bbdadb5018
+</A></li>
+	<LI>Next message: <A HREF="007883.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	d84d3a9f90b808da5730048100abf8a34e3787aa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7880">[ date ]</a>
+              <a href="thread.html#7880">[ thread ]</a>
+              <a href="subject.html#7880">[ subject ]</a>
+              <a href="author.html#7880">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,522 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	cb16e37cf3e96c52e5ab361945c8a9d1343e9df2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09cb16e37cf3e96c52e5ab361945c8a9d1343e9df2&In-Reply-To=%3C20140108142532.1DA645DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022694.html">
+   <LINK REL="Next"  HREF="022715.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	cb16e37cf3e96c52e5ab361945c8a9d1343e9df2</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09cb16e37cf3e96c52e5ab361945c8a9d1343e9df2&In-Reply-To=%3C20140108142532.1DA645DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	cb16e37cf3e96c52e5ab361945c8a9d1343e9df2">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:25:31 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022694.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f
+</A></li>
+        <LI>Next message: <A HREF="022715.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	c4b70151df3b4f2572f1d9dc1699f29b072016b7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22696">[ date ]</a>
+              <a href="thread.html#22696">[ thread ]</a>
+              <a href="subject.html#22696">[ subject ]</a>
+              <a href="author.html#22696">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  cb16e37cf3e96c52e5ab361945c8a9d1343e9df2 (commit)
+      from  1e1f71b0ccda5bf37394301b355632958aef9357 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/__init__.py                  |    1 +
+ x2go/backends/control/_stdout.py  |   22 ++++++
+ x2go/backends/proxy/base.py       |    2 +-
+ x2go/backends/terminal/_stdout.py |    2 +
+ x2go/forward.py                   |    6 +-
+ x2go/session.py                   |   28 ++++++-
+ x2go/sshproxy.py                  |  147 +++++++++++++++++++++++++++++++++++++
+ x2go/utils.py                     |   13 ++--
+ 8 files changed, 208 insertions(+), 13 deletions(-)
+ create mode 100644 x2go/sshproxy.py
+
+The diff of changes is:
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index ef8146a..8cd00e7 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -170,6 +170,7 @@ from backends.profiles import X2goSessionProfiles
+ from backends.printing import X2goClientPrinting
+ from backends.settings import X2goClientSettings
+ from session import X2goSession
++from sshproxy import X2goSSHProxy
+ from x2go_exceptions import *
+ from log import *
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index b7bbbd8..fb18793 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -34,6 +34,7 @@ import gevent
+ import copy
+ 
+ # Python X2go modules
++import x2go.sshproxy as sshproxy
+ import x2go.log as log
+ import x2go.utils as utils
+ import x2go.x2go_exceptions as x2go_exceptions
+@@ -79,6 +80,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def __init__(self,
+                  profile_name='UNKNOWN',
++                 known_hosts=None,
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+@@ -86,6 +88,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                  client_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_CLIENT_ROOTDIR),
+                  sessions_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SSH_ROOTDIR),
++                 use_sshproxy=False,
++                 sshproxy_params=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  *args, **kwargs):
+         &quot;&quot;&quot;\
+@@ -100,6 +104,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.profile_name = profile_name
+         self.hostname = None
+         self.port = None
++        self.known_hosts = known_hosts
++
++        self.use_sshproxy = use_sshproxy
++        self.sshproxy_params = sshproxy_params
++        self.sshproxy_session = None
+ 
+         self._session_auth_rsakey = None
+         self._remote_home = None
+@@ -124,6 +133,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+ 
++        if self.known_hosts is not None:
++            self.load_host_keys(known_hosts)
++
+     def __del__(self):
+ 
+         self.disconnect()
+@@ -275,6 +287,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @raise socket.error: if a socket error occurred while connecting
+ 
+         &quot;&quot;&quot;
++        if self.use_sshproxy and self.sshproxy_params:
++            self.sshproxy_session = sshproxy.X2goSSHProxy(add_to_known_hosts=add_to_known_hosts, 
++                                                          known_hosts=self.known_hosts,
++                                                          logger=self.logger, **self.sshproxy_params
++                                                         )
++            self.sshproxy_session.start()
++
+         if add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+@@ -358,6 +377,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 except KeyError:
+                     pass
+ 
++        if self.sshproxy_session is not None:
++            self.sshproxy_session.stop_thread()
++
+         self._remote_home = None
+         self._remote_group = {}
+ 
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 3a0cbd5..c1b597b 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -159,7 +159,7 @@ class X2goProxyBASE(threading.Thread):
+ 
+         local_graphics_port = self.session_info.graphics_port
+         while self.fw_tunnel is None:
+-            self.fw_tunnel = forward.start_forward_tunnel(local_graphics_port, &quot;localhost&quot;, self.session_info.graphics_port, self.ssh_transport, logger=self.logger, )
++            self.fw_tunnel = forward.start_forward_tunnel(local_port=local_graphics_port, remote_port=self.session_info.graphics_port, ssh_transport=self.ssh_transport, logger=self.logger, )
+             if self.fw_tunnel is None:
+                 self.logger('socket [localhost]:%s is in use, trying local TCP/IP socket port: [localhost]:%s' % (local_graphics_port, local_graphics_port+1), loglevel=log.loglevel_INFO)
+                 local_graphics_port += 1
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index ce2e9e3..963345e 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -218,6 +218,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  cache_type=&quot;unix-kde&quot;, kblayout='us', kbtype='pc105/us',
+                  session_type=&quot;application&quot;, snd_system='pulse', cmd=None,
+                  rdp_server=None, rdp_options=None,
++                 xdmcp_server=None,
+                  rootdir=None,
+                  profile_name='UNKNOWN', profile_id=utils._genSessionProfileId(),
+                  print_action=None, print_action_args={},
+@@ -270,6 +271,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         self.params.rdp_server = rdp_server
+         self.params.rdp_options = rdp_options
++        self.params.xdmcp_server = xdmcp_server
+ 
+         self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or self.sessions_rootdir
+         self.params.update()
+diff --git a/x2go/forward.py b/x2go/forward.py
+index 39e50ba..a291924 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -122,7 +122,9 @@ class X2goFwServer(StreamServer):
+                     loglevel=log.loglevel_INFO)
+ 
+ 
+-def start_forward_tunnel(local_port, remote_host, remote_port, ssh_transport, logger=None):
++def start_forward_tunnel(local_host='localhost', local_port=22022, 
++                         remote_host='localhost', remote_port=22, 
++                         ssh_transport=None, logger=None, ):
+     &quot;&quot;&quot;\
+     Setup up a Paramiko/SSH port forwarding tunnel (like openssh -L option).
+ 
+@@ -142,7 +144,7 @@ def start_forward_tunnel(local_port, remote_host, remote_port, ssh_transport, lo
+     @rtype: C{instance}
+ 
+     &quot;&quot;&quot;
+-    fw_server = X2goFwServer(('localhost', local_port), remote_host, remote_port, ssh_transport, logger=logger)
++    fw_server = X2goFwServer((local_host, local_port), remote_host, remote_port, ssh_transport, logger=logger)
+     try:
+         fw_server.start()
+         return fw_server
+diff --git a/x2go/session.py b/x2go/session.py
+index 5ff6cef..386a5db 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -56,17 +56,23 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'cache_type', 'kblayout', 'kbtype',
+                         'session_type', 'snd_system', 'cmd',
+                         'rdp_server', 'rdp_options',
++                        'xdmcp_server', 
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
+                         'proxy_class', 'logger',
+                         'control_backend', 'terminal_backend', 'proxy_backend',
+                         'profiles_backend', 'settings_backend', 'printing_backend',
+-                        'client_instance',
++                        'client_instance', 
+                        )
++_X2GO_SSHPROXY_PARAMS = ('use_sshproxy', 'sshproxy_host', 'sshproxy_user', 'sshproxy_password',
++                         'sshproxy_key_filename', 'sshproxy_tunnel',
++                        )
++
+ 
+ class X2goSession(object):
+ 
+     def __init__(self, server=None, control_session=None,
++                 use_sshproxy=False,
+                  profile_id=None, profile_name='UNKNOWN',
+                  session_name=None,
+                  printing=None, share_local_folders=[],
+@@ -137,6 +143,7 @@ class X2goSession(object):
+ 
+         self.control_params = {}
+         self.terminal_params = {}
++        self.sshproxy_params = {}
+         self.update_params(params)
+ 
+         try: del self.control_params['server']
+@@ -154,6 +161,7 @@ class X2goSession(object):
+         self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+         if control_session is None:
+             self.control_session = control_backend(profile_name=self.profile_name,
++                                                   known_hosts=known_hosts,
+                                                    terminal_backend=terminal_backend,
+                                                    info_backend=info_backend,
+                                                    list_backend=list_backend,
+@@ -161,15 +169,14 @@ class X2goSession(object):
+                                                    client_rootdir=client_rootdir,
+                                                    sessions_rootdir=sessions_rootdir,
+                                                    ssh_rootdir=ssh_rootdir,
++                                                   use_sshproxy=use_sshproxy,
++                                                   sshproxy_params=self.sshproxy_params,
+                                                    logger=logger)
+         else:
+             self.control_session = control_session
+ 
+         self.terminal_session = None
+         self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+-        if known_hosts:
+-            self.control_session.load_host_keys(known_hosts)
+-
+ 
+     def __str__(self):
+         return self.__get_uuid()
+@@ -223,13 +230,25 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         _terminal_params = copy.deepcopy(params)
+         _control_params = copy.deepcopy(params)
++        _sshproxy_params = copy.deepcopy(params)
+         for p in params.keys():
+             if p in session._X2GO_SESSION_PARAMS:
+                 del _control_params[p]
++                del _sshproxy_params[p]
++            elif p in session._X2GO_SSHPROXY_PARAMS:
++                del _control_params[p]
++                del _terminal_params[p]
+             else:
++                del _sshproxy_params[p]
+                 del _terminal_params[p]
++        try:
++            del _sshproxy_params['use_sshproxy']
++        except KeyError:
++            pass
++
+         self.control_params.update(_control_params)
+         self.terminal_params.update(_terminal_params)
++        self.sshproxy_params.update(_sshproxy_params)
+ 
+     def get_uuid(self):
+         &quot;&quot;&quot;\
+@@ -390,6 +409,7 @@ class X2goSession(object):
+             if force_password_auth is not None:
+                 self.control_params['force_password_auth'] = force_password_auth
+             self.control_params['password'] = password
++            print self.control_params
+             self.connected = self.control_session.connect(self.server,
+                                                           **self.control_params
+                                                          )
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+new file mode 100644
+index 0000000..c775476
+--- /dev/null
++++ b/x2go/sshproxy.py
+@@ -0,0 +1,147 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++X2goProxyBASE class - proxying your connection through NX3 and others.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gosshproxy-pylib'
++
++# modules
++import gevent
++import os
++import copy
++import paramiko
++import threading
++
++# Python X2go modules
++import x2go.forward as forward
++import x2go.log as log
++
++from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
++from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
++from x2go.defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
++
++
++class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
++    &quot;&quot;&quot;\
++    X2goSSHProxy can be used to proxy X2go connections through a firewall via SSH.
++
++    &quot;&quot;&quot;
++    fw_tunnel = None
++
++    def __init__(self, hostname=None, port=22, username=None, password=None, key_filename=None,
++                 local_host='localhost', local_port=22022, remote_host='localhost', remote_port=22,
++                 known_hosts=None, add_to_known_hosts=False,
++                 sshproxy_host=None, sshproxy_port=22, sshproxy_user=None, 
++                 sshproxy_password=None, sshproxy_key_filename=None, 
++                 sshproxy_tunnel=None,
++                 ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR), 
++                 logger=None, loglevel=log.loglevel_DEFAULT, ):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goProxy} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: int
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        # translate between X2goSession options and paramiko.SSHCLient.connect() options
++        if sshproxy_host: 
++            if sshproxy_host.find(':'):
++                hostname = sshproxy_host.split(':')[0]
++                port = int(sshproxy_host.split(':')[1])
++            else:
++                hostname = sshproxy_host
++        if sshproxy_user: username = sshproxy_user
++        if sshproxy_password: password = sshproxy_password
++        if sshproxy_key_filename: key_filename = sshproxy_key_filename
++        if sshproxy_tunnel:
++            self.local_host, self.local_port, self.remote_host, self.remote_port = sshproxy_tunnel.split(':')
++            self.local_port = int(self.local_port)
++            self.remote_port = int(self.remote_port)
++        else:
++            self.local_host = local_host
++            self.local_port = local_port
++            self.remote_host = remote_host
++            self.remote_port = remote_port
++
++        if username is None:
++            username = _CURRENT_LOCAL_USER
++
++        self._keepalive = True
++
++        self.ssh_rootdir = ssh_rootdir
++        paramiko.SSHClient.__init__(self)
++
++        if known_hosts:
++            self.load_host_keys(known_hosts)
++
++        if add_to_known_hosts:
++            self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
++
++        self.connect(hostname, port=port, 
++                     username=username, 
++                     password=password, 
++                     key_filename=key_filename,
++                    )
++
++        self.hostname, self.port, self.username = hostname, port, username
++
++        threading.Thread.__init__(self)
++        self.daemon = True
++
++
++    def run(self):
++
++        self.fw_tunnel = None
++        while self.fw_tunnel is None:
++            self.fw_tunnel = forward.start_forward_tunnel(local_host=self.local_host, 
++                                                          local_port=self.local_port, 
++                                                          remote_host=self.remote_host, 
++                                                          remote_port=self.remote_port, 
++                                                          ssh_transport=self.get_transport(), 
++                                                          logger=self.logger, )
++            if self.fw_tunnel is None:
++                self.logger('socket [%s]:%s is in use, trying local TCP/IP socket port: [%s]:%s' % (self.local_host, self.local_port, self.local_host, self.local_port+1), loglevel=log.loglevel_INFO)
++                self.local_port += 1
++                #gevent.sleep(.1)
++
++        self.logger('SSH proxy tunnel via [%s]:%s has been set up' % (self.hostname, self.port), loglevel=log.loglevel_NOTICE)
++        self.logger('SSH proxy tunnel startpoint is [%s]:%s, endpoint is [%s]:%s' % (self.local_host, self.local_port, self.remote_host, self.remote_port), loglevel=log.loglevel_NOTICE)
++
++        while self._keepalive:
++            gevent.sleep(.1)
++
++    def stop_thread(self):
++        forward.stop_forward_tunnel(self.fw_tunnel)
++        self._keepalive = False
++        self.close()
++
++    def __del__(self):
++        self.stop_thread()
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 6e2639a..fe8b289 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -131,6 +131,13 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'command': 'cmd',
+             'rdpserver': 'rdp_server',
+             'rdpoptions': 'rdp_options',
++            'xdmcpserver': 'xdmcp_server',
++            'usesshproxy': 'use_sshproxy',
++            'sshproxyhost': 'sshproxy_host',
++            'sshproxyuser': 'sshproxy_user',
++            'sshproxykeyfile': 'sshproxy_key_filename',
++            'sshproxytunnel': 'sshproxy_tunnel',
++
+         }
+         _speed_dict = {
+             '1': 'modem',
+@@ -209,12 +216,6 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sndport',
+             'icon',
+             'applications',
+-            'xdmcpserver',
+-            'usesshproxy',
+-            'sshproxyhost',
+-            'sshproxyuser',
+-            'sshproxytunnel',
+-            'sshproxykeyfile',
+         ]
+         for i in _ignored_options:
+             del _params[i]
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022694.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f
+</A></li>
+	<LI>Next message: <A HREF="022715.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	c4b70151df3b4f2572f1d9dc1699f29b072016b7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22696">[ date ]</a>
+              <a href="thread.html#22696">[ thread ]</a>
+              <a href="subject.html#22696">[ subject ]</a>
+              <a href="author.html#22696">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

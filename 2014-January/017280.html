@@ -1,0 +1,474 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-328-gd53c913
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-328-gd53c913&In-Reply-To=%3C20140103170036.E42D35DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017279.html">
+   <LINK REL="Next"  HREF="017287.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-328-gd53c913</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-328-gd53c913&In-Reply-To=%3C20140103170036.E42D35DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-328-gd53c913">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 18:00:36 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017279.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-323-g5c939ac
+</A></li>
+        <LI>Next message: <A HREF="017287.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-326-g9941f22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17280">[ date ]</a>
+              <a href="thread.html#17280">[ thread ]</a>
+              <a href="subject.html#17280">[ subject ]</a>
+              <a href="author.html#17280">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d53c913ca59d60ccdfde1b82374aef838866b421 (commit)
+      from  d72b7889452110783c838a80cdd2904cb4b5aa91 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d53c913ca59d60ccdfde1b82374aef838866b421
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Dec 30 03:05:41 2013 +0100
+
+    Sanitize session ID, port numbers, display number and PID number before writing it to the session DB.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server/DB/PostgreSQL.pm                       |   28 ++++++++-
+ X2Go/Server/DB/SQLite3.pm                          |   64 ++++++++++++++------
+ debian/changelog                                   |    2 +
+ .../lib/libx2go-server-db-sqlite3-wrapper.pl       |    2 +-
+ 4 files changed, 75 insertions(+), 21 deletions(-)
+
+The diff of changes is:
+diff --git a/X2Go/Server/DB/PostgreSQL.pm b/X2Go/Server/DB/PostgreSQL.pm
+index 6e94ef1..772bfe6 100644
+--- a/X2Go/Server/DB/PostgreSQL.pm
++++ b/X2Go/Server/DB/PostgreSQL.pm
+@@ -37,6 +37,7 @@ use Sys::Syslog qw( :standard :macros );
+ 
+ use X2Go::Log qw( loglevel );
+ use X2Go::Config qw( get_sqlconfig );
++use X2Go::Utils qw( sanitizer );
+ 
+ setlogmask( LOG_UPTO(loglevel()) );
+ 
+@@ -178,6 +179,7 @@ sub dbsys_getmounts
+ {
+ 	init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my @mounts;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
+@@ -197,6 +199,7 @@ sub db_getmounts
+ {
+ 	init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my @mounts;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts_view where session_id='$sid'&quot;);
+@@ -216,6 +219,7 @@ sub db_deletemount
+ {
+ 	init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from mounts_view where session_id='$sid' and path='$path'&quot;);
+@@ -228,6 +232,7 @@ sub db_insertmount
+ {
+ 	init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $res_ok=0;
+@@ -247,8 +252,10 @@ sub db_insertsession
+ {
+ 	init_db();
+ 	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	$display = sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$uname','$sid')&quot;);
+ 	$sth-&gt;execute()or die $_;
+@@ -260,8 +267,10 @@ sub db_insertshadowsession
+ {
+ 	init_db();
+ 	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	$display = sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $shadreq_user=shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id) values ('$display','$server','$shadreq_user','$sid')&quot;);
+@@ -275,11 +284,16 @@ sub db_createsession
+ 	init_db();
+ 	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
+ 	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	$pid = sanitizer('num', $pid) or die &quot;argument \&quot;pid\&quot; malformed&quot;;
+ 	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	$snd_port = sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set status='R',last_time=now(),
+ 	                      cookie='$cookie',agent_pid='$pid',client='$client',gr_port='$gr_port',
+@@ -294,6 +308,7 @@ sub db_insertport
+ 	init_db();
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
+@@ -307,6 +322,7 @@ sub db_rmport
+ 	init_db();
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server='$server' and session_id='$sid' and port='$sshport'&quot;);
+@@ -320,12 +336,16 @@ sub db_resume
+ 	init_db();
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $gr_port=shift or die &quot;argument \&quot;gr_port\&quot; missed&quot;;
+-	my $sound_port=shift or die &quot;argument \&quot;sound_port\&quot; missed&quot;;
++	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
++	my $snd_port=shift or die &quot;argument \&quot;sound_port\&quot; missed&quot;;
++	$snd_port = sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 	my $fs_port=shift or die &quot;argument \&quot;fs_port\&quot; missed&quot;;
++	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='R',client='$client',gr_port='$gr_port',
+-	                       sound_port='$sound_port',fs_port='$fs_port' where session_id = '$sid'&quot;);
++	                       sound_port='$snd_port',fs_port='$fs_port' where session_id = '$sid'&quot;);
+ 	$sth-&gt;execute()or die;
+ 	$sth-&gt;finish();
+ 	$dbh-&gt;disconnect();
+@@ -336,6 +356,7 @@ sub db_changestatus
+ 	init_db();
+ 	my $status=shift or die &quot;argument \&quot;status\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions_view set last_time=now(),status='$status' where session_id = '$sid'&quot;);
+ 	$sth-&gt;execute()or die;
+@@ -347,6 +368,7 @@ sub db_getstatus
+ {
+ 	init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $status='';
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;select status from sessions_view where session_id = '$sid'&quot;);
+@@ -424,6 +446,7 @@ sub db_getagent
+ 	init_db();
+ 	my $agent;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions_view
+ 	                      where session_id ='$sid'&quot;);
+@@ -444,6 +467,7 @@ sub db_getdisplay
+ 	init_db();
+ 	my $display;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $dbh=DBI-&gt;connect(&quot;dbi:Pg:dbname=$db;host=$host;port=$port;sslmode=$sslmode&quot;, &quot;$dbuser&quot;, &quot;$dbpass&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions_view
+ 	                      where session_id ='$sid'&quot;);
+diff --git a/X2Go/Server/DB/SQLite3.pm b/X2Go/Server/DB/SQLite3.pm
+index 9a0ce2a..2894bfa 100644
+--- a/X2Go/Server/DB/SQLite3.pm
++++ b/X2Go/Server/DB/SQLite3.pm
+@@ -42,6 +42,7 @@ use POSIX;
+ 
+ use Sys::Syslog qw( :standard :macros );
+ use X2Go::Log qw( loglevel );
++use X2Go::Utils qw( sanitizer );
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -131,10 +132,27 @@ sub dbsys_listsessionsroot_all
+ 	return @sessions;
+ }
+ 
++sub dbsys_deletemounts
++{
++	my $dbh = init_db();
++	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	check_user($sid);
++	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=?&quot;);
++	$sth-&gt;execute($sid);
++	if ($sth-&gt;err())
++	{
++		syslog('error', &quot;deletemounts (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
++		die();
++	}
++	$sth-&gt;finish();
++	$dbh-&gt;disconnect();
++}
++
+ sub db_getmounts
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my @strings;
+ 	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id=?&quot;);
+@@ -154,6 +172,7 @@ sub db_deletemount
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=? and path=?&quot;);
+@@ -167,26 +186,11 @@ sub db_deletemount
+ 	$dbh-&gt;disconnect();
+ }
+ 
+-sub db_deletemounts
+-{
+-	my $dbh = init_db();
+-	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	check_user($sid);
+-	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=?&quot;);
+-	$sth-&gt;execute($sid);
+-	if ($sth-&gt;err())
+-	{
+-		syslog('error', &quot;deletemounts (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
+-		die();
+-	}
+-	$sth-&gt;finish();
+-	$dbh-&gt;disconnect();
+-}
+-
+ sub db_insertmount
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	check_user($sid);
+@@ -208,8 +212,10 @@ sub db_insertsession
+ {
+ 	my $dbh = init_db();
+ 	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	$display = sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id, init_time, last_time) values
+ 	                       (?, ?, ?, ?, datetime('now','localtime'), datetime('now','localtime'))&quot;);
+@@ -223,8 +229,10 @@ sub db_insertshadowsession
+ {
+ 	my $dbh = init_db();
+ 	my $display=shift or die &quot;argument \&quot;display\&quot; missed&quot;;
++	$display = sanitizer('num', $display) or die &quot;argument \&quot;display\&quot; malformed&quot;;
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $shadreq_user = shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
+ 	my $fake_sid = $sid;
+ 	$fake_sid =~ s/$shadreq_user-/$realuser-/;
+@@ -242,11 +250,16 @@ sub db_createsession
+ 	my $dbh = init_db();
+ 	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
+ 	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	$pid = sanitizer('num', $pid) or die &quot;argument \&quot;pid\&quot; malformed&quot;;
+ 	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	$snd_port = sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
+@@ -266,11 +279,16 @@ sub db_createshadowsession
+ 	my $dbh = init_db();
+ 	my $cookie=shift or die&quot;argument \&quot;cookie\&quot; missed&quot;;
+ 	my $pid=shift or die&quot;argument \&quot;pid\&quot; missed&quot;;
++	$pid = sanitizer('num', $pid) or die &quot;argument \&quot;pid\&quot; malformed&quot;;
+ 	my $client=shift or die&quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $gr_port=shift or die&quot;argument \&quot;gr_port\&quot; missed&quot;;
++	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
+ 	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
++	$snd_port = sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
++	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $shadreq_user = shift or die &quot;argument \&quot;shadreq_user\&quot; missed&quot;;
+ 	my $fake_sid = $sid;
+ 	$fake_sid =~ s/^$shadreq_user-/$realuser-/;
+@@ -293,6 +311,7 @@ sub db_insertport
+ 	my $dbh = init_db();
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  (?, ?, ?)&quot;);
+ 	check_user($sid);
+@@ -311,6 +330,7 @@ sub db_rmport
+ 	my $dbh = init_db();
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from used_ports where server=? and session_id=? and port=?&quot;);
+ 	check_user($sid);
+@@ -328,13 +348,17 @@ sub db_resume
+ 	my $dbh = init_db();
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $gr_port=shift or die &quot;argument \&quot;gr_port\&quot; missed&quot;;
+-	my $sound_port=shift or die &quot;argument \&quot;sound_port\&quot; missed&quot;;
++	$gr_port = sanitizer('num', $gr_port) or die &quot;argument \&quot;gr_port\&quot; malformed&quot;;
++	my $snd_port=shift or die &quot;argument \&quot;snd_port\&quot; missed&quot;;
++	$snd_port = sanitizer('num', $snd_port) or die &quot;argument \&quot;snd_port\&quot; malformed&quot;;
+ 	my $fs_port=shift or die &quot;argument \&quot;fs_port\&quot; missed&quot;;
++	$fs_port = sanitizer('num', $fs_port) or die &quot;argument \&quot;fs_port\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),status='R',
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id = ? and uname=?&quot;);
+-	$sth-&gt;execute($client, $gr_port, $sound_port, $fs_port, $sid, $realuser);
++	$sth-&gt;execute($client, $gr_port, $snd_port, $fs_port, $sid, $realuser);
+ 	if ($sth-&gt;err())
+ 	{
+ 		syslog('error', &quot;resume (SQLite3 session db backend) failed with exitcode: $sth-&gt;err()&quot;);
+@@ -349,6 +373,7 @@ sub db_changestatus
+ 	my $dbh = init_db();
+ 	my $status=shift or die &quot;argument \&quot;status\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),
+ 	                       status=? where session_id = ? and uname=?&quot;);
+@@ -366,6 +391,7 @@ sub db_getstatus
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select status from sessions where session_id = ?&quot;);
+ 	$sth-&gt;execute($sid);
+@@ -458,6 +484,7 @@ sub db_getagent
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $agent;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions
+@@ -483,6 +510,7 @@ sub db_getdisplay
+ {
+ 	my $dbh = init_db();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
++	$sid = sanitizer('anumazcsdaus', $sid) or die &quot;argument \&quot;session_id\&quot; malformed&quot;;
+ 	my $display;
+ 	check_user($sid);
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions
+diff --git a/debian/changelog b/debian/changelog
+index 5db2ff6..a7c7f1d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -44,6 +44,8 @@ x2goserver (4.1.0.0-0x2go1) UNRELEASED; urgency=low
+       Move duplicate code into that new Perl package.
+     - Security audit of complete code tree, avoid one-argument system calls where
+       possible, avoid backticks, use more quotes in shell scripts.
++    - Sanitize session ID, port numbers, display number and PID number before
++      writing it to the session DB.
+   * debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+diff --git a/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl b/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
+index 3d16fd5..b89cde3 100755
+--- a/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
++++ b/libx2go-server-db-perl/lib/libx2go-server-db-sqlite3-wrapper.pl
+@@ -56,7 +56,7 @@ switch ($cmd)
+ {
+ 	case /.*listsessions.*root/              { @result_list = eval(&quot;X2Go::Server::DB::SQLite3::dbsys_$cmd(\@ARGV)&quot;) }
+ 	case /.*(list.*sessions|getmounts).*/    { @result_list = eval(&quot;X2Go::Server::DB::SQLite3::db_$cmd(\@ARGV)&quot;) }
+-	case /.*root/                            { $result = eval(&quot;X2Go::Server::DB::SQLite3::dbsys_$cmd(\@ARGV)&quot;) }
++	case /.*(root|deletemounts)/             { $result = eval(&quot;X2Go::Server::DB::SQLite3::dbsys_$cmd(\@ARGV)&quot;) }
+ 	else                                     { $result = eval(&quot;X2Go::Server::DB::SQLite3::db_$cmd(\@ARGV)&quot;) }
+ }
+ 
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017279.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-323-g5c939ac
+</A></li>
+	<LI>Next message: <A HREF="017287.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-326-g9941f22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17280">[ date ]</a>
+              <a href="thread.html#17280">[ thread ]</a>
+              <a href="subject.html#17280">[ subject ]</a>
+              <a href="author.html#17280">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

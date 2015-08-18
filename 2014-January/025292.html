@@ -1,0 +1,1684 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-260-g991f0a1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-260-g991f0a1&In-Reply-To=%3C20140108143106.8B28B5DC19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025259.html">
+   <LINK REL="Next"  HREF="025704.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-260-g991f0a1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-260-g991f0a1&In-Reply-To=%3C20140108143106.8B28B5DC19%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-260-g991f0a1">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:31:06 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025259.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-258-ge891bfa
+</A></li>
+        <LI>Next message: <A HREF="025704.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-257-g0042fba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25292">[ date ]</a>
+              <a href="thread.html#25292">[ thread ]</a>
+              <a href="subject.html#25292">[ subject ]</a>
+              <a href="author.html#25292">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  991f0a1f718d54c71e4047fa9def3e401e1d8f7b (commit)
+      from  7fdd38ce95451a7f174b95f18d584d41e560c21c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py  |   10 +-
+ x2go/backends/printing/_file.py   |    2 +-
+ x2go/backends/printing/_gconf.py  |    2 +-
+ x2go/backends/printing/_winreg.py |    2 +-
+ x2go/backends/terminal/_stdout.py |  320 +++++++++++++++++++++++++++++--------
+ x2go/cache.py                     |    4 +-
+ x2go/forward.py                   |   16 +-
+ x2go/guardian.py                  |    2 +-
+ x2go/mimebox.py                   |    8 +-
+ x2go/mimeboxactions.py            |   16 +-
+ x2go/printactions.py              |   24 +--
+ x2go/printqueue.py                |   10 +-
+ x2go/pulseaudio.py                |    2 +-
+ x2go/registry.py                  |    2 +-
+ x2go/sftpserver.py                |    4 +-
+ x2go/xserver.py                   |    4 +-
+ 16 files changed, 305 insertions(+), 123 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 5470c3d..2c18b70 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -57,12 +57,14 @@ monkey_patch_paramiko()
+ 
+ def _rerewrite_blanks(cmd):
+     &quot;&quot;&quot;\
+-    In command strings X2Go server scripts expects blanks being rewritten to ,,X2GO_SPACE_CHAR''.
++    In command strings X2Go server scripts expect blanks being rewritten to ,,X2GO_SPACE_CHAR''.
++    Commands get rewritten in the terminal sessions. This re-rewrite function helps
++    displaying command string in log output.
+ 
+-    @param cmd: command that is to be sent to an X2Go server script
++    @param cmd: command that has to be rewritten for log output
+     @type cmd: C{str}
+ 
+-    @return: the command with blanks replaced by ,,X2GO_SPACE_CHAR''
++    @return: the command with ,,X2GO_SPACE_CHAR'' re-replaced by blanks
+     @rtype: C{str}
+ 
+     &quot;&quot;&quot;
+@@ -642,7 +644,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @type force_password_auth: C{bool}
+         @param session_instance: an instance L{X2goSession} using this L{X2goControlSessionSTDOUT}
+             instance.
+-        @type session_instance: C{instance}
++        @type session_instance: C{obj}
+         @param use_sshproxy: connect through an SSH proxy
+         @type use_sshproxy: C{True} if an SSH proxy is to be used for tunneling the connection
+         @param sshproxy_host: hostname of the SSH proxy server, use &lt;hostname&gt;:&lt;port&gt; to name a
+diff --git a/x2go/backends/printing/_file.py b/x2go/backends/printing/_file.py
+index cd56045..ba136da 100644
+--- a/x2go/backends/printing/_file.py
++++ b/x2go/backends/printing/_file.py
+@@ -85,7 +85,7 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+         @type defaults: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintAction} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/backends/printing/_gconf.py b/x2go/backends/printing/_gconf.py
+index 56984aa..11bc718 100644
+--- a/x2go/backends/printing/_gconf.py
++++ b/x2go/backends/printing/_gconf.py
+@@ -60,7 +60,7 @@ class X2goClientPrintingGCONF(inifiles.X2goIniFile):
+         @type defaults: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintAction} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/backends/printing/_winreg.py b/x2go/backends/printing/_winreg.py
+index b89c5b7..839be52 100644
+--- a/x2go/backends/printing/_winreg.py
++++ b/x2go/backends/printing/_winreg.py
+@@ -60,7 +60,7 @@ class X2goClientPrintingWINREG(inifiles.X2goIniFile):
+         @type defaults: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintAction} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 066db33..b1f1259 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -62,7 +62,19 @@ from x2go.backends.printing import X2goClientPrinting as _X2goClientPrinting
+ _local_color_depth = utils.local_color_depth()
+ 
+ def _rewrite_cmd(cmd, params=None):
++    &quot;&quot;&quot;\
++    Mechansim that rewrites X2Go server commands into something that gets understood by
++    the server-side script C{x2goruncommand}.
++
++    @param cmd: the current command for execution (as found in the session profile parameter C{cmd})
++    @type cmd: C{str}
++    @param params: an session paramter object
++    @type params: L{X2goSessionParams}
++
++    @return: the rewritten command for server-side execution
++    @rtype: C{str}
+ 
++    &quot;&quot;&quot;
+     # start with an empty string
+     cmd = cmd or ''
+ 
+@@ -85,7 +97,18 @@ def _rewrite_cmd(cmd, params=None):
+ 
+     return cmd
+ 
++
+ def _rewrite_blanks(cmd):
++    &quot;&quot;&quot;\
++    In command strings X2Go server scripts expect blanks being rewritten to ,,X2GO_SPACE_CHAR''.
++
++    @param cmd: command that has to be rewritten for passing to the server
++    @type cmd: C{str}
++
++    @return: the command with blanks rewritten to ,,X2GO_SPACE_CHAR''
++    @rtype: C{str}
++
++    &quot;&quot;&quot;
+     # X2Go run command replace X2GO_SPACE_CHAR string with blanks
+     if cmd:
+         cmd = cmd.replace(&quot; &quot;, &quot;X2GO_SPACE_CHAR&quot;)
+@@ -101,15 +124,16 @@ class X2goSessionParams(object):
+     def rewrite_session_type(self):
+         &quot;&quot;&quot;\
+         Rewrite the X2Go session type, so that the X2Go server
+-        can understand it (C{desktop} -&gt; C{D}).
++        can understand it (C{desktop} -&gt; C{D}, etc.).
+ 
+         Also if the object's C{command} property is a known window 
+         manager, the session type will be set to 'D' 
+         (i.e. desktop).
+ 
+         @return: 'D' if session should probably a desktop session,
+-            'R' (for rootless) else
+-        @rtype: str
++            'R' for rootless sessions, 'P' for sessions providing published
++            applications, and 'S' for desktop sharing sessions
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         cmd = self.cmd
+@@ -139,7 +163,9 @@ class X2goSessionParams(object):
+         elif self.session_type in (&quot;P&quot;, &quot;published&quot;, &quot;published_applications&quot;):
+             self.session_type = 'P'
+ 
+-    def update(self, properties_to_be_updated={}):
++        return self.session_type
++
++    def update(self, **properties_to_be_updated):
+         &quot;&quot;&quot;\
+         Update all properties in the object L{X2goSessionParams} object from
+         the passed on dictionary.
+@@ -147,7 +173,7 @@ class X2goSessionParams(object):
+         @param properties_to_be_updated: a dictionary with L{X2goSessionParams}
+             property names as keys und their values to be update in 
+             L{X2goSessionParams} object.
+-        @type properties_to_be_updated: dict
++        @type properties_to_be_updated: C{dict}
+ 
+         &quot;&quot;&quot;
+         for key in properties_to_be_updated.keys():
+@@ -157,28 +183,23 @@ class X2goSessionParams(object):
+ 
+ class X2goTerminalSessionSTDOUT(object):
+     &quot;&quot;&quot;\
+-    Class for managing X2Go sessions on a remote X2Go server via Paramiko/SSH. 
++    Class for managing X2Go terminal sessions on a remote X2Go server via Paramiko/SSH.
++
+     With the L{X2goTerminalSessionSTDOUT} class you can start new X2Go sessions, resume suspended 
+     sessions or suspend resp. terminate currently running sessions on a 
+     connected X2Go server.
+ 
+-    When suspending or terminating sessions there are two possible ways:
+-
+-        1. Initialize an X2Go session object, start a new session (or resume)
+-        and use the L{X2goTerminalSessionSTDOUT.suspend()} or L{X2goTerminalSessionSTDOUT.terminate()} method
+-        to suspend/terminate the current session object.
+-        2. Alternatively, you can pass a session name to L{X2goTerminalSessionSTDOUT.suspend()}
+-        or L{X2goTerminalSessionSTDOUT.terminate()}. If a session of this name exists on the
+-        X2Go server the respective action will be performed on the session.
+-
+-    An L{X2goTerminalSessionSTDOUT} object uses two main data structure classes: 
++    An L{X2goTerminalSessionSTDOUT} object uses two main data structure classes:
+ 
+         - L{X2goSessionParams}: stores all parameters that have been passed to the 
+         constructor method.
+ 
+-        - C{X2goServerSessionInfo} backend class: when starting or resuming a session, an object of this class 
++        - C{X2goServerSessionInfo*} backend class: when starting or resuming a session, an object of this class 
+         will be used to store all information retrieved from the X2Go server.
+ 
++    The terminal session instance works closely together (i.e. depends on) a connected control
++    session instance (e.g. L{X2goControlSessionSTDOUT}). You never should use either of them as a standalone
++    instance. Both, control session and terminal session(s) get managed/controlled via L{X2goSession} instances.
+ 
+     &quot;&quot;&quot;
+     def __init__(self, control_session, session_info=None,
+@@ -233,26 +254,58 @@ class X2goTerminalSessionSTDOUT(object):
+         @param snd_system: sound system to be used on server (C{none}, C{pulse} (default), 
+             C{arts} (obsolete) or C{esd})
+         @type snd_system: C{str}
++        @param snd_port: local sound port for network capable audio system
++        @type snd_port: C{int}
+         @param cmd: command to be run on X2Go server after session start (only used
+             when L{X2goTerminalSessionSTDOUT.start()} is called, ignored on resume, suspend etc.
+         @type cmd: C{str}
++        @param published_applications: session is published applications provider
++        @type published_applications: C{bool}
++        @param set_session_title: modify the session title (i.e. the Window title) of desktop or shared desktop sessions
++        @type set_session_title: C{bool}
++        @param session_title: session title for this (desktop or shared desktop) session
++        @type session_title: C{str}
++        @param applications: applications available for rootless application execution
++        @type applications: C{list}
++        @param rdp_server: host name of server-side RDP server
++        @type rdp_server: C{str}
++        @param rdp_options: options for the C{rdesktop} command executed on the X2Go server (RDP proxy mode of X2Go)
++        @type rdp_options: C{str}
++        @param xdmcp_server: XDMCP server to connect to
++        @type xdmcp_server: C{str}
++        @param convert_encoding: convert file system encodings between server and client (for client-side shared folders)
++        @type convert_encoding: C{bool}
++        @param server_encoding: server-side file system / session encoding
++        @type server_encoding: C{str}
++        @param client_encoding: client-side file system encoding (if client-side is MS Windows, this parameter gets overwritten to WINDOWS-1252)
++        @type client_encoding: C{str}
+         @param rootdir: X2Go session directory, normally C{~/.x2go}
+         @type rootdir: C{str}
+-        @param info_backend: backend for handling storage of server session information
+-        @type info_backend: C{X2goServerSessionInfo*} instance
+-        @param list_backend: backend for handling storage of session list information
+-        @type list_backend: C{X2goServerSessionList*} instance
+-        @param proxy_backend: backend for handling the X-proxy connections
+-        @type proxy_backend: C{X2goProxy*} instance
++        @param profile_name: the session profile name for this terminal session
++        @type profile_name: C{str}
++        @param profile_id: the session profile ID for this terminal session
++        @type profile_id: C{str}
+         @param print_action: either a print action short name (PDFVIEW, PDFSAVE, PRINT, PRINTCMD) or the
+             resp. C{X2goPrintActionXXX} class (where XXX equals one of the given short names)
+         @type print_action: C{str} or C{class}
+         @param print_action_args: optional arguments for a given print_action (for further info refer to
+             L{X2goPrintActionPDFVIEW}, L{X2goPrintActionPDFSAVE}, L{X2goPrintActionPRINT} and L{X2goPrintActionPRINTCMD})
+         @type print_action_args: dict
++        @param info_backend: backend for handling storage of server session information
++        @type info_backend: C{X2goServerSessionInfo*} instance
++        @param list_backend: backend for handling storage of session list information
++        @type list_backend: C{X2goServerSessionList*} instance
++        @param proxy_backend: backend for handling the X-proxy connections
++        @type proxy_backend: C{X2goProxy*} instance
+         @param proxy_options: a set of very C{X2goProxy*} backend specific options; any option that is not known
+             to the C{X2goProxy*} backend will simply be ignored
+         @type proxy_options: C{dict}
++        @param client_rootdir: client base dir (default: ~/.x2goclient)
++        @type client_rootdir: C{str}
++        @param sessions_rootdir: sessions base dir (default: ~/.x2go)
++        @type sessions_rootdir: C{str}
++        @param session_instance: the L{X2goSession} instance that is parent to this terminal session
++        @type session_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goTerminalSessionSTDOUT} constructor
+         @type logger: L{X2goLogger} instance
+@@ -344,10 +397,21 @@ class X2goTerminalSessionSTDOUT(object):
+         self._cleaned_up = False
+ 
+     def __del__(self):
++        &quot;&quot;&quot;\
++        Tidy up if terminal session gets destructed.
++
++        &quot;&quot;&quot;
+         self._x2go_tidy_up()
+ 
+     def _x2go_tidy_up(self):
++        &quot;&quot;&quot;\
++        Tidy up this terminal session...
++          - shutdown all forwarding and reverse forwarding tunnels
++          - shutdown the print queue (if running)
++          - shutdown the MIME box queue (if running)
++          - clear the session info
+ 
++        &quot;&quot;&quot;
+         self.release_proxy()
+ 
+         try:
+@@ -371,10 +435,16 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         self.session_info.clear()
+ 
+-    def _mk_sessions_rootdir(self, d):
++    def _mk_sessions_rootdir(self, rootdir):
++        &quot;&quot;&quot;\
++        Create the server-side session root dir (normally ~/.x2go).
++
++        @param rootdir: server-side session root directory
++        @type rootdir: C{str}
+ 
++        &quot;&quot;&quot;
+         try:
+-            os.makedirs(d)
++            os.makedirs(rootdir)
+         except OSError, e:
+             if e.errno == 17:
+                 # file exists
+@@ -383,39 +453,57 @@ class X2goTerminalSessionSTDOUT(object):
+                 raise OSError, e
+ 
+     def _rm_session_dirtree(self):
++        &quot;&quot;&quot;\
++        Purge client-side session dir (session cache directory).
+ 
++        &quot;&quot;&quot;
+         if self.session_info.name:
+             shutil.rmtree('%s/S-%s' % (self.params.rootdir, self.session_info), ignore_errors=True)
+ 
+     def _rm_desktop_dirtree(self):
++        &quot;&quot;&quot;\
++        Purge client-side session dir (C-&lt;display&gt; directory)
+ 
++        &quot;&quot;&quot;
+         if self.session_info.display:
+             shutil.rmtree('%s/S-%s' % (self.params.rootdir, self.session_info.display), ignore_errors=True)
+ 
+     def get_session_name(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the X2Go session's name from the session info object.
++
++        @return: the session name
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return self.session_info.name
+ 
+     def get_session_info(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the X2Go session's session info object.
++
++        @return: the session info object
++        @rtype: C{X2goServerSessionInfo*}
+ 
+         &quot;&quot;&quot;
+         return self.session_info
+ 
+     def get_session_cmd(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the X2Go session's command as stored in the session parameter object.
++
++        @return: the session command
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return self.params.cmd
+ 
+     def get_session_type(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the X2Go session's session type as stored in the session parameter object.
++
++        @return: the session type
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return self.params.session_type
+@@ -427,7 +515,9 @@ class X2goTerminalSessionSTDOUT(object):
+         Currently supported audio protocols:
+ 
+             - PulseAudio
+-            - Esound 
++            - Esound (not tested very much)
++
++        @raise X2goControlSessionException: if the control session of this terminal session is not connected
+ 
+         &quot;&quot;&quot;
+         _tunnel = None
+@@ -520,7 +610,13 @@ class X2goTerminalSessionSTDOUT(object):
+             self.reverse_tunnels[self.session_info.name]['sshfs'][1].resume()
+ 
+     def _x2go_pause_rev_fw_tunnel(self, name):
+-        # pause reverse SSH tunnel of name &lt;name&gt;
++        &quot;&quot;&quot;\
++        Pause reverse SSH tunnel of name &lt;name&gt;.
++
++        @param name: tunnel name (either of C{sshfs}, C{snd})
++        @type name: C{str}
++
++        &quot;&quot;&quot;
+         _tunnel = self.reverse_tunnels[self.session_info.name][name][1]
+         if _tunnel is not None:
+             _tunnel.pause()
+@@ -543,6 +639,8 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;\
+         Initialize X2Go print spooling.
+ 
++        @raise X2goUserException: if the X2Go printing feature is not available to this user
++
+         &quot;&quot;&quot;
+         if not self.control_session.is_sshfs_available():
+             raise x2go_exceptions.X2goUserException('Remote user %s is not allowed to use client-side printing.' % self.session_info.username)
+@@ -565,7 +663,14 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def set_print_action(self, print_action, **kwargs):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Set a print action for the next incoming print jobs.
++
++        This method is a wrapper for L{X2goPrintQueue}C{.set_print_action()}.
++
++        @param print_action: print action name or object (i.e. an instance of C{X2goPrintAction*} classes)
++        @type print_action: C{str} or C{X2goPrintAction*}
++        @param kwargs: print action specific parameters
++        @type kwargs: dict
+ 
+         &quot;&quot;&quot;
+         self.print_queue.set_print_action(print_action, logger=self.logger, **kwargs)
+@@ -582,12 +687,22 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;\
+         Return the server-side printing spooldir path.
+ 
++        @return: the directory for remote print job spooling
++        @rtype: C{str}
++
+         &quot;&quot;&quot;
+         return '%s/%s' % (self.session_info.remote_container, 'spool')
+ 
+     def start_mimebox(self, mimebox_extensions=[], mimebox_action=None):
+         &quot;&quot;&quot;\
+-        Initialize X2Go mimebox handling.
++        Initialize the X2Go MIME box. Open/process incoming files from the server-side locally.
++
++        @param mimebox_extensions: file name extensions that are allowed for local opening/processing
++        @type mimebox_extensions: C{list}
++        @param mimebox_action: MIME box action given as name or object (i.e. an instance of C{X2goMIMEboxAction*} classes).
++        @type mimebox_action: C{str} or C{obj}
++
++        @raise X2goUserException: if the X2Go MIME box feature is not available to this user
+ 
+         &quot;&quot;&quot;
+         if not self.control_session.is_sshfs_available():
+@@ -610,7 +725,14 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def set_mimebox_action(self, mimebox_action, **kwargs):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Set a MIME box action for the next incoming MIME jobs.
++
++        This method is a wrapper for L{X2goMIMEboxQueue}C{set_mimebox_action()}.
++
++        @param mimebox_action: MIME box action name or object (i.e. an instance of C{X2goMIMEboxAction*} classes)
++        @type mimebox_action: C{str} or C{X2goMIMEboxAction*}
++        @param kwargs: MIME box action specific parameters
++        @type kwargs: dict
+ 
+         &quot;&quot;&quot;
+         self.mimebox_queue.set_mimebox_action(mimebox_action, logger=self.logger, **kwargs)
+@@ -625,7 +747,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def get_mimebox_spooldir(self):
+         &quot;&quot;&quot;\
+-        Return the server-side mimebox spooldir path.
++        Return the server-side MIME box spooldir path.
++
++        @return: the directory where remote MIME box jobs are placed
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return '%s/%s' % (self.session_info.remote_container, 'mimebox')
+@@ -634,7 +759,7 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;\
+         Test if this terminal's session info object is write-protected.
+ 
+-        @return: Boolean expression for being read-only or read-write.
++        @return: C{True}, if session info object is read-only, C{False} for read-write.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -668,6 +793,9 @@ class X2goTerminalSessionSTDOUT(object):
+         @return: returns C{True} if the local folder has been successfully mounted within the X2Go server session
+         @rtype: C{bool}
+ 
++        @raise X2goUserException: if local folder sharing is not available to this user
++        @raise Exception: any other exception occuring on the way is passed through by this method
++
+         &quot;&quot;&quot;
+         if not self.control_session.is_sshfs_available():
+             raise x2go_exceptions.X2goUserException('Remote user %s is not allowed to share local folders with the server.' % self.session_info.username)
+@@ -828,7 +956,16 @@ class X2goTerminalSessionSTDOUT(object):
+         return self.params.depth
+ 
+     def auto_session_window_title(self, dont_set=False):
++        &quot;&quot;&quot;\
++        Automatically generate an appropriate human-readable session window title.
++
++        The session window title will be provider in the C{session_title} property of
++        this method.
+ 
++        @param dont_set: generate the session window title, but do not actually set it
++        @type dont_set: C{bool}
++
++        &quot;&quot;&quot;
+         _generic_title = 'X2GO-%s' % self.session_info.name
+ 
+         # no blanks at beginning or end, no blanks-only...
+@@ -856,6 +993,8 @@ class X2goTerminalSessionSTDOUT(object):
+         Try for &lt;timeout&gt; seconds to find the X2Go session window of this
+         terminal session.
+ 
++        A background thread will get spawned for this operation.
++
+         @param timeout: try for &lt;timeout&gt; seconds to find the session window
+         @type timeout: C{int}
+ 
+@@ -863,7 +1002,14 @@ class X2goTerminalSessionSTDOUT(object):
+         gevent.spawn(self._find_session_window, timeout=timeout)
+ 
+     def _find_session_window(self, timeout=0):
++        &quot;&quot;&quot;\
++        Try for &lt;timeout&gt; seconds to find the X2Go session window of this
++        terminal session.
+ 
++        @param timeout: try for &lt;timeout&gt; seconds to find the session window
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
+         self.session_window = None
+ 
+         # search for the window of our focus, do this in a loop till the window as been found
+@@ -883,11 +1029,11 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def set_session_window_title(self, title, timeout=30):
+         &quot;&quot;&quot;\
+-        Modify session window title. If the session ID does not occur in the
+-        given title, it will be prepended, so that every X2Go session window
+-        always contains the X2Go session ID of that window.
++        Modify the session window title.
++
++        A background thread will get spawned for this operation.
+ 
+-        @param title: new title for session window
++        @param title: new title for the terminal session's session window
+         @type title: C{str}
+         @param timeout: try for &lt;timeout&gt; seconds to find the session window
+         @type timeout: C{int}
+@@ -896,7 +1042,15 @@ class X2goTerminalSessionSTDOUT(object):
+         gevent.spawn(self._set_session_window_title, title=title.strip(), timeout=timeout)
+ 
+     def _set_session_window_title(self, title, timeout=0):
++        &quot;&quot;&quot;\
++        Modify the session window title.
+ 
++        @param title: new title for the terminal session's session window
++        @type title: C{str}
++        @param timeout: try for &lt;timeout&gt; seconds to find the session window
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
+         self.session_title = title
+ 
+         if not self.session_title:
+@@ -915,14 +1069,26 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def raise_session_window(self, timeout=30):
+         &quot;&quot;&quot;\
+-        Try to lift the session window above all other windows and bring
+-        it to focus.
++        Try for &lt;timeout&gt; seconds to raise the X2Go session window of this
++        terminal session to the top and bring it to focus.
++
++        A background thread will get spawned for this operation.
++
++        @param timeout: try for &lt;timeout&gt; seconds to raise the session window
++        @type timeout: C{int}
+ 
+         &quot;&quot;&quot;
+         gevent.spawn(self._raise_session_window, timeout=timeout)
+ 
+     def _raise_session_window(self, timeout=0):
++        &quot;&quot;&quot;
++        Try for &lt;timeout&gt; seconds to raise the X2Go session window of this
++        terminal session to the top and bring it to focus.
+ 
++        @param timeout: try for &lt;timeout&gt; seconds to raise the session window
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
+         timeout += 1
+         while timeout:
+ 
+@@ -937,7 +1103,15 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def has_command(self, cmd):
+         &quot;&quot;&quot;\
+-        Verify if the command &lt;cmd&gt; exists on the X2Go server.
++        ,,Guess'' if the command C{&lt;cmd&gt;} exists on the X2Go server and is executable.
++        The expected result is not 100% safe, however, it comes with a high probability to
++        be correct.
++
++        @param cmd: session command
++        @type cmd: C{str}
++
++        @return: C{True} if this method reckons that the command is executable on the remote X2Go server
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         test_cmd = None;
+@@ -978,6 +1152,8 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         @param cmd: Command to be run
+         @type cmd: C{str}
++        @param env: add server-side environment variables
++        @type env: C{dict}
+ 
+         @return: stdout.read() and stderr.read() as returned by the run command
+             on the X2Go server
+@@ -1003,7 +1179,7 @@ class X2goTerminalSessionSTDOUT(object):
+             # do not run command when in DESKTOP SHARING mode...
+             return None
+ 
+-        self.params.update({'cmd': cmd})
++        self.params.update(cmd=cmd)
+ 
+         # do not allow the execution of full path names
+         if '/' in cmd:
+@@ -1036,7 +1212,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def is_desktop_session(self):
+         &quot;&quot;&quot;\
+-        Returns true if this session is a desktop session.
++        Is this (terminal) session a desktop session?
+ 
+         @return: Returns C{True} is this session is a desktop session.
+         @rtype: C{bool}
+@@ -1048,7 +1224,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def is_published_applications_provider(self):
+         &quot;&quot;&quot;\
+-        Returns true if this session runs in published applications mode.
++        Is this (terminal) session a published applications provider?
+ 
+         @return: Returns C{True} is this session is a provider session for published applications.
+         @rtype: C{bool}
+@@ -1071,6 +1247,9 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
++        if not self.is_running():
++            return False
++
+         cmd_line = [ 'export DISPLAY=:%s &amp;&amp; ' % str(self.session_info.display),
+                      'setxkbmap '
+                    ]
+@@ -1127,10 +1306,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def ok(self):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session is up and running, 
+-        C{False} else
++        X2Go session OK?
+ 
+-        @return: X2Go session OK?
++        @return: Returns C{True} if this X2Go (terminal) session is up and running,
++            C{False} otherwise.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1139,10 +1318,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def is_running(self):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session is in running state,
+-        C{False} else.
++        X2Go session running?
+ 
+-        @return: X2Go session running?
++        @return: Returns C{True} if this X2Go (terminal) session is in running state,
++            C{False} otherwise.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1150,10 +1329,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def is_suspended(self):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session is in suspended state,
+-        C{False} else.
++        X2Go session suspended?
+ 
+-        @return: X2Go session suspended?
++        @return: Returns C{True} if this X2Go (terminal) session is in suspended state,
++            C{False} otherwise.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1161,10 +1340,10 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def is_connected(self):
+         &quot;&quot;&quot;\
+-        Returns C{True} if this X2Go session's Paramiko/SSH transport is 
+-        connected/authenticated, C{False} else.
++        X2Go session connected?
+ 
+-        @return: X2Go session connected?
++        @return: Returns C{True} if this X2Go session's Paramiko/SSH transport is 
++            connected/authenticated, C{False} else.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1174,8 +1353,10 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;\
+         Start a new X2Go session.
+ 
+-        The L{X2goTerminalSession.start()} method accepts any parameter
+-        that can be passed to the class constructor.
++        @return: C{True} if session startup has been successful and the X2Go proxy is up-and-running
++        @rtype: C{bool}
++
++        @raise X2goTerminalSessionException: if the session startup failed
+ 
+         &quot;&quot;&quot;
+         self.params.rewrite_session_type()
+@@ -1265,12 +1446,11 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;\
+         Resume a running/suspended X2Go session. 
+ 
+-        The L{X2goTerminalSessionSTDOUT.resume()} method accepts any parameter
+-        that can be passed to the class constructor.
+-
+-        @return: True if the session could be successfully resumed
++        @return: C{True} if the session could successfully be resumed
+         @rtype: C{bool}
+ 
++        @raise X2goTerminalSessionException: if the terminal session failed to update server-side reported port changes
++
+         &quot;&quot;&quot;
+         setkbd = &quot;0&quot;
+         if self.params.kbtype != &quot;null/null&quot;:
+@@ -1349,9 +1529,9 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def suspend(self):
+         &quot;&quot;&quot;\
+-        Suspend this X2Go session terminal.
++        Suspend this X2Go (terminal) session.
+ 
+-        @return: True if the session terminal could be successfully suspended
++        @return: C{True} if the session terminal could be successfully suspended
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1365,9 +1545,9 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def terminate(self):
+         &quot;&quot;&quot;\
+-        Terminate this X2Go session.
++        Terminate this X2Go (terminal) session.
+ 
+-        @return: True if the session terminal could be successfully terminate
++        @return: C{True} if the session could be successfully terminated
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1383,7 +1563,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def release_proxy(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Let the X2Go proxy command cleanly die away... (by calling its destructor).
+ 
+         &quot;&quot;&quot;
+         if self.proxy is not None:
+@@ -1391,7 +1571,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def post_terminate_cleanup(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Do some cleanup after this session has terminated.
+ 
+         &quot;&quot;&quot;
+         # this method might be called twice (directly and from update_status in the session
+diff --git a/x2go/cache.py b/x2go/cache.py
+index 1f34945..2b6f9ec 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -53,9 +53,9 @@ class X2goListSessionsCache(object):
+     def __init__(self, client_instance, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the L{X2goClient} instance that uses this L{X2goListSessionsCache}
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goListSessionsCache} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/forward.py b/x2go/forward.py
+index b10e86f..b382bee 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -55,10 +55,10 @@ class X2goFwServer(StreamServer):
+         @param remote_port: port of remote host
+         @type remote_port: C{int}
+         @param ssh_transport: a valid Paramiko/SSH transport object
+-        @type ssh_transport: C{instance}
++        @type ssh_transport: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goFwServer} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -88,7 +88,7 @@ class X2goFwServer(StreamServer):
+         Handle for SSH/Paramiko forwarding tunnel.
+ 
+         @param fw_socket: local end of the forwarding tunnel
+-        @type fw_socket: C{instance}
++        @type fw_socket: C{obj}
+         @param address: unused/ignored
+         @type address: C{tuple}
+ 
+@@ -232,14 +232,14 @@ def start_forward_tunnel(local_host='127.0.0.1', local_port=22022,
+     @param remote_port: ... on port C{&lt;remote_port&gt;}
+     @type remote_port: C{int}
+     @param ssh_transport: the Paramiko/SSH transport (i.e. the X2Go sessions Paramiko/SSH transport object)
+-    @type ssh_transport: C{instance}
++    @type ssh_transport: C{obj}
+     @param session_instance: the L{X2goSession} instance that initiates this tunnel
+-    @type session_instance: C{instance}
++    @type session_instance: C{obj}
+     @param logger: an X2goLogger object
+-    @type logger: C{instance}
++    @type logger: C{obj}
+ 
+     @return: returns an L{X2goFwServer} instance
+-    @rtype: C{instance}
++    @rtype: C{obj}
+ 
+     &quot;&quot;&quot;
+     fw_server = X2goFwServer(listener=(local_host, local_port),
+@@ -261,7 +261,7 @@ def stop_forward_tunnel(fw_server):
+     Tear down a given Paramiko/SSH port forwarding tunnel.
+ 
+     @param fw_server: an L{X2goFwServer} instance as returned by the L{start_forward_tunnel()} function
+-    @type fw_server: C{instance}
++    @type fw_server: C{obj}
+ 
+     &quot;&quot;&quot;
+     if fw_server is not None:
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 897cce1..927811d 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -67,7 +67,7 @@ class X2goSessionGuardian(threading.Thread):
+         @param refresh_interval: refresh cache and session registry every &lt;refresh_interval&gt; seconds
+         @type refresh_interval: C{int}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goSessionGuardian} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/mimebox.py b/x2go/mimebox.py
+index 7ac56c4..c424047 100644
+--- a/x2go/mimebox.py
++++ b/x2go/mimebox.py
+@@ -68,10 +68,10 @@ class X2goMIMEboxQueue(threading.Thread):
+         @param mimebox_action: name or instance of either of the possible X2Go print action classes
+         @type mimebox_action: C{str} or instance
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintQueue} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -220,9 +220,9 @@ def x2go_mimeboxjob_handler(mimebox_file=None,
+     @param mimebox_action: an instance of either of the possible C{X2goMIMEboxActionXXX} classes
+     @type mimebox_action: C{X2goMIMEboxActionXXX} nstance
+     @param parent_thread: the L{X2goMIMEboxQueue} thread that actually created this handler's L{X2goMIMEboxJob} instance
+-    @type parent_thread: C{instance}
++    @type parent_thread: C{obj}
+     @param logger: the L{X2goMIMEboxQueue}'s logging instance
+-    @type logger: C{instance}
++    @type logger: C{obj}
+ 
+     &quot;&quot;&quot;
+     mimebox_action.profile_name = parent_thread.profile_name
+diff --git a/x2go/mimeboxactions.py b/x2go/mimeboxactions.py
+index 217146b..5a2f0f4 100644
+--- a/x2go/mimeboxactions.py
++++ b/x2go/mimeboxactions.py
+@@ -57,10 +57,10 @@ class X2goMIMEboxAction(object):
+         class by &#187;real&#171; X2Go MIME box actions.
+ 
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goMIMEboxAction} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -134,10 +134,10 @@ class X2goMIMEboxActionOPEN(X2goMIMEboxAction):
+     def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goMIMEboxActionOPEN} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -192,10 +192,10 @@ class X2goMIMEboxActionOPENWITH(X2goMIMEboxAction):
+     def __init__(self, client_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goMIMEboxActionOPENWITH} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -252,10 +252,10 @@ class X2goMIMEboxActionSAVEAS(X2goMIMEboxAction):
+         @param client_instance: an L{X2goClient} instance, within your customized L{X2goClient} make sure 
+             you have a C{HOOK_open_mimebox_saveas_dialog(filename=&lt;str&gt;)} method defined that will actually
+             handle the incoming mimebox file.
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goMIMEboxActionSAVEAS} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/printactions.py b/x2go/printactions.py
+index 91faa81..1def760 100644
+--- a/x2go/printactions.py
++++ b/x2go/printactions.py
+@@ -66,10 +66,10 @@ class X2goPrintAction(object):
+         class by &#187;real&#171; X2Go print actions.
+ 
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintAction} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -172,12 +172,12 @@ class X2goPrintActionPDFVIEW(X2goPrintAction):
+     def __init__(self, client_instance=None, pdfview_cmd=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param pdfview_cmd: command that starts the external PDF viewer application
+         @type pdfview_cmd: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintActionPDFVIEW} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -250,12 +250,12 @@ class X2goPrintActionPDFSAVE(X2goPrintAction):
+     def __init__(self, client_instance=None, save_to_folder=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param save_to_folder: saving location for incoming print jobs (PDF files)
+         @type save_to_folder: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintActionPDFSAVE} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -305,12 +305,12 @@ class X2goPrintActionPRINT(X2goPrintAction):
+     def __init__(self, client_instance=None, printer=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param printer: name of the preferred printer, if C{None} the system's/user's default printer will be used
+         @type printer: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintActionPRINT} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -434,12 +434,12 @@ class X2goPrintActionPRINTCMD(X2goPrintAction):
+     def __init__(self, client_instance=None, print_cmd=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param print_cmd: external command to be called on incoming print jobs
+         @type print_cmd: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintActionPRINTCMD} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -496,10 +496,10 @@ class X2goPrintActionDIALOG(X2goPrintAction):
+         @param client_instance: an L{X2goClient} instance, within your customized L{X2goClient} make sure 
+             you have a C{HOOK_open_print_dialog(filename=&lt;str&gt;)} method defined that will actually
+             open the print dialog.
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintActionDIALOG} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/printqueue.py b/x2go/printqueue.py
+index 0fb8d4d..cbf7403 100644
+--- a/x2go/printqueue.py
++++ b/x2go/printqueue.py
+@@ -77,12 +77,12 @@ class X2goPrintQueue(threading.Thread):
+             values; the C{print_action_args} will be passed on to the X2Go print action instance constructor, so 
+             refer to either of these: L{X2goPrintActionPDFVIEW}, L{X2goPrintActionPRINT} et al.
+         @param client_instance: the underlying L{X2goClient} instance
+-        @type client_instance: C{instance}
++        @type client_instance: C{obj}
+         @param printing_backend: the client printing configuration backend class
+-        @type printing_backend: C{instance}
++        @type printing_backend: C{obj}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goPrintQueue} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -235,9 +235,9 @@ def x2go_printjob_handler(job_file=None, pdf_file=None, job_title=None, print_ac
+     @param print_action: an instance of either of the possible C{X2goPrintActionXXX} classes
+     @type print_action: C{X2goPrintActionXXX} nstance
+     @param parent_thread: the L{X2goPrintQueue} thread that actually created this handler's L{X2goPrintJob} instance
+-    @type parent_thread: C{instance}
++    @type parent_thread: C{obj}
+     @param logger: the L{X2goPrintQueue}'s logging instance
+-    @type logger: C{instance}
++    @type logger: C{obj}
+ 
+     &quot;&quot;&quot;
+     if print_action is None:
+diff --git a/x2go/pulseaudio.py b/x2go/pulseaudio.py
+index 6930bec..08b599e 100644
+--- a/x2go/pulseaudio.py
++++ b/x2go/pulseaudio.py
+@@ -63,7 +63,7 @@ class X2goPulseAudio(threading.Thread):
+         @param client_instance: the calling L{X2goClient} instance
+         @type client_instance: L{X2goClient} instance
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/registry.py b/x2go/registry.py
+index fbbb44c..f9bf5ad 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -59,7 +59,7 @@ class X2goSessionRegistry(object):
+         @param client_instance: the L{X2goClient} instance that instantiated this L{X2goSessionRegistry} instance.
+         @type client_instance: L{X2goClient} instance
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/sftpserver.py b/x2go/sftpserver.py
+index 1ddf617..839f664 100644
+--- a/x2go/sftpserver.py
++++ b/x2go/sftpserver.py
+@@ -58,7 +58,7 @@ class _SSHServer(paramiko.ServerInterface):
+         @param session_instance: the calling L{X2goSession} instance
+         @type session_instance: L{X2goSession} instance
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -163,7 +163,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         @param chroot: chroot environment for this SFTP interface
+         @type chroot: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+diff --git a/x2go/xserver.py b/x2go/xserver.py
+index de0c1cb..edcb596 100644
+--- a/x2go/xserver.py
++++ b/x2go/xserver.py
+@@ -72,7 +72,7 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+         @param defaults: a Python dictionary with configuration file defaults (use on your own risk)
+         @type defaults: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+@@ -256,7 +256,7 @@ class X2goXServer(threading.Thread):
+         @param xserver_config: XServer configuration node (as derived from L{X2goClientXConfig.get_xserver_config()}
+         @type xserver_config: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
+-        @type logger: C{instance}
++        @type logger: C{obj}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025259.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-258-ge891bfa
+</A></li>
+	<LI>Next message: <A HREF="025704.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-257-g0042fba
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25292">[ date ]</a>
+              <a href="thread.html#25292">[ thread ]</a>
+              <a href="subject.html#25292">[ subject ]</a>
+              <a href="author.html#25292">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

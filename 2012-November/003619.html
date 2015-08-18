@@ -1,0 +1,1078 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient2.git - master (branch) updated:	ac2eeb5461e7f27cef3aaff705f690bf839bd8ce
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09ac2eeb5461e7f27cef3aaff705f690bf839bd8ce&In-Reply-To=%3C20121111145203.41B2E5DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003618.html">
+   <LINK REL="Next"  HREF="003620.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient2.git - master (branch) updated:	ac2eeb5461e7f27cef3aaff705f690bf839bd8ce</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09ac2eeb5461e7f27cef3aaff705f690bf839bd8ce&In-Reply-To=%3C20121111145203.41B2E5DB19%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient2.git - master (branch) updated:	ac2eeb5461e7f27cef3aaff705f690bf839bd8ce">git-admin at x2go.org
+       </A><BR>
+    <I>Sun Nov 11 15:52:03 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003618.html">[X2go-Commits] lightdm-remote-session-x2go.git - master (branch)	updated: 0.0.0.1-3-g47900b8
+</A></li>
+        <LI>Next message: <A HREF="003620.html">[X2go-Commits] libpam-x2go.git - master (branch) updated:	0.0.0.1-6-g95acd68
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3619">[ date ]</a>
+              <a href="thread.html#3619">[ thread ]</a>
+              <a href="subject.html#3619">[ subject ]</a>
+              <a href="author.html#3619">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  ac2eeb5461e7f27cef3aaff705f690bf839bd8ce (commit)
+      from  af679ed1fd34a7a062902d8b3960efe0dcfd62f8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ac2eeb5461e7f27cef3aaff705f690bf839bd8ce
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Sun Nov 11 15:51:36 2012 +0100
+
+    add classes for SSH Connection
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ sshconnection.cpp               |  477 +++++++++++++++++++++++++++++++++++++++
+ sshconnection.h                 |  132 +++++++++++
+ sshconnectionguiinteraction.cpp |  170 ++++++++++++++
+ sshconnectionguiinteraction.h   |   75 ++++++
+ workarea.cpp                    |    1 +
+ x2goapplication.cpp             |    2 +
+ x2gobroker.cpp                  |   14 +-
+ x2goclient2.pro                 |    4 +
+ 8 files changed, 871 insertions(+), 4 deletions(-)
+ create mode 100644 sshconnection.cpp
+ create mode 100644 sshconnection.h
+ create mode 100644 sshconnectionguiinteraction.cpp
+ create mode 100644 sshconnectionguiinteraction.h
+
+The diff of changes is:
+diff --git a/sshconnection.cpp b/sshconnection.cpp
+new file mode 100644
+index 0000000..878c66c
+--- /dev/null
++++ b/sshconnection.cpp
+@@ -0,0 +1,477 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++#include &quot;sshconnection.h&quot;
++#include &quot;sshconnectionguiinteraction.h&quot;
++
++#define PROXYTUNNELPORT 44444
++
++#undef DEBUG
++// #define DEBUG
++
++#undef SSH_DEBUG
++// #define SSH_DEBUG
++
++#include &lt;QDebug&gt;
++#include &lt;QDir&gt;
++#include &lt;QTemporaryFile&gt;
++
++
++#ifndef Q_OS_WIN
++#include &lt;arpa/inet.h&gt;
++#endif
++#include &lt;math.h&gt;
++
++#ifndef Q_OS_WIN
++#include &lt;sys/socket.h&gt; /* for socket(), connect(), send(), and recv() */
++#include &lt;arpa/inet.h&gt;  /* for sockaddr_in and inet_addr() */
++#include &lt;arpa/inet.h&gt;
++#include &lt;netinet/tcp.h&gt;
++#include &lt;qt4/QtNetwork/qabstractsocket.h&gt;
++#endif
++
++
++bool SshConnection::isLibSshInited=false;
++SshConnectionGuiInteraction* SshConnection::guiInteractor=0;
++
++SshConnection::SshConnection(QObject* parent, QString host, int port, bool acceptUnknownServers,
++                             QString user, QString pass, QString key, bool autoLogin, bool krbLogin,
++                             bool useProxy, SshConnection::ProxyType proxyType, QString proxyServer,
++                             quint16 proxyPort, QString proxyLogin, QString proxyPassword, QString proxyKey,
++                             bool proxyAutoLogin): QThread(parent)
++{
++#if defined ( Q_OS_DARWIN )
++    // Mac OS X provides only 512KB stack space for secondary threads.
++    // As we put a 512KB buffer on the stack later on, we need a bigger stack space.
++    setStackSize (sizeof (char) * 1024 * 1024 * 2);
++#endif
++    tcpProxySocket = NULL;
++    tcpNetworkProxy = NULL;
++    sshProxy= NULL;
++    sshProxyReady=false;
++    nextPid=0;
++    my_ssh_session=0;
++
++    breakLoop=false;
++    this-&gt;host=host;
++    this-&gt;port=port;
++    this-&gt;user=user;
++    this-&gt;pass=pass;
++    this-&gt;key=key;
++    this-&gt;autoLogin=autoLogin;
++    this-&gt;acceptUnknownServers=acceptUnknownServers;
++    this-&gt;useProxy=useProxy;
++    this-&gt;proxyType=proxyType;
++    this-&gt;proxyAutoLogin=proxyAutoLogin;
++    this-&gt;proxyKey=proxyKey;
++    this-&gt;proxyServer=proxyServer;
++    this-&gt;proxyPort=proxyPort;
++    this-&gt;proxyLogin=proxyLogin;
++    this-&gt;proxyPassword=proxyPassword;
++    reverseTunnel=false;
++    kerberos=krbLogin;
++    kerberos=false;
++    if(!guiInteractor)
++    {
++        guiInteractor=new SshConnectionGuiInteraction(parent);
++    }
++}
++
++SshConnection::~SshConnection()
++{
++    if(my_ssh_session)
++    {
++        ssh_free(my_ssh_session);
++    }
++    qDebug()&lt;&lt;&quot;ssh connection destructor&quot;;
++}
++
++void SshConnection::run()
++{
++    disconnectSessionFlag=false;
++    if ( !isLibSshInited )
++    {
++        if ( ssh_init() !=0 )
++        {
++            QString err=tr ( &quot;Can not initialize libssh&quot; );
++            qDebug()&lt;&lt;err&lt;&lt;endl;
++            guiInteractor-&gt;critical(err, MessageBox::OK);
++            emit signalError ( CONNECTION, err );
++            return;
++        }
++        isLibSshInited=true;
++    }
++
++#ifdef SSH_DEBUG
++    int verbosity=SSH_LOG_PACKET;
++#else
++    int verbosity=SSH_LOG_NOLOG;
++#endif
++
++    long timeout = 60;
++
++    my_ssh_session = ssh_new();
++    if ( my_ssh_session == NULL )
++    {
++        QString err=tr ( &quot;Can not create ssh session&quot; );
++        qDebug()&lt;&lt;err&lt;&lt;endl;
++        guiInteractor-&gt;critical(err, MessageBox::OK);
++        emit signalError ( CONNECTION, err);
++        if ( reverseTunnel )
++            emit signalIoError ( reverseTunnelCreator, err, &quot;&quot; );
++        return;
++    }
++
++#ifdef Q_OS_WIN
++    ssh_options_set ( my_ssh_session, SSH_OPTIONS_SSH_DIR, (mainWnd-&gt;getHomeDirectory()+&quot;/ssh&quot;).toAscii());
++#endif
++    ssh_options_set(my_ssh_session, SSH_OPTIONS_LOG_VERBOSITY, &amp;verbosity);
++
++    ssh_options_set(my_ssh_session, SSH_OPTIONS_TIMEOUT, &amp;timeout);
++
++    if (useProxy &amp;&amp; (proxyType == PROXYHTTP))
++    {
++        socket_t proxysocket = SSH_INVALID_SOCKET;
++
++        tcpNetworkProxy = new QNetworkProxy( QNetworkProxy::HttpProxy,
++                                             proxyServer, proxyPort, proxyLogin, proxyPassword);
++        tcpProxySocket = new QTcpSocket();
++        tcpProxySocket-&gt;setProxy( *tcpNetworkProxy );
++        tcpProxySocket-&gt;connectToHost(host, port);
++        proxysocket = tcpProxySocket-&gt;socketDescriptor();
++        if (!tcpProxySocket-&gt;waitForConnected(30000))
++        {
++            QString message=tr ( &quot;Can not connect to proxy server&quot; );
++            qDebug()&lt;&lt;message&lt;&lt;endl;
++            guiInteractor-&gt;critical(message, MessageBox::OK);
++            emit signalError ( CONNECTION, message );
++            ssh_free ( my_ssh_session );
++            return;
++        }
++        ssh_options_set( my_ssh_session, SSH_OPTIONS_FD, &amp;proxysocket);
++        ssh_set_fd_toread( my_ssh_session);
++    }
++
++    if ( !sshConnect() )
++    {
++        QString err=ssh_get_error ( my_ssh_session );
++        QString message=tr ( &quot;Can not connect to &quot; ) +host+&quot;:&quot;+QString::number ( port );
++        message+=&quot; - &quot;+err;
++        qDebug()&lt;&lt;message;
++        guiInteractor-&gt;critical(message, MessageBox::OK);
++        emit signalError (CONNECTION, message);
++        if ( reverseTunnel )
++            emit signalIoError ( reverseTunnelCreator, message, err);
++        ssh_free ( my_ssh_session );
++        return;
++    }
++    QString errMsg;
++    int state=serverAuth ( errMsg );
++    if ( state != SSH_SERVER_KNOWN_OK )
++    {
++        guiInteractor-&gt;critical(errMsg, MessageBox::OK);
++        emit signalError (SERVERAUTH, errMsg);
++        ssh_disconnect ( my_ssh_session );
++        ssh_free ( my_ssh_session );
++        return;
++    }
++
++    ssh_options_set ( my_ssh_session, SSH_OPTIONS_USER, user.toAscii() );
++#ifdef Q_OS_WIN
++    ssh_options_set ( my_ssh_session, SSH_OPTIONS_SSH_DIR, (QDir::homePath()+&quot;/ssh&quot;).toAscii());
++#endif
++    if ( userAuth() )
++    {
++        qDebug()&lt;&lt;&quot;SSH session connected&quot;;
++        emit signalConnectionOk(host);
++    }
++    else
++    {
++        QString err;
++        if (!kerberos)
++            err=ssh_get_error ( my_ssh_session );
++        QString message=tr ( &quot;Authentication failed&quot; );
++        guiInteractor-&gt;critical(message, MessageBox::OK);
++        message+=&quot; - &quot;+err+&quot;\n&quot;+authErrors.join ( &quot;\n&quot; );
++        qDebug()&lt;&lt;message;
++        emit signalError (USERAUTH,  message );
++        if ( reverseTunnel )
++            emit signalIoError ( reverseTunnelCreator,message,err );
++        ssh_disconnect ( my_ssh_session );
++        ssh_free ( my_ssh_session );
++        return;
++    }
++
++
++#ifndef Q_OS_WIN
++    const int y=1;
++#else
++    const char y=1;
++#endif
++    socket_t session_sock=ssh_get_fd(my_ssh_session);
++    setsockopt(session_sock, IPPROTO_TCP, TCP_NODELAY,&amp;y, sizeof(int));
++
++
++    if ( reverseTunnel )
++    {
++        if ( channel_forward_listen ( my_ssh_session, NULL, reverseTunnelRemotePort,  NULL ) !=SSH_OK )
++        {
++            QString err=ssh_get_error ( my_ssh_session );
++            QString message=tr ( &quot;channel_forward_listen failed&quot; );
++            message+=&quot; - &quot;+err;
++            qDebug()&lt;&lt;message;
++            guiInteractor-&gt;critical(message, MessageBox::OK);
++            emit signalIoError ( reverseTunnelCreator, message, err );
++            ssh_disconnect ( my_ssh_session );
++            ssh_free ( my_ssh_session );
++            return;
++        }
++        emit signalReverseListenOk ( reverseTunnelCreator );
++    }
++    channelLoop();
++}
++
++void SshConnection::finalizeLibSsh()
++{
++    if ( !isLibSshInited )
++        return;
++    ssh_finalize();
++}
++
++
++bool SshConnection::sshConnect()
++{
++    int rc;
++    QByteArray tmpBA = host.toLocal8Bit();
++    if(useProxy &amp;&amp; proxyType==PROXYSSH)
++    {
++#ifdef Q_OS_WIN
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, &quot;127.0.0.1&quot; );
++#else
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, &quot;localhost&quot; );
++#endif
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;localProxyPort );
++    }
++    else
++    {
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, tmpBA.data() );
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;port );
++    }
++    rc = ssh_connect ( my_ssh_session );
++    if ( rc != SSH_OK )
++    {
++        return false;
++    }
++//set values for remote host for proper server authentication
++    if(useProxy &amp;&amp; proxyType==PROXYSSH)
++    {
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, tmpBA.data() );
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;port );
++
++    }
++    return true;
++}
++
++int SshConnection::serverAuth(QString&amp; errorMsg)
++{
++    int state, hlen;
++    unsigned char *hash = NULL;
++    char *hexa;
++
++    state = ssh_is_server_known ( my_ssh_session );
++    hlen = ssh_get_pubkey_hash ( my_ssh_session, &amp;hash );
++
++
++    if ( hlen &lt; 0 )
++        return SSH_SERVER_ERROR;
++
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;state: &quot;&lt;&lt;state&lt;&lt;endl;
++#endif
++
++    switch ( state )
++    {
++    case SSH_SERVER_KNOWN_OK:
++        break; /* ok */
++
++    case SSH_SERVER_KNOWN_CHANGED:
++        hexa = ssh_get_hexa ( hash, hlen );
++        errorMsg=tr ( &quot;Host key for server &quot;)+host+&quot;:&quot;+QString::number(port)+tr(&quot; changed.\nIt is now: &quot; ) +hexa+&quot;\n&quot;+
++                 tr ( &quot;For security reasons, connection will be stopped&quot; );
++        free ( hexa );
++        break;
++    case SSH_SERVER_FOUND_OTHER:
++        errorMsg=tr ( &quot;The host key for server &quot;)+ host+&quot;:&quot;+QString::number(port) +tr(&quot; was not found but an other&quot;
++                 &quot;type of key exists.An attacker might change the default server key to&quot;
++                 &quot;confuse your client into thinking the key does not exist&quot; );
++
++        break;
++    case SSH_SERVER_FILE_NOT_FOUND:
++    case SSH_SERVER_NOT_KNOWN:
++        if ( !acceptUnknownServers )
++        {
++            hexa = ssh_get_hexa ( hash, hlen );
++            errorMsg= tr ( &quot;The server is unknown: &quot;)+ host+&quot;:&quot;+QString::number(port)+&quot;\n&quot;+
++                      tr(&quot;Do you trust the host key?\nPublic key hash: &quot; )+ &quot; - &quot;+hexa;
++            free ( hexa );
++            if(guiInteractor-&gt;warning(errorMsg, MessageBox::YES| MessageBox::NO) != MessageBox::YES)
++            {
++                errorMsg=tr ( &quot;Host key verification failed&quot; );
++                break;
++            }
++        }
++        ssh_write_knownhost ( my_ssh_session );
++        state=SSH_SERVER_KNOWN_OK;
++        break;
++    case SSH_SERVER_ERROR:
++        errorMsg=host+&quot;:&quot;+QString::number(port)+&quot; - &quot;+ssh_get_error ( my_ssh_session );
++        break;
++    }
++    free ( hash );
++    return state;
++}
++
++bool SshConnection::userAuth()
++{
++    if(user.length()&lt;=0)
++        if  (guiInteractor-&gt;input(tr(&quot;Enter user name&quot;),tr(&quot;User:&quot;),user,QLineEdit::Password)!=MessageBox::OK)
++            return false;
++    if ( autoLogin )
++        if ( userAuthAuto() )
++            return true;
++    if ( key!=&quot;&quot; )
++    {
++        if ( userAuthWithKey() )
++            return true;
++    }
++    return userAuthWithPass();
++}
++
++bool SshConnection::userAuthAuto()
++{
++    int rc = ssh_userauth_autopubkey ( my_ssh_session, &quot;&quot; );
++    while(rc != SSH_AUTH_SUCCESS)
++    {
++        if(guiInteractor-&gt;input(tr(&quot;Enter passphrase to decrypt a key&quot;),tr(&quot;Passphrase:&quot;), keyPhrase,QLineEdit::Password)!=MessageBox::OK)
++            return false;
++        rc = ssh_userauth_autopubkey ( my_ssh_session, keyPhrase.toAscii() );
++    }
++    if ( rc != SSH_AUTH_SUCCESS )
++    {
++        QString err=ssh_get_error ( my_ssh_session );
++        authErrors&lt;&lt;err;
++        return false;
++    }
++    return true;
++}
++
++bool SshConnection::userAuthWithKey()
++{
++    QString keyName=key;
++    bool autoRemove=false;
++    if ( key.indexOf ( &quot;PRIVATE KEY&quot; ) !=-1 )
++    {
++        QDir dr;
++        QString keyPath=QDir::homePath() +&quot;/.x2go/ssh/gen&quot;;
++        dr.mkpath ( keyPath );
++        QTemporaryFile fl ( keyPath+&quot;/key&quot; );
++        fl.open();
++        keyName=fl.fileName();
++        fl.setAutoRemove ( false );
++        QTextStream out ( &amp;fl );
++        out&lt;&lt;key;
++        fl.close();
++        autoRemove=true;
++    }
++    ssh_private_key prkey=privatekey_from_file(my_ssh_session, keyName.toAscii(), 0,&quot;&quot;);
++    while(!prkey)
++    {
++        if(guiInteractor-&gt;input(tr(&quot;Enter passphrase to decrypt a key&quot;),tr(&quot;Passphrase:&quot;), keyPhrase, QLineEdit::Password)!=MessageBox::OK)
++            break;
++        prkey=privatekey_from_file(my_ssh_session, keyName.toAscii(), 0,keyPhrase.toAscii());
++    }
++    if (!prkey)
++    {
++        if ( autoRemove )
++            QFile::remove ( keyName );
++        return false;
++    }
++    ssh_public_key pubkey=publickey_from_privatekey(prkey);
++    if (!prkey)
++    {
++        privatekey_free(prkey);
++        if ( autoRemove )
++            QFile::remove ( keyName );
++        return false;
++    }
++
++    ssh_string pubkeyStr=publickey_to_string(pubkey);
++    publickey_free(pubkey);
++
++    //not implemented before libssh 0.5
++    /*	int rc = ssh_userauth_privatekey_file ( my_ssh_session,NULL,
++    	                                        keyName.toAscii(),
++    	                                        pass.toAscii() );*/
++
++    int rc=ssh_userauth_pubkey(my_ssh_session, NULL, pubkeyStr, prkey);
++    privatekey_free(prkey);
++    string_free(pubkeyStr);
++    if ( autoRemove )
++        QFile::remove ( keyName );
++    if ( rc != SSH_AUTH_SUCCESS )
++    {
++        QString err=ssh_get_error ( my_ssh_session );
++        authErrors&lt;&lt;err;
++        return false;
++    }
++    return true;
++}
++
++bool SshConnection::userAuthWithPass()
++{
++    if(pass.length()&lt;=0)
++        if(guiInteractor-&gt;input(tr(&quot;Enter password&quot;),tr(&quot;Password:&quot;), pass, QLineEdit::Password)!=MessageBox::OK)
++            return false;
++
++    int rc = ssh_userauth_password ( my_ssh_session, NULL, pass.toAscii() );
++    while ( rc != SSH_AUTH_SUCCESS )
++    {
++        if(guiInteractor-&gt;input(tr(&quot;Enter password&quot;),tr(&quot;Password:&quot;), pass, QLineEdit::Password)!=MessageBox::OK)
++        {
++
++            QString err=ssh_get_error ( my_ssh_session );
++            authErrors&lt;&lt;err;
++            return false;
++        }
++        rc = ssh_userauth_password ( my_ssh_session, NULL, pass.toAscii() );
++    }
++    return true;
++
++}
++
++void SshConnection::channelLoop()
++{
++
++}
++
++void SshConnection::finalize(int arg1)
++{
++
++}
+diff --git a/sshconnection.h b/sshconnection.h
+new file mode 100644
+index 0000000..abb08e7
+--- /dev/null
++++ b/sshconnection.h
+@@ -0,0 +1,132 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++#ifndef SSHCONNECTION_H
++#define SSHCONNECTION_H
++
++#include &lt;libssh/libssh.h&gt;
++#include &lt;QString&gt;
++#include &lt;QList&gt;
++#include &lt;QMutex&gt;
++#include &lt;QThread&gt;
++#include &lt;QStringList&gt;
++#include &lt;QTcpSocket&gt;
++#include &lt;QNetworkProxy&gt;
++
++#include &quot;x2goapplication.h&quot;
++
++class SshProcess;
++class SshConnectionGuiInteraction;
++
++struct ChannelConnection
++{
++    ssh_channel channel;
++    int sock;
++    SshProcess* creator;
++    int forwardPort;
++    int localPort;
++    QString forwardHost;
++    QString localHost;
++    QString command;
++    bool operator==(ChannelConnection&amp; t)
++    {
++        return (channel==t.channel);
++    }
++};
++
++struct CopyRequest
++{
++    SshProcess* creator;
++    QString src;
++    QString dst;
++};
++
++class SshConnection: public QThread
++{
++    Q_OBJECT
++public:
++    enum ProxyType {PROXYSSH, PROXYHTTP};
++    enum Error {CONNECTION, SERVERAUTH, USERAUTH};
++    SshConnection(QObject* parent, QString host, int port, bool acceptUnknownServers, QString user,
++                  QString pass, QString key, bool autoLogin, bool krbLogin=false,
++                  bool useProxy=false, ProxyType proxyType=PROXYSSH, QString proxyServer=QString::null, quint16 proxyPort=0,
++                  QString proxyLogin=QString::null, QString proxyPassword=QString::null, QString proxyKey=QString::null,
++                  bool proxyAutoLogin=false);
++    ~SshConnection();
++    static void finalizeLibSsh();
++private:
++    ssh_session my_ssh_session;
++    QList&lt;ChannelConnection&gt; channelConnections;
++    QList&lt;CopyRequest&gt; copyRequests;
++    QList&lt;SshConnection*&gt; reverseTunnelConnections;
++    int nextPid;
++    QList&lt;SshProcess*&gt; processes;
++    QStringList authErrors;
++    QString keyPhrase;
++    QString host;
++    int port;
++    QString user;
++    QString pass;
++    QString key;
++    bool useProxy;
++    QString proxyServer;
++    quint16 proxyPort;
++    QString proxyLogin;
++    QString proxyPassword;
++    ProxyType proxyType;
++    bool proxyAutoLogin;
++    QString proxyKey;
++    bool autoLogin;
++    bool disconnectSessionFlag;
++    bool reverseTunnel;
++    int reverseTunnelRemotePort;
++    int localProxyPort;
++    int reverseTunnelLocalPort;
++    bool acceptUnknownServers;
++    QString reverseTunnelLocalHost;
++    SshProcess* reverseTunnelCreator;
++    bool kerberos;
++    QTcpSocket *tcpProxySocket;
++    QNetworkProxy *tcpNetworkProxy;
++    SshConnection* sshProxy;
++    bool sshProxyReady;
++    bool breakLoop;
++    static bool isLibSshInited;
++    static SshConnectionGuiInteraction* guiInteractor;
++private:
++    bool sshConnect();
++    bool userAuthWithPass();
++    bool userAuthAuto();
++    bool userAuthWithKey();
++    bool userAuth();
++    void channelLoop();
++    void finalize(int arg1);
++    int serverAuth(QString&amp; errorMsg);
++protected:
++    void run();
++signals:
++    void signalError(Error, QString);
++    void signalIoError(SshProcess* caller, QString error, QString lastSessionError);
++
++    void signalConnectionOk( QString host);
++    void signalReverseListenOk(SshProcess* creator);
++};
++
++#endif // SSHCONNECTION_H
+diff --git a/sshconnectionguiinteraction.cpp b/sshconnectionguiinteraction.cpp
+new file mode 100644
+index 0000000..d70d166
+--- /dev/null
++++ b/sshconnectionguiinteraction.cpp
+@@ -0,0 +1,170 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++#include &quot;sshconnectionguiinteraction.h&quot;
++#include &lt;QTimer&gt;
++#include &lt;QThread&gt;
++#include &lt;QDebug&gt;
++
++SshConnectionGuiInteraction::SshConnectionGuiInteraction(QObject* parent): QThread(parent)
++{
++    currentId=0;
++    QTimer::singleShot(100, this, SLOT(slotCheckRequests()));
++}
++
++SshConnectionGuiInteraction::~SshConnectionGuiInteraction()
++{
++
++}
++
++MessageBox::Buttons SshConnectionGuiInteraction::critical(QString text, int buttons)
++{
++    unsigned long int id=addRequest(CRITICAL, text, buttons);
++    QString input;
++    return result(id, input);
++}
++
++MessageBox::Buttons SshConnectionGuiInteraction::information(QString text, int buttons)
++{
++    unsigned long int id=addRequest(INFORMATION, text, buttons);
++    QString input;
++    return result(id, input);
++}
++
++MessageBox::Buttons SshConnectionGuiInteraction::warning(QString text, int buttons)
++{
++    unsigned long int id=  addRequest(WARNING, text, buttons);
++    QString input;
++    return result(id, input);
++}
++
++
++MessageBox::Buttons SshConnectionGuiInteraction::input(QString text, QString inputLabel, QString&amp; input,
++        QLineEdit::EchoMode echoMode, QString pixPath)
++{
++    unsigned long int id= addRequest(INPUT, text, MessageBox::OK| MessageBox::CANCEL, inputLabel, input, echoMode, pixPath);
++    return result(id, input);
++}
++
++long unsigned int SshConnectionGuiInteraction::addRequest(SshConnectionGuiInteraction::BoxType type,
++        QString text, int buttons, QString inputLabel,
++        QString input, QLineEdit::EchoMode echoMode,
++        QString pixPath)
++{
++    InteractionRequest req;
++    req.processed=false;
++    req.boxType=type;
++    req.text=text;
++    req.buttons=buttons;
++    req.inputLabel=inputLabel;
++    req.input=input;
++    req.echoMode=echoMode;
++    req.pixPath=pixPath;
++    req.id=currentId++;
++    mutex.lock();
++    requests&lt;&lt;req;
++    mutex.unlock();
++    return req.id;
++}
++
++MessageBox::Buttons SshConnectionGuiInteraction::result(long unsigned int id, QString&amp; input)
++{
++    InteractionRequest req;
++    req.id=id;
++    bool ok=false;
++    MessageBox::Buttons button;
++    while(!ok)
++    {
++        mutex.lock();
++        int index=requests.indexOf(req);
++        if(index!=-1)
++        {
++            ok=requests[index].processed;
++            if(ok)
++            {
++                button=(MessageBox::Buttons)requests[index].buttons;
++                input=requests[index].input;
++                requests.removeAt(index);
++            }
++        }
++        mutex.unlock();
++        if(!ok)
++            QThread::msleep(100);
++    }
++    return button;
++}
++
++void SshConnectionGuiInteraction::slotCheckRequests()
++{
++    bool haveReq=false;
++    BoxType boxType;
++    int buttons;
++    QString text;
++    QString inputLabel;
++    QString input;
++    QLineEdit::EchoMode echoMode;
++    QString pixPath;
++    unsigned long int id;
++    mutex.lock();
++    foreach (InteractionRequest req, requests)
++    {
++        haveReq=true;
++        boxType=req.boxType;
++        buttons=req.buttons;
++        text=req.text;
++        inputLabel=req.inputLabel;
++        input=req.input;
++        echoMode=req.echoMode;
++        pixPath=req.pixPath;
++        id=req.id;
++        break;
++    }
++    mutex.unlock();
++    if(haveReq)
++    {
++        switch(boxType)
++        {
++        case INFORMATION:
++            buttons=MessageBox::information(text, buttons);
++            break;
++        case WARNING:
++            buttons=MessageBox::warning(text, buttons);
++            break;
++        case CRITICAL:
++            buttons=MessageBox::critical(text, buttons);
++            break;
++        case INPUT:
++            buttons=MessageBox::input(text, inputLabel, input, echoMode, pixPath);
++            break;
++        }
++        mutex.lock();
++        InteractionRequest req;
++        req.id=id;
++        int index=requests.indexOf(req);
++        if(index!=-1)
++        {
++            requests[index].buttons=buttons;
++            requests[index].input=input;
++            requests[index].processed=true;
++        }
++        mutex.unlock();
++    }
++    QTimer::singleShot(100, this, SLOT(slotCheckRequests()));
++}
+diff --git a/sshconnectionguiinteraction.h b/sshconnectionguiinteraction.h
+new file mode 100644
+index 0000000..df462c9
+--- /dev/null
++++ b/sshconnectionguiinteraction.h
+@@ -0,0 +1,75 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++/*This class provide interaction with user for SshConnection objects, which running not in
++GUI thread and can not use GUI elements
++*/
++
++#ifndef SSHCONNECTIONGUIINTERACTION_H
++#define SSHCONNECTIONGUIINTERACTION_H
++#include &lt;QObject&gt;
++#include &quot;messagebox.h&quot;
++#include &lt;QMutex&gt;
++#include &lt;QTimer&gt;
++#include &lt;QThread&gt;
++
++class SshConnectionGuiInteraction: public QThread
++{
++    Q_OBJECT
++public:
++    explicit SshConnectionGuiInteraction(QObject* parent = 0);
++    virtual ~SshConnectionGuiInteraction();
++    MessageBox::Buttons critical(QString text, int buttons);
++    MessageBox::Buttons warning(QString text, int buttons);
++    MessageBox::Buttons information(QString text, int buttons);
++    MessageBox::Buttons input(QString text, QString inputLabel, QString&amp; input,
++                              QLineEdit::EchoMode echoMode=QLineEdit::Normal, QString pixPath=QString::null);
++private:
++    enum BoxType {WARNING, CRITICAL, INFORMATION, INPUT};
++    struct InteractionRequest
++    {
++        bool processed;
++        BoxType boxType;
++        int buttons;
++        QString text;
++        QString inputLabel;
++        QString input;
++        QLineEdit::EchoMode echoMode;
++        QString pixPath;
++        unsigned long int id;
++        bool operator==(InteractionRequest t)
++        {
++            return (id==t.id);
++        }
++    };
++    QList&lt;InteractionRequest&gt; requests;
++    unsigned long int currentId;
++    QMutex mutex;
++private:
++    unsigned long int addRequest(BoxType type, QString text, int buttons, QString inputLabel=QString::null,
++                                 QString input=QString::null,
++                                 QLineEdit::EchoMode echoMode=QLineEdit::Normal,
++                                 QString pixPath=QString::null);
++    MessageBox::Buttons result(unsigned long id,  QString&amp; input);
++
++private slots:
++    void slotCheckRequests();
++};
++
++#endif // SSHCONNECTIONGUIINTERACTION_H
+diff --git a/workarea.cpp b/workarea.cpp
+index eb23c8b..dc619b7 100644
+--- a/workarea.cpp
++++ b/workarea.cpp
+@@ -61,6 +61,7 @@ WorkArea::WorkArea(QWidget* parent, Qt::WindowFlags f): QWidget( parent, f)
+ 
+     QTimer::singleShot(100, this, SLOT(slotResizeChildForms()));
+     formToScroll=profileForm;
++    sessionForm-&gt;hide();
+ }
+ 
+ WorkArea::~WorkArea()
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index 1fd8881..817f571 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -34,6 +34,7 @@
+ #include &quot;mainwindow.h&quot;
+ #include &quot;x2gobroker.h&quot;
+ #include &quot;profilesettingsform.h&quot;
++#include &quot;sshconnection.h&quot;
+ 
+ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplication(argc, argv, flags)
+ {
+@@ -63,6 +64,7 @@ X2GoApplication::~X2GoApplication()
+         delete sessionSettings;
+     if(broker)
+         delete broker;
++    SshConnection::finalizeLibSsh();
+     qDebug()&lt;&lt;&quot;X2Go Application exited&quot;;
+ }
+ 
+diff --git a/x2gobroker.cpp b/x2gobroker.cpp
+index 0cd2152..cca32a7 100644
+--- a/x2gobroker.cpp
++++ b/x2gobroker.cpp
+@@ -26,6 +26,7 @@
+ #include &quot;x2goapplication.h&quot;
+ #include &quot;x2goclientconfig.h&quot;
+ #include &quot;messagebox.h&quot;
++#include &quot;sshconnection.h&quot;
+ 
+ X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
+ {
+@@ -38,9 +39,18 @@ X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
+     url = QUrl( urlString);
+     if(url.userName().length()&gt;0)
+         user=url.userName();
++    if(!cfg-&gt;get_defaultNoBrockerAuth().get_value().toBool())
++    {
++        getLoginData();
++    }
+     if(urlString.indexOf(&quot;<A HREF="ssh://">ssh://</A>&quot;)==0)
+     {
+         brokerType=SSH;
++#warning search for default key hier
++        SshConnection* con=new SshConnection(this, url.host(), url.port(), cfg-&gt;get_autoAddToKnownHosts().get_value().toBool(),
++                                             user, pass, QString::null,
++                                             cfg-&gt;get_defaultAutoLogin().get_value().toBool());
++        con-&gt;start();
+     }
+     else
+     {
+@@ -69,10 +79,6 @@ X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
+         QTextStream in(&amp;file);
+         authId = in.readLine();
+     }
+-    if(!cfg-&gt;get_defaultNoBrockerAuth().get_value().toBool())
+-    {
+-        getLoginData();
+-    }
+ }
+ 
+ X2GoBroker::~X2GoBroker()
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index ea126d0..5f02ec9 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -56,6 +56,8 @@ SOURCES += main.cpp \
+            x2gosettings.cpp \
+            helpdialog.cpp \
+            x2gobroker.cpp \
++           sshconnection.cpp \
++           sshconnectionguiinteraction.cpp \
+            profile.cpp
+ 
+ HEADERS += mainwindow.h \
+@@ -84,6 +86,8 @@ HEADERS += mainwindow.h \
+            x2gosettings.h \
+            helpdialog.h \
+            x2gobroker.h \
++           sshconnection.h \
++           sshconnectionguiinteraction.h \
+            profile.h
+ 
+ LIBS += -lssh
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003618.html">[X2go-Commits] lightdm-remote-session-x2go.git - master (branch)	updated: 0.0.0.1-3-g47900b8
+</A></li>
+	<LI>Next message: <A HREF="003620.html">[X2go-Commits] libpam-x2go.git - master (branch) updated:	0.0.0.1-6-g95acd68
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3619">[ date ]</a>
+              <a href="thread.html#3619">[ thread ]</a>
+              <a href="subject.html#3619">[ subject ]</a>
+              <a href="author.html#3619">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,640 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] nx-libs.git - nxagent (branch) updated:	nxagent/3.5.0-5-1-gc29053f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20nxagent%20%28branch%29%20updated%3A%0A%09nxagent/3.5.0-5-1-gc29053f&In-Reply-To=%3C20111228174942.5B53E5DB1F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002024.html">
+   <LINK REL="Next"  HREF="002027.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] nx-libs.git - nxagent (branch) updated:	nxagent/3.5.0-5-1-gc29053f</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nx-libs.git%20-%20nxagent%20%28branch%29%20updated%3A%0A%09nxagent/3.5.0-5-1-gc29053f&In-Reply-To=%3C20111228174942.5B53E5DB1F%40ymir%3E"
+       TITLE="[X2go-Commits] nx-libs.git - nxagent (branch) updated:	nxagent/3.5.0-5-1-gc29053f">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec 28 18:49:42 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002024.html">[X2go-Commits] nx-libs.git - pristine-tar (branch) updated:	f2deffe2a2522b64ea907652c1efad775453e440
+</A></li>
+        <LI>Next message: <A HREF="002027.html">[X2go-Commits] nx-libs.git - nxagent/3.5.0-7 (tag) created:	nxagent/3.5.0-5-1-gc29053f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2026">[ date ]</a>
+              <a href="thread.html#2026">[ thread ]</a>
+              <a href="subject.html#2026">[ subject ]</a>
+              <a href="author.html#2026">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, nxagent has been updated
+       via  c29053f82cbea5f2704d99c4d5e8afe0329e5cbe (commit)
+      from  e01b9177b41f7d27a934d41fa38d550fa0026b45 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG  |   14 +++
+ nx-X11/programs/Xserver/hw/nxagent/Colormap.c |   10 ++-
+ nx-X11/programs/Xserver/hw/nxagent/Display.c  |  127 ++++++++++++++++---------
+ nx-X11/programs/Xserver/hw/nxagent/Events.c   |   30 ++++---
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.c |   24 +++++-
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.h |    3 +
+ nx-X11/programs/Xserver/hw/nxagent/Screen.c   |   81 ++++++++++++----
+ nx-X11/programs/Xserver/hw/nxagent/Window.c   |    7 ++
+ 8 files changed, 212 insertions(+), 84 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index 0f20b79..763f066 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,19 @@
+ ChangeLog:
+ 
++nxagent-3.5.0-7
++
++- Fixed TR10I02622. Corrected function searching for icon file.
++
++nxagent-3.5.0-6
++
++- Fixed TR10I02621. Avoided explicit call to XMapWindow() at recon-
++  nection stage.
++
++- Fixed TR10I02620. Solved error in default visual set up.
++
++- Fixed TR10H02390. Get the actual remote key code for CapsLock and
++  NumLock.
++
+ nxagent-3.5.0-5
+ 
+ - The NX agent failed to resize its own window to fit the desktop size
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Colormap.c b/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
+index b0f0507..fbe52db 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
+@@ -69,8 +69,9 @@ Bool nxagentCreateColormap(ColormapPtr pCmap)
+   Visual *visual;
+   int class;
+ 
+-  #ifdef TEST
+-  fprintf(stderr, &quot;nxagentCreateColormap: Going to create new colormap.\n&quot;);
++  #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++  fprintf(stderr, &quot;nxagentCreateColormap: Going to create new colormap with &quot;
++              &quot; visual [%lu].\n&quot;, pCmap-&gt;pVisual);
+   #endif
+ 
+   pVisual = pCmap-&gt;pVisual;
+@@ -511,6 +512,11 @@ Bool nxagentCreateDefaultColormap(ScreenPtr pScreen)
+   unsigned short zero = 0, ones = 0xFFFF;
+   Pixel wp, bp;
+ 
++  #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++  fprintf(stderr, &quot;Debug: Searching for the root visual [%lu].\n&quot;,
++              pScreen-&gt;rootVisual);
++  #endif
++
+   for (pVisual = pScreen-&gt;visuals;
+        pVisual-&gt;vid != pScreen-&gt;rootVisual;
+        pVisual++);
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Display.c b/nx-X11/programs/Xserver/hw/nxagent/Display.c
+index db70434..c60718d 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Display.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Display.c
+@@ -1482,6 +1482,10 @@ void nxagentSetDefaultVisual(void)
+ 
+   int i;
+ 
++  nxagentDefaultVisualIndex = 3;
++
++  return;
++
+   if (nxagentUserDefaultClass || nxagentUserDefaultDepth)
+   {
+     nxagentDefaultVisualIndex = UNDEFINED;
+@@ -1840,68 +1844,98 @@ FIXME: Is this needed?
+   nxagentDisplay = NULL;
+ }
+ 
++static FILE *nxagentLookForIconFile(char *iconName, const char *permission,
++                                        char *return_path)
++{
++  char *path;
++  char *end;
++  char singlePath[PATH_MAX];
++  int breakLoop;
++  FILE *fptr = NULL;
++
++  #ifdef WIN32
++  const char separator = ';';
++  const char *slash = &quot;\\&quot;;
++  #else
++  const char separator = ':';
++  const char *slash = &quot;/&quot;;
++  #endif
++
++  if ((path = getenv(&quot;PATH&quot;)) == NULL)
++  {
++    return NULL;
++  }
++
++  for(breakLoop = 0; breakLoop == 0 &amp;&amp; fptr == NULL; )
++  {
++    end = strchr(path, separator);
++
++    if (end != NULL)
++    {
++      strncpy(singlePath, path, (unsigned long)(end - path));
++
++      singlePath[(unsigned long)(end - path)] = 0;
++
++      path = end + 1;
++    }
++    else
++    {
++      strcpy(singlePath, path);
++
++      breakLoop = 1;
++    }
++
++    if (singlePath[strlen(singlePath)- 1] == slash[0])
++    {
++      singlePath[strlen(singlePath)- 1] = 0;
++    }
++
++    if (strlen(singlePath) + strlen(iconName) + 1 &lt; PATH_MAX)
++    {
++      strncat(singlePath, slash, 1);
++      strcat(singlePath, iconName);
++
++      if ((fptr = fopen(singlePath, permission)) != NULL)
++      {
++        strcpy(return_path, singlePath);
++      }
++    }
++    else
++    {
++      fprintf(stderr, &quot;Error: Path too long.\n&quot;);
++    }
++  }
++
++  return fptr;
++}
++
+ Bool nxagentMakeIcon(Display *display, Pixmap *nxIcon, Pixmap *nxMask)
+ {
+-  char *env_path = getenv(&quot;PATH&quot;);
+-  int lenght_env_path = 0;
+-  char icon_filename [256];
+-  char default_path [256];
+-  char *icon_path = malloc( strlen(env_path) + sizeof(icon_filename) );
++  char default_path [PATH_MAX];
++  char icon_path [PATH_MAX];
+   FILE *icon_fp;
+   int status;
+   Bool success = False;
+   XlibPixmap IconPixmap;
+   XlibPixmap IconShape;
+ 
+-  if (env_path == NULL)
+-    lenght_env_path = 0;
+-  else
+-    lenght_env_path = strlen(env_path) + 1;
+-  strncpy(icon_filename, &quot;&quot;, 255);
+-  strncpy(default_path, &quot;&quot;, 255);
+-
+-  strcat(icon_filename, NXAGENT_ICON_NAME);
+-  strcat(default_path,&quot;/usr/NX/share/images/&quot;);
+-  strcat(default_path,icon_filename);
++  snprintf(default_path, PATH_MAX-1, &quot;/usr/NX/share/images/%s&quot;, NXAGENT_ICON_NAME);
+ 
+   if ((icon_fp = fopen(default_path, &quot;r&quot;)) == NULL)
+   {
+-    char *s;
+-    char *temp_path = malloc(lenght_env_path + strlen(icon_filename) );
+-    char *temp_path1 = malloc(lenght_env_path + strlen(icon_filename) );
+-
+-    strncpy(temp_path, env_path, strlen(env_path));
+-    strncpy(temp_path1, &quot;&quot;, lenght_env_path + strlen(icon_filename) );
++    icon_fp = nxagentLookForIconFile(NXAGENT_ICON_NAME, &quot;r&quot;, icon_path);
+ 
+-    while (strlen(temp_path) &gt; 0)
++    if (icon_fp != NULL)
+     {
+-       s = strpbrk (temp_path, &quot;:&quot;);
+-       if (s == NULL) break;
+-
+-       strncpy (temp_path1, temp_path , strlen(temp_path) - strlen(s) );
+-       strncat (temp_path1, &quot;/&quot;, 1);
+-       strncat (temp_path1, icon_filename, strlen(icon_filename));
+-       if ((icon_fp = fopen(temp_path1, &quot;r&quot;)) != NULL)
+-       {
+-          fclose (icon_fp);
+-          success = True;
+-          strcpy(icon_path,temp_path1);
+-          break;
+-       }
+-       strncpy(temp_path1, &quot;&quot;, lenght_env_path + strlen(icon_filename) );
+-       strncpy(temp_path1, s + 1, strlen(s)-1);
+-       strncpy(temp_path, &quot;&quot;, lenght_env_path + strlen(icon_filename) );
+-       strcpy(temp_path, temp_path1 );
+-       strncpy(temp_path1, &quot;&quot;, lenght_env_path + strlen(icon_filename) );
+-     }
+-     free(temp_path);
+-     free(temp_path1);
++      fclose (icon_fp);
++      success = True;
++    }
+   }
+   else
+   {
+-     fclose (icon_fp);
+-     success = True;
+-     strcpy(icon_path, default_path);
++    fclose (icon_fp);
++    success = True;
++    strcpy(icon_path, default_path);
+   }
+ 
+   if (success)
+@@ -1948,7 +1982,6 @@ Bool nxagentMakeIcon(Display *display, Pixmap *nxIcon, Pixmap *nxMask)
+      }
+   }
+ 
+-  free(icon_path);
+ 
+   *nxIcon = IconPixmap;
+   *nxMask = IconShape;
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Events.c b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+index ce84c1b..d0efa71 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Events.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+@@ -395,8 +395,10 @@ void nxagentRemoteWindowInfo(Window win, int indent, Bool newLine)
+ 
+   fprintf(stderr, &quot;x=%d y=%d width=%d height=%d class=%s map_state=%s &quot;
+              &quot;override_redirect=%s\n&quot;, attributes.x, attributes.y,
+-                 attributes.width, attributes.height, (attributes.class == 0) ?
+-                     &quot;InputOutput&quot; : &quot;InputOnly&quot;, (attributes.map_state == 0) ?
++                 attributes.width, attributes.height,
++                     (attributes.class == 0) ? &quot;CopyFromParent&quot; :
++                     ((attributes.class == 1) ? &quot;InputOutput&quot; : &quot;InputOnly&quot;),
++                     (attributes.map_state == 0) ?
+                          &quot;IsUnmapped&quot; : (attributes.map_state == 1 ?
+                              &quot;IsUnviewable&quot; : &quot;IsViewable&quot;),
+                                  (attributes.override_redirect == 0) ?
+@@ -415,9 +417,9 @@ void nxagentRemoteWindowInfo(Window win, int indent, Bool newLine)
+ void nxagentRemoteWindowsTree(Window window, int level)
+ {
+   int i, j;
+-  Window rootWin, parentWin;
++  unsigned long rootWin, parentWin;
+   unsigned int numChildren;
+-  Window *childList;
++  unsigned long *childList;
+ 
+   if (!XQueryTree(nxagentDisplay, window, &amp;rootWin, &amp;parentWin, &amp;childList,
+                       &amp;numChildren))
+@@ -517,9 +519,11 @@ void nxagentInternalWindowInfo(WindowPtr pWin, int indent, Bool newLine)
+   fprintf(stderr, &quot;x=%d y=%d width=%d height=%d class=%s map_state=%s &quot;
+              &quot;override_redirect=%s&quot;, pWin -&gt; drawable.x, pWin -&gt; drawable.y,
+                  pWin -&gt; drawable.width, pWin -&gt; drawable.height,
+-                     (pWin -&gt; drawable.class == 0) ? &quot;InputOutput&quot; :
+-                         &quot;InputOnly&quot;, (pWin -&gt; mapped == 0) ?
+-                             &quot;IsUnmapped&quot; : (pWin -&gt; mapped == 1 ?
++                     (pWin -&gt; drawable.class == 0) ? &quot;CopyFromParent&quot; :
++                     ((pWin -&gt; drawable.class == 1) ? &quot;InputOutput&quot; :
++                      &quot;InputOnly&quot;),
++                      (pWin -&gt; mapped == 0) ?
++                             &quot;IsUnmapped&quot; : (pWin -&gt; realized == 0 ?
+                                  &quot;IsUnviewable&quot; : &quot;IsViewable&quot;),
+                                      (pWin -&gt; overrideRedirect == 0) ?
+                                          &quot;No&quot; : &quot;Yes&quot;);
+@@ -1142,11 +1146,11 @@ FIXME: Don't enqueue the KeyRelease event if the key was
+ 
+         if (nxagentXkbState.Initialized == 0)
+         {
+-          if (X.xkey.keycode == 66)
++          if (X.xkey.keycode == nxagentCapsLockKeycode)
+           {
+             nxagentXkbCapsTrap = 1;
+           }
+-          else if (X.xkey.keycode == 77)
++          else if (X.xkey.keycode == nxagentNumLockKeycode)
+           {
+             nxagentXkbNumTrap = 1;
+           }
+@@ -2292,11 +2296,11 @@ int nxagentHandleKeyPress(XEvent *X, enum HandleEventResult *result)
+ 
+   if (nxagentXkbState.Initialized == 0)
+   {
+-    if (X -&gt; xkey.keycode == 66)
++    if (X -&gt; xkey.keycode == nxagentCapsLockKeycode)
+     {
+       nxagentXkbCapsTrap = 1;
+     }
+-    else if (X -&gt; xkey.keycode == 77)
++    else if (X -&gt; xkey.keycode == nxagentNumLockKeycode)
+     {
+       nxagentXkbNumTrap = 1;
+     }
+@@ -2312,11 +2316,11 @@ int nxagentHandleKeyPress(XEvent *X, enum HandleEventResult *result)
+     return 1;
+   }
+ 
+-  if (X -&gt; xkey.keycode == 66)
++  if (X -&gt; xkey.keycode == nxagentCapsLockKeycode)
+   {
+     nxagentXkbState.Caps = (~nxagentXkbState.Caps &amp; 1);
+   }
+-  else if (X -&gt; xkey.keycode == 77)
++  else if (X -&gt; xkey.keycode == nxagentNumLockKeycode)
+   {
+     nxagentXkbState.Num = (~nxagentXkbState.Num &amp; 1);
+   }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+index 8db3889..e3b58b6 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+@@ -189,7 +189,12 @@ static char *nxagentXkbGetRules(void);
+ 
+ unsigned int nxagentAltMetaMask;
+ 
+-void nxagentCheckAltMetaKeys(CARD8, int);
++static void nxagentCheckAltMetaKeys(CARD8, int);
++
++CARD8 nxagentCapsLockKeycode = 66;
++CARD8 nxagentNumLockKeycode  = 77;
++
++static void nxagentCheckRemoteKeycodes(void);
+ 
+ static CARD8 nxagentConvertedKeycodes[] =
+ {
+@@ -784,6 +789,8 @@ N/A
+         }
+       XFreeModifiermap(modifier_keymap);
+ 
++      nxagentCheckRemoteKeycodes();
++
+       keySyms.minKeyCode = min_keycode;
+       keySyms.maxKeyCode = max_keycode;
+       keySyms.mapWidth = mapWidth;
+@@ -1343,7 +1350,7 @@ int nxagentResetKeyboard(void)
+   }
+ }
+ 
+-void  nxagentCheckAltMetaKeys(CARD8 keycode, int j)
++void nxagentCheckAltMetaKeys(CARD8 keycode, int j)
+ {
+   if (keycode == XKeysymToKeycode(nxagentDisplay, XK_Meta_L))
+   {
+@@ -1366,6 +1373,19 @@ void  nxagentCheckAltMetaKeys(CARD8 keycode, int j)
+   }
+ }
+ 
++void nxagentCheckRemoteKeycodes()
++{
++  nxagentCapsLockKeycode = XKeysymToKeycode(nxagentDisplay, XK_Caps_Lock);
++
++  nxagentNumLockKeycode  = XKeysymToKeycode(nxagentDisplay, XK_Num_Lock);
++
++  #ifdef DEBUG
++  fprintf(stderr, &quot;nxagentCheckRemoteKeycodes: Remote CapsLock keycode &quot;
++              &quot;is [%d] NumLock [%d].\n&quot;, nxagentCapsLockKeycode,
++                  nxagentNumLockKeycode);
++  #endif
++}
++
+ static int nxagentSaveKeyboardDeviceData(DeviceIntPtr dev, DeviceIntPtr devBackup)
+ {
+   if (devBackup == NULL)
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+index 0e11a8a..12d953d 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+@@ -115,4 +115,7 @@ void nxagentResetKeycodeConversion(void);
+ 
+ CARD8 nxagentConvertKeycode(CARD8 k);
+ 
++extern CARD8 nxagentCapsLockKeycode;
++extern CARD8 nxagentNumLockKeycode;
++
+ #endif /* __Keyboard_H__ */
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Screen.c b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+index b847b08..de688a0 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Screen.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+@@ -839,6 +839,8 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+   int bitsPerPixel;
+   int sizeInBytes;
+ 
++  int defaultVisualIndex = 0;
++
+   #ifdef TEST
+   fprintf(stderr, &quot;nxagentOpenScreen: Called for screen index [%d].\n&quot;,
+               index);
+@@ -1163,6 +1165,11 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+      * Initialize the visuals.
+      */
+ 
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++    fprintf(stderr, &quot;Debug: Setting up visuals. Original array has size &quot;
++                &quot;[%d].\n&quot;, nxagentNumVisuals); 
++    #endif
++
+     numVisuals = 0;
+     numDepths = nxagentNumDepths;
+ 
+@@ -1186,26 +1193,46 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+        * Check for and remove the duplicates.
+        */
+ 
+-      for (j = 0; j &lt; numVisuals; j++)
++      if (i == nxagentDefaultVisualIndex)
+       {
+-        if (visuals[numVisuals].class           == visuals[j].class           &amp;&amp;
+-            visuals[numVisuals].bitsPerRGBValue == visuals[j].bitsPerRGBValue &amp;&amp;
+-            visuals[numVisuals].ColormapEntries == visuals[j].ColormapEntries &amp;&amp;
+-            visuals[numVisuals].nplanes         == visuals[j].nplanes         &amp;&amp;
+-            visuals[numVisuals].redMask         == visuals[j].redMask         &amp;&amp;
+-            visuals[numVisuals].greenMask       == visuals[j].greenMask       &amp;&amp;
+-            visuals[numVisuals].blueMask        == visuals[j].blueMask        &amp;&amp;
+-            visuals[numVisuals].offsetRed       == visuals[j].offsetRed       &amp;&amp;
+-            visuals[numVisuals].offsetGreen     == visuals[j].offsetGreen     &amp;&amp;
+-            visuals[numVisuals].offsetBlue      == visuals[j].offsetBlue)
+-          break;
++        defaultVisualIndex = numVisuals;
++
++        #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++        fprintf(stderr, &quot;Debug: Set default visual index [%d].\n&quot; ,
++                    defaultVisualIndex); 
++        #endif
+       }
++      else
++      {
++        for (j = 0; j &lt; numVisuals; j++)
++        {
++          if (visuals[numVisuals].class == visuals[j].class &amp;&amp;
++              visuals[numVisuals].bitsPerRGBValue ==
++                  visuals[j].bitsPerRGBValue &amp;&amp;
++              visuals[numVisuals].ColormapEntries ==
++                  visuals[j].ColormapEntries &amp;&amp;
++              visuals[numVisuals].nplanes == visuals[j].nplanes &amp;&amp;
++              visuals[numVisuals].redMask == visuals[j].redMask &amp;&amp;
++              visuals[numVisuals].greenMask == visuals[j].greenMask &amp;&amp;
++              visuals[numVisuals].blueMask == visuals[j].blueMask &amp;&amp;
++              visuals[numVisuals].offsetRed == visuals[j].offsetRed &amp;&amp;
++              visuals[numVisuals].offsetGreen == visuals[j].offsetGreen &amp;&amp;
++              visuals[numVisuals].offsetBlue == visuals[j].offsetBlue)
++            break;
++        }
++ 
++        if (j &lt; numVisuals)
++            continue;
+ 
+-      if (j &lt; numVisuals)
+-        continue;
++      }
+ 
+       depthIndex = UNDEFINED;
+ 
++      #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++      fprintf(stderr, &quot;Debug: Added visual [%lu].\n&quot; ,
++                  visuals[numVisuals].vid); 
++      #endif
++
+       for (j = 0; j &lt; numDepths; j++)
+       {
+         if (depths[j].depth == nxagentVisuals[i].depth)
+@@ -1240,11 +1267,25 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+ 
+       depths[depthIndex].numVids++;
+ 
++      #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++      fprintf(stderr, &quot;Debug: Registered visual [%lu] for depth [%d (%d)].\n&quot; ,
++                  visuals[numVisuals].vid, depthIndex,
++                      depths[depthIndex].depth); 
++      #endif
++
+       numVisuals++;
+     }
+ 
+-    defaultVisual = visuals[nxagentDefaultVisualIndex].vid;
+-    rootDepth = visuals[nxagentDefaultVisualIndex].nplanes;
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
++    fprintf(stderr, &quot;Debug: Setting default visual [%d (%lu)].\n&quot;,
++                defaultVisualIndex, visuals[defaultVisualIndex].vid);
++
++    fprintf(stderr, &quot;Debug: Setting root depth [%d].\n&quot;,
++                visuals[defaultVisualIndex].nplanes); 
++    #endif
++
++    defaultVisual = visuals[defaultVisualIndex].vid;
++    rootDepth = visuals[defaultVisualIndex].nplanes;
+ 
+     nxagentInitAlphaVisual();
+ 
+@@ -1271,7 +1312,7 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+       return FALSE;
+     }
+ 
+-    #ifdef TEST
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
+     fprintf(stderr, &quot;nxagentOpenScreen: Before fbScreenInit numVisuals [%d] numDepths [%d] &quot;
+               &quot;rootDepth [%d] defaultVisual [%ld].\n&quot;, numVisuals, numDepths,
+                   rootDepth, defaultVisual);
+@@ -1288,7 +1329,7 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+       return FALSE;
+     }
+ 
+-    #ifdef TEST
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
+     fprintf(stderr, &quot;nxagentOpenScreen: After fbScreenInit numVisuals [%d] numDepths [%d] &quot;
+               &quot;rootDepth [%d] defaultVisual [%ld].\n&quot;, numVisuals, numDepths,
+                   rootDepth, defaultVisual);
+@@ -1300,7 +1341,7 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+      * and will modify numVisuals and numDepths.
+      */
+ 
+-    #ifdef TEST
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
+     fprintf(stderr, &quot;nxagentOpenScreen: Before GLX numVisuals [%d] numDepths [%d] &quot;
+               &quot;rootDepth [%d] defaultVisual [%ld].\n&quot;, numVisuals, numDepths,
+                   rootDepth, defaultVisual);
+@@ -1309,7 +1350,7 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+     nxagentInitGlxExtension(&amp;visuals, &amp;depths, &amp;numVisuals, &amp;numDepths,
+                                 &amp;rootDepth, &amp;defaultVisual);
+ 
+-    #ifdef TEST
++    #if defined(DEBUG) || defined(DEBUG_COLORMAP)
+     fprintf(stderr, &quot;nxagentOpenScreen: After GLX numVisuals [%d] numDepths [%d] &quot;
+               &quot;rootDepth [%d] defaultVisual [%ld].\n&quot;, numVisuals, numDepths,
+                   rootDepth, defaultVisual);
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Window.c b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+index 9881936..35a3598 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Window.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+@@ -3170,10 +3170,17 @@ static void nxagentReconfigureWindow(pointer param0, XID param1, pointer data_bu
+     {
+         nxagentRealizeWindow (pWin);
+     }
++/*
++XXX: This would break Motif menus.
++     If pWin is mapped but not realized, a followin UnmapWindow() wouldn't
++     do anything, leaving this mapped window around. XMapWindow()
++     is called in nxagentRealizeWindow() and there it is enough.
++
+     else if (pWin-&gt;mapped)
+     {
+       XMapWindow(nxagentDisplay, nxagentWindow(pWin));
+     }
++*/
+     else if (nxagentOption(Rootless) &amp;&amp; pWin -&gt; overrideRedirect == 0 &amp;&amp;
+                  nxagentWindowTopLevel(pWin) &amp;&amp; nxagentIsIconic(pWin))
+     {
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX libraries)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX libraries).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002024.html">[X2go-Commits] nx-libs.git - pristine-tar (branch) updated:	f2deffe2a2522b64ea907652c1efad775453e440
+</A></li>
+	<LI>Next message: <A HREF="002027.html">[X2go-Commits] nx-libs.git - nxagent/3.5.0-7 (tag) created:	nxagent/3.5.0-5-1-gc29053f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2026">[ date ]</a>
+              <a href="thread.html#2026">[ thread ]</a>
+              <a href="subject.html#2026">[ subject ]</a>
+              <a href="author.html#2026">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

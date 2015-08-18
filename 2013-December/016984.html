@@ -1,0 +1,423 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-64-gac14ad2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-64-gac14ad2&In-Reply-To=%3C20131217144335.762EC5DB43%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016981.html">
+   <LINK REL="Next"  HREF="016986.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-64-gac14ad2</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-64-gac14ad2&In-Reply-To=%3C20131217144335.762EC5DB43%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-64-gac14ad2">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:35 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016981.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-65-gc0e8c20
+</A></li>
+        <LI>Next message: <A HREF="016986.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-66-g3aa8227
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16984">[ date ]</a>
+              <a href="thread.html#16984">[ thread ]</a>
+              <a href="subject.html#16984">[ subject ]</a>
+              <a href="author.html#16984">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  ac14ad24e7a2d3d3fd08e61098769b5391f4ea8b (commit)
+      from  a77d761dbb16d28206e7c2446654539935746e4e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    1 +
+ onmainwindow.cpp        |   17 ++++--
+ onmainwindow.h          |    2 +-
+ sshmasterconnection.cpp |  148 +++++++++++++++++++++++++++++++++++++++++++----
+ sshmasterconnection.h   |    7 ++-
+ sshprocess.cpp          |    2 +-
+ 6 files changed, 159 insertions(+), 18 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index f8d5a5b..582891f 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -60,6 +60,7 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+       sessions.
+     - Support for GSSApi(Kerberos 5) authentication. Using ssh/scp commands
+       on Linux and Mac and plink/pscp on Windows.   
++    - Support for ChallengeResponseAuthentication (Google Authenticator)
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 7a0a2a8..946e6ae 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2853,8 +2853,8 @@ SshMasterConnection* ONMainWindow::startSshConnection ( QString host, QString po
+ 
+     connect ( con, SIGNAL ( serverAuthError ( int,QString, SshMasterConnection* ) ),this,
+               SLOT ( slotSshServerAuthError ( int,QString, SshMasterConnection* ) ) );
+-    connect ( con, SIGNAL ( needPassPhrase(SshMasterConnection*)),this,
+-              SLOT ( slotSshServerAuthPassphrase(SshMasterConnection*)) );
++    connect ( con, SIGNAL ( needPassPhrase(SshMasterConnection*, bool)),this,
++              SLOT ( slotSshServerAuthPassphrase(SshMasterConnection*, bool)) );
+     connect ( con, SIGNAL ( userAuthError ( QString ) ),this,SLOT ( slotSshUserAuthError ( QString ) ) );
+     connect ( con, SIGNAL ( connectionError ( QString,QString ) ), this,
+               SLOT ( slotSshConnectionError ( QString,QString ) ) );
+@@ -2946,11 +2946,20 @@ void ONMainWindow::slotServSshConnectionOk(QString server)
+     con-&gt;executeCommand( &quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;, this, SLOT (slotListAllSessions ( bool,QString,int ) ));
+ }
+ 
+-void ONMainWindow::slotSshServerAuthPassphrase(SshMasterConnection* connection)
++void ONMainWindow::slotSshServerAuthPassphrase(SshMasterConnection* connection, bool verificationCode)
+ {
+     bool ok;
++    QString message;
++    if(verificationCode)
++    {
++        message=tr(&quot;Verification code:&quot;);
++    }
++    else
++    {
++        message=tr(&quot;Enter passphrase to decrypt a key&quot;);
++    }
+     QString phrase=QInputDialog::getText(0,connection-&gt;getUser()+&quot;@&quot;+connection-&gt;getHost()+&quot;:&quot;+QString::number(connection-&gt;getPort()),
+-                                         tr(&quot;Enter passphrase to decrypt a key&quot;),QLineEdit::Password,QString::null, &amp;ok);
++                                         message,QLineEdit::Password,QString::null, &amp;ok);
+     if(!ok)
+     {
+         phrase=QString::null;
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 7e51291..6f26417 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -941,7 +941,7 @@ private slots:
+     void showSessionStatus();
+     void slotSshConnectionError ( QString message, QString lastSessionError );
+     void slotSshServerAuthError ( int error, QString sshMessage, SshMasterConnection* connection );
+-    void slotSshServerAuthPassphrase ( SshMasterConnection* connection );
++    void slotSshServerAuthPassphrase ( SshMasterConnection* connection, bool verificationCode );
+     void slotSshUserAuthError ( QString error );
+     void slotSshConnectionOk();
+     void slotServSshConnectionOk(QString server);
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index 9a81853..d705f7c 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -47,7 +47,7 @@
+ #define PROXYTUNNELPORT 44444
+ 
+ #undef DEBUG
+-#define DEBUG
++// #define DEBUG
+ 
+ #undef SSH_DEBUG
+ // #define SSH_DEBUG
+@@ -181,6 +181,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int por
+     reverseTunnel=false;
+     mainWnd=(ONMainWindow*) parent;
+     kerberos=krblogin;
++    challengeAuthVerificationCode=QString::null;
+ #ifdef DEBUG
+     if (kerberos)
+     {
+@@ -352,9 +353,13 @@ SshMasterConnection* SshMasterConnection::reverseTunnelConnection ( SshProcess*
+             proxypassword, proxykey, proxyautologin, localProxyPort );
+     con-&gt;kerberos=kerberos;
+ 
++    con-&gt;setVerficationCode(challengeAuthVerificationCode);
++
+     connect ( con,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ),this,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ) );
+     connect ( con,SIGNAL ( stdErr ( SshProcess*,QByteArray ) ),this,SIGNAL ( stdErr ( SshProcess*,QByteArray ) ) );
+     connect ( con,SIGNAL ( reverseListenOk ( SshProcess* ) ), this, SIGNAL ( reverseListenOk ( SshProcess* ) ) );
++    connect ( con,SIGNAL ( needPassPhrase(SshMasterConnection*, bool)), this, SIGNAL (needPassPhrase(SshMasterConnection*, bool)));
++
+     con-&gt;keyPhrase=keyPhrase;
+     con-&gt;keyPhraseReady=true;
+     con-&gt;start();
+@@ -383,8 +388,8 @@ void SshMasterConnection::run()
+ 
+         connect ( sshProxy, SIGNAL ( serverAuthError ( int,QString,SshMasterConnection* ) ),this,
+                   SLOT ( slotSshProxyServerAuthError ( int,QString, SshMasterConnection* ) ) );
+-        connect ( sshProxy, SIGNAL ( needPassPhrase(SshMasterConnection*)),this,
+-                  SIGNAL ( needPassPhrase(SshMasterConnection*)) );
++        connect ( sshProxy, SIGNAL ( needPassPhrase(SshMasterConnection*, bool)),this,
++                  SIGNAL ( needPassPhrase(SshMasterConnection*, bool)) );
+         connect ( sshProxy, SIGNAL ( serverAuthAborted()),this,
+                   SLOT ( slotSshProxyServerAuthAborted()) );
+         connect ( sshProxy, SIGNAL ( userAuthError ( QString ) ),this,SLOT ( slotSshProxyUserAuthError ( QString ) ) );
+@@ -800,20 +805,141 @@ int SshMasterConnection::serverAuth ( QString&amp; errorMsg )
+     return state;
+ }
+ 
++void SshMasterConnection::setVerficationCode(QString code)
++{
++    challengeAuthVerificationCode=code;
++}
+ 
+-bool SshMasterConnection::userAuthWithPass()
++
++bool SshMasterConnection::userChallengeAuth()
+ {
+-    int rc = ssh_userauth_password ( my_ssh_session, NULL, pass.toAscii() );
+-    if ( rc != SSH_AUTH_SUCCESS )
++    int rez=ssh_userauth_kbdint(my_ssh_session, NULL, NULL);
++    int prompts;
++
++    switch( rez)
+     {
++    case SSH_AUTH_INFO:
++        prompts=ssh_userauth_kbdint_getnprompts(my_ssh_session);
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;Have prompts: &quot;&lt;&lt;prompts&lt;&lt;endl;
++#endif
++        if(prompts)
++        {
++            const char *prompt= ssh_userauth_kbdint_getprompt(my_ssh_session,0,NULL);
++#ifdef DEBUG
++            x2goDebug&lt;&lt;&quot;Prompt[0]: |&quot;&lt;&lt;prompt&lt;&lt;&quot;|&quot;&lt;&lt;endl;
++#endif
++            QString pr=prompt;
++            if(pr==&quot;Password: &quot;)
++            {
++#ifdef DEBUG
++                x2goDebug&lt;&lt;&quot;Password request&quot;&lt;&lt;endl;
++#endif
++                ssh_userauth_kbdint_setanswer(my_ssh_session,0,pass.toAscii());
++                return userChallengeAuth();
++            }
++            if(pr==&quot;Verification code: &quot;)
++            {
++#ifdef DEBUG
++                x2goDebug&lt;&lt;&quot;Verification code request&quot;&lt;&lt;endl;
++#endif
++
++                challengeAuthPasswordAccepted=true;
++                if(challengeAuthVerificationCode == QString::null)
++                {
++                    keyPhraseReady=false;
++                    emit needPassPhrase(this, true);
++                    for(;;)
++                    {
++                        bool ready=false;
++                        this-&gt;usleep(200);
++                        keyPhraseMutex.lock();
++                        if(keyPhraseReady)
++                            ready=true;
++                        keyPhraseMutex.unlock();
++                        if(ready)
++                            break;
++                    }
++                    challengeAuthVerificationCode=keyPhrase;
++                    if(challengeAuthVerificationCode==QString::null)
++                    {
++                        authErrors&lt;&lt;tr(&quot;Authentication failed&quot;);
++                        return false;
++                    }
++                }
++                ssh_userauth_kbdint_setanswer(my_ssh_session,0,challengeAuthVerificationCode.toAscii());
++                return userChallengeAuth();
++            }
++            QString err=ssh_get_error ( my_ssh_session );
++            authErrors&lt;&lt;err;
++
++            return false;
++        }
++        else
++        {
++            return userChallengeAuth();
++        }
++    case SSH_AUTH_SUCCESS:
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;Challenge auth ok&quot;&lt;&lt;endl;
++#endif
++        return true;
++    case SSH_AUTH_DENIED:
++        if(!challengeAuthPasswordAccepted )
++        {
++            QString err=ssh_get_error ( my_ssh_session );
++            authErrors&lt;&lt;err;
++            return false;
++        }
++        else
++        {
++            challengeAuthVerificationCode=QString::null;
++            //try with another verification code
++            return userChallengeAuth();
++        }
++    default:
+         QString err=ssh_get_error ( my_ssh_session );
+         authErrors&lt;&lt;err;
++
++        return false;
++    }
++    return false;
++
++}
++
++
++bool SshMasterConnection::userAuthWithPass()
++{
++    int method = ssh_userauth_list(my_ssh_session, NULL);
++
++    if (method&amp; SSH_AUTH_METHOD_INTERACTIVE)
++    {
+ #ifdef DEBUG
+-        x2goDebug&lt;&lt;&quot;userAuthWithPass failed:&quot; &lt;&lt;err&lt;&lt;endl;
++        x2goDebug&lt;&lt;&quot;Challenge authentication&quot;&lt;&lt;endl;
+ #endif
+-        return false;
++        challengeAuthPasswordAccepted=false;
++        return userChallengeAuth();
+     }
+-    return true;
++
++    if (method &amp; SSH_AUTH_METHOD_PASSWORD)
++    {
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;Password authentication&quot;&lt;&lt;endl;
++#endif
++        int rc = ssh_userauth_password ( my_ssh_session, NULL, pass.toAscii() );
++        if ( rc != SSH_AUTH_SUCCESS )
++        {
++            QString err=ssh_get_error ( my_ssh_session );
++            authErrors&lt;&lt;err;
++#ifdef DEBUG
++            x2goDebug&lt;&lt;&quot;userAuthWithPass failed:&quot; &lt;&lt;err&lt;&lt;endl;
++#endif
++            return false;
++        }
++        return true;
++    }
++
++    return false;
+ }
+ 
+ 
+@@ -826,7 +952,7 @@ bool SshMasterConnection::userAuthAuto()
+         if(!reverseTunnel)
+         {
+             keyPhraseReady=false;
+-            emit needPassPhrase(this);
++            emit needPassPhrase(this, false);
+             for(;;)
+             {
+                 bool ready=false;
+@@ -901,7 +1027,7 @@ bool SshMasterConnection::userAuthWithKey()
+         if(!reverseTunnel)
+         {
+             keyPhraseReady=false;
+-            emit needPassPhrase(this);
++            emit needPassPhrase(this, false);
+             for(;;)
+             {
+                 bool ready=false;
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index dda9772..8a8c6a2 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -113,12 +113,14 @@ private:
+     bool userAuthWithPass();
+     bool userAuthAuto();
+     bool userAuthWithKey();
++    bool userChallengeAuth();
+     bool userAuth();
+     bool userAuthKrb();
+     void channelLoop();
+     void finalize(int arg1);
+     void copy();
+     int serverAuth(QString&amp; errorMsg);
++    void setVerficationCode(QString code);
+ #ifdef Q_OS_WIN
+     void parseKnownHosts();
+ #endif
+@@ -187,6 +189,9 @@ private:
+     bool sshProxyReady;
+     bool breakLoop;
+ 
++    bool challengeAuthPasswordAccepted;
++    QString challengeAuthVerificationCode;
++
+ signals:
+     void stdErr(SshProcess* caller, QByteArray data);
+     void stdOut(SshProcess* caller, QByteArray data);
+@@ -204,7 +209,7 @@ signals:
+     void reverseListenOk(SshProcess* creator);
+     void connectionOk( QString host);
+ 
+-    void needPassPhrase(SshMasterConnection*);
++    void needPassPhrase(SshMasterConnection*, bool verificationCode);
+ };
+ 
+ 
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 69a057e..96d73e7 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -29,7 +29,7 @@
+ #endif
+ 
+ #undef DEBUG
+-#define DEBUG
++// #define DEBUG
+ 
+ #ifdef Q_OS_DARWIN
+ #define KEEPALIVE_OPTION &quot; -o ServerAliveInterval=60 &quot;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016981.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-65-gc0e8c20
+</A></li>
+	<LI>Next message: <A HREF="016986.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-66-g3aa8227
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16984">[ date ]</a>
+              <a href="thread.html#16984">[ thread ]</a>
+              <a href="subject.html#16984">[ subject ]</a>
+              <a href="author.html#16984">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,348 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-8-gbbe2c8a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-8-gbbe2c8a&In-Reply-To=%3C20130519110309.728AD5DB28%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006977.html">
+   <LINK REL="Next"  HREF="006980.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-8-gbbe2c8a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-8-gbbe2c8a&In-Reply-To=%3C20130519110309.728AD5DB28%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-8-gbbe2c8a">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:03:09 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006977.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-5-g716736e
+</A></li>
+        <LI>Next message: <A HREF="006980.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-11-gabebae8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6979">[ date ]</a>
+              <a href="thread.html#6979">[ thread ]</a>
+              <a href="subject.html#6979">[ subject ]</a>
+              <a href="author.html#6979">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  bbe2c8ab570f8f3e4b0e54a79117b9d93488de40 (commit)
+      from  fe7f06c112518bbac361c7e9f80ed721379a0e3b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    1 +
+ debian/python-x2gobroker.dirs                      |    3 +-
+ ...r-agent.postinst =&gt; python-x2gobroker.postinst} |   27 +------
+ ...roker-agent.postrm =&gt; python-x2gobroker.postrm} |   11 +--
+ etc/broker/x2gobroker-loggers.conf                 |   81 ++++++++++++++++++++
+ x2gobroker/defaults.py                             |    5 ++
+ x2gobroker/{brokers/ldap_broker.py =&gt; loggers.py}  |   20 ++---
+ 7 files changed, 107 insertions(+), 41 deletions(-)
+ copy debian/{x2gobroker-agent.postinst =&gt; python-x2gobroker.postinst} (51%)
+ copy debian/{x2gobroker-agent.postrm =&gt; python-x2gobroker.postrm} (70%)
+ create mode 100644 etc/broker/x2gobroker-loggers.conf
+ copy x2gobroker/{brokers/ldap_broker.py =&gt; loggers.py} (68%)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0984633..c8ec285 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,7 @@ x2gobroker (0.0.0.2-0~x2go1) UNRELEASED; urgency=low
+     - Make CC, CFLAGS and LDFLAGS configurable through build system.
+     - Make host session option a list, not string.
+     - Add load balancing support.
++    - Add foundation for logging support.
+   * /debian/control:
+     + Add bin:package x2gobroker-agent.
+ 
+diff --git a/debian/python-x2gobroker.dirs b/debian/python-x2gobroker.dirs
+index 2fd303e..2396e1d 100644
+--- a/debian/python-x2gobroker.dirs
++++ b/debian/python-x2gobroker.dirs
+@@ -1,2 +1,3 @@
+ /etc/x2go
+-/etc/pam.d
+\ No newline at end of file
++/etc/pam.d
++/var/log/x2gobroker
+\ No newline at end of file
+diff --git a/debian/x2gobroker-agent.postinst b/debian/python-x2gobroker.postinst
+similarity index 51%
+copy from debian/x2gobroker-agent.postinst
+copy to debian/python-x2gobroker.postinst
+index 95faece..861b3e0 100755
+--- a/debian/x2gobroker-agent.postinst
++++ b/debian/python-x2gobroker.postinst
+@@ -1,13 +1,10 @@
+ #!/bin/sh
+-# postinst script for x2gobroker-agent
++# postinst script for python-x2gobroker
+ #
+ # see: dh_installdeb(1)
+ 
+ set -e
+ 
+-# Source debconf library.
+-. /usr/share/debconf/confmodule
+-
+ # summary of how this script can be called:
+ #        * &lt;postinst&gt; `configure' &lt;most-recently-configured-version&gt;
+ #        * &lt;old-postinst&gt; `abort-upgrade' &lt;new version&gt;
+@@ -24,25 +21,9 @@ set -e
+ case &quot;$1&quot; in
+ 	configure)
+ 
+-		# setup user/group x2gobroker
+-		if ! getent group x2gobroker &gt;/dev/null; then
+-			echo &quot;Creating x2gobroker group.&quot; &gt;&amp;2
+-			addgroup --system x2gobroker
+-		else
+-			echo &quot;Group x2gobroker already exists.&quot; &gt;&amp;2
+-		fi
+-		if ! getent passwd x2gobroker &gt;/dev/null; then
+-			echo &quot;Creating x2gobroker user.&quot; &gt;&amp;2
+-			adduser --system --no-create-home \
+-			        --disabled-password --disabled-login \
+-			        --shell /bin/false --group --home /dev/null x2gobroker
+-		else
+-			echo &quot;User x2gobroker already exists.&quot; &gt;&amp;2
+-		fi
+-
+-		# the x2gobroker-agent has to be installed setuid root
+-		if ! dpkg-statoverride --list /usr/lib/x2go/x2gobroker-agent &gt;/dev/null; then
+-		    dpkg-statoverride --add --update root x2gobroker 4750 /usr/lib/x2go/x2gobroker-agent
++		# the python-x2gobroker needs special permissions on its log directory
++		if ! dpkg-statoverride --list /var/log/x2gobroker &gt;/dev/null; then
++		    dpkg-statoverride --add --update x2gobroker adm 0750 /var/log/x2gobroker
+ 		fi
+ 
+ 		;;
+diff --git a/debian/x2gobroker-agent.postrm b/debian/python-x2gobroker.postrm
+similarity index 70%
+copy from debian/x2gobroker-agent.postrm
+copy to debian/python-x2gobroker.postrm
+index d703d32..22abe93 100755
+--- a/debian/x2gobroker-agent.postrm
++++ b/debian/python-x2gobroker.postrm
+@@ -18,15 +18,10 @@ set -e
+ 
+ case &quot;$1&quot; in
+ 	purge)
+-		if dpkg-statoverride --list /usr/lib/x2go/x2gobroker-agent &gt;/dev/null; then
+-			dpkg-statoverride --remove /usr/lib/x2go/x2gobroker-agent
++		if dpkg-statoverride --list /var/log/x2gobroker &gt;/dev/null; then
++			dpkg-statoverride --remove /var/log/x2gobroker
+ 		fi
+ 
+-		# remove user/group x2gobroker from system
+-		getent passwd x2gobroker &gt;/dev/null &amp;&amp; deluser x2gobroker
+-		getent group x2gobroker &gt;/dev/null &amp;&amp; delgroup x2gobroker
+-		getent group x2gobroker &gt;/dev/null &amp;&amp; delgroup x2gobroker
+-
+ 		;;
+ 	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+ 		;;
+@@ -41,4 +36,4 @@ esac
+ 
+ #DEBHELPER#
+ 
+-exit 0
+\ No newline at end of file
++exit 0
+diff --git a/etc/broker/x2gobroker-loggers.conf b/etc/broker/x2gobroker-loggers.conf
+new file mode 100644
+index 0000000..36d5e3e
+--- /dev/null
++++ b/etc/broker/x2gobroker-loggers.conf
+@@ -0,0 +1,81 @@
++# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
++# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++[loggers]
++keys=root,broker,access,error
++
++[logger_root]
++level=NOTSET
++handlers=stdoutHandler
++
++[handlers]
++keys=stdoutHandler,brokerFileHandler,accessFileHandler,errorFileHandler
++
++[formatters]
++keys=brokerFormatter,accessFormatter,errorFormatter
++
++[handler_stdoutHandler]
++class=StreamHandler
++args=(sys.stdout,)
++
++[logger_broker]
++level=DEBUG
++handlers=brokerFileHandler
++qualname=broker
++propagate=0
++
++[handler_brokerFileHandler]
++class=FileHandler
++formatter=brokerFormatter
++args=('/var/log/x2gobroker/broker.log',)
++
++[formatter_brokerFormatter]
++format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
++datefmt=
++
++[logger_access]
++level=DEBUG
++handlers=accessFileHandler
++qualname=access
++propagate=0
++
++[handler_accessFileHandler]
++class=FileHandler
++formatter=accessFormatter
++args=('/var/log/x2gobroker/access.log',)
++
++[formatter_accessFormatter]
++format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
++datefmt=
++
++[logger_error]
++level=DEBUG
++handlers=errorFileHandler
++qualname=error
++propagate=0
++
++[handler_errorFileHandler]
++class=FileHandler
++formatter=accessFormatter
++args=('/var/log/x2gobroker/error.log',)
++
++[formatter_errorFormatter]
++format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
++datefmt=
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 48b61d8..b85a296 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -31,6 +31,11 @@ if os.environ.has_key('X2GOBROKER_CONFIG'):
+ else:
+     X2GOBROKER_CONFIG=&quot;/etc/x2go/x2gobroker.conf&quot;
+ 
++if os.environ.has_key('X2GOBROKER_LOGCONFIG'):
++    X2GOBROKER_LOGCONFIG=os.environ['X2GOBROKER_LOGCONFIG']
++else:
++    X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
++
+ if os.environ.has_key('X2GOBROKER_SESSIONPROFILES'):
+     X2GOBROKER_SESSIONPROFILES=os.environ['X2GOBROKER_SESSIONPROFILES']
+ else:
+diff --git a/x2gobroker/brokers/ldap_broker.py b/x2gobroker/loggers.py
+similarity index 68%
+copy from x2gobroker/brokers/ldap_broker.py
+copy to x2gobroker/loggers.py
+index 61857d8..4493091 100644
+--- a/x2gobroker/brokers/ldap_broker.py
++++ b/x2gobroker/loggers.py
+@@ -2,6 +2,7 @@
+ 
+ # Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ # Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ #
+ # X2Go Session Broker is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU Affero General Public License as published by
+@@ -18,16 +19,17 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-&quot;&quot;&quot;\
+-L{ldap.X2GoBroker} class - a production X2GoBroker implementations that uses LDAP as configuration backend
++import logging
++import logging.config
+ 
+-&quot;&quot;&quot;
+-__NAME__ = 'x2gobroker-pylib'
++from x2gobroker.defaults import X2GOBROKER_LOGCONFIG as _X2GOBROKER_LOGCONFIG
+ 
+-# modules
+-import x2gobroker.base_broker as base
++logging.config.fileConfig(_X2GOBROKER_LOGCONFIG)
+ 
+-class X2GoBroker(x2gobroker.base.X2GoBroker):
+-    &quot;&quot;&quot;\
++print dir(logging.config)
++
++# create loggers
++logger_broker = logging.getLogger('broker')
++logger_access = logging.getLogger('access')
++logger_error = logging.getLogger('error')
+ 
+-    &quot;&quot;&quot;
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006977.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-5-g716736e
+</A></li>
+	<LI>Next message: <A HREF="006980.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-11-gabebae8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6979">[ date ]</a>
+              <a href="thread.html#6979">[ thread ]</a>
+              <a href="subject.html#6979">[ subject ]</a>
+              <a href="author.html#6979">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

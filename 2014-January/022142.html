@@ -1,0 +1,758 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-41-g23b3853
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.44.2-41-g23b3853&In-Reply-To=%3C20140107152037.8D5D15E037%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021603.html">
+   <LINK REL="Next"  HREF="022152.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-41-g23b3853</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.44.2-41-g23b3853&In-Reply-To=%3C20140107152037.8D5D15E037%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-41-g23b3853">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:20:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021603.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-43-g4ef2323
+</A></li>
+        <LI>Next message: <A HREF="022152.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22142">[ date ]</a>
+              <a href="thread.html#22142">[ thread ]</a>
+              <a href="subject.html#22142">[ subject ]</a>
+              <a href="author.html#22142">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  23b38533e89e80dc69d2ba5a100fc1b5f91944dc (commit)
+      from  8f96ae78ee15292f4984e384b0f9e9d21b63501e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/session.py |  316 +++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 259 insertions(+), 57 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/session.py b/x2go/session.py
+index 47dffca..b00a17b 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -1,3 +1,4 @@
++# -*- coding: utf-8 -*-
+ 
+ # Copyright (C) 2010-2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ #
+@@ -17,7 +18,13 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ &quot;&quot;&quot;\
+-X2goSession class - the X2goClient's session backend
++X2goSession class - a public API of Python X2go, handling standalone X2go 
++sessions.
++
++This class is normally embedded into the context of an L{X2goClient}
++instance, but it is also possible to address L{X2goSession}s directly via this
++class.
++
+ &quot;&quot;&quot;
+ __NAME__ = 'x2gosession-pylib'
+ 
+@@ -64,13 +71,24 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'control_backend', 'terminal_backend', 'proxy_backend',
+                         'profiles_backend', 'settings_backend', 'printing_backend',
+                        )
++&quot;&quot;&quot;A list of allowed X2go session parameters.&quot;&quot;&quot;
+ _X2GO_SSHPROXY_PARAMS = ('sshproxy_host', 'sshproxy_user', 'sshproxy_password',
+                          'sshproxy_key_filename', 'sshproxy_tunnel',
+                         )
++&quot;&quot;&quot;A list of allowed X2go SSH proxy parameters.&quot;&quot;&quot;
+ 
+ 
+ class X2goSession(object):
++    &quot;&quot;&quot;\
++    Public API class for launching X2go sessions. Recommended is to manage X2go sessions from
++    within an L{X2goClient} instance. However, Python X2go is designed in a way that it also
++    allows the management of singel L{X2goSession} instance.
++
++    Thus, you can use the L{X2goSession} class to manually set up X2go sessions without 
++    L{X2goClient} context (session registry, session list cache, auto-registration of new
++    sessions etc.).
+ 
++    &quot;&quot;&quot;
+     def __init__(self, server=None, control_session=None,
+                  use_sshproxy=False,
+                  profile_id=None, profile_name='UNKNOWN',
+@@ -91,14 +109,78 @@ class X2goSession(object):
+                  client_rootdir=os.path.join(_LOCAL_HOME, _X2GO_CLIENT_ROOTDIR),
+                  sessions_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SESSIONS_ROOTDIR),
+                  ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR),
++                 keep_controlsession_alive=False,
+                  add_to_known_hosts=False,
+                  known_hosts=None,
+-                 keep_controlsession_alive=False,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  virgin=True, running=None, suspended=None, terminated=None,
+                  client_instance=None,
+                  **params):
++        &quot;&quot;&quot;\
++        @param server: hostname of X2go server
++        @type server: C{str}
++        @param control_session: an already initialized C{X2goControlSession*} instance
++        @type control_session: C{X2goControlSession*} instance
++        @param use_sshproxy: for communication with X2go server use an SSH proxy host
++        @type use_sshproxy: C{bool}
++        @param profile_id: profile ID
++        @type profile_id: C{str}
++        @param profile_name: profile name
++        @type profile_name: C{str}
++        @param session_name: session name (if available)
++        @type session_name: C{str}
++        @param printing: enable X2go printing
++        @type printing: C{bool}
++        @param allow_mimebox: enable X2go MIME box support
++        @type allow_mimebox: C{bool}
++        @param mimebox_extensions: whitelist of allowed X2go MIME box extensions
++        @type mimebox_extensions: C{list}
++        @param mimebox_action: action for incoming X2go MIME box files
++        @type mimebox_action: C{X2goMimeBoxAction*} or C{str}
++        @param allow_share_local_folders: enable local folder sharing support
++        @type allow_share_local_folders: C{bool}
++        @param share_local_folders: list of local folders to share with the remote X2go session
++        @type share_local_folders: C{list}
++        @param control_backend: X2go control session backend to use
++        @type control_backend: C{class}
++        @param terminal_backend: X2go terminal session backend to use
++        @type terminal_backend: C{class}
++        @param info_backend: X2go session info backend to use
++        @type info_backend: C{class}
++        @param list_backend: X2go session list backend to use
++        @type list_backend: C{class}
++        @param proxy_backend: X2go proxy backend to use
++        @type proxy_backend: C{class}
++        @param settings_backend: X2go client settings backend to use
++        @type settings_backend: C{class}
++        @param printing_backend: X2go client printing backend to use
++        @type printing_backend: C{class}
++        @param client_rootdir: client base dir (default: ~/.x2goclient)
++        @type client_rootdir: C{str}
++        @param sessions_rootdir: sessions base dir (default: ~/.x2go)
++        @type sessions_rootdir: C{str}
++        @param ssh_rootdir: ssh base dir (default: ~/.ssh)
++        @type ssh_rootdir: C{str}
++        @param keep_controlsession_alive: On last L{X2goSession.disconnect()} keep the associated C{X2goControlSession*} instance alive?
++        @&#359;ype keep_controlsession_alive: C{bool}
++        @param add_to_known_hosts: Auto-accept server host validity?
++        @type add_to_known_hosts: C{bool}
++        @param known_hosts: the underlying Paramiko/SSH systems C{known_hosts} file
++        @type known_hosts: C{str}
++        @param virgin: manipulate session state &#187;virgin&#171; by giving a pre-set value
++        @type virgin: C{bool}
++        @param running: manipulate session state &#187;running&#171; by giving a pre-set value
++        @type running: C{bool}
++        @param suspended: manipulate session state &#187;suspended&#171; by giving a pre-set value
++        @type suspended: C{bool}
++        @param terminated: manipulate session state &#187;terminated&#171; by giving a pre-set value
++        @type terminated: C{bool}
++        @param client_instance: if available, the underlying L{X2goClient} instance
++        @type client_instance: C{X2goClient} instance
++        @param params: further control session, terminal session and SSH proxy class options
++        @type params: C{dict}
+ 
++        &quot;&quot;&quot;
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+         else:
+@@ -182,7 +264,10 @@ class X2goSession(object):
+ 
+     def HOOK_rforward_request_denied(self, server_port=0):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        HOOK method: called if a reverse port forwarding request has been denied.
++
++        @param server_port: remote server port (starting point of reverse forwarding tunnel)
++        @type server_port: C{str}
+ 
+         &quot;&quot;&quot;
+         if self.client_instance:
+@@ -192,7 +277,12 @@ class X2goSession(object):
+ 
+     def HOOK_forwarding_tunnel_setup_failed(self, chain_host='UNKNOWN', chain_port=0):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        HOOK method: called if a port forwarding tunnel setup failed.
++
++        @param chain_host: hostname of chain host (forwarding tunnel end point)
++        @type chain_host: C{str}
++        @param chain_port: port of chain host (forwarding tunnel end point)
++        @type chain_port: C{str}
+ 
+         &quot;&quot;&quot;
+         if self.client_instance:
+@@ -202,7 +292,18 @@ class X2goSession(object):
+ 
+     def HOOK_check_host_dialog(self, host, port, fingerprint='no fingerprint', fingerprint_type='RSA'):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        HOOK method: called if a host check is requested. This hook has to either return C{True} (default) or C{False}.
++
++        @param host: SSH server name to validate
++        @type host: C{str}
++        @param port: SSH server port to validate
++        @type port: C{int}
++        @param fingerprint: the server's fingerprint
++        @type fingerprint: C{str}
++        @param fingerprint_type: finger print type (like RSA, DSA, ...)
++        @type fingerprint_type: C{str}
++        @return: if host validity is verified, this hook method should return C{True}
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.client_instance:
+@@ -213,7 +314,7 @@ class X2goSession(object):
+ 
+     def init_control_session(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Initialize a new control session (C{X2goControlSession*}).
+ 
+         &quot;&quot;&quot;
+         if self.control_session is None:
+@@ -231,9 +332,23 @@ class X2goSession(object):
+                                                         logger=self.logger)
+ 
+     def set_server(self, server):
++        &quot;&quot;&quot;\
++        Modify server name after L{X2goSession} has already been initialized.
++
++        @param server: new server name
++        @type server: C{str}
++
++        &quot;&quot;&quot;
+         self.server = server
+ 
+     def set_profile_name(self, profile_name):
++        &quot;&quot;&quot;\
++        Modify session profile name after L{X2goSession} has already been initialized.
++
++        @param profile_name: new session profile name
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
+         self.profile_name = profile_name
+         self.control_session.set_profile_name(profile_name)
+ 
+@@ -251,7 +366,10 @@ class X2goSession(object):
+         return self.__get_uuid()
+ 
+     def __del__(self):
++        &quot;&quot;&quot;\
++        Class destructor.
+ 
++        &quot;&quot;&quot;
+         if self.has_control_session() and self.has_terminal_session():
+             self.get_control_session().dissociate(self.get_terminal_session())
+ 
+@@ -286,10 +404,13 @@ class X2goSession(object):
+ 
+     def update_params(self, params):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        This method can be used to modify L{X2goSession} parameters after the
++        L{X2goSession} instance has already been initialized.
+ 
+-        &quot;&quot;&quot;
++        @params: a Python dictionary with L{X2goSession} parameters
++        @type: C{dict}
+ 
++        &quot;&quot;&quot;
+         try: del params['server'] 
+         except KeyError: pass
+         try: del params['profile_name']
+@@ -345,7 +466,7 @@ class X2goSession(object):
+ 
+     def get_uuid(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve session UUID hash for this L{X2goSession}.
+ 
+         &quot;&quot;&quot;
+         return str(self.uuid)
+@@ -353,7 +474,7 @@ class X2goSession(object):
+ 
+     def get_username(self):
+         &quot;&quot;&quot;\
+-        After a session has been setup up you can query the
++        After a session has been set up you can query the
+         username the sessions runs as.
+ 
+         @return: the remote username the X2go session runs as
+@@ -369,6 +490,15 @@ class X2goSession(object):
+ 
+ 
+     def user_is_x2gouser(self, username=None):
++        &quot;&quot;&quot;\
++        Check if a given user is valid server-side X2go user.
++
++        @param username: username to check validity for
++        @type username: C{str}
++        @return: return C{True} if the username is allowed to launch X2go sessions
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         if username is None:
+             username = self.__get_username()
+         return self.control_session.is_x2gouser(username)
+@@ -389,7 +519,7 @@ class X2goSession(object):
+     def get_server_peername(self):
+         &quot;&quot;&quot;\
+         After a session has been setup up you can query the
+-        hostname of the host the sessions is connected to (or
++        peername of the host this session is connected to (or
+         about to connect to).
+ 
+         @return: the address of the server the X2go session is
+@@ -402,8 +532,12 @@ class X2goSession(object):
+ 
+     def get_server_hostname(self):
+         &quot;&quot;&quot;\
++        After a session has been setup up you can query the
++        hostname of the host this session is connected to (or
++        about to connect to).
++
+         @return: the hostname of the server the X2go session is
+-            connected to
++            connected to / about to connect to
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+@@ -413,8 +547,11 @@ class X2goSession(object):
+ 
+     def get_server_port(self):
+         &quot;&quot;&quot;\
+-        @return: the server-side TCP port that is used by the X2go session to 
+-            connect the session
++        After a session has been setup up you can query the
++        IP socket port used for connecting the remote X2go server.
++
++        @return: the server-side IP socket port that is used by the X2go session to
++            connect to the server
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+@@ -423,8 +560,7 @@ class X2goSession(object):
+ 
+     def get_session_name(self):
+         &quot;&quot;&quot;\
+-        Retrieve the server-side X2go session name for the session that has
+-        been registered under C{profile_id}.
++        Retrieve the server-side X2go session name for this session.
+ 
+         @return: X2go session name
+         @rtype: C{str}
+@@ -435,7 +571,11 @@ class X2goSession(object):
+ 
+     def get_session_cmd(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the server-side command that is used to start a session
++        on the remote X2go server.
++
++        @return: server-side session command
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         if self.terminal_params.has_key('cmd'):
+@@ -445,15 +585,20 @@ class X2goSession(object):
+ 
+     def get_control_session(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the control session (C{X2goControlSession*} backend) of this L{X2goSession}.
+ 
++        @return: the L{X2goSession}'s control session
++        @rtype: C{X2goControlSession*} instance
+         &quot;&quot;&quot;
+         return self.control_session
+     __get_control_session = get_control_session
+ 
+     def has_control_session(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Check if this L{X2goSession} instance has an associated control session.
++
++        @return: returns C{True} if this L{X2goSession} has a control session associated to itself
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         return self.control_session is not None
+@@ -461,7 +606,10 @@ class X2goSession(object):
+ 
+     def get_terminal_session(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the terminal session (C{X2goTerminalSession*} backend) of this L{X2goSession}.
++
++        @return: the L{X2goSession}'s terminal session
++        @rtype: C{X2goControlTerminal*} instance
+ 
+         &quot;&quot;&quot;
+         return self.terminal_session
+@@ -469,7 +617,11 @@ class X2goSession(object):
+ 
+     def has_terminal_session(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Check if this L{X2goSession} instance has an associated terminal session.
++
++        @return: returns C{True} if this L{X2goSession} has a terminal session associated to itself
++        @rtype: C{bool}
++
+ 
+         &quot;&quot;&quot;
+         return self.terminal_session is not None
+@@ -477,7 +629,12 @@ class X2goSession(object):
+ 
+     def check_host(self):
+         &quot;&quot;&quot;\
+-        Provide a host check mechanism.
++        Provide a host check mechanism. This method basically calls the L{HOOK_check_host_dialog()} method
++        which by itself calls the L{X2goClient.HOOK_check_host_dialog()} method. Make sure you
++        override any of these to enable user interaction on X2go server validity checks.
++
++        @return: returns C{True} if an X2go server host is valid for authentication
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.connected:
+@@ -491,9 +648,8 @@ class X2goSession(object):
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False,
+                 use_sshproxy=False, sshproxy_user='', sshproxy_password=''):
+         &quot;&quot;&quot;\
+-        Connect to a registered X2go session with registry hash C{&lt;session_uuid&gt;}.
+-        This method basically wraps around paramiko.SSHClient.connect() for the
+-        corresponding session.
++        Connects to the L{X2goSession}'s server host. This method basically wraps around 
++        the C{X2goControlSession*.connect()} method.
+ 
+         @param username: the username for the X2go server that is going to be
+             connected to (as a last minute way of changing the session username)
+@@ -508,6 +664,15 @@ class X2goSession(object):
+         @param force_password_auth: disable SSH pub/priv key authentication mechanisms
+             completely
+         @type force_password_auth: C{bool}
++        @param use_sshproxy: use an SSH proxy host for connecting the target X2go server
++        @type use_sshproxy: C{bool}
++        @param sshproxy_user: username for authentication against the SSH proxy host
++        @type sshproxy_user: C{str}
++        @param sshproxy_password: password for authentication against the SSH proxy host
++        @type sshproxy_password: C{str}
++
++        @return: returns C{True} is the connection to the X2go server has been successful
++        @rtype C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.control_session and self.control_session.is_connected():
+@@ -553,7 +718,10 @@ class X2goSession(object):
+ 
+     def disconnect(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Disconnect this L{X2goSession} instance.
++
++        @return: returns C{True} if the disconnect operation has been successful
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         self.connected = False
+@@ -570,7 +738,18 @@ class X2goSession(object):
+ 
+     def set_print_action(self, print_action, **kwargs):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        If X2go client-side printing is enable within this X2go session you can use
++        this method to alter the way how incoming print spool jobs are handled/processed.
++
++        For further information, please refer to the documentation of the L{X2goClient.set_session_print_action()}
++        method.
++
++        @param print_action: one of the named above print actions, either as string or class instance
++        @type print_action: C{str} or C{instance}
++        @param kwargs: additional information for the given print action (print 
++            action arguments), for possible print action arguments and their values see each individual
++            print action class
++        @type kwargs: C{dict}
+ 
+         &quot;&quot;&quot;
+         if type(print_action) is not types.StringType:
+@@ -580,7 +759,10 @@ class X2goSession(object):
+ 
+     def is_alive(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Find out if this X2go session is still alive (that is: connected to the server).
++
++        @return: returns C{True} if the server connection is still alive
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         self.connected = self.control_session.is_alive()
+@@ -591,7 +773,7 @@ class X2goSession(object):
+ 
+     def clean_sessions(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Clean all running sessions for the authenticated user on the remote X2go server.
+ 
+         &quot;&quot;&quot;
+         if self.is_alive():
+@@ -602,7 +784,14 @@ class X2goSession(object):
+ 
+     def list_sessions(self, raw=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        List all sessions on the remote X2go server that are owned by the authenticated user 
++
++        @param raw: if C{True} the output of this method equals
++            the output of the server-side C{x2golistsessions} command
++        @type raw: C{bool}
++
++        @return: a session list (as data object or list of strings when called with C{raw=True} option)
++        @rtype C{X2goServerSessionList*} instance or C{list}
+ 
+         &quot;&quot;&quot;
+         try:
+@@ -614,7 +803,21 @@ class X2goSession(object):
+ 
+     def update_status(self, session_list=None):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Update the current session status. The L{X2goSession} instance uses an internal
++        session status cache that allows to query the session status without the need
++        of retrieving data from the remote X2go server for each query.
++
++        The session status (if initialized properly with the L{X2goClient} constructor gets
++        updated in regularly intervals.
++
++        In case you use the L{X2goSession} class in standalone instances (that is: without
++        being embedded into an L{X2goSession} context) then run this method in regular
++        intervals to make sure the L{X2goSession}'s internal status cache information
++        is always up-to-date.
++
++        @param session_list: provide an C{X2goServerSessionList*} that refers to X2go sessions we want to update.
++            This option is mainly for reducing server/client traffic.
++        @type session_list: C{X2goServerSessionList*} instance
+ 
+         &quot;&quot;&quot;
+         if self._last_status is not None:
+@@ -676,6 +879,9 @@ class X2goSession(object):
+         @param session_name: the server-side name of an X2go session
+         @type session_name: C{str}
+ 
++        @return: returns C{True} if resuming the session has been successful, C{False} otherwise
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
+         _new_session = False
+         if self.session_name is None:
+@@ -732,27 +938,27 @@ class X2goSession(object):
+             return self.running
+         else:
+             self._X2goSession__disconnect()
++            return False
+     __resume = resume
+ 
+     def start(self):
+         &quot;&quot;&quot;\
+         Start a new X2go session on the remote X2go server.
+ 
++        @return: returns C{True} if starting the session has been successful, C{False} otherwise
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
+         self.session_name = None
+-        self.resume()
++        return self.resume()
+     __start = start
+ 
+     def suspend(self):
+         &quot;&quot;&quot;\
+-        Suspend an X2go session.
+-
+-        You can either suspend a session that you have formerly
+-        started/resumed the current X2goClient instance.
++        Suspend this X2go session.
+ 
+-        Or you can suspend a non-attached session by simply
+-        registering an X2go server session and then passing the
+-        server-side X2go session name to this method.
++        @return: returns C{True} if suspending the session has been successful, C{False} otherwise
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.is_alive():
+@@ -785,14 +991,10 @@ class X2goSession(object):
+ 
+     def terminate(self):
+         &quot;&quot;&quot;\
+-        Terminate an X2go session.
+-
+-        You can either terminate a session that you have formerly
+-        started/resumed within the current X2goClient instance.
++        Terminate this X2go session.
+ 
+-        Or you can terminate a non-attached session by simply
+-        registering an X2go server session and then passing the
+-        server-side X2go session name to this method.
++        @return: returns C{True} if terminating the session has been successful, C{False} otherwise
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.is_alive():
+@@ -824,7 +1026,7 @@ class X2goSession(object):
+ 
+     def get_profile_name(self):
+         &quot;&quot;&quot;\
+-        Retrieve the profile name of this registered session.
++        Retrieve the profile name of this L{X2goSession} instance.
+ 
+         @return: X2go client profile name of the session
+         @rtype: C{str}
+@@ -835,7 +1037,7 @@ class X2goSession(object):
+ 
+     def get_profile_id(self):
+         &quot;&quot;&quot;\
+-        Retrieve this registered session's profile id.
++        Retrieve the profile ID of this L{X2goSession} instance.
+ 
+         @return: the session profile's id
+         @rtype: C{str}
+@@ -850,7 +1052,7 @@ class X2goSession(object):
+ 
+     def session_ok(self):
+         &quot;&quot;&quot;\
+-        Test if this registered X2go session is
++        Test if this C{X2goSession} is
+         in a healthy state.
+ 
+         @return: C{True} if session is ok, C{False} otherwise
+@@ -864,8 +1066,8 @@ class X2goSession(object):
+ 
+     def is_connected(self):
+         &quot;&quot;&quot;\
+-        Test if this registered X2go session is connected to the 
+-        remote server.
++        Test if the L{X2goSession}'s control session is connected to the 
++        remote X2go server.
+ 
+         @return: C{True} if session is connected, C{False} otherwise
+         @rtype: C{bool}
+@@ -881,7 +1083,7 @@ class X2goSession(object):
+ 
+     def is_running(self):
+         &quot;&quot;&quot;\
+-        Test if this registered X2go session is up and running.
++        Test if the L{X2goSession}'s terminal session is up and running.
+ 
+         @return: C{True} if session is running, C{False} otherwise
+         @rtype: C{bool}
+@@ -899,7 +1101,7 @@ class X2goSession(object):
+ 
+     def is_suspended(self):
+         &quot;&quot;&quot;\
+-        Test if this registered X2go session is in suspended state.
++        Test if the L{X2goSession}'s terminal session is in suspended state.
+ 
+         @return: C{True} if session is suspended, C{False} otherwise
+         @rtype: C{bool}
+@@ -917,7 +1119,7 @@ class X2goSession(object):
+ 
+     def has_terminated(self):
+         &quot;&quot;&quot;\
+-        Test if this registered X2go session has terminated.
++        Test if the L{X2goSession}'s terminal session has terminated.
+ 
+         @return: C{True} if session has terminated, C{False} otherwise
+         @rtype: C{bool}
+@@ -941,8 +1143,8 @@ class X2goSession(object):
+             file system
+         @type folder_name: C{str}
+ 
+-        @return: returns C{True} if the local folder has been successfully mounted within 
+-            this registered X2go server session
++        @return: returns C{True} if the local folder has been successfully mounted within
++            this X2go session
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -954,7 +1156,7 @@ class X2goSession(object):
+ 
+     def session_cleanup(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Clean up X2go session.
+ 
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021603.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-43-g4ef2323
+</A></li>
+	<LI>Next message: <A HREF="022152.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22142">[ date ]</a>
+              <a href="thread.html#22142">[ thread ]</a>
+              <a href="subject.html#22142">[ subject ]</a>
+              <a href="author.html#22142">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

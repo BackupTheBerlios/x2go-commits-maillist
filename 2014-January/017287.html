@@ -1,0 +1,972 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-326-g9941f22
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-326-g9941f22&In-Reply-To=%3C20140103170036.B4AEB5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017280.html">
+   <LINK REL="Next"  HREF="017274.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-326-g9941f22</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.3-326-g9941f22&In-Reply-To=%3C20140103170036.B4AEB5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-326-g9941f22">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 18:00:36 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017280.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-328-gd53c913
+</A></li>
+        <LI>Next message: <A HREF="017274.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-334-g42802af
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17287">[ date ]</a>
+              <a href="thread.html#17287">[ thread ]</a>
+              <a href="subject.html#17287">[ subject ]</a>
+              <a href="author.html#17287">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  9941f2253b2d8ed656e0728dca5620c0e76f33ac (commit)
+      from  d8ca64f4160f1cac03cd4c8f58808aa383bc023d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 9941f2253b2d8ed656e0728dca5620c0e76f33ac
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Dec 30 02:08:21 2013 +0100
+
+    Security audit of complete code tree, avoid one-argument system calls where possible, avoid backticks, use more quotes in shell scripts.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/Server/DB.pm                     |   61 ++++++++++++++++++---------------
+ X2Go/Server/DB/PostgreSQL.pm          |    2 +-
+ debian/changelog                      |    2 ++
+ x2goserver/bin/x2gocmdexitmessage     |    8 ++---
+ x2goserver/bin/x2gofeature            |    8 ++---
+ x2goserver/bin/x2gofeaturelist        |    6 ++--
+ x2goserver/bin/x2gogetservers         |    2 +-
+ x2goserver/bin/x2golistdesktops       |    9 +++--
+ x2goserver/bin/x2golistsessions       |    2 +-
+ x2goserver/bin/x2golistshadowsessions |    4 +--
+ x2goserver/bin/x2gomountdirs          |   22 ++++++------
+ x2goserver/bin/x2gopath               |   13 ++++---
+ x2goserver/bin/x2goresume-session     |   20 +++++------
+ x2goserver/bin/x2goruncommand         |   42 +++++++++++------------
+ x2goserver/bin/x2gosessionlimit       |    3 +-
+ x2goserver/bin/x2goumount-session     |   15 ++++----
+ x2goserver/bin/x2goversion            |    1 -
+ x2goserver/sbin/x2gocleansessions     |    5 +--
+ x2goserver/sbin/x2golistsessions_root |    2 +-
+ 19 files changed, 120 insertions(+), 107 deletions(-)
+
+The diff of changes is:
+diff --git a/X2Go/Server/DB.pm b/X2Go/Server/DB.pm
+index 2ce7a02..bf00fb1 100644
+--- a/X2Go/Server/DB.pm
++++ b/X2Go/Server/DB.pm
+@@ -38,13 +38,14 @@ use Sys::Syslog qw( :standard :macros );
+ use X2Go::Config qw( get_sqlconfig );
+ use X2Go::Log qw( loglevel );
+ use X2Go::Server::DB::PostgreSQL;
+-
++use X2Go::Utils qw( system_capture_merged_output system_capture_stdout_output );
+ setlogmask( LOG_UPTO(loglevel()) );
+ 
++
+ my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
+ 
+ my $Config = get_sqlconfig();
+-my $x2go_lib_path=`x2gopath libexec`;
++my $x2go_lib_path=system_capture_stdout_output(&quot;x2gopath&quot;, &quot;libexec&quot;);
+ 
+ my $backend=$Config-&gt;param(&quot;backend&quot;);
+ 
+@@ -77,7 +78,7 @@ sub dbsys_rmsessionsroot
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper rmsessionsroot $sid`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;rmsessionsroot&quot;, &quot;$sid&quot;);
+ 	}
+ }
+ 
+@@ -90,7 +91,7 @@ sub dbsys_deletemounts
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper deletemounts $sid`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;deletemounts&quot;, &quot;$sid&quot;);
+ 	}
+ 	syslog('debug', &quot;dbsys_deletemounts called, session ID: $sid&quot;);
+ }
+@@ -104,7 +105,7 @@ sub dbsys_listsessionsroot
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listsessionsroot $server`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listsessionsroot&quot;, &quot;$server&quot;));
+ 	}
+ }
+ 
+@@ -116,7 +117,7 @@ sub dbsys_listsessionsroot_all
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listsessionsroot_all`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listsessionsroot_all&quot;));
+ 	}
+ }
+ 
+@@ -130,7 +131,7 @@ sub dbsys_getmounts
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		@mounts = split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getmounts $sid`);
++		@mounts = split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getmounts&quot;, &quot;$sid&quot;));
+ 	}
+ 	my $log_retval = join(&quot; &quot;, @mounts);
+ 	syslog('debug', &quot;dbsys_getmounts called, session ID: $sid; return value: $log_retval&quot;);
+@@ -147,7 +148,7 @@ sub db_getmounts
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		@mounts = split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getmounts $sid`);
++		@mounts = split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getmounts&quot;, &quot;$sid&quot;));
+ 	}
+ 	my $log_retval = join(&quot; &quot;, @mounts);
+ 	syslog('debug', &quot;db_getmounts called, session ID: $sid; return value: $log_retval&quot;);
+@@ -164,7 +165,7 @@ sub db_deletemount
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper deletemount $sid \&quot;$path\&quot;`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;deletemount&quot;, &quot;$sid&quot;, &quot;$path&quot;);
+ 	}
+ 	syslog('debug', &quot;db_deletemount called, session ID: $sid, path: $path&quot;);
+ }
+@@ -181,7 +182,7 @@ sub db_insertmount
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		if( `$x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertmount $sid \&quot;$path\&quot; $client` eq &quot;ok&quot;)
++		if( system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;insertmount&quot;, &quot;$sid&quot;, &quot;\&quot;$path\&quot;&quot;, &quot;$client&quot;) eq &quot;ok&quot;)
+ 		{
+ 			$res_ok=1;
+ 		}
+@@ -201,7 +202,7 @@ sub db_insertsession
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		my $err=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertsession $display $server $sid`;
++		my $err=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;insertsession&quot;, &quot;$display&quot;, &quot;$server&quot;, &quot;$sid&quot;);
+ 		if ($err ne &quot;ok&quot;)
+ 		{
+ 			die &quot;$err: $x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertsession $display $server $sid&quot;;
+@@ -222,7 +223,7 @@ sub db_insertshadowsession
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		my $err=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertshadowsession $display $server $sid $shadreq_user`;
++		my $err=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;insertshadowsession&quot;, &quot;$display&quot;, &quot;$server&quot;, &quot;$sid&quot;, &quot;$shadreq_user&quot;);
+ 		if ($err ne &quot;ok&quot;)
+ 		{
+ 			die &quot;$err: $x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertshadowsession $display $server $sid $shadreq_user&quot;;
+@@ -246,7 +247,7 @@ sub db_createsession
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		my $err= `$x2go_lib_path/libx2go-server-db-sqlite3-wrapper createsession $cookie $pid $client $gr_port $snd_port $fs_port $sid`;
++		my $err= system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;createsession&quot;, &quot;$cookie&quot;, &quot;$pid&quot;, &quot;$client&quot;, &quot;$gr_port&quot;, &quot;$snd_port&quot;, &quot;$fs_port&quot;, &quot;$sid&quot;);
+ 		if ($err ne &quot;ok&quot;)
+ 		{
+ 			die $err;
+@@ -272,7 +273,7 @@ sub db_createshadowsession
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		my $err= `$x2go_lib_path/libx2go-server-db-sqlite3-wrapper createshadowsession $cookie $pid $client $gr_port $snd_port $fs_port $sid $shadreq_user`;
++		my $err=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;createshadowsession&quot;, &quot;$cookie&quot;, &quot;$pid&quot;, &quot;$client&quot;, &quot;$gr_port&quot;, &quot;$snd_port&quot;, &quot;$fs_port&quot;, &quot;$sid&quot;, &quot;$shadreq_user&quot;);
+ 		if ($err ne &quot;ok&quot;)
+ 		{
+ 			die $err;
+@@ -292,7 +293,11 @@ sub db_insertport
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper insertport $server $sid $sshport`;
++		my $err=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;insertport&quot;, &quot;$server&quot;, &quot;$sid&quot;, &quot;$sshport&quot;);
++		if ($err ne &quot;ok&quot;)
++		{
++			die $err;
++		}
+ 	}
+ 	syslog('debug', &quot;db_insertport called, session ID: $sid, server: $server, SSH port: $sshport&quot;);
+ }
+@@ -308,7 +313,7 @@ sub db_rmport
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper rmport $server $sid $sshport`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;rmport&quot;, &quot;$server&quot;, &quot;$sid&quot;, &quot;$sshport&quot;);
+ 	}
+ 	syslog('debug', &quot;db_rmport called, session ID: $sid, server: $server, SSH port: $sshport&quot;);
+ }
+@@ -326,7 +331,7 @@ sub db_resume
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper resume $client $sid $gr_port $snd_port $fs_port`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;resume&quot;, &quot;$client&quot;, &quot;$sid&quot;, &quot;$gr_port&quot;, &quot;$snd_port&quot;, &quot;$fs_port&quot;);
+ 	}
+ 	syslog('debug', &quot;db_resume called, session ID: $sid, client: $client, gr_port: $gr_port, sound_port: $snd_port, fs_port: $fs_port&quot;);
+ }
+@@ -341,7 +346,7 @@ sub db_changestatus
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper changestatus $status $sid`;
++		system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;changestatus&quot;, &quot;$status&quot;, &quot;$sid&quot;);
+ 	}
+ 	syslog('debug', &quot;db_changestatus called, session ID: $sid, new status: $status&quot;);
+ }
+@@ -356,7 +361,7 @@ sub db_getstatus
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		$status=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getstatus $sid`;
++		$status=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getstatus&quot;, &quot;$sid&quot;);
+ 	}
+ 	syslog('debug', &quot;db_getstatus called, session ID: $sid, return value: $status&quot;);
+ 	return $status;
+@@ -373,7 +378,7 @@ sub db_getdisplays
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		@displays = split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getdisplays $server`);
++		@displays = split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getdisplays&quot;, &quot;$server&quot;));
+ 	}
+ 	my $log_retval = join(&quot; &quot;, @displays);
+ 	syslog('debug', &quot;db_getdisplays called, server: $server; return value: $log_retval&quot;);
+@@ -391,7 +396,7 @@ sub db_getports
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		@ports = split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getports $server`);
++		@ports = split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getports&quot;, &quot;$server&quot;));
+ 	}
+ 	my $log_retval = join(&quot; &quot;, @ports);
+ 	syslog('debug', &quot;db_getports called, server: $server; return value: $log_retval&quot;);
+@@ -407,7 +412,7 @@ sub db_getservers
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		@servers = split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getservers`);
++		@servers = split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getservers&quot;));
+ 	}
+ 	my $log_retval = join(&quot; &quot;, @servers);
+ 	syslog('debug', &quot;db_getservers called, return value: $log_retval&quot;);
+@@ -424,7 +429,7 @@ sub db_getagent
+ 	}
+ 	if($backend eq 'sqlite')
+ 	{
+-		$agent=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getagent $sid`;
++		$agent=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getagent&quot;, &quot;$sid&quot;);
+ 	}
+ 	syslog('debug', &quot;db_getagent called, session ID: $sid; return value: $agent&quot;);
+ 	return $agent;
+@@ -440,7 +445,7 @@ sub db_getdisplay
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		$display=`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper getdisplay $sid`;
++		$display=system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;getdisplay&quot;, &quot;$sid&quot;);
+ 	}
+ 	syslog('debug', &quot;db_getdisplay called, session ID: $sid; return value: $display&quot;);
+ 	return $display;
+@@ -455,7 +460,7 @@ sub db_listsessions
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listsessions $server`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listsessions&quot;, &quot;$server&quot;));
+ 	}
+ }
+ 
+@@ -467,7 +472,7 @@ sub db_listsessions_all
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listsessions_all`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listsessions_all&quot;));
+ 	}
+ }
+ 
+@@ -480,7 +485,7 @@ sub db_listshadowsessions
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listshadowsessions $server`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listshadowsessions&quot;, &quot;$server&quot;));
+ 	}
+ }
+ 
+@@ -492,6 +497,6 @@ sub db_listshadowsessions_all
+ 	}
+ 	if ($backend eq 'sqlite')
+ 	{
+-		return split(&quot;\n&quot;,`$x2go_lib_path/libx2go-server-db-sqlite3-wrapper listshadowsessions_all`);
++		return split(&quot;\n&quot;,system_capture_merged_output(&quot;$x2go_lib_path/libx2go-server-db-sqlite3-wrapper&quot;, &quot;listshadowsessions_all&quot;));
+ 	}
+ }
+diff --git a/X2Go/Server/DB/PostgreSQL.pm b/X2Go/Server/DB/PostgreSQL.pm
+index f101de8..6e94ef1 100644
+--- a/X2Go/Server/DB/PostgreSQL.pm
++++ b/X2Go/Server/DB/PostgreSQL.pm
+@@ -61,7 +61,7 @@ sub init_db
+ 	if ( ! ( $dbuser and $dbpass ) )
+ 	{
+ 		my $Config = get_sqlconfig;
+-		my $x2go_lib_path=`x2gopath libexec`;
++		my $x2go_lib_path=system_capture_stdout_output(&quot;x2gopath&quot;, &quot;libexec&quot;);
+ 
+ 		my $backend=$Config-&gt;param(&quot;backend&quot;);
+ 		if ( $backend ne &quot;postgres&quot; )
+diff --git a/debian/changelog b/debian/changelog
+index 16b9851..5db2ff6 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -42,6 +42,8 @@ x2goserver (4.1.0.0-0x2go1) UNRELEASED; urgency=low
+     - Start working on an abstraction layer (as Perl
+       package X2Go::Server::Agent) that handles all (NX) agent specific actions.
+       Move duplicate code into that new Perl package.
++    - Security audit of complete code tree, avoid one-argument system calls where
++      possible, avoid backticks, use more quotes in shell scripts.
+   * debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+diff --git a/x2goserver/bin/x2gocmdexitmessage b/x2goserver/bin/x2gocmdexitmessage
+index 79cd0a5..b5a2170 100755
+--- a/x2goserver/bin/x2gocmdexitmessage
++++ b/x2goserver/bin/x2gocmdexitmessage
+@@ -21,13 +21,13 @@
+ # Copyright (C) 2007-2013  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ 
+ X2GO_LIB_PATH=&quot;$(x2gopath libexec)&quot;;
+-X2GO_ROOT=${HOME}/.x2go
+-MESSAGE_FILE=$X2GO_ROOT/C-$1/cmdoutput
++X2GO_ROOT=&quot;${HOME}/.x2go&quot;
++MESSAGE_FILE=&quot;$X2GO_ROOT/C-$1/cmdoutput&quot;
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+ test -f &quot;$MESSAGE_FILE&quot; &amp;&amp; {
+-       $X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;command output starts with: $(head -n5 $MESSAGE_FILE | sed 's/\n/ /g')&quot;
++       &quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;command output starts with: &quot;$(head -n5 &quot;$MESSAGE_FILE&quot; | sed 's/\n/ /g')
+ 
+        # return command output of the command that was issued by x2goruncommand
+        cat &quot;$MESSAGE_FILE&quot;
+diff --git a/x2goserver/bin/x2gofeature b/x2goserver/bin/x2gofeature
+index ee0d309..ab0e848 100755
+--- a/x2goserver/bin/x2gofeature
++++ b/x2goserver/bin/x2gofeature
+@@ -25,14 +25,14 @@
+ X2GO_LIB_PATH=&quot;$(x2gopath libexec)&quot;;
+ X2GO_SHARE_PATH=&quot;$(x2gopath share)&quot;;
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+-X2GO_FEATURE=$1
++X2GO_FEATURE=&quot;$1&quot;
+ 
+ # run x2gofeature scripts of X2Go extensions
+ test -d &quot;$X2GO_SHARE_PATH/x2gofeature.d&quot; &amp;&amp; {
+-    for subscript in $X2GO_SHARE_PATH/x2gofeature.d/*.features; do
+-        $subscript $@ &amp;&amp; exit 0
++    for subscript in &quot;$X2GO_SHARE_PATH/x2gofeature.d/&quot;*.features; do
++        &quot;$subscript&quot; $@ &amp;&amp; exit 0
+     done
+ }
+ 
+diff --git a/x2goserver/bin/x2gofeaturelist b/x2goserver/bin/x2gofeaturelist
+index e879e4e..9c74960 100755
+--- a/x2goserver/bin/x2gofeaturelist
++++ b/x2goserver/bin/x2gofeaturelist
+@@ -22,12 +22,12 @@
+ X2GO_LIB_PATH=&quot;$(x2gopath libexec)&quot;;
+ X2GO_SHARE_PATH=&quot;$(x2gopath share)&quot;;
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+ # run x2gofeature scripts of X2Go extensions
+ test -d &quot;$X2GO_SHARE_PATH/x2gofeature.d&quot; &amp;&amp; {
+-    for subscript in $X2GO_SHARE_PATH/x2gofeature.d/*.features; do
+-        cat $subscript | egrep &quot;.*\).*ok.*exit 0.*&quot; | cut -d&quot;\&quot;&quot; -f2 | cut -d&quot;\&quot;&quot; -f1
++    for subscript in &quot;$X2GO_SHARE_PATH/x2gofeature.d/&quot;*.features; do
++        cat &quot;$subscript&quot; | egrep &quot;.*\).*ok.*exit 0.*&quot; | cut -d&quot;\&quot;&quot; -f2 | cut -d&quot;\&quot;&quot; -f1
+     done
+ }
+ 
+diff --git a/x2goserver/bin/x2gogetservers b/x2goserver/bin/x2gogetservers
+index 83ba5c1..5f19025 100755
+--- a/x2goserver/bin/x2gogetservers
++++ b/x2goserver/bin/x2gogetservers
+@@ -33,4 +33,4 @@ my $servers = join(&quot;\n&quot;, db_getservers);
+ print $servers;
+ 
+ # closing syslog 
+-closelog;
+\ No newline at end of file
++closelog;
+diff --git a/x2goserver/bin/x2golistdesktops b/x2goserver/bin/x2golistdesktops
+index b489286..44cc1f9 100755
+--- a/x2goserver/bin/x2golistdesktops
++++ b/x2goserver/bin/x2golistdesktops
+@@ -24,7 +24,8 @@ use strict;
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
+ 
+-use X2Go::Log qw(loglevel);
++use X2Go::Log qw( loglevel );
++use X2Go::Utils qw( system_capture_stdout_output );
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -42,6 +43,7 @@ if( ! $serv)
+ 	$serv=hostname;
+ }
+ 
++# FIXME: finally get rid of this non-critical backtick expression
+ my $rsess=`x2golistsessions $serv |grep _stR`;
+ my @rsess=split(&quot;\n&quot;,&quot;$rsess&quot;);
+ my @rdisplays;
+@@ -55,7 +57,7 @@ my $rdisp=join(&quot;I&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at rdisplays</A>);
+ $rdisp=&quot;I${rdisp}I&quot;;
+ 
+ my $uname=$ENV{'USER'};
+-my $outp=`ls -1 /tmp/.X11-unix/`;
++my $outp=system_capture_stdout_output(&quot;ls&quot;,  &quot;-1&quot;,  &quot;/tmp/.X11-unix/&quot;);
+ my @outp=split(&quot;\n&quot;,&quot;$outp&quot;);
+ for(my $i=0;$i&lt;@outp;$i++)
+ {
+@@ -66,7 +68,7 @@ for(my $i=0;$i&lt;@outp;$i++)
+ 	$checkdisp=&quot;${checkdisp}I&quot;;
+ 	if (!( $rdisp =~ m/$checkdisp/ ))
+ 	{
+-		my $inf=`xwininfo -root -display $display 2&gt; /dev/null`;
++		my $inf=system_capture_stdout_output(&quot;xwininfo&quot;, &quot;-root&quot;, &quot;-display&quot;, &quot;$display&quot;);
+ 		if ( $inf=~ m/geometry/)
+ 		{
+ 			print &quot;$uname\@$display\n&quot;;
+@@ -74,6 +76,7 @@ for(my $i=0;$i&lt;@outp;$i++)
+ 	}
+ }
+ 
++# FIXME: finally get rid of this non-critical backtick expression
+ $outp=`ls -1 /tmp/ | grep x2godesktopsharing_`;
+ @outp=split(&quot;\n&quot;,&quot;$outp&quot;);
+ 
+diff --git a/x2goserver/bin/x2golistsessions b/x2goserver/bin/x2golistsessions
+index 6f44f56..1b8b6fc 100755
+--- a/x2goserver/bin/x2golistsessions
++++ b/x2goserver/bin/x2golistsessions
+@@ -70,7 +70,7 @@ for (my $i=0;$i&lt;@outp;$i++)
+ 	{ 
+ 		if (@sinfo[4]eq 'R')
+ 		{
+-			if(session_is_suspended(@sinfo[1]), @sinfo[11])
++			if(session_is_suspended(@sinfo[1], @sinfo[11]))
+ 			{
+ 				db_changestatus( 'S', @sinfo[1] );
+ 				@outp[$i] =~ s/\|R\|/\|S\|/;
+diff --git a/x2goserver/bin/x2golistshadowsessions b/x2goserver/bin/x2golistshadowsessions
+index 7880d53..c24873d 100755
+--- a/x2goserver/bin/x2golistshadowsessions
++++ b/x2goserver/bin/x2golistshadowsessions
+@@ -70,11 +70,11 @@ for (my $i=0;$i&lt;@outp;$i++)
+ 	{ 
+ 		if (@sinfo[4]eq 'R')
+ 		{
+-			if(session_is_suspended(@sinfo[1]), @sinfo[11])
++			if(session_is_suspended(@sinfo[1], @sinfo[11]))
+ 			{
+ 				db_changestatus( 'S', @sinfo[1] );
+ 				@outp[$i] =~ s/\|R\|/\|S\|/;
+-				system( &quot;x2goumount-session&quot;,&quot;@sinfo[1]&quot;);
++				system(&quot;x2goumount-session&quot;,&quot;@sinfo[1]&quot;);
+ 			}
+ 		}
+ 		print &quot;@outp[$i]\n&quot;;
+diff --git a/x2goserver/bin/x2gomountdirs b/x2goserver/bin/x2gomountdirs
+index b5d305f..a921460 100755
+--- a/x2goserver/bin/x2gomountdirs
++++ b/x2goserver/bin/x2gomountdirs
+@@ -26,7 +26,7 @@ use File::BaseDir qw(xdg_config_home);
+ 
+ use X2Go::Config qw( get_config );
+ use X2Go::Server::DB qw( db_insertmount db_deletemount );
+-use X2Go::Utils qw( source_environment );
++use X2Go::Utils qw( source_environment system_capture_merged_output );
+ use X2Go::Log qw( loglevel );
+ 
+ openlog($0,'cons,pid','user');
+@@ -170,7 +170,7 @@ if ( -d $ldir)
+ 
+ if ( ! -l $ldir)
+ {
+-	system (&quot;ln -s $mdir $ldir&quot;);
++	system (&quot;ln&quot;, &quot;-s&quot;, &quot;$mdir&quot;, &quot;$ldir&quot;);
+ }
+ 
+ if ( -d $spooldir_lnk)
+@@ -180,7 +180,7 @@ if ( -d $spooldir_lnk)
+ 
+ if ( ! -l $spooldir_lnk)
+ {
+-	system (&quot;ln -s $spooldir $spooldir_lnk&quot;);
++	system (&quot;ln&quot;, &quot;-s&quot;, &quot;$spooldir&quot;, &quot;$spooldir_lnk&quot;);
+ }
+ 
+ if ( -d $mimeboxdir_lnk)
+@@ -190,7 +190,7 @@ if ( -d $mimeboxdir_lnk)
+ 
+ if ( ! -l $mimeboxdir_lnk)
+ {
+-	system (&quot;ln -s $mimeboxdir $mimeboxdir_lnk&quot;);
++	system (&quot;ln&quot;, &quot;-s&quot;, &quot;$mimeboxdir&quot;, &quot;$mimeboxdir_lnk&quot;);
+ }
+ 
+ my $uname=$ENV{'USER'};
+@@ -265,17 +265,19 @@ for (my $i=0;$i&lt;@dirs;$i++)
+ 		{
+ 			$code_conv=&quot;-o $code_conv&quot;;
+ 		}
+-		if ( -f $key )
++		if ( -f &quot;$key&quot; )
+ 		{
+ 			syslog('debug', &quot;SSH key file has arrived: $key&quot;);
+ 		}
+-		if ( -f $key.ident )
++		if ( -f &quot;$key.ident&quot; )
+ 		{
+ 			syslog('debug', &quot;SSH host key has arrived: $key.ident&quot;);
+ 		}
+ 		$msg = &quot;sshfs $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,$umaskstr,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port&quot;;
+ 		syslog('debug', &quot;executing: $msg&quot;);
+ 		print &quot;inserted, $msg\n&quot;;
++
++		# FIXME: this system call should be converted to a multi-argument system call while pertaining the redirect of stderr to the mounts.log file
+ 		if (system(&quot;sshfs  $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,$umaskstr,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port 2&gt;&gt;~/mounts.log&quot;)==0)
+ 		{
+ 			print &quot;mount @dirs[$i] ok\n&quot;;
+@@ -303,19 +305,19 @@ for (my $i=0;$i&lt;@dirs;$i++)
+ 					$fname=&quot;$ENV{'HOME'}/Desktop&quot;;
+ 				}
+ 				my $current_desktop = &quot;NONE&quot;;
+-				if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_GNOMEBINDINGS &gt;/dev/null&quot;) == 0)
++				if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_GNOMEBINDINGS&quot;) == 0)
+ 				{
+ 					$current_desktop=&quot;-gnome&quot;;
+ 				}
+-				elsif (($session =~ m/_stDMATE_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_MATEBINDINGS &gt;/dev/null&quot;) == 0)
++				elsif (($session =~ m/_stDMATE_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_MATEBINDINGS&quot;) == 0)
+ 				{
+ 					$current_desktop=&quot;-mate&quot;;
+ 				}
+-				elsif (($session =~ m/_stDLXDE_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_LXDEBINDINGS &gt;/dev/null&quot;) == 0)
++				elsif (($session =~ m/_stDLXDE_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_LXDEBINDINGS&quot;) == 0)
+ 				{
+ 					$current_desktop=&quot;-lxde&quot;;
+ 				}
+-				elsif (($session =~ m/_stD.*_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_FMBINDINGS &gt;/dev/null&quot;) == 0)
++				elsif (($session =~ m/_stD.*_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_FMBINDINGS&quot;) == 0)
+ 				{
+ 					$current_desktop=&quot;&quot;;
+ 				}
+diff --git a/x2goserver/bin/x2gopath b/x2goserver/bin/x2gopath
+index 1d2f9f3..9647836 100755
+--- a/x2goserver/bin/x2gopath
++++ b/x2goserver/bin/x2gopath
+@@ -22,7 +22,6 @@
+ # Copyright (C) 2012-2013  Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ # Copyright (C) 2012-2013  Jan Engelhard &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">jengelh at inai.de</A>&gt;
+ 
+-
+ base=&quot;${0%/*}&quot;;
+ if test &quot;$base&quot; = &quot;$0&quot;; then
+ 	base=&quot;.&quot;;
+@@ -32,12 +31,12 @@ base=$(readlink -f &quot;$base/..&quot;);
+ 
+ # The following section is subject to substitution by distro packaging tools.
+ case &quot;$1&quot; in
+-	base) echo -n &quot;$base&quot;;;
+-	lib) echo -n &quot;$base/lib/x2go&quot;;;
+-	libexec) echo -n &quot;$base/lib/x2go&quot;;;
+-	share) echo -n &quot;$base/share/x2go&quot;;;
+-	nx-x11) echo -n &quot;$base/lib/nx/X11&quot;;;
+-	xinerama) echo -n &quot;$base/lib/nx/X11/Xinerama&quot;;;
++	&quot;base&quot;) echo -n &quot;$base&quot;;;
++	&quot;lib&quot;) echo -n &quot;$base/lib/x2go&quot;;;
++	&quot;libexec&quot;) echo -n &quot;$base/lib/x2go&quot;;;
++	&quot;share&quot;) echo -n &quot;$base/share/x2go&quot;;;
++	&quot;nx-x11&quot;) echo -n &quot;$base/lib/nx/X11&quot;;;
++	&quot;xinerama&quot;) echo -n &quot;$base/lib/nx/X11/Xinerama&quot;;;
+ 	*) exit 1;;
+ esac;
+ 
+diff --git a/x2goserver/bin/x2goresume-session b/x2goserver/bin/x2goresume-session
+index 12669c2..a513631 100755
+--- a/x2goserver/bin/x2goresume-session
++++ b/x2goserver/bin/x2goresume-session
+@@ -41,7 +41,7 @@ then
+ 	rm &quot;$NX_XINERAMA_CONF&quot;
+ fi
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+ 
+ # rootless sessions require to be resizable
+@@ -71,10 +71,10 @@ SOUND_PORT=`echo &quot;$SESSIONINFO&quot; | awk -F, {'print $10'}`
+ FS_PORT=`echo &quot;$SESSIONINFO&quot; | awk -F, {'print $14'}`
+ SERVER=`echo &quot;$SESSIONINFO&quot; | awk -F, {'print $4'}`
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;old ports: $GR_PORT, $SOUND_PORT, $FS_PORT&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;old ports: $GR_PORT, $SOUND_PORT, $FS_PORT&quot;
+ 
+ #Get all used in system ports from ss output
+-ss=$(PATH=&quot;$PATH:/usr/sbin:/sbin&quot; type -P ss);
++ss=&quot;$(PATH=&quot;$PATH:/usr/sbin:/sbin&quot; type -P ss)&quot;;
+ USED_PORTS=$(
+ 	&quot;$ss&quot; -nt -all |
+ 	awk '{ n=split($0,lines,&quot;\n&quot;); for(i=1;i&lt;=n;i++){split (lines[i],words,&quot; &quot;);delim=split(words[4],ports,&quot;:&quot;); if(delim&gt;1)printf (&quot;|%s|\n&quot;,ports[delim])} }';
+@@ -178,17 +178,17 @@ echo &quot;$NEWOPTIONS&quot; &gt;&quot;${SESSION_DIR}/options&quot;
+ x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$SESSION_NAME&quot; pre-resume || true
+ 
+ # clear old keyboard file
+-rm -Rf $SESSION_DIR/keyboard
++rm -Rf &quot;$SESSION_DIR/keyboard&quot;
+ 
+-kill -HUP $X2GO_AGENT_PID &amp;&gt;/dev/null &amp;&amp; {
++kill -HUP &quot;$X2GO_AGENT_PID&quot; &amp;&gt;/dev/null &amp;&amp; {
+ 
+-	$X2GO_LIB_PATH/x2goresume  &quot;$X2GO_CLIENT&quot; &quot;$SESSION_NAME&quot;  &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &gt; /dev/null
++	$X2GO_LIB_PATH/x2goresume &quot;$X2GO_CLIENT&quot; &quot;$SESSION_NAME&quot;  &quot;$GR_PORT&quot; &quot;$SOUND_PORT&quot; &quot;$FS_PORT&quot; &gt; /dev/null
+ 	$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;notice&quot; &quot;client $X2GO_CLIENT has successfully resumed session with ID $SESSION_NAME&quot;
+ 
+ 	# set client-side keyboard model, type, variant, etc.
+ 	if [ &quot;$X2GO_SET_KBD&quot; != &quot;0&quot; ] &amp;&amp; [ &quot;$X2GO_KBD_TYPE&quot; == &quot;auto&quot; ]; then
+-		X2GO_DISPLAY=$(echo $SESSION_NAME | cut -d&quot;-&quot; -f2)
+-		export DISPLAY=:$X2GO_DISPLAY.0
++		X2GO_DISPLAY=&quot;$(echo \&quot;$SESSION_NAME\&quot; | cut -d'-' -f2)&quot;
++		export DISPLAY=&quot;:$X2GO_DISPLAY.0&quot;
+ 		x2gosetkeyboard &quot;$SESSION_NAME&quot; &gt;/dev/null 2&gt;/dev/null &amp;
+ 	fi
+ 
+@@ -201,11 +201,11 @@ kill -HUP $X2GO_AGENT_PID &amp;&gt;/dev/null &amp;&amp; {
+ } || {
+ 	err_msg=&quot;ERROR: failed to resume session with ID $SESSION_NAME&quot;
+ 	echo &quot;$err_msg&quot; 1&gt;&amp;2
+-	$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;err&quot; &quot;$err_msg&quot;
++	&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;err&quot; &quot;$err_msg&quot;
+ 
+ 	# If we reach here it means that the x2goagent process of the session has vanisshed
+ 	# If this happens than we mark the session as finished...
+-	$X2GO_LIB_PATH/x2gochangestatus 'F' &quot;$SESSION_NAME&quot;  &gt; /dev/null
++	&quot;$X2GO_LIB_PATH/x2gochangestatus&quot; 'F' &quot;$SESSION_NAME&quot;  &gt; /dev/null
+ 
+ 	# run x2goserver-extensions for fail-resume
+ 	x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$SESSION_NAME&quot; fail-resume || true
+diff --git a/x2goserver/bin/x2goruncommand b/x2goserver/bin/x2goruncommand
+index 5d5113c..e5f52a1 100755
+--- a/x2goserver/bin/x2goruncommand
++++ b/x2goserver/bin/x2goruncommand
+@@ -21,15 +21,15 @@
+ # Copyright (C) 2007-2013  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ 
+ DISPLAY=&quot;:$1&quot;
+-X2GO_AGENT_PID=$2
+-X2GO_SESSION=$3
+-cmd=$5
+-sndsys=$6
+-X2GO_SESS_TYPE=$7
++X2GO_AGENT_PID=&quot;$2&quot;
++X2GO_SESSION=&quot;$3&quot;
++cmd=&quot;$5&quot;
++sndsys=&quot;$6&quot;
++X2GO_SESS_TYPE=&quot;$7&quot;
+ 
+ X2GO_LIB_PATH=&quot;$(x2gopath libexec)&quot;;
+ 
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+ export DISPLAY
+ export X2GO_AGENT_PID
+@@ -48,22 +48,22 @@ export NX_XINERAMA_CONF
+ test -n $KRB5CCNAME &amp;&amp; export KRB5CCNAME
+ 
+ # disable rastering in &gt;= KDE4.8 and Qt4.8
+-export QT_GRAPHICSSYSTEM=native
++export QT_GRAPHICSSYSTEM=&quot;native&quot;
+ 
+ IMEXIT=&quot;false&quot;
+ 
+-NX_XINERAMA_LIBS=$(x2gopath xinerama)
+-NX_LIBS=$(x2gopath nx-x11)
++NX_XINERAMA_LIBS=&quot;$(x2gopath xinerama)&quot;
++NX_LIBS=&quot;$(x2gopath nx-x11)&quot;
+ test -n &quot;$LD_LIBRARY_PATH&quot; &amp;&amp; \
+   LD_LIBRARY_PATH=&quot;$NX_XINERAMA_LIBS:$NX_LIBS:$LD_LIBRARY_PATH&quot; || \
+   LD_LIBRARY_PATH=&quot;$NX_XINERAMA_LIBS:$NX_LIBS&quot;
+-$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;exporting LD_LIBRARY_PATH=$LD_LIBRARY_PATH&quot;
++&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;exporting LD_LIBRARY_PATH=$LD_LIBRARY_PATH&quot;
+ export LD_LIBRARY_PATH
+ 
+ if [ &quot;$sndsys&quot; == &quot;esd&quot; ]; then
+-	export ESPEAKER=localhost:$4
++	export ESPEAKER=&quot;localhost:$4&quot;
+ elif [ &quot;$sndsys&quot; == &quot;arts&quot; ]; then
+-	export ARTS_SERVER=localhost:$4
++	export ARTS_SERVER=&quot;localhost:$4&quot;
+ fi
+ 
+ # detect Ubuntu version via /etc/lsb-release (not supported by Debian)
+@@ -222,24 +222,24 @@ fi
+ x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$X2GO_SESSION&quot; pre-runcommand || true
+ 
+ sucessful_run=false
+-if [ &quot;$EXEC&quot; != &quot;&quot; ] &amp;&amp; [ -x $EXEC ]; then
+-	$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;running command $EXEC&quot;
++if [ &quot;$EXEC&quot; != &quot;&quot; ] &amp;&amp; [ -x &quot;$EXEC&quot; ]; then
++	&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;running command $EXEC&quot;
+ 
+ 	x2gosetkeyboard &gt;/dev/null 2&gt;/dev/null &amp;
+ 
+ 	x2gofeature X2GO_XSESSION &amp;&gt;/dev/null &amp;&amp; [ &quot;x$X2GO_SESS_TYPE&quot; = &quot;xD&quot; ] &amp;&amp; {
+ 		STARTUP=&quot;$cmd$args&quot;
+-		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;notice&quot; &quot;launching session with Xsession-x2go mechanism, using STARTUP=\&quot;$STARTUP\&quot;&quot;
++		&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;notice&quot; &quot;launching session with Xsession-x2go mechanism, using STARTUP=\&quot;$STARTUP\&quot;&quot;
+ 		XSESSION_EXEC=&quot;$cmd&quot; STARTUP=&quot;/usr/bin/env LD_LIBRARY_PATH=${LD_LIBRARY_PATH} ${STARTUP}&quot; /etc/x2go/Xsession
+ 	} || {
+-		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;executing command \&quot;$cmd$args\&quot;...&quot;
++		&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;executing command \&quot;$cmd$args\&quot;...&quot;
+ 		$EXEC_WRAPPER $cmd$args
+ 	}
+ 
+ 	#### some applications can quit immediately, we will wait here as long as x2goagent exists
+ 	if [  &quot;$X2GO_SESS_TYPE&quot; == &quot;R&quot; ] &amp;&amp; [ &quot;$IMEXIT&quot; == &quot;false&quot; ]; then
+-		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;command $EXEC forked to background, waiting for agent to finish&quot;
+-		while [ -d /proc/$X2GO_AGENT_PID ]; do
++		&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;debug&quot; &quot;command $EXEC forked to background, waiting for agent to finish&quot;
++		while [ -d &quot;/proc/$X2GO_AGENT_PID&quot; ]; do
+ 			sleep 1
+ 		done
+ 	fi
+@@ -250,7 +250,7 @@ if [ &quot;$EXEC&quot; != &quot;&quot; ] &amp;&amp; [ -x $EXEC ]; then
+ 	x2gofeature X2GO_RUN_EXTENSIONS &amp;&gt;/dev/null &amp;&amp; x2goserver-run-extensions &quot;$X2GO_SESSION&quot; post-runcommand || true
+ 
+ else
+-	$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;err&quot; &quot;ERROR: command $EXEC failed to execute&quot;
++	&quot;$X2GO_LIB_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;err&quot; &quot;ERROR: command $EXEC failed to execute&quot;
+ 	echo &quot;X2GORUNCOMMAND ERR NOEXEC:$cmd&quot; &gt; &quot;$MESSAGE_FILE&quot;
+ 
+ 	# run x2goserver-extensions for fail-runcommand
+@@ -261,8 +261,8 @@ fi
+ # stop x2godesktopsharing process gracefully...
+ x2gofeature X2GO_DESKTOPSHARING &gt;/dev/null &amp;&amp; x2goterminate-desktopsharing &quot;$X2GO_SESSION&quot; || true
+ 
+-kill -TERM  $X2GO_AGENT_PID
+-$X2GO_LIB_PATH/x2gochangestatus 'F' &quot;$X2GO_SESSION&quot;  &gt; /dev/null
++kill -TERM  &quot;$X2GO_AGENT_PID&quot;
++&quot;$X2GO_LIB_PATH/x2gochangestatus&quot; 'F' &quot;$X2GO_SESSION&quot;  &gt; /dev/null
+ export HOSTNAME
+ x2goumount-session &quot;$X2GO_SESSION&quot;
+ 
+diff --git a/x2goserver/bin/x2gosessionlimit b/x2goserver/bin/x2gosessionlimit
+index 5ef8222..4f5217e 100755
+--- a/x2goserver/bin/x2gosessionlimit
++++ b/x2goserver/bin/x2gosessionlimit
+@@ -25,6 +25,7 @@ use Sys::Syslog qw( :standard :macros );
+ 
+ use X2Go::Config qw( get_config);
+ use X2Go::Log qw( loglevel );
++use X2Go::Utils qw( system_capture_merged_output );
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -55,7 +56,7 @@ sub getGroupLimit
+ my $uname;
+ $uname=getpwuid($&lt;);
+ 
+-my $runningsessions=`x2golistsessions --all-servers`;
++my $runningsessions=system_capture_merged_output(&quot;x2golistsessions&quot;, &quot;--all-servers&quot;);
+ my @sessions=split(&quot;\n&quot;,$runningsessions);
+ my $scount=@sessions;
+ 
+diff --git a/x2goserver/bin/x2goumount-session b/x2goserver/bin/x2goumount-session
+index 18ff1a4..56b43fe 100755
+--- a/x2goserver/bin/x2goumount-session
++++ b/x2goserver/bin/x2goumount-session
+@@ -28,6 +28,7 @@ use File::BaseDir qw(xdg_config_home);
+ use X2Go::Utils qw(source_environment);
+ use X2Go::Server::DB qw(db_getdisplay db_getmounts db_deletemount);
+ use X2Go::Log qw(loglevel);
++use X2Go::Utils qw(system_capture_merged_output);
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -136,7 +137,8 @@ for ($i=0;$i&lt;@outp;$i++)
+ break:
+ 	if ($found)
+ 	{
+-		if (system( &quot;cd $tmp_dir &amp;&amp; fusermount -u \&quot;@line[1]\&quot; &amp;&amp; cd - &gt;/dev/null&quot; ) == 0)
++		chdir($tmpdir)
++		if (system(&quot;fusermount&quot;, &quot;-u&quot;, &quot;\&quot;@line[1]\&quot;&quot;) == 0)
+ 		{
+ 			syslog('notice', &quot;successfully unmounted \&quot;@line[1]\&quot;&quot;);
+ 			$found=0;
+@@ -175,19 +177,19 @@ break:
+ 		$remote=&quot;$desktopdir/$remote&quot;;
+ 
+ 		my $current_desktop = 'NONE';
+-		if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_GNOMEBINDINGS &gt;/dev/null&quot;) == 0)
++		if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_GNOMEBINDINGS&quot;) == 0)
+ 		{
+ 			$current_desktop=&quot;-gnome&quot;;
+ 		}
+-		elsif (($session =~ m/_stDMATE_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_MATEBINDINGS &gt;/dev/null&quot;) == 0)
++		elsif (($session =~ m/_stDMATE_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_MATEBINDINGS&quot;) == 0)
+ 		{
+ 			$current_desktop=&quot;-mate&quot;;
+ 		}
+-		elsif (($session =~ m/_stDLXDE_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_LXDEBINDINGS &gt;/dev/null&quot;) == 0)
++		elsif (($session =~ m/_stDLXDE_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_LXDEBINDINGS&quot;) == 0)
+ 		{
+ 			$current_desktop=&quot;-lxde&quot;;
+ 		}
+-		elsif (($session =~ m/_st.*_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_FMBINDINGS &gt;/dev/null&quot;) == 0)
++		elsif (($session =~ m/_st.*_dp/) &amp;&amp; system_capture_merged_output(&quot;x2gofeature&quot;, &quot;X2GO_FMBINDINGS&quot;) == 0)
+ 		{
+ 			$current_desktop=&quot;&quot;;
+ 		}
+@@ -224,7 +226,7 @@ rmdir (&quot;$mdir/rm&quot;);
+ rmdir (&quot;$mdir&quot;);
+ if (( ! -d &quot;$mdir&quot; ) &amp;&amp; ( -l &quot;$ENV{'HOME'}/media&quot; ))
+ {
+-	system(&quot;rm -f $ENV{'HOME'}/media&quot;);
++	system_capture_merged_output(&quot;rm&quot;, &quot;-f&quot;, &quot;$ENV{'HOME'}/media&quot;);
+ }
+ rmdir (&quot;$spooldir/C-$session&quot;);
+ rmdir (&quot;$spooldir&quot;);
+@@ -233,4 +235,3 @@ rmdir (&quot;$mimeboxdir&quot;);
+ 
+ # closing syslog 
+ closelog;
+-
+diff --git a/x2goserver/bin/x2goversion b/x2goserver/bin/x2goversion
+index 1854a20..b948d87 100755
+--- a/x2goserver/bin/x2goversion
++++ b/x2goserver/bin/x2goversion
+@@ -48,4 +48,3 @@ else
+ 	done
+ 	cd - &gt;/dev/null
+ fi
+-
+diff --git a/x2goserver/sbin/x2gocleansessions b/x2goserver/sbin/x2gocleansessions
+index 797c5cd..8480a15 100755
+--- a/x2goserver/sbin/x2gocleansessions
++++ b/x2goserver/sbin/x2gocleansessions
+@@ -29,12 +29,13 @@ use Sys::Syslog qw( :standard :macros );
+ 
+ use File::ReadBackwards;
+ 
+-my $x2go_lib_path = `x2gopath libexec`;
+ use X2Go::Config qw( get_config );
+ use X2Go::Log qw( loglevel );
+ use X2Go::SupeReNicer qw( superenice );
+ use X2Go::Server::Agent qw( session_is_suspended session_is_running session_has_terminated );
+ use X2Go::Server::DB qw( dbsys_rmsessionsroot );
++use X2Go::Utils qw( system_capture_stdout_output );
++my $x2go_lib_path = system_capture_stdout_output(&quot;x2gopath&quot;, &quot;libexec&quot;);
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -115,7 +116,7 @@ elsif ($pid == 0 )
+ 
+ 	while(sleep 2)
+ 	{
+-		my $outp=`$x2go_lib_path/x2golistsessions_sql $serv 2&gt;/dev/null`;
++		my $outp=system_capture_stdout_output(&quot;$x2go_lib_path/x2golistsessions_sql&quot;, &quot;$serv&quot;);
+ 		my @outp=split(&quot;\n&quot;,&quot;$outp&quot;);
+ 
+ 		# forget earlier remembered blocked sessions
+diff --git a/x2goserver/sbin/x2golistsessions_root b/x2goserver/sbin/x2golistsessions_root
+index b4c659c..ce8c786 100755
+--- a/x2goserver/sbin/x2golistsessions_root
++++ b/x2goserver/sbin/x2golistsessions_root
+@@ -28,11 +28,11 @@ use File::ReadBackwards;
+ use X2Go::Log qw(loglevel);
+ use X2Go::Utils qw(system_capture_stdout_output);
+ use X2Go::Server::Agent qw(session_is_suspended);
++my $x2go_lib_path = system_capture_stdout_output(&quot;x2gopath&quot;, &quot;libexec&quot;);
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+ 
+-my $x2go_lib_path = system_capture_stdout_output(&quot;x2gopath&quot;, &quot;libexec&quot;);
+ 
+ my $uname;
+ 
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017280.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-328-gd53c913
+</A></li>
+	<LI>Next message: <A HREF="017274.html">[X2Go-Commits] x2goserver.git - master (branch) updated:	3.1.1.3-334-g42802af
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17287">[ date ]</a>
+              <a href="thread.html#17287">[ thread ]</a>
+              <a href="subject.html#17287">[ subject ]</a>
+              <a href="author.html#17287">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

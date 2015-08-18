@@ -1,0 +1,235 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-7-gab5473d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.1-7-gab5473d&In-Reply-To=%3C20130914135735.A0F305DD1B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014133.html">
+   <LINK REL="Next"  HREF="014139.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-7-gab5473d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.1-7-gab5473d&In-Reply-To=%3C20130914135735.A0F305DD1B%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-7-gab5473d">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:35 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014133.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-5-g6184896
+</A></li>
+        <LI>Next message: <A HREF="014139.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-6-g699da4c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14137">[ date ]</a>
+              <a href="thread.html#14137">[ thread ]</a>
+              <a href="subject.html#14137">[ subject ]</a>
+              <a href="author.html#14137">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  ab5473d6e4c446309c589f8f5f8413f320e87b7a (commit)
+      from  699da4c0fe1a13fc8e0a4988360b4101348cce77 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   19 +++++++++++++------
+ x2go/guardian.py                 |    1 -
+ 3 files changed, 14 insertions(+), 7 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e736b5b..8c59458 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -7,6 +7,7 @@ python-x2go (0.2.0.2-0~x2go1) UNRELEASED; urgency=low
+     - Ignoring timeouts for x2golistmounts and x2golistdesktops.
+     - Add support to X2goSession class to launch sessions for the Python
+       command line in five steps.
++    - Mark sessions as dead whenever an X2goControlSessionException occurs.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 30 May 2012 00:27:03 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 06bef97..2ec995f 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -275,6 +275,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 self.sftp_client.put(os.path.normpath(local_path), remote_path)
+             except x2go_exceptions.SSHException, socket.error:
+                 # react to connection dropped error for SSH connections
++                self.session_died = True
+                 self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP put action.')
+             self.sftp_client = None
+@@ -305,6 +306,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 remote_fileobj.write(content)
+                 remote_fileobj.close()
+             except x2go_exceptions.SSHException, socket.error:
++                self.session_died = True
+                 self._transport_lock.release()
+                 self.logger('sFTP-write: opening remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
+                 raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP write action.')
+@@ -331,6 +333,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             try:
+                 self.sftp_client.remove(remote_path)
+             except x2go_exceptions.SSHException, socket.error:
++                self.session_died = True
+                 self._transport_lock.release()
+                 self.logger('sFTP-write: removing remote file %s on host %s failed' % (remote_path, self.remote_peername()), loglevel=log.loglevel_WARN)
+                 raise x2go_exceptions.X2goControlSessionException('The SSH connection was dropped during an sFTP remove action.')
+@@ -377,33 +380,33 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 _retval = self.exec_command(_rewrite_password(cmd, user=self.get_transport().get_username(), password=self._session_password), **kwargs)
+             except AttributeError:
+                 self.session_died = True
++                self._transport_lock.release()
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except EOFError:
+                 self.session_died = True
++                self._transport_lock.release()
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except x2go_exceptions.SSHException:
+                 self.session_died = True
++                self._transport_lock.release()
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             except gevent.timeout.Timeout:
+                 self.session_died = True
++                self._transport_lock.release()
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session command timed out')
+             except socket.error:
+                 self.session_died = True
++                self._transport_lock.release()
+                 if self.sshproxy_session:
+                     self.sshproxy_session.stop_thread()
+-                self._transport_lock.release()
+                 raise x2go_exceptions.X2goControlSessionException('the X2Go control session has died unexpectedly')
+             finally:
+                 timer.cancel()
+@@ -521,6 +524,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 try:
+                     self._remote_username = self.get_transport().get_username()
+                 except:
++                    self.session_died = True
+                     raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
+         return self._remote_username
+ 
+@@ -539,6 +543,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 try:
+                     self._remote_peername = self.get_transport().getpeername()
+                 except:
++                    self.session_died = True
+                     raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
+         return self._remote_peername
+ 
+@@ -842,6 +847,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 except x2go_exceptions.X2goTerminalSessionException:
+                     pass
+                 except x2go_exceptions.X2goControlSessionException:
++                    self.session_died
+                     pass
+                 t_obj.__del__()
+             for t_name in t_names:
+@@ -900,7 +906,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             if self._x2go_exec_command('echo', loglevel=log.loglevel_DEBUG):
+                 return True
+         except x2go_exceptions.X2goControlSessionException:
+-            pass
++            self.session_died = True
+         return False
+ 
+     def get_published_applications(self, lang=None, refresh=False, raw=False, very_raw=False, max_no_submenus=defaults.PUBAPP_MAX_NO_SUBMENUS):
+@@ -1350,6 +1356,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     gevent.sleep(1)
+ 
+             if _count &gt;= _maxwait:
++                self.session_died = True
+                 raise x2go_exceptions.X2goControlSessionException('x2golistsessions command failed after we have tried 20 times')
+ 
+             # update internal variables when list_sessions() is called
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 927811d..ba5d5b2 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -106,7 +106,6 @@ class X2goSessionGuardian(threading.Thread):
+ 
+                 self.logger('Entering X2Go Guardian client management loop...', loglevel=log.loglevel_DEBUG)
+ 
+-
+                 if self.auto_update_listsessions_cache:
+                     self.client_instance.update_cache_all_profiles(update_sessions=self.auto_update_listsessions_cache, 
+                                                                    update_desktops=self.auto_update_listdesktops_cache,
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014133.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-5-g6184896
+</A></li>
+	<LI>Next message: <A HREF="014139.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.1-6-g699da4c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14137">[ date ]</a>
+              <a href="thread.html#14137">[ thread ]</a>
+              <a href="subject.html#14137">[ subject ]</a>
+              <a href="author.html#14137">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

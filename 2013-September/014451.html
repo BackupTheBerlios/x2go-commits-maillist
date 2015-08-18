@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.4.0.8-16-gb080955
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.4.0.8-16-gb080955&In-Reply-To=%3C20130917210838.85D025DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014450.html">
+   <LINK REL="Next"  HREF="014452.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.4.0.8-16-gb080955</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.4.0.8-16-gb080955&In-Reply-To=%3C20130917210838.85D025DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.4.0.8-16-gb080955">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Sep 17 23:08:38 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014450.html">[X2Go-Commits] page changed: doc:faq:start
+</A></li>
+        <LI>Next message: <A HREF="014452.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.4.0.8-17-g62c6b32
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14451">[ date ]</a>
+              <a href="thread.html#14451">[ thread ]</a>
+              <a href="subject.html#14451">[ subject ]</a>
+              <a href="author.html#14451">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  b08095546431d072fa09a3b7f3ee555d0b1e20e3 (commit)
+      from  f23a13f492b4e25c6f235a426a859f234087deb6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b08095546431d072fa09a3b7f3ee555d0b1e20e3
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Sep 17 23:08:25 2013 +0200
+
+    several fixes for proxy authentication
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |    2 +-
+ x2go/sshproxy.py                 |    9 +++++----
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index ac5f5d1..c4df32a 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -893,10 +893,10 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+             except (paramiko.PasswordRequiredException, paramiko.SSHException), e:
+                 self.close()
+                 if type(e) == paramiko.SSHException and not str(e).startswith('Two-factor authentication requires a password'):
++                    self.logger('X2Go Server requests two-factor authentication', loglevel=log.loglevel
+                     raise e
+                 if passphrase:
+                     self.logger('unlock SSH private key file with provided password', loglevel=log.loglevel_INFO)
+-
+                     try:
+                         if not password: password = None
+                         if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 3ad2801..74b4be0 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -189,8 +189,8 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+ 
+         # do not use explicitly given keys if look_for_keys has got activated
+         if look_for_keys:
+-            sshproxy_key_filename = None
+-            sshproxy_pkey = None
++            key_filename = None
++            pkey = None
+ 
+         if not passphrase: passphrase = password
+ 
+@@ -262,6 +262,7 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+                 except (paramiko.PasswordRequiredException, paramiko.SSHException), e:
+                     self.close()
+                     if type(e) == paramiko.SSHException and not str(e).startswith('Two-factor authentication requires a password'):
++                        self.logger('SSH proxy host requests two-factor authentication', loglevel=log.loglevel_NOTICE)
+                         raise x2go_exceptions.X2GoSSHProxyException(str(e))
+ 
+                     if passphrase:
+@@ -278,7 +279,7 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+                                                  allow_agent=False,
+                                                  look_for_keys=False,
+                                                 )
+-                                except AttributeError:
++                                except TypeError:
+                                     self.connect(_hostname, port=self.port,
+                                                  username=self.username,
+                                                  password=passphrase,
+@@ -298,7 +299,7 @@ class X2GoSSHProxy(paramiko.SSHClient, threading.Thread):
+                                                  look_for_keys=look_for_keys,
+                                                  allow_agent=allow_agent,
+                                                 )
+-                                except AttributeError:
++                                except TypeError:
+                                     self.connect(_hostname, port=self.port,
+                                                  username=self.username,
+                                                  password=passphrase,
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014450.html">[X2Go-Commits] page changed: doc:faq:start
+</A></li>
+	<LI>Next message: <A HREF="014452.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.4.0.8-17-g62c6b32
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14451">[ date ]</a>
+              <a href="thread.html#14451">[ thread ]</a>
+              <a href="subject.html#14451">[ subject ]</a>
+              <a href="author.html#14451">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,360 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-48-gfe00a4d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.0.3-48-gfe00a4d&In-Reply-To=%3C20140107152044.EE6495E065%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021641.html">
+   <LINK REL="Next"  HREF="021649.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-48-gfe00a4d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.0.3-48-gfe00a4d&In-Reply-To=%3C20140107152044.EE6495E065%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-48-gfe00a4d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:20:44 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021641.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-46-g009a7d9
+</A></li>
+        <LI>Next message: <A HREF="021649.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-45-gc935798
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21642">[ date ]</a>
+              <a href="thread.html#21642">[ thread ]</a>
+              <a href="subject.html#21642">[ subject ]</a>
+              <a href="author.html#21642">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  fe00a4d4a04d28fe242e054879d9a5a9ceaad357 (commit)
+      from  bcbc75f490c112b47e2c30ce889f23f0ce0822ef (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/base.py       |   27 ++++++++++++++++++++-------
+ x2go/backends/terminal/_stdout.py |   14 ++++----------
+ x2go/forward.py                   |    2 ++
+ x2go/session.py                   |    7 ++++++-
+ 4 files changed, 32 insertions(+), 18 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 0a3fc34..4bbac10 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -131,12 +131,17 @@ class X2goProxyBASE(threading.Thread):
+         if left open.
+ 
+         &quot;&quot;&quot;
+-        if self.ok():
++        if self.proxy:
+             self.logger('Shutting down X2go proxy subprocess', loglevel=log.loglevel_DEBUG)
+-            self.proxy.kill()
++            try:
++                self.proxy.kill()
++            except OSError, e:
++                self.logger('X2go proxy shutdown gave a message that we may ignore: %s' % str(e), loglevel=log.loglevel_WARNING)
++            self.proxy = None
+         if self.fw_tunnel is not None:
+             self.logger('Shutting down Paramiko/SSH forwarding tunnel', loglevel=log.loglevel_DEBUG)
+             forward.stop_forward_tunnel(self.fw_tunnel)
++            self.fw_tunnel = None
+         if self.session_log_stdout is not None:
+             self.session_log_stdout.close()
+         if self.session_log_stderr is not None:
+@@ -178,7 +183,8 @@ class X2goProxyBASE(threading.Thread):
+                                                       remote_port=self.session_info.graphics_port, 
+                                                       ssh_transport=self.ssh_transport, 
+                                                       session_instance=self.session_instance,
+-                                                      logger=self.logger, )
++                                                      logger=self.logger,
++                                                     )
+ 
+         # update the proxy port in PROXY_ARGS
+         self._update_local_proxy_socket(local_graphics_port)
+@@ -211,9 +217,9 @@ class X2goProxyBASE(threading.Thread):
+ 
+         if _X2GOCLIENT_OS == 'Windows':
+             _stdin.close()
+-        self.logger('terminating proxy: %s' % p, loglevel=log.loglevel_DEBUG)
+         try:
+             p.terminate()
++            self.logger('terminating proxy: %s' % p, loglevel=log.loglevel_DEBUG)
+         except OSError, e:
+             if e.errno == 3:
+                 # No such process
+@@ -255,14 +261,21 @@ class X2goProxyBASE(threading.Thread):
+ 
+         &quot;&quot;&quot;
+         threading.Thread.start(self)
+-        while self.proxy is None:
+-            gevent.sleep(.2)
++
++        # wait for proxy to get started
++        _count = 0
++        _maxwait = 40
++        while self.proxy is None and _count &lt; _maxwait:
++            _count += 1
++            self.logger('waiting for proxy to come up: 0.4s x %s' % _count, loglevel=log.loglevel_DEBUG)
++            gevent.sleep(.4)
+ 
+         # also wait for fw_tunnel to become active
+         _count = 0
+         _maxwait = 40
+         while not self.fw_tunnel.is_active and _count &lt; _maxwait:
+             _count += 1
++            self.logger('waiting for port fw tunnel to come up: 0.5s x %s' % _count, loglevel=log.loglevel_DEBUG)
+             gevent.sleep(.5)
+ 
+         return self.proxy
+@@ -275,4 +288,4 @@ class X2goProxyBASE(threading.Thread):
+         @rtype C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.proxy and self.proxy.poll is not None
++        return bool(self.proxy and self.proxy.poll() is None)
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 38e0739..dc9d3f4 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -331,8 +331,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+     def _x2go_tidy_up(self):
+ 
+-        if self.proxy.ok():
+-            self.release_proxy()
++        self.release_proxy()
+ 
+         try:
+             if self.control_session.get_transport() is not None:
+@@ -924,9 +923,8 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        if self.proxy.ok():
+-            self.release_proxy()
+         self.control_session.suspend(session_name=self.session_info.name)
++        self.release_proxy()
+ 
+         # TODO: check if session has really suspended
+         _ret = True
+@@ -941,9 +939,8 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        if self.proxy.ok():
+-            self.release_proxy()
+         self.control_session.terminate(session_name=self.session_info.name)
++        self.release_proxy()
+ 
+         # TODO: check if session has really suspended
+         _ret = True
+@@ -955,7 +952,4 @@ class X2goTerminalSessionSTDOUT(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        try:
+-            self.proxy.__del__()
+-        except:
+-            pass
++        self.proxy.__del__()
+diff --git a/x2go/forward.py b/x2go/forward.py
+index 09950d5..34466d0 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -103,6 +103,7 @@ class X2goFwServer(StreamServer):
+             # it is recommended here to have passed on the session instance to this object...
+             if self.session_instance:
+                 if not self.session_instance.is_connected():
++                    print 'HALLO'
+                     break
+ 
+             _count += 1
+@@ -189,6 +190,7 @@ class X2goFwServer(StreamServer):
+                 _success = True
+             except socket.error:
+                 gevent.sleep(.2)
++                self.logger('could not close fw_tunnel socket, try again (%s of %s)' % (_count, _maxwait), loglevel=log.loglevel_WARN)
+ 
+         if _count &gt;= _maxwait:
+             self.logger('forwarding tunnel to [%s]:%d could not be closed properly' % (self.chain_host, self.chain_port), loglevel=log.loglevel_WARN)
+diff --git a/x2go/session.py b/x2go/session.py
+index 89499c3..37283b1 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -965,7 +965,10 @@ class X2goSession(object):
+ 
+             if self.session_name is None:
+                 _new_session = True
+-                self.session_name = self.terminal_session.session_info.name
++                try:
++                    self.session_name = self.terminal_session.session_info.name
++                except AttributeError:
++                    raise X2goSessionException('start of new X2go session failed')
+ 
+             if self.has_terminal_session() and not self.faulty:
+ 
+@@ -1317,5 +1320,7 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
++            self.terminal_session.release_proxy()
++        if self.has_terminal_session():
+             self.terminal_session.__del__()
+         self.terminal_session = None
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021641.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-46-g009a7d9
+</A></li>
+	<LI>Next message: <A HREF="021649.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.0.3-45-gc935798
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21642">[ date ]</a>
+              <a href="thread.html#21642">[ thread ]</a>
+              <a href="subject.html#21642">[ subject ]</a>
+              <a href="author.html#21642">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

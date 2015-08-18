@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-7-g7256699
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-7-g7256699&In-Reply-To=%3C20130907231545.D04895DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012154.html">
+   <LINK REL="Next"  HREF="012156.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-7-g7256699</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.8-7-g7256699&In-Reply-To=%3C20130907231545.D04895DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-7-g7256699">git-admin at x2go.org
+       </A><BR>
+    <I>Sun Sep  8 01:15:45 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012154.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-6-g6706416
+</A></li>
+        <LI>Next message: <A HREF="012156.html">[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-12-g0ed9ba9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12155">[ date ]</a>
+              <a href="thread.html#12155">[ thread ]</a>
+              <a href="subject.html#12155">[ subject ]</a>
+              <a href="author.html#12155">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  7256699ba90dca0b6001e19a0ac6576660a9e4ff (commit)
+      from  6706416c0874f361a68d67072f3abb76fb733cbe (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 7256699ba90dca0b6001e19a0ac6576660a9e4ff
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Sep 8 01:15:29 2013 +0200
+
+    Support encrypted on SSH proxy whith password authentication on X2Go Server.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog           |    2 ++
+ pyhoca/wxgui/logon.py      |   19 +++++++++++++++----
+ pyhoca/wxgui/passphrase.py |   43 ++++++++++++++++++++++++++-----------------
+ 3 files changed, 43 insertions(+), 21 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2bf268e..0ef6293 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,8 @@ pyhoca-gui (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Add support for encrypted/locked/passphrase-protected SSH private key
+       files.
+     - Only show notifications if there really is something to show.
++    - Support encrypted on SSH proxy whith password authentication on X2Go
++      Server.
+   * /debian/copyright:
+     + Update file. Add entry for file icon2exe.py.
+ 
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index 83e9cb5..c287339 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -42,7 +42,7 @@ import wx
+ import os
+ 
+ # PyHoca-GUI modules
+-# ... NONE ...
++import passphrase
+ 
+ if os.environ.has_key('DESKTOP_SESSION'):
+     WINDOW_MANAGER = os.environ['DESKTOP_SESSION']
+@@ -283,9 +283,9 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         wx.BeginBusyCursor()
+         session_uuid = self._PyHocaGUI._X2GoClient__client_registered_sessions_of_profile_name(self.current_profile_name)[0]
+         try:
+-            self._PyHocaGUI._X2GoClient__connect_session(session_uuid, 
+-                                                         username=username, 
+-                                                         password=password, 
++            self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
++                                                         username=username,
++                                                         password=password,
+                                                          force_password_auth=force_password_auth,
+                                                          add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
+                                                          sshproxy_user=sshproxy_user,
+@@ -312,6 +312,17 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                     _sp.write_user_config = True
+                     _sp.write()
+ 
++        except x2go.X2GoSSHProxyPasswordRequiredException:
++            key_filename = None
++            try:
++                if not self._PyHocaGUI._X2GoClient__get_session(session_uuid).sshproxy_params['sshproxy_look_for_keys']:
++                    key_filename = self._PyHocaGUI._X2GoClient__get_session(session_uuid).sshproxy_params['sshproxy_key_filename']
++            except KeyError:
++                pass
++            self._pyhoca_logger('SSH private key file (for SSH proxy) is encrypted and requires a passphrase', loglevel=x2go.log.loglevel_INFO, )
++            _passphrase_window = passphrase.PyHocaGUI_DialogBoxPassphrase(self._PyHocaGUI, self.current_profile_name, caller=self, password=password, sshproxy_auth=True, key_filename=key_filename)
++            self._PyHocaGUI._logon_windows[self.current_profile_name] = _passphrase_window
++
+         except x2go.AuthenticationException:
+             if self.sshproxy_auth and (not self.sshproxy_started):
+                 try: wx.EndBusyCursor()
+diff --git a/pyhoca/wxgui/passphrase.py b/pyhoca/wxgui/passphrase.py
+index c81dc55..497f9d0 100644
+--- a/pyhoca/wxgui/passphrase.py
++++ b/pyhoca/wxgui/passphrase.py
+@@ -55,7 +55,7 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+     SSH key passphrase window for L{PyHocaGUI}.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, profile_name, caller=None, sshproxy_auth=False, sshproxy_passphrase='', key_filename=None):
++    def __init__(self, _PyHocaGUI, profile_name, caller=None, password='', sshproxy_auth=False, sshproxy_passphrase='', key_filename=''):
+         &quot;&quot;&quot;\
+         Passphrase window (constructor)
+ 
+@@ -81,12 +81,13 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+ 
+         self._PyHocaGUI._sub_windows.append(self)
+ 
+-        self.passphrase = None
++        self.passphrase = ''
++        self.password = password
+         self.key_filename = key_filename
+         self.sshproxy_auth = sshproxy_auth
+         self.sshproxy_passphrase = sshproxy_passphrase
+ 
+-        if self.key_filename is not None:
++        if self.key_filename:
+             keyfilenameLbl = wx.StaticText(self, wx.ID_ANY, _(u'Unlock SSH private key (%s)...') % key_filename)
+         else:
+             keyfilenameLbl = wx.StaticText(self, wx.ID_ANY, _(u'Unlock auto-discovered SSH private key...'))
+@@ -167,7 +168,13 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+         @type evt: C{obj}
+ 
+         &quot;&quot;&quot;
+-        if self.sshproxy_auth:
++        force_password_auth = False
++        sshproxy_force_password_auth = False
++        if self.sshproxy_auth and self.password:
++            passphrase = self.password
++            sshproxy_passphrase = self.passphraseTxt.GetValue()
++            force_password_auth = True
++        elif self.sshproxy_auth:
+             passphrase = sshproxy_passphrase = self.passphraseTxt.GetValue()
+         else:
+             passphrase = self.passphraseTxt.GetValue()
+@@ -179,18 +186,13 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+         session_uuid = self._PyHocaGUI._X2GoClient__client_registered_sessions_of_profile_name(self.current_profile_name)[0]
+ 
+         try:
+-            if self.sshproxy_auth:
+-                self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
+-                                                             password=passphrase,
+-                                                             sshproxy_password=sshproxy_passphrase,
+-                                                             add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
+-                                                            )
+-            else:
+-                self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
+-                                                             password=passphrase,
+-                                                             sshproxy_password=sshproxy_passphrase,
+-                                                             add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
+-                                                            )
++            self._PyHocaGUI._X2GoClient__connect_session(session_uuid,
++                                                         password=passphrase,
++                                                         sshproxy_password=sshproxy_passphrase,
++                                                         force_password_auth=force_password_auth,
++                                                         sshproxy_force_password_auth=sshproxy_force_password_auth,
++                                                         add_to_known_hosts=self._PyHocaGUI.add_to_known_hosts,
++                                                        )
+             self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+                                              title=_(u'%s - connect') % self.current_profile_name,
+                                              text=_(u'Authentication has been successful.'),
+@@ -198,7 +200,7 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+ 
+         except x2go.PasswordRequiredException:
+             if self.sshproxy_auth:
+-                key_filename = None
++                key_filename = ''
+                 try:
+                     if not self._PyHocaGUI._X2GoClient__get_session(session_uuid).control_params['look_for_keys']:
+                         key_filename = self._PyHocaGUI._X2GoClient__get_session(session_uuid).control_params['key_filename']
+@@ -229,6 +231,13 @@ class PyHocaGUI_DialogBoxPassphrase(wx.Dialog):
+                                              icon='auth_failed')
+             connect_failed = True
+ 
++        except x2go.X2GoSSHProxyAuthenticationException:
++            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
++                                             title=_(u'%s - connect failure') % self.current_profile_name,
++                                             text=_(u'Authentication to the SSH proxy server failed!'),
++                                             icon='auth_failed')
++            connect_failed = True
++
+         except gevent.socket.error, e:
+             self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name,
+                                              title=_(u'%s - socket error') % self.current_profile_name,
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012154.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.8-6-g6706416
+</A></li>
+	<LI>Next message: <A HREF="012156.html">[X2Go-Commits] python-x2go.git - master (branch) updated:	0.4.0.8-12-g0ed9ba9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12155">[ date ]</a>
+              <a href="thread.html#12155">[ thread ]</a>
+              <a href="subject.html#12155">[ subject ]</a>
+              <a href="author.html#12155">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

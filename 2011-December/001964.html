@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.3-2-gea845a5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.3-2-gea845a5&In-Reply-To=%3C20111217015249.73CA95DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001963.html">
+   <LINK REL="Next"  HREF="001965.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.3-2-gea845a5</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.3-2-gea845a5&In-Reply-To=%3C20111217015249.73CA95DB1C%40ymir%3E"
+       TITLE="[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.3-2-gea845a5">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Dec 17 02:52:49 CET 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001963.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99.8-36-ge9cf74e
+</A></li>
+        <LI>Next message: <A HREF="001965.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99.8-37-gc0b9760
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1964">[ date ]</a>
+              <a href="thread.html#1964">[ thread ]</a>
+              <a href="subject.html#1964">[ subject ]</a>
+              <a href="author.html#1964">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  ea845a5c5a6c5ff3dfabfe7a77e4a0d120d8f57a (commit)
+      from  57cfdc83af8b5fd2a7e330c6c1af2fe93767190c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ea845a5c5a6c5ff3dfabfe7a77e4a0d120d8f57a
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sat Dec 17 02:51:29 2011 +0100
+
+    Add more debug messages.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ cups-x2go        |   13 ++++++++++---
+ debian/changelog |    2 +-
+ 2 files changed, 11 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/cups-x2go b/cups-x2go
+index 2275525..bc451f2 100755
+--- a/cups-x2go
++++ b/cups-x2go
+@@ -70,6 +70,7 @@ sub readconfig
+ 				{
+ 					$x2goserver=$value;
+ 					$x2goserver=~s/ //g;
++					$x2goserver=~s/\&quot;//g;
+ 				}
+ 				if($option eq &quot;printdsa&quot;)
+ 				{
+@@ -108,15 +109,19 @@ sub getsessions
+ 	my $sesslist;
+ 	if ( $x2goserver eq &quot;local&quot; )
+ 	{
++		syslog(&quot;debug&quot;, &quot;Querying local X2Go server for a session list...&quot;);
++
+ 		# run x2golistsessions locally
+ 		$sesslist=`su $userName -c &quot;x2golistsessions --all-servers&quot;`;
+ 	}
+ 	else
+ 	{
+-		# Calling x2goprint with a single parameter &lt;username&gt; will result in an x2golistsessions --all-servers command on the
+-		# remote X2go server.
++		syslog(&quot;debug&quot;, &quot;Querying remote X2Go server $x2goserver for a session list...&quot;);
++		# Calling x2goprint with a single parameter &lt;username&gt; will result in an
++		# x2golistsessions --all-servers command on the remote X2go server.
+ 		$sesslist=`ssh -i $printdsa x2goprint\@$x2goserver &quot;sudo x2goprint $userName&quot;`;
+ 	}
++	syslog(&quot;debug&quot;, $sesslist);
+ 	@sessions=split(&quot;\n&quot;,$sesslist);
+ }
+ 
+@@ -136,7 +141,7 @@ sub printfile
+ 		# log that we are about to process a print job
+ 		syslog('debug', &quot;x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title&quot;);
+ 
+-                # process print job
++		# process print job
+ 		system( &quot;x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title&quot; );
+ 	}
+ 	else
+@@ -221,6 +226,8 @@ print TITLE $jobTitle;
+ close (TITLE);
+ 
+ getsessions();
++syslog('debug', &quot;Retrieved session list: @sessions\n&quot;);
++
+ for(my $i=0; $i&lt;scalar(@sessions);$i++ )
+ {
+ 	my @sinfo=split(&quot;\\|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sessions</A>[$i]);
+diff --git a/debian/changelog b/debian/changelog
+index 5d15f80..3671c81 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,7 +1,7 @@
+ cups-x2go (3.0.0.4-0~x2go1) UNRELEASED; urgency=low
+ 
+   * New upstream version (3.0.0.4):
+-    - Continue development...
++    - Add more debug messages.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 13 Oct 2011 02:07:16 +0200
+ 
+
+
+hooks/post-receive
+-- 
+cups-x2go.git (CUPS Backend for X2Go Printing)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;cups-x2go.git&quot; (CUPS Backend for X2Go Printing).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001963.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99.8-36-ge9cf74e
+</A></li>
+	<LI>Next message: <A HREF="001965.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99.8-37-gc0b9760
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1964">[ date ]</a>
+              <a href="thread.html#1964">[ thread ]</a>
+              <a href="subject.html#1964">[ subject ]</a>
+              <a href="author.html#1964">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

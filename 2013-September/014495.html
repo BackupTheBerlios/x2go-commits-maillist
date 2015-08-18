@@ -1,0 +1,237 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-27-g39b8852
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-27-g39b8852&In-Reply-To=%3C20130925074820.D8CB55DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014494.html">
+   <LINK REL="Next"  HREF="014496.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-27-g39b8852</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-27-g39b8852&In-Reply-To=%3C20130925074820.D8CB55DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-27-g39b8852">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 25 09:48:20 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014494.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-26-ga92b8af
+</A></li>
+        <LI>Next message: <A HREF="014496.html">[X2Go-Commits] page changed:	wiki:development:build-howto-mswin:pyhoca-gui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14495">[ date ]</a>
+              <a href="thread.html#14495">[ thread ]</a>
+              <a href="subject.html#14495">[ subject ]</a>
+              <a href="author.html#14495">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  39b88526208c985c15e53703372223ebe09e6ff1 (commit)
+      from  a92b8af4f1d80add5363ec3ff967d916298721d4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 39b88526208c985c15e53703372223ebe09e6ff1
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Sep 25 09:48:16 2013 +0200
+
+    Re-order x2gobroker main file. Move logging further to the back to allow taking command-line options into account.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/x2gobroker   |   89 +++++++++++++++++++++++++++++-------------------------
+ debian/changelog |    2 ++
+ 2 files changed, 50 insertions(+), 41 deletions(-)
+
+The diff of changes is:
+diff --git a/bin/x2gobroker b/bin/x2gobroker
+index cb6062b..46c5103 100755
+--- a/bin/x2gobroker
++++ b/bin/x2gobroker
+@@ -28,6 +28,27 @@ import socket
+ import logging
+ import thread
+ 
++def prep_http_mode():
++
++    global urls
++    global settings
++
++    # import classes serving the different web.py URLs
++    import x2gobroker.web.plain
++    import x2gobroker.web.uccs
++    import x2gobroker.web.extras
++
++    # define the web.py URLs
++    urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
++             ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
++             ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
++             ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
++           )
++    settings = {
++        'log_function': tornado_log_request,
++    }
++
++
+ try:
+     import x2gobroker.defaults
+ except ImportError:
+@@ -38,32 +59,10 @@ from x2gobroker import __VERSION__
+ from x2gobroker import __AUTHOR__
+ from x2gobroker.loggers import logger_broker, logger_access, logger_error, tornado_log_request
+ 
+-# raise log level to DEBUG if requested...
+-if x2gobroker.defaults.X2GOBROKER_DEBUG and not x2gobroker.defaults.X2GOBROKER_TESTSUITE:
+-    logger_broker.setLevel(logging.DEBUG)
+-    logger_access.setLevel(logging.DEBUG)
+-    logger_error.setLevel(logging.DEBUG)
+-
+-logger_broker.info('X2Go Session Broker ({version}),'.format(version=__VERSION__))
+-logger_broker.info('  written by {author}'.format(author=__AUTHOR__))
+-logger_broker.info('Setting up the broker\'s environment...')
+-logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEBUG))
+-logger_broker.info('  X2GOBROKER_CONFIG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_CONFIG))
+-logger_broker.info('  X2GOBROKER_AGENT_CMD: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_AGENT_CMD))
+-logger_broker.info('  X2GOBROKER_AUTHSERVICE_SOCKET: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_AUTHSERVICE_SOCKET))
+-logger_broker.info('  X2GOBROKER_DEFAULT_BACKEND: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND))
+-logger_broker.info('  X2GOBROKER_SSL_CERTFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE))
+-logger_broker.info('  X2GOBROKER_SSL_KEYFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE))
+-
+ interactive_mode_warning = False
+ # check effective UID the broker runs as and complain appropriately...
+ if x2gobroker.defaults.X2GOBROKER_USER != x2gobroker.defaults.X2GOBROKER_DAEMON_USER and os.geteuid() != 0:
+     interactive_mode_warning = True
+-elif x2gobroker.defaults.X2GOBROKER_DAEMON_USER != 'root' and os.geteuid() == 0:
+-    logger_broker.warn('X2Go Session Broker should not be run as root,')
+-    logger_broker.warn('  better run as user {daemon_username}.'.format(daemon_username=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
+-elif os.geteuid() == 0:
+-    logger_broker.warn('X2Go Session Broker should not be run as root, better run as non-privileged user')
+ 
+ # parse-in potential command line options
+ cmdline_args = None
+@@ -114,11 +113,12 @@ if __name__ == &quot;__main__&quot;:
+     elif cmdline_args.mode.upper() == 'SSH':
+         if cmdline_args.bind: logger_broker.warn('ignoring non-valid option --bind for broker mode SSH...')
+         if cmdline_args.profile_id and cmdline_args.task != 'selectsession':
+-            logger_broker.warn('ignoring option --sid as it only has a meaning with ,,--task selectsession\'\'')
++            #logger_broker.warn('ignoring option --sid as it only has a meaning with ,,--task selectsession\'\'')
++            pass
+         if cmdline_args.user is None:
+             cmdline_args.user = os.environ['LOGNAME']
+         elif cmdline_args.user != x2gobroker.defaults.X2GOBROKER_DAEMON_USER:
+-            logger_broker.warn('denying context change to user `{user}\', only allowed for magic user `{magic_user}\''.format(user=cmdline_args.user, magic_user=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
++            #logger_broker.warn('denying context change to user `{user}\', only allowed for magic user `{magic_user}\''.format(user=cmdline_args.user, magic_user=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
+             cmdline_args.user = os.environ['LOGNAME']
+         if cmdline_args.task is None:
+             print(&quot;&quot;)
+@@ -152,25 +152,32 @@ if __name__ == &quot;__main__&quot;:
+ urls = ()
+ settings = {}
+ 
+-def prep_http_mode():
+-
+-    global urls
+-    global settings
++# raise log level to DEBUG if requested...
++if x2gobroker.defaults.X2GOBROKER_DEBUG and not x2gobroker.defaults.X2GOBROKER_TESTSUITE:
++    logger_broker.setLevel(logging.DEBUG)
++    logger_access.setLevel(logging.DEBUG)
++    logger_error.setLevel(logging.DEBUG)
+ 
+-    # import classes serving the different web.py URLs
+-    import x2gobroker.web.plain
+-    import x2gobroker.web.uccs
+-    import x2gobroker.web.extras
++logger_broker.info('X2Go Session Broker ({version}),'.format(version=__VERSION__))
++logger_broker.info('  written by {author}'.format(author=__AUTHOR__))
++logger_broker.info('Setting up the broker\'s environment...')
++logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEBUG))
++logger_broker.info('  X2GOBROKER_CONFIG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_CONFIG))
++logger_broker.info('  X2GOBROKER_AGENT_CMD: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_AGENT_CMD))
++logger_broker.info('  X2GOBROKER_AUTHSERVICE_SOCKET: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_AUTHSERVICE_SOCKET))
++logger_broker.info('  X2GOBROKER_DEFAULT_BACKEND: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND))
++logger_broker.info('  X2GOBROKER_SSL_CERTFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE))
++logger_broker.info('  X2GOBROKER_SSL_KEYFILE: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE))
+ 
+-    # define the web.py URLs
+-    urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
+-             ('/uccs/[a-zA-Z]*(/*)$', x2gobroker.web.uccs.X2GoBrokerWeb,),
+-             ('/uccs/(.*)/api/([0-9])(/*)$', x2gobroker.web.uccs.X2GoBrokerWebAPI,),
+-             ('/pubkeys(/*)$', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
+-           )
+-    settings = {
+-        'log_function': tornado_log_request,
+-    }
++interactive_mode_warning = False
++# check effective UID the broker runs as and complain appropriately...
++if x2gobroker.defaults.X2GOBROKER_USER != x2gobroker.defaults.X2GOBROKER_DAEMON_USER and os.geteuid() != 0:
++    interactive_mode_warning = True
++elif x2gobroker.defaults.X2GOBROKER_DAEMON_USER != 'root' and os.geteuid() == 0:
++    logger_broker.warn('X2Go Session Broker should not be run as root,')
++    logger_broker.warn('  better run as user {daemon_username}.'.format(daemon_username=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
++elif os.geteuid() == 0:
++    logger_broker.warn('X2Go Session Broker should not be run as root, better run as non-privileged user')
+ 
+ # run the web.py standalone daemon...
+ if __name__ == &quot;__main__&quot;:
+diff --git a/debian/changelog b/debian/changelog
+index 6ab85ea..37e0d60 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -15,6 +15,8 @@ x2gobroker (0.0.3.0-0~x2go1) UNRELEASED; urgency=low
+     - When calling the agent's suspend_session function, make sure to pass
+       on the remote_agent dictionary.
+     - Provide empty directory /etc/x2go/broker/ssl.
++    - Re-order x2gobroker main file. Move logging further to the back to
++      allow taking command-line options into account.
+   * /debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+   * /debian/x2gobroker-agent.dirs:
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014494.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-26-ga92b8af
+</A></li>
+	<LI>Next message: <A HREF="014496.html">[X2Go-Commits] page changed:	wiki:development:build-howto-mswin:pyhoca-gui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14495">[ date ]</a>
+              <a href="thread.html#14495">[ thread ]</a>
+              <a href="subject.html#14495">[ subject ]</a>
+              <a href="author.html#14495">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

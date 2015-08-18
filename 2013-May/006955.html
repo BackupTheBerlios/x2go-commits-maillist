@@ -1,0 +1,264 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	8e3bdb8e8b0014ce0d0d4d81e763c31bc0656011
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%098e3bdb8e8b0014ce0d0d4d81e763c31bc0656011&In-Reply-To=%3C20130519110306.4C22A5DB28%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006954.html">
+   <LINK REL="Next"  HREF="006957.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	8e3bdb8e8b0014ce0d0d4d81e763c31bc0656011</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%098e3bdb8e8b0014ce0d0d4d81e763c31bc0656011&In-Reply-To=%3C20130519110306.4C22A5DB28%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	8e3bdb8e8b0014ce0d0d4d81e763c31bc0656011">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:03:06 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006954.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	e313c67ec94b6e86cd7de7623e9a538db739cedf
+</A></li>
+        <LI>Next message: <A HREF="006957.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	75a711dd713a90b74f0c0e372a20287ed3ace747
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6955">[ date ]</a>
+              <a href="thread.html#6955">[ thread ]</a>
+              <a href="subject.html#6955">[ subject ]</a>
+              <a href="author.html#6955">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  8e3bdb8e8b0014ce0d0d4d81e763c31bc0656011 (commit)
+      from  5b273ab1ecaf19c40ce1ea3de05290d5a7fc46cf (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/brokers/inifile_broker.py    |   12 ++--
+ x2gobroker/tests/test_broker_inifile.py |   96 +++++++++++++++++++++++--------
+ 2 files changed, 78 insertions(+), 30 deletions(-)
+
+The diff of changes is:
+diff --git a/x2gobroker/brokers/inifile_broker.py b/x2gobroker/brokers/inifile_broker.py
+index 1ef5418..af33bf2 100644
+--- a/x2gobroker/brokers/inifile_broker.py
++++ b/x2gobroker/brokers/inifile_broker.py
+@@ -69,6 +69,10 @@ class X2GoBroker(base.X2GoBroker):
+     def get_profile(self, profile_id):
+ 
+         profile = self.session_profiles.get_section(profile_id)
++        profile_defaults = self.get_profile_defaults()
++        for key in profile_defaults.keys():
++            if key not in profile.keys():
++                profile.update({ key: profile_defaults[key] })
+         for key in profile.keys():
+             if key.startswith('acl-'):
+                 del profile[key]
+@@ -82,11 +86,7 @@ class X2GoBroker(base.X2GoBroker):
+         for key in profile.keys():
+             if not key.startswith('acl-'):
+                 del profile[key]
++            if key.startswith('acl-') and (profile[key] == '' or profile[key] == ['']):
++                del profile[key]
+         return profile
+ 
+-    def select_profile(self, profile_name):
+-
+-        selectprofile_output = {
+-            'server': 'localhost:22',
+-        }
+-        return selectprofile_output
+diff --git a/x2gobroker/tests/test_broker_inifile.py b/x2gobroker/tests/test_broker_inifile.py
+index 0129d4d..dda93b1 100644
+--- a/x2gobroker/tests/test_broker_inifile.py
++++ b/x2gobroker/tests/test_broker_inifile.py
+@@ -85,37 +85,41 @@ fullscreen = true
+ user = bar
+ cmd = KDE
+ fullscreen = true
+-acl-users-denied = ALL
+-acl-users-allowed = foo,bar
++acl-users-deny = ALL
++acl-users-allow = foo,bar
+ acl-users-order = deny-allow
+ &quot;&quot;&quot;
+         tf = tempfile.NamedTemporaryFile()
+         print &gt;&gt; tf, _session_profiles
+         tf.seek(0)
+         inifile_backend = inifile.X2GoBroker(profile_config_file=tf.name)
+-        _expected_defaults = {
+-            'exports': '',
+-            'fullscreen': False,
+-            'width': 800,
+-            'height': 600,
+-            'applications': ['TERMINAL','WWWBROWSER',]
+-        }
++        _expected_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS['DEFAULT'])
++        for key in copy.deepcopy(_expected_defaults).keys():
++            if key.startswith('acl-'):
++                del _expected_defaults[key]
++        _expected_defaults.update( {
++            u'exports': '',
++            u'fullscreen': False,
++            u'width': 800,
++            u'height': 600,
++            u'applications': ['TERMINAL','WWWBROWSER',]
++        } )
+         _expected_profile1 = copy.deepcopy(_expected_defaults)
+         _expected_profile1.update({
+-            'user': 'foo',
+-            'cmd': 'GNOME',
++            u'user': 'foo',
++            u'cmd': 'GNOME',
+         })
+         _expected_profile2 = copy.deepcopy(_expected_defaults)
+         _expected_profile2.update({
+-            'user': 'bar',
+-            'cmd': 'KDE',
+-            'fullscreen': True,
++            u'user': 'bar',
++            u'cmd': 'KDE',
++            u'fullscreen': True,
+         })
+         _expected_profile3 = copy.deepcopy(_expected_defaults)
+         _expected_profile3.update({
+-            'user': 'bar',
+-            'cmd': 'KDE',
+-            'fullscreen': True,
++            u'user': 'bar',
++            u'cmd': 'KDE',
++            u'fullscreen': True,
+         })
+         _profile1 = inifile_backend.get_profile('testprofile1')
+         for key in _expected_profile1.keys():
+@@ -172,17 +176,20 @@ acl-users-order = deny-allow
+         _expected_acl_defaults = {
+             'acl-clients-deny': ['ALL'],
+             'acl-clients-allow': ['10.0.0.0/16','10.1.0.0/16','admin-1.intern','admin-2.intern'],
++            'acl-any-order': 'deny-allow',
+         }
+         _expected_acls_profile1 = copy.deepcopy(_expected_acl_defaults)
+         _expected_acls_profile2 = copy.deepcopy(_expected_acl_defaults)
+         _expected_acls_profile2.update({
+             'acl-clients-deny': ['10.0.2.0/24','ALL'],
++            'acl-any-order': 'deny-allow',
+         })
+         _expected_acls_profile3 = copy.deepcopy(_expected_acl_defaults)
+         _expected_acls_profile3.update({
+             'acl-users-deny': ['ALL'],
+             'acl-users-allow': ['foo','bar'],
+             'acl-users-order': 'deny-allow',
++            'acl-any-order': 'deny-allow',
+         })
+         _acls_profile1 = inifile_backend.get_profile_acls('testprofile1')
+         for key in _expected_acls_profile1.keys():
+@@ -329,14 +336,55 @@ fullscreen = true
+         self.assertEqual(list_of_profiles['testprofile2']['cmd'], 'XFCE')
+         self.assertEqual(list_of_profiles['testprofile3']['cmd'], 'KDE')
+ 
+-    ### TEST: select_profile() method
++    ### TEST: select_session() method
++
++    def test_sessionselection(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
+ 
+-#    def test_profileselection(self):
+-#        _output = {
+-#            'server': 'localhost:22',
+-#        }
+-#        zeroconf_backend = x2gobroker.brokers.zeroconf.X2GoBroker()
+-#        self.assertEqual(zeroconf_backend.select_profile('profile_bar'), _output)
++[inifile]
++enable = true
++&quot;&quot;&quot;
++        tfc = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tfc, _config
++        tfc.seek(0)
++
++        _session_profiles = &quot;&quot;&quot;
++[testprofile1]
++name = TEST-1
++host = test-1.local
++
++[testprofile2]
++name = TEST-2
++host = test-2.local
++
++[testprofile3]
++name = TEST-3
++host = test-3.local
++sshport = 44566
++&quot;&quot;&quot;
++        tfs = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tfs, _session_profiles
++        tfs.seek(0)
++        inifile_backend = inifile.X2GoBroker(config_file=tfc.name, config_defaults=_config_defaults, profile_config_file=tfs.name)
++        _expected_result_1 = {
++            'server': 'test-1.local',
++            'port': 22,
++        }
++        _expected_result_2 = {
++            'server': 'test-2.local',
++            'port': 22,
++        }
++        _expected_result_3 = {
++            'server': 'test-3.local',
++            'port': 44566,
++        }
++        self.assertEqual(inifile_backend.select_session('TEST-1'), _expected_result_1)
++        self.assertEqual(inifile_backend.select_session('TEST-2'), _expected_result_2)
++        self.assertEqual(inifile_backend.select_session('TEST-3'), _expected_result_3)
+ 
+ 
+ def test_suite():
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006954.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	e313c67ec94b6e86cd7de7623e9a538db739cedf
+</A></li>
+	<LI>Next message: <A HREF="006957.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	75a711dd713a90b74f0c0e372a20287ed3ace747
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6955">[ date ]</a>
+              <a href="thread.html#6955">[ thread ]</a>
+              <a href="subject.html#6955">[ subject ]</a>
+              <a href="author.html#6955">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

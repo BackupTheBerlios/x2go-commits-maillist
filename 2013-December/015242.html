@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-176-g366ef9d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%093.0.99-2-176-g366ef9d&In-Reply-To=%3C20131204051739.F2FF95DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015235.html">
+   <LINK REL="Next"  HREF="015248.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-176-g366ef9d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%093.0.99-2-176-g366ef9d&In-Reply-To=%3C20131204051739.F2FF95DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-176-g366ef9d">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:17:39 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015235.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-173-ge336b43
+</A></li>
+        <LI>Next message: <A HREF="015248.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-174-g8899474
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15242">[ date ]</a>
+              <a href="thread.html#15242">[ thread ]</a>
+              <a href="subject.html#15242">[ subject ]</a>
+              <a href="author.html#15242">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  366ef9d7526fd4739bbd368bc964f9acfb504e7d (commit)
+      from  053886c2661f76f196f090c99aefee993c6a6f6c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/x2goserver.postinst |   43 +++++++++++++++++++++++++++++++------------
+ debian/x2goserver.postrm   |    4 +++-
+ debian/x2goserver.preinst  |    8 +++++---
+ 3 files changed, 39 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/x2goserver.postinst b/debian/x2goserver.postinst
+index 4df63dd..227fbe4 100755
+--- a/debian/x2goserver.postinst
++++ b/debian/x2goserver.postinst
+@@ -20,9 +20,10 @@ set -e
+ 
+ case &quot;$1&quot; in
+ 	configure)
+-		chmod 700 /etc/x2go/x2gosql/passwords || true
+-		touch /etc/x2go/x2gosql/passwords/pgadmin || true
+-		chmod 600 /etc/x2go/x2gosql/passwords/pgadmin || true
++		mkdir -p  /etc/x2go/x2gosql/passwords
++		chmod 700 /etc/x2go/x2gosql/passwords
++		touch     /etc/x2go/x2gosql/passwords/pgadmin
++		chmod 600 /etc/x2go/x2gosql/passwords/pgadmin
+ 
+ 		# setup x2gouser and group
+ 		if ! getent group x2gouser &gt;/dev/null; then
+@@ -39,29 +40,47 @@ case &quot;$1&quot; in
+ 		else
+ 			echo &quot;User x2gouser already exists.&quot; &gt;&amp;2
+ 			# make sure all settings are appropriate
+-			id -g --name &quot;x2gouser&quot; | grep &quot;x2gousers&quot; &gt;/dev/null &amp;&amp; usermod --gid x2gouser x2gouser
+-			usermod --home /var/lib/x2go x2gouser
+-			usermod --shell /bin/false x2gouser
++			if [ &quot;`id -gn x2gouser`&quot; != &quot;x2gouser&quot; ]; then
++				usermod --gid x2gouser x2gouser
++			fi
++			if [ &quot;`ls -1d ~x2gouser`&quot; != &quot;/var/lib/x2go&quot; ]; then
++				usermod --move-home --home /var/lib/x2go x2gouser
++			fi
++			# leave user shell alone. we have never set this wrongly
++			# and we need to respect the administrator's choices
+ 		fi
+ 
+ 		if [ ! -f /var/lib/x2go/x2go_sessions ]; then
+ 			x2godbadmin --createdb
+ 		else
+ 			# make sure db permissions are set correctly
+-			chown root:x2gouser /var/lib/x2go -Rf
++			chown -R root:x2gouser /var/lib/x2go
+ 			# egid x2gouser needs write access to the db dir (for temporary db journal file)
+ 			chmod 0770 /var/lib/x2go
+ 			# ... and to the db file itself, of course
+ 			chmod 0660 /var/lib/x2go/x2go_sessions
+ 		fi
+ 
+-		# we may be upgrading versions of x2goserver that had /usr/lib/x2go/x2gosqlitewrapper.pl set to setuid x2gouser.
+-		dpkg-statoverride --remove /usr/lib/x2go/x2gosqlitewrapper.pl 2&gt;/dev/null &amp;&amp; chown root:root /usr/lib/x2go/x2gosqlitewrapper.pl 2&gt;/dev/null &amp;&amp; chmod 0755 /usr/lib/x2go/x2gosqlitewrapper.pl 2&gt;/dev/null || true
+-		# we may be upgrading versions of x2goserver that had /usr/bin/x2gosqlitewrapper set to setuid or setgid x2gouser.
+-		dpkg-statoverride --remove /usr/bin/x2gosqlitewrapper 2&gt;/dev/null &amp;&amp; chown root:root /usr/bin/x2gosqlitewrapper 2&gt;/dev/null &amp;&amp; chmod 0755 /usr/bin/x2gosqlitewrapper 2&gt;/dev/null || true
++		# we may be upgrading versions of x2goserver that had
++		# /usr/lib/x2go/x2gosqlitewrapper.pl set to setuid x2gouser.
++		if dpkg-statoverride --list /usr/lib/x2go/x2gosqlitewrapper.pl &gt;/dev/null; then
++			dpkg-statoverride --remove /usr/lib/x2go/x2gosqlitewrapper.pl
++			chown root:root /usr/lib/x2go/x2gosqlitewrapper.pl
++			chmod 0755 /usr/lib/x2go/x2gosqlitewrapper.pl
++		fi
++
++		# we may be upgrading versions of x2goserver that had
++		# /usr/bin/x2gosqlitewrapper set to setuid or setgid x2gouser.
++		if dpkg-statoverride --list /usr/bin/x2gosqlitewrapper &gt;/dev/null; then
++			dpkg-statoverride --remove /usr/bin/x2gosqlitewrapper
++			chown root:root /usr/bin/x2gosqlitewrapper
++			chmod 0755 /usr/bin/x2gosqlitewrapper
++		fi
+ 
+ 		# the sqlite db has to be accessed as uid x2gouser
+-		dpkg-statoverride --add --update root x2gouser 2755 /usr/lib/x2go/x2gosqlitewrapper || true
++		if ! dpkg-statoverride --list /usr/lib/x2go/x2gosqlitewrapper &gt;/dev/null; then
++		    dpkg-statoverride --add --update root x2gouser 2755 /usr/lib/x2go/x2gosqlitewrapper
++		fi
+ 		;;
+ 
+ 	abort-upgrade|abort-remove|abort-deconfigure)
+diff --git a/debian/x2goserver.postrm b/debian/x2goserver.postrm
+index 3833d5d..a5cdf21 100755
+--- a/debian/x2goserver.postrm
++++ b/debian/x2goserver.postrm
+@@ -18,7 +18,9 @@ set -e
+ 
+ case &quot;$1&quot; in
+ 	purge)
+-		dpkg-statoverride --remove /usr/lib/x2go/x2gosqlitewrapper || true
++		if dpkg-statoverride --list /usr/lib/x2go/x2gosqlitewrapper &gt;/dev/null; then
++			dpkg-statoverride --remove /usr/lib/x2go/x2gosqlitewrapper
++		fi
+ 		echo &quot;Removing x2go session database&quot; &gt;&amp;2
+ 		rm -vf /var/lib/x2go/x2go_sessions
+ 		rm -vf /etc/x2go/x2gosql/passwords/pgadmin
+diff --git a/debian/x2goserver.preinst b/debian/x2goserver.preinst
+index a0422ed..117bb2c 100755
+--- a/debian/x2goserver.preinst
++++ b/debian/x2goserver.preinst
+@@ -21,9 +21,11 @@ set -e
+ case &quot;$1&quot; in
+ 	install|upgrade)
+ 		# cleanup old x2goserver installations
+-		test -f /var/db/x2go/x2go_sessions &amp;&amp; rm /var/db/x2go/x2go_sessions
+-		test -d /var/db/x2go &amp;&amp; rm -Rfv /var/db/x2go/
+-		getent group x2gousers &gt;/dev/null &amp;&amp; { echo; echo &quot;*** WARNING: found obsolete group ,,x2gousers'', please remove manually!!!&quot;; echo; }
++		rm -Rfv /var/db/x2go/
++		if getent group x2gousers &gt;/dev/null; then 
++			echo &quot;The ,,x2gousers'' is no longer used by x2go and can be&quot;
++			echo &quot;removed as soon as no users are members of this group&quot;
++		fi
+ 		;;
+ 	abort-upgrade)
+ 		;;
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015235.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-173-ge336b43
+</A></li>
+	<LI>Next message: <A HREF="015248.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.0.99-2-174-g8899474
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15242">[ date ]</a>
+              <a href="thread.html#15242">[ thread ]</a>
+              <a href="subject.html#15242">[ subject ]</a>
+              <a href="author.html#15242">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

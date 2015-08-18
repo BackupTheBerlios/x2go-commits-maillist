@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-106-g7cde3c5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.40.0-106-g7cde3c5&In-Reply-To=%3C20130914135627.681E45DD28%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013437.html">
+   <LINK REL="Next"  HREF="013440.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-106-g7cde3c5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.40.0-106-g7cde3c5&In-Reply-To=%3C20130914135627.681E45DD28%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-106-g7cde3c5">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:27 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013437.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-105-g5fd3692
+</A></li>
+        <LI>Next message: <A HREF="013440.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-108-g98740c3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13439">[ date ]</a>
+              <a href="thread.html#13439">[ thread ]</a>
+              <a href="subject.html#13439">[ subject ]</a>
+              <a href="author.html#13439">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  7cde3c55db76d4650561e2dec2be27c38809d840 (commit)
+      from  5fd36925787861001bdb4d64fe86e45173871e3b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   10 ++++------
+ x2go/backends/profiles/_file.py  |   37 +++++++++++++++++++++++++------------
+ x2go/client.py                   |    3 ++-
+ 3 files changed, 31 insertions(+), 19 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 3fe5fc2..6eb0854 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -136,16 +136,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.ssh_rootdir = ssh_rootdir
+ 
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+-
+         if self.add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
++        self.session_died = False
++
++    def load_session_host_keys(self):
+         if self.known_hosts is not None:
+             utils.touch_file(self.known_hosts)
+             self.load_host_keys(self.known_hosts)
+ 
+-        self.session_died = False
+-
+     def __del__(self):
+ 
+         self.disconnect()
+@@ -358,9 +358,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self.logger('connecting to %s' % hostname, loglevel=log.loglevel_NOTICE)
+ 
+-        if self.known_hosts is not None:
+-            utils.touch_file(self.known_hosts)
+-            self.load_host_keys(self.known_hosts)
++        self.load_session_host_keys()
+         if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+             try:
+                 self.logger('trying SSH pub/priv key authentication with server', loglevel=log.loglevel_DEBUG)
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/_file.py
+index fffdd7c..4a1daa8 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/_file.py
+@@ -52,6 +52,8 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         &quot;&quot;&quot;
+         self.defaultValues = {}
+         self._profile_metatypes = {}
++        self._cached_profile_ids = []
++        self._cached_profile_names = []
+ 
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+@@ -79,7 +81,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+         &quot;&quot;&quot;
+         _profile_id = check_profile_id_or_name(self, profile_id_or_name)
+-        return self.get_profile_config(_profile_id)
++        return self.get_profile_config(profile_id=_profile_id)
+ 
+     def get_profile_metatype(self, profile_id_or_name, force=False):
+ 
+@@ -117,12 +119,12 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         except KeyError:
+             return types.StringType
+ 
+-    def get_profile_config(self, profile_id_or_name):
++    def get_profile_config(self, profile_id_or_name=None, profile_id=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        _profile_id = self.check_profile_id_or_name(profile_id_or_name)
++        _profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+         _profile_config = {}
+         for option in self.iniConfig.options(_profile_id):
+             _profile_config[option] = self.get(_profile_id, option, key_type=self.get_profile_option_type(option))
+@@ -148,7 +150,10 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return [ s for s in self.iniConfig.sections() if s not in self._non_profile_sections ]
++        if not self._cached_profile_ids:
++            print &quot;updating profile ids cache&quot;
++            self._cached_profile_ids = [ s for s in self.iniConfig.sections() if s not in self._non_profile_sections ]
++        return self._cached_profile_ids
+ 
+     def has_profile_id(self, profile_id):
+         &quot;&quot;&quot;\
+@@ -163,7 +168,10 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return [ self.to_profile_name(p) for p in self.profile_ids ]
++        if not self._cached_profile_names:
++            print &quot;updating profile names cache&quot;
++            self._cached_profile_names = [ self.to_profile_name(p) for p in self.profile_ids ]
++        return  self._cached_profile_names
+ 
+     def has_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+@@ -190,7 +198,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.get_profile_config(profile_id)['name']
++        return self.get_profile_config(profile_id=profile_id)['name']
+ 
+     def add_profile(self, profile_id=None, **kwargs):
+         &quot;&quot;&quot;\
+@@ -209,6 +217,9 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+             if key in kwargs: continue
+             self.update_value(profile_id, key, value)
+ 
++        self._cached_profile_ids = []
++        self._cached_profile_names = []
++
+         return profile_id
+ 
+     def delete_profile(self, profile_id_or_name):
+@@ -220,6 +231,8 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+         self.iniConfig.remove_section(_profile_id)
+         self.write_user_config = True
+         self.write()
++        self._cached_profile_ids = []
++        self._cached_profile_names = []
+ 
+     def check_profile_id_or_name(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+@@ -227,22 +240,22 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+         &quot;&quot;&quot;
+         _profile_id = None
+-        if self.has_profile_id(profile_id_or_name):
+-            # we were given a session profile id...
+-            _profile_id = profile_id_or_name
+-        elif self.has_profile_name(profile_id_or_name):
++        if self.has_profile_name(profile_id_or_name):
+             # we were given a sesion profile name...
+             _profile_id = self.to_profile_id(profile_id_or_name)
++        elif self.has_profile_id(profile_id_or_name):
++            # we were given a session profile id...
++            _profile_id = profile_id_or_name
+         else:
+             raise X2goProfileException('No session profile with id or name ,,%s\'\' exists.' % profile_id_or_name)
+         return _profile_id
+ 
+-    def to_session_params(self, profile_id_or_name):
++    def to_session_params(self, profile_id_or_name=None, profile_id=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        _profile_id = self.check_profile_id_or_name(profile_id_or_name)
++        _profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+         return utils._convert_SessionProfileOptions_2_SessionParams(self.get_profile_config(_profile_id))
+ 
+     def get_session_param(self, profile_id_or_name, param):
+diff --git a/x2go/client.py b/x2go/client.py
+index 77dfeb1..d171aa8 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -122,6 +122,7 @@ import copy
+ import sys
+ import types
+ import os
++import gevent
+ 
+ # Python X2go modules
+ from registry import X2goSessionRegistry
+@@ -559,7 +560,7 @@ class X2goClient(object):
+ 
+             _profile_id = self.session_profiles.check_profile_id_or_name(_p)
+             _profile_name = self.session_profiles.to_profile_name(_profile_id)
+-            _params = self.session_profiles.to_session_params(_profile_id)
++            _params = self.session_profiles.to_session_params(profile_id=_profile_id)
+             del _params['profile_name']
+ 
+             # override any available session parameter passed to this method
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013437.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-105-g5fd3692
+</A></li>
+	<LI>Next message: <A HREF="013440.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.40.0-108-g98740c3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13439">[ date ]</a>
+              <a href="thread.html#13439">[ thread ]</a>
+              <a href="subject.html#13439">[ subject ]</a>
+              <a href="author.html#13439">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

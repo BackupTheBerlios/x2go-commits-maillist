@@ -1,0 +1,277 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-77-g5ba7271
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.10-77-g5ba7271&In-Reply-To=%3C20130914135751.D4F505DB49%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014265.html">
+   <LINK REL="Next"  HREF="014268.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-77-g5ba7271</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.10-77-g5ba7271&In-Reply-To=%3C20130914135751.D4F505DB49%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-77-g5ba7271">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:51 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014265.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-73-gda000f3
+</A></li>
+        <LI>Next message: <A HREF="014268.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-78-g5035773
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14266">[ date ]</a>
+              <a href="thread.html#14266">[ thread ]</a>
+              <a href="subject.html#14266">[ subject ]</a>
+              <a href="author.html#14266">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  5ba7271ccdfd828b3c045b4b6878a56df6336c2e (commit)
+      from  564bc7cc97eccfc1ddca356a2bf52b093b9004a3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/client.py   |   24 ++++++++++++++++++------
+ x2go/guardian.py |    3 ++-
+ x2go/registry.py |    6 ++++--
+ 4 files changed, 25 insertions(+), 9 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9ef6745..3cd247b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -47,6 +47,7 @@ python-x2go (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Use threading.Lock to prohibit simultaneous calls of
+       get_published_applications() of control sessions.
+     - Implement some internal locking for X2goSession objects.
++    - Add option to disable auto-registration of pubapp sessions.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+   * /debian/control:
+diff --git a/x2go/client.py b/x2go/client.py
+index 62da464..2429cb9 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -200,6 +200,7 @@ class X2goClient(object):
+                  auto_update_listmounts_cache=False,
+                  auto_update_sessionregistry=False,
+                  auto_register_sessions=False,
++                 no_auto_register_pubapp_sessions=False,
+                  refresh_interval=5,
+                  pulseaudio_installdir=os.path.join(os.getcwd(), 'pulseaudio'),
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+@@ -244,6 +245,8 @@ class X2goClient(object):
+         @type auto_update_sessionregistry: C{bool}
+         @param auto_register_sessions: activate automatic X2Go session registration
+         @type auto_register_sessions: C{bool}
++        @param no_auto_register_pubapp_sessions: skip automatic X2Go session registration for suspended/running published applications sessions
++        @type no_auto_register_pubapp_sessions: C{bool}
+         @param refresh_interval: refresh session list cache and session status every C{refresh_interval} seconds
+         @type refresh_interval: C{int}
+         @param pulseaudio_installdir: install path of Pulseaudio binary
+@@ -346,12 +349,14 @@ class X2goClient(object):
+             self.pulseaudio = X2goPulseAudio(path=self.pulseaudio_installdir, client_instance=self, logger=self.logger)
+ 
+         self.auto_register_sessions = auto_register_sessions
++        self.no_auto_register_pubapp_sessions = no_auto_register_pubapp_sessions
+         self.session_registry = X2goSessionRegistry(self, logger=self.logger)
+         self.session_guardian = X2goSessionGuardian(self, auto_update_listsessions_cache=auto_update_listsessions_cache &amp; (use_listsessions_cache|use_cache),
+                                                     auto_update_listdesktops_cache=auto_update_listdesktops_cache &amp; use_listsessions_cache,
+                                                     auto_update_listmounts_cache=auto_update_listmounts_cache &amp; use_listsessions_cache,
+                                                     auto_update_sessionregistry=auto_update_sessionregistry,
+                                                     auto_register_sessions=auto_register_sessions, 
++                                                    no_auto_register_pubapp_sessions=no_auto_register_pubapp_sessions,
+                                                     refresh_interval=refresh_interval,
+                                                     logger=self.logger
+                                                    )
+@@ -2950,7 +2955,7 @@ class X2goClient(object):
+ 
+     __update_cache_all_profiles = update_cache_all_profiles
+ 
+-    def register_available_server_sessions_by_profile_name(self, profile_name, re_register=False):
++    def register_available_server_sessions_by_profile_name(self, profile_name, re_register=False, skip_pubapp_sessions=False):
+         &quot;&quot;&quot;\
+         Register available sessions that are found on the X2Go server the profile
+         of name C{profile_name} is connected to.
+@@ -2959,6 +2964,8 @@ class X2goClient(object):
+         @type profile_name: C{str}
+         @param re_register: re-register available sessions, needs to be done after session profile changes
+         @type re_register: C{bool}
++        @param skip_pubapp_sessions: Do not auto-register published applications sessions.
++        @type skip_pubapp_sessions: C{bool}
+ 
+         &quot;&quot;&quot;
+         if profile_name not in self.client_connected_profiles(return_profile_names=True):
+@@ -2968,34 +2975,39 @@ class X2goClient(object):
+                                           register_sessions=False,
+                                          )
+         try:
+-            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list, re_register=re_register)
++            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list, re_register=re_register, skip_pubapp_sessions=skip_pubapp_sessions)
+         except x2go_exceptions.X2goControlSessionException, e:
+             self.HOOK_on_control_session_death(profile_name)
+             self.disconnect_profile(profile_name)
+             raise e
+     __register_available_server_sessions_by_profile_name = register_available_server_sessions_by_profile_name
+ 
+-    def register_available_server_sessions_by_session_uuid(self, session_uuid):
++    def register_available_server_sessions_by_session_uuid(self, session_uuid, skip_pubapp_sessions=False):
+         &quot;&quot;&quot;\
+         Register available sessions that are found on the X2Go server that the L{X2goSession} instance 
+         with session identifier &lt;session_uuid&gt; is connected to.
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++        @param skip_pubapp_sessions: Do not auto-register published applications sessions.
++        @type skip_pubapp_sessions: C{bool}
+ 
+         &quot;&quot;&quot;
+         profile_name = self.get_session_profile_name(session_uuid)
+-        self.__register_available_server_sessions_by_profile_name(profile_name)
++        self.__register_available_server_sessions_by_profile_name(profile_name, skip_pubapp_sessions=skip_pubapp_sessions)
+     __register_available_server_sessions_by_session_uuid = register_available_server_sessions_by_session_uuid
+ 
+-    def register_available_server_sessions_all_profiles(self):
++    def register_available_server_sessions_all_profiles(self, skip_pubapp_sessions=False):
+         &quot;&quot;&quot;\
+         Register all available sessions found on an X2Go server for each session profile.
+ 
++        @param skip_pubapp_sessions: Do not auto-register published applications sessions.
++        @type skip_pubapp_sessions: C{bool}
++
+         &quot;&quot;&quot;
+         for profile_name in self.client_connected_profiles(return_profile_names=True):
+             try:
+-                self.__register_available_server_sessions_by_profile_name(profile_name)
++                self.__register_available_server_sessions_by_profile_name(profile_name, skip_pubapp_sessions=skip_pubapp_sessions)
+             except x2go_exceptions.X2goSessionRegistryException:
+                 pass
+     __register_available_server_sessions_all_profiles = register_available_server_sessions_all_profiles
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index ba5d5b2..a164e7a 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -85,6 +85,7 @@ class X2goSessionGuardian(threading.Thread):
+         self.auto_update_listmounts_cache = auto_update_listmounts_cache
+         self.auto_update_sessionregistry = auto_update_sessionregistry
+         self.auto_register_sessions = auto_register_sessions
++        self.no_auto_register_pubapp_sessions = no_auto_register_pubapp_sessions
+         self.refresh_interval = refresh_interval
+ 
+         threading.Thread.__init__(self, target=self.guardian)
+@@ -117,7 +118,7 @@ class X2goSessionGuardian(threading.Thread):
+ 
+                 # session auto-registration will automatically trigger an update of the session registry status
+                 if self.auto_register_sessions:
+-                    self.client_instance.register_available_server_sessions_all_profiles()
++                    self.client_instance.register_available_server_sessions_all_profiles(skip_pubapp_sessions=self.no_auto_register_pubapp_sessions)
+ 
+         self.logger('X2Go session guardian thread waking up after %s seconds' % seconds, loglevel=log.loglevel_DEBUG)
+ 
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 4245cac..de55998 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -376,7 +376,7 @@ class X2goSessionRegistry(object):
+ 
+         return True
+ 
+-    def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False, re_register=False):
++    def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False, re_register=False, skip_pubapp_sessions=False):
+         &quot;&quot;&quot;\
+         Register server-side available X2Go sessions with this L{X2goSessionRegistry} instance for a given profile name.
+ 
+@@ -389,6 +389,8 @@ class X2goSessionRegistry(object):
+         @type newly_connected: C{bool}
+         @param re_register: re-register available sessions, needs to be done after changes to the session profile
+         @type re_register: C{bool}
++        @param skip_pubapp_sessions: Do not register published applications sessions
++        @type skip_pubapp_sessions: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self._last_available_session_registration is not None:
+@@ -444,7 +446,7 @@ class X2goSessionRegistry(object):
+                     except: pass
+ 
+                     # this if clause catches problems when x2golistsessions commands give weird results
+-                    if not self.has_session_of_session_name(session_name) or re_register:
++                    if not (self.has_session_of_session_name(session_name) and not re.match('.*_stRPUBLISHED_.*', session_name)) or re_register:
+                         session_uuid = self.register(server, profile_id, profile_name,
+                                                      session_name=session_name, virgin=False,
+                                                      **kwargs
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014265.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-73-gda000f3
+</A></li>
+	<LI>Next message: <A HREF="014268.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-78-g5035773
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14266">[ date ]</a>
+              <a href="thread.html#14266">[ thread ]</a>
+              <a href="subject.html#14266">[ subject ]</a>
+              <a href="author.html#14266">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

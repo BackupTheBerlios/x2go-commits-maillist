@@ -1,0 +1,653 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-40-g8f96ae7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.0.44.2-40-g8f96ae7&In-Reply-To=%3C20140108142830.435515DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024476.html">
+   <LINK REL="Next"  HREF="023915.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-40-g8f96ae7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.0.44.2-40-g8f96ae7&In-Reply-To=%3C20140108142830.435515DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-40-g8f96ae7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:28:30 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024476.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-34-g908efcb
+</A></li>
+        <LI>Next message: <A HREF="023915.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-39-g13a3bb4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23914">[ date ]</a>
+              <a href="thread.html#23914">[ thread ]</a>
+              <a href="subject.html#23914">[ subject ]</a>
+              <a href="author.html#23914">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  8f96ae78ee15292f4984e384b0f9e9d21b63501e (commit)
+      from  13a3bb439d1242f1103976a1f86448b405043d47 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py   |    4 +-
+ x2go/registry.py |  219 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 201 insertions(+), 22 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index 85d3600..2d17915 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1998,9 +1998,9 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if return_profile_names:
+-            return [ self.to_profile_name(p_id) for p_id in self.session_registry.connected_profiles ]
++            return [ self.to_profile_name(p_id) for p_id in self.session_registry.connected_profiles() ]
+         else:
+-            return self.session_registry.connected_profiles
++            return self.session_registry.connected_profiles()
+     __client_connected_profiles = client_connected_profiles
+ 
+     def disconnect_profile(self, profile_name):
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 2af0e97..af5d108 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -51,13 +51,20 @@ from defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+ class X2goSessionRegistry(object):
+     &quot;&quot;&quot;\
+-    STILL UNDOCUMENTED
++    This class is utilized by L{X2goClient} instances to maintain a good overview on
++    session status of all associated L{X2goSession} instances.
+ 
+     &quot;&quot;&quot;
+     def __init__(self, client_instance,
+                  logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        @param client_instance: the L{X2goClient} instance that instantiated this L{X2goSessionRegistry} instance.
++        @type client_instance: L{X2goClient} instance
++        @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         if logger is None:
+@@ -72,6 +79,13 @@ class X2goSessionRegistry(object):
+         self.control_sessions = {}
+ 
+     def keys(self):
++        &quot;&quot;&quot;\
++        A list of session registry keys.
++
++        @return: session registry key list
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
+         return self.registry.keys()
+ 
+     def __repr__(self):
+@@ -83,28 +97,48 @@ class X2goSessionRegistry(object):
+ 
+     def __call__(self, session_uuid):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Returns the L{X2goSession} instance for a given session UUID hash.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @return: the corresponding L{X2goSession} instance
++        @rtype: L{X2goSession} instance
+ 
+         &quot;&quot;&quot;
+         return self.registry[session_uuid]
+ 
+     def get_profile_id(self, session_uuid):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the profile ID of a given session UUID hash.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @return: profile ID
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return self(session_uuid).get_profile_id()
+ 
+     def get_profile_name(self, session_uuid):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the profile name of a given session UUID hash.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @return: profile name
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         return self(session_uuid).get_profile_name()
+ 
+     def session_summary(self, session_uuid, status_only=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Compose a session summary (as Python dictionary).
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @return: session summary dictionary
++        @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+         _session_summary = {}
+@@ -146,7 +180,20 @@ class X2goSessionRegistry(object):
+ 
+     def update_status(self, session_uuid=None, profile_name=None, profile_id=None, session_list=None):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Update the session status for L{X2goSession} that is represented by a given session UUID hash,
++        profile name or profile ID.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @param profile_name: alternatively, a profile name can be specified (the stati of all registered sessions for this session
++            profile will be updated)
++        @type profile_name: C{str}
++        @param profile_id: alternatively, a profile ID can be given (the stati of all registered sessions for this session 
++            profile will be updated)
++        @type profile_id: C{str}
++        @param session_list: an optional C{X2goServerSessionList*} instance (as returned by the L{X2goClient.list_sessions()} command can
++            be passed to this method.
++        @type session_list: C{X2goServerSessionList*} instance
+ 
+         &quot;&quot;&quot;
+         if session_uuid and profile_name or session_uuid and profile_id or profile_name and profile_id:
+@@ -215,7 +262,16 @@ class X2goSessionRegistry(object):
+                     del self.registry[_session_uuid]
+ 
+     def register_available_server_sessions(self, profile_name, session_list=None):
++        &quot;&quot;&quot;\
++        Register server-side available X2go sessions with this L{X2goSessionRegistry} instance for a given profile name.
++
++        @param profile_name: session profile name to register available X2go sessions for
++        @type profile_name: C{str}
++        @param session_list: an optional C{X2goServerSessionList*} instance (as returned by the L{X2goClient.list_sessions()} command can
++            be passed to this method.
++        @type session_list: C{X2goServerSessionList*} instance
+ 
++        &quot;&quot;&quot;
+         _connected_sessions = self.connected_sessions_of_profile_name(profile_name=profile_name, return_objects=False)
+         _registered_sessions = self.registered_sessions_of_profile_name(profile_name=profile_name, return_objects=False)
+         _session_names = [ self(s_uuid).session_name for s_uuid in _registered_sessions if self(s_uuid).session_name is not None ]
+@@ -286,7 +342,46 @@ class X2goSessionRegistry(object):
+                  known_hosts=None,
+                  **kwargs):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Register a new L{X2goSession} instance with this L{X2goSessionRegistry}.
++
++        @param server: hostname of X2go server
++        @type server: C{str}
++        @param profile_id: profile ID
++        @type profile_id: C{str}
++        @param profile_name: profile name
++        @type profile_name: C{str}
++        @param session_name: session name (if available)
++        @type session_name: C{str}
++        @param control_backend: X2go control session backend to use
++        @type control_backend: C{class}
++        @param terminal_backend: X2go terminal session backend to use
++        @type terminal_backend: C{class}
++        @param info_backend: X2go session info backend to use
++        @type info_backend: C{class}
++        @param list_backend: X2go session list backend to use
++        @type list_backend: C{class}
++        @param proxy_backend: X2go proxy backend to use
++        @type proxy_backend: C{class}
++        @param profiles_backend: X2go session profiles backend to use
++        @type profiles_backend: C{class}
++        @param settings_backend: X2go client settings backend to use
++        @type settings_backend: C{class}
++        @param printing_backend: X2go client printing backend to use
++        @type printing_backend: C{class}
++        @param client_rootdir: client base dir (default: ~/.x2goclient)
++        @type client_rootdir: C{str}
++        @param sessions_rootdir: sessions base dir (default: ~/.x2go)
++        @type sessions_rootdir: C{str}
++        @param ssh_rootdir: ssh base dir (default: ~/.ssh)
++        @type ssh_rootdir: C{str}
++        @param keep_controlsession_alive: On last L{X2goSession.disconnect()} keep the associated C{X2goControlSession*} instance alive?
++        @&#359;ype keep_controlsession_alive: C{bool}
++        @param add_to_known_hosts: Auto-accept server host validity?
++        @type add_to_known_hosts: C{bool}
++        @param known_hosts: the underlying Paramiko/SSH systems C{known_hosts} file
++        @type known_hosts: C{str}
++        @param kwargs: all other options will be passed on to the constructor of the to-be-instantiated L{X2goSession} instance
++        @type C{dict}
+ 
+         &quot;&quot;&quot;
+         control_session = None
+@@ -350,7 +445,12 @@ class X2goSessionRegistry(object):
+ 
+     def has_session_of_session_name(self, session_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Detect if we know about an L{X2goSession} of name C{&lt;session_name&gt;}.
++
++        @param session_name: name of session to be searched for
++        @type session_name: C{str}
++        @return: C{True} if a session of C{&lt;session_name&gt;} has been found
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         try:
+@@ -361,7 +461,14 @@ class X2goSessionRegistry(object):
+ 
+     def get_session_of_session_name(self, session_name, return_object=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the L{X2goSession} instance with session name C{&lt;session_name&gt;}.
++
++        @param session_name: name of session to be retrieved
++        @type session_name: C{str}
++        @param return_object: if C{False} the session UUID hash will be returned, if C{True} the L{X2goSession} instance will be returned
++        @type return_object: C{bool}
++        @return: L{X2goSession} object or its representing session UUID hash
++        @rtype: L{X2goSession} instance or C{str}
+ 
+         &quot;&quot;&quot;
+         found_sessions = [ s for s in self.registered_sessions() if s.session_name == session_name and s.session_name is not None ]
+@@ -481,7 +588,17 @@ class X2goSessionRegistry(object):
+ 
+     def connected_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a list of sessions that are currently connected to the profile's X2go server.
++        If none of the return_* options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+@@ -493,7 +610,17 @@ class X2goSessionRegistry(object):
+ 
+     def associated_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a list of sessions that are currently associated to this L{X2goClient} instance.
++        If none of the return_* options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+@@ -505,7 +632,17 @@ class X2goSessionRegistry(object):
+ 
+     def registered_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a list of sessions that are currently registered with this L{X2goClient} instance.
++        If none of the return_* options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+ 
+@@ -517,7 +654,21 @@ class X2goSessionRegistry(object):
+             return self.registered_sessions() and [ s.get_uuid() for s in self.registered_sessions() if s.profile_name == profile_name ]
+ 
+     def virgin_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
++        &quot;&quot;&quot;\
++        For a given session profile name retrieve a list of sessions that are registered with this L{X2goClient} instance but have not
++        yet been started (i.e. sessions that are in virgin state). If none of the return_* options is specified a list of 
++        session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
++        &quot;&quot;&quot;
+         if return_objects:
+             return self.virgin_sessions() and [ s for s in self.virgin_sessions() if s.profile_name == profile_name ]
+         elif return_session_names:
+@@ -525,10 +676,19 @@ class X2goSessionRegistry(object):
+         else:
+             return self.virgin_sessions() and [ s.get_uuid() for s in self.virgin_sessions() if s.profile_name == profile_name ]
+ 
+-
+     def running_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a list of sessions that are currently running.
++        If none of the return_* options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+@@ -540,7 +700,17 @@ class X2goSessionRegistry(object):
+ 
+     def suspended_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a list of sessions that are currently in suspended state.
++        If none of the return_* options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+@@ -552,7 +722,12 @@ class X2goSessionRegistry(object):
+ 
+     def control_session_of_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        For a given session profile name retrieve a the corresponding C{X2goControlSession*} instance.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @return: contol session instance
++        @rtype: C{X2goControlSession*} instance
+ 
+         &quot;&quot;&quot;
+         _sessions = self.registered_sessions_of_profile_name(profile_name, return_objects=True)
+@@ -564,15 +739,19 @@ class X2goSessionRegistry(object):
+     @property
+     def connected_control_sessions(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Equals a list of all currently connected control sessions.
+ 
+         &quot;&quot;&quot;
+         return [ c for c in self.control_sessions.values() if c.is_connected() ]
+ 
+-    @property
+     def connected_profiles(self, use_paramiko=False):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve a list of all currently connected session profiles.
++
++        @param use_paramiko: send query directly to the Paramiko/SSH layer
++        @type use_paramiko: C{bool}
++        @return: list of connected session profiles
++        @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+         if use_paramiko:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024476.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-34-g908efcb
+</A></li>
+	<LI>Next message: <A HREF="023915.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.44.2-39-g13a3bb4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23914">[ date ]</a>
+              <a href="thread.html#23914">[ thread ]</a>
+              <a href="subject.html#23914">[ subject ]</a>
+              <a href="author.html#23914">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

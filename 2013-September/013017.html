@@ -1,0 +1,350 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	a3aeee64302c605f726415803ea15e41e2e22b3f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09a3aeee64302c605f726415803ea15e41e2e22b3f&In-Reply-To=%3C20130914135544.C4D435DBA6%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013016.html">
+   <LINK REL="Next"  HREF="013020.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	a3aeee64302c605f726415803ea15e41e2e22b3f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09a3aeee64302c605f726415803ea15e41e2e22b3f&In-Reply-To=%3C20130914135544.C4D435DBA6%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	a3aeee64302c605f726415803ea15e41e2e22b3f">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013016.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	7c1a074b2bb0fde3707bdb9d4c9c2967ed24413d
+</A></li>
+        <LI>Next message: <A HREF="013020.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-110-g8c05a02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13017">[ date ]</a>
+              <a href="thread.html#13017">[ thread ]</a>
+              <a href="subject.html#13017">[ subject ]</a>
+              <a href="author.html#13017">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  a3aeee64302c605f726415803ea15e41e2e22b3f (commit)
+      from  7c1a074b2bb0fde3707bdb9d4c9c2967ed24413d (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/terminal/_stdout.py |   20 ++++++++++++++++++--
+ x2go/client.py                    |    7 +++++--
+ x2go/defaults.py                  |    3 ++-
+ x2go/session.py                   |   26 +++++++++++++++++---------
+ x2go/utils.py                     |   32 +++++++++++++++++++++++++++++---
+ 5 files changed, 71 insertions(+), 17 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index ea93ef0..cb6edbc 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -223,6 +223,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  session_type=&quot;application&quot;, snd_system='pulse', cmd=None,
+                  rdp_server=None, rdp_options=None,
+                  xdmcp_server=None,
++                 convert_encoding=False, server_encoding='UTF-8', client_encoding='UTF-8',
+                  rootdir=None,
+                  profile_name='UNKNOWN', profile_id=utils._genSessionProfileId(),
+                  print_action=None, print_action_args={},
+@@ -277,6 +278,10 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.rdp_options = rdp_options
+         self.params.xdmcp_server = xdmcp_server
+ 
++        self.params.convert_encoding = convert_encoding
++        self.params.client_encoding = client_encoding
++        self.params.server_encoding = server_encoding
++
+         self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or self.sessions_rootdir
+         self.params.update()
+ 
+@@ -538,14 +543,25 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         self.control_session._x2go_sftp_write(_x2go_key_fname, _x2go_key_bundle)
+ 
++        _convert_encoding = self.params.convert_encoding
++        _client_encoding = self.params.client_encoding
++        _server_encoding = self.params.server_encoding
++
+         if _X2GOCLIENT_OS == 'Windows':
+             folder_name = folder_name.replace('\\', '/')
+             folder_name = folder_name.replace(':', '')
+             folder_name = '/windrive/%s' % folder_name
++            _convert_encoding = True
++            _client_encoding = 'WINDOWS-1252'
++
++        if _convert_encoding:
++            export_iconv_settings = 'export X2GO_ICONV=modules=iconv,from_code=%s,to_code=%s &amp;&amp;' % (_client_encoding, _server_encoding)
++        else:
++            export_iconv_settings = ''
+ 
+         if folder_type is 'disk':
+ 
+-            cmd_line = [ 'export HOSTNAME &amp;&amp;',
++            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
+                          'x2gomountdirs', 
+                          'dir',
+                          str(self.session_info.name), 
+@@ -557,7 +573,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         elif folder_type is 'spool':
+ 
+-            cmd_line = [ 'export HOSTNAME &amp;&amp;',
++            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
+                          'x2gomountdirs', 
+                          'dir',
+                          str(self.session_info.name), 
+diff --git a/x2go/client.py b/x2go/client.py
+index 61e6ac9..846f50f 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -433,7 +433,7 @@ class X2goClient(object):
+         return sessions
+ 
+     def register_session(self, server=None, profile_id=None, profile_name=None, session_name=None,
+-                         printing=False, share_local_folders=[], return_object=False,
++                         printing=False, allow_share_local_folders=False, share_local_folders=[], return_object=False,
+                          add_to_known_hosts=False, known_hosts=None, 
+                          force=False, **kwargs):
+         &quot;&quot;&quot;\
+@@ -473,9 +473,11 @@ class X2goClient(object):
+         @type profile_name: C{str}
+         @param printing: enable X2go printing support for the to-be-registered X2go session
+         @type printing: C{bool}
++        @param allow_share_local_folders: set local folder sharing to enabled/disabled
++        @type allow_share_local_folders: C{bool}
+         @param share_local_folders: a list of local folders (as strings) to be shared directly
+             after session start up
+-        @type share_local_folders: list
++        @type share_local_folders: C{list}
+         @param return_object: normally this method returns a unique session UUID. If 
+             C{return_object} is set to C{True} an X2goSession object will be returned 
+             instead
+@@ -521,6 +523,7 @@ class X2goClient(object):
+             _profile_name = profile_name or sys.argv[0]
+             _params = kwargs
+             _params['printing'] = printing
++            _params['allow_share_local_folders'] = allow_share_local_folders
+             _params['share_local_folders'] = share_local_folders
+             _params['client_instance'] = self
+ 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index e5eb76a..3538b23 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -233,8 +233,9 @@ else:
+ 
+ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'speed': 2, 'pack': '16m-jpeg', 'quality': 9, 'link':'ADSL',
+-    'iconvto': 'UTF-8', 'iconvfrom': 'ISO-8859-15', 'useiconv': False,
++    'iconvto': 'UTF-8', 'iconvfrom': 'UTF-8', 'useiconv': False,
+     'usesshproxy': False, 'sshproxyhost': '', 'sshproxyuser': '', 'sshproxytunnel': '', 'sshproxykeyfile': '',
++    'useexports': True,
+     'fstunnel': True,
+     'export': '',
+     'fullscreen': False,
+diff --git a/x2go/session.py b/x2go/session.py
+index ff104af..d54de5c 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -56,9 +56,10 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'cache_type', 'kblayout', 'kbtype',
+                         'session_type', 'snd_system', 'cmd',
+                         'rdp_server', 'rdp_options',
+-                        'xdmcp_server', 
++                        'xdmcp_server',
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
++                        'convert_encoding', 'client_encoding', 'server_encoding',
+                         'proxy_class', 'logger',
+                         'control_backend', 'terminal_backend', 'proxy_backend',
+                         'profiles_backend', 'settings_backend', 'printing_backend',
+@@ -75,7 +76,9 @@ class X2goSession(object):
+                  use_sshproxy=False,
+                  profile_id=None, profile_name='UNKNOWN',
+                  session_name=None,
+-                 printing=None, share_local_folders=[],
++                 printing=False,
++                 allow_share_local_folders=False,
++                 share_local_folders=[],
+                  control_backend=_X2goControlSession,
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+@@ -124,6 +127,7 @@ class X2goSession(object):
+         self.session_name = session_name
+         self.server = server
+         self.printing = printing
++        self.allow_share_local_folders = allow_share_local_folders
+         self.share_local_folders = share_local_folders
+         self._control_backend = control_backend
+         self._terminal_backend = terminal_backend
+@@ -246,10 +250,10 @@ class X2goSession(object):
+             else:
+                 del _sshproxy_params[p]
+                 del _terminal_params[p]
+-        try:
+-            del _sshproxy_params['use_sshproxy']
+-        except KeyError:
+-            pass
++        try: del _sshproxy_params['use_sshproxy']
++        except KeyError: pass
++        try: del _control_params['allow_share_local_folders']
++        except KeyError: pass
+ 
+         self.control_params.update(_control_params)
+         self.terminal_params.update(_terminal_params)
+@@ -558,7 +562,8 @@ class X2goSession(object):
+                 if SUPPORTED_SOUND and _terminal.params.snd_system is not 'none':
+                     _terminal.start_sound()
+ 
+-                if (SUPPORTED_PRINTING and self.printing) or (SUPPORTED_FOLDERSHARING and self.share_local_folders):
++
++                if (SUPPORTED_PRINTING and self.printing) or (SUPPORTED_FOLDERSHARING and self.allow_share_local_folders and self.share_local_folders):
+                     _terminal.start_sshfs()
+ 
+                 try:
+@@ -570,7 +575,7 @@ class X2goSession(object):
+                 if SUPPORTED_FOLDERSHARING and self.share_local_folders:
+                     if _control.get_transport().reverse_tunnels[_terminal.get_session_name()]['sshfs'][1] is not None:
+                         for _folder in self.share_local_folders:
+-                            _terminal.share_local_folder(_folder)
++                            self.share_local_folder(_folder)
+ 
+                 # only run the session startup command if we do not resume...
+                 if _new_session:
+@@ -799,7 +804,10 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.terminal_session.share_local_folder(folder_name=folder_name)
++        if self.allow_share_local_folders:
++            return self.terminal_session.share_local_folder(folder_name=folder_name)
++        else:
++            self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
+     __share_local_folder = share_local_folder
+ 
+     def session_cleanup(self):
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 5d5c2d2..68767c7 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -124,6 +124,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'layout': 'kblayout',
+             'speed': 'link',
+             'sshport': 'port',
++            'useexports': 'allow_share_local_folders',
+             'export': 'share_local_folders',
+             'print': 'printing',
+             'name': 'profile_name',
+@@ -132,6 +133,9 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'rdpserver': 'rdp_server',
+             'rdpoptions': 'rdp_options',
+             'xdmcpserver': 'xdmcp_server',
++            'useiconv': 'convert_encoding',
++            'iconvto': 'server_encoding',
++            'iconvfrom': 'client_encoding',
+             'usesshproxy': 'use_sshproxy',
+             'sshproxyhost': 'sshproxy_host',
+             'sshproxyuser': 'sshproxy_user',
+@@ -204,9 +208,6 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+ 
+         # currently known but ignored in Python X2go
+         _ignored_options = [
+-            'iconvto',
+-            'iconvfrom',
+-            'useiconv',
+             'dpi',
+             'setdpi',
+             'usekbd',
+@@ -236,3 +237,28 @@ def touch_file(filename):
+         os.makedirs(os.path.dirname(filename), mode=00700)
+     f = open(filename, 'w')
+     f.close()
++
++
++def unique(seq):
++    # order preserving
++    noDupes = []
++    [noDupes.append(i) for i in seq if not noDupes.count(i)]
++    return noDupes
++
++
++def known_encodings():
++    from encodings.aliases import aliases
++    _raw_encname_list = []
++    _raw_encname_list.extend(aliases.keys())
++    _raw_encname_list.extend(aliases.values())
++    _raw_encname_list.sort()
++    _encname_list = []
++    for _raw_encname in _raw_encname_list:
++        _encname = _raw_encname.upper()
++        _encname = _encname.replace('_', '-')
++        _encname_list.append(_encname)
++    _encname_list.sort()
++    _encname_list = unique(_encname_list)
++    return _encname_list
++
++
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013016.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	7c1a074b2bb0fde3707bdb9d4c9c2967ed24413d
+</A></li>
+	<LI>Next message: <A HREF="013020.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-110-g8c05a02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13017">[ date ]</a>
+              <a href="thread.html#13017">[ thread ]</a>
+              <a href="subject.html#13017">[ subject ]</a>
+              <a href="author.html#13017">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

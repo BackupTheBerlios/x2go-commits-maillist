@@ -1,0 +1,250 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-32-g21c4a93
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.0.3-32-g21c4a93&In-Reply-To=%3C20140107151713.7EFDD5DB9D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020345.html">
+   <LINK REL="Next"  HREF="020618.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-32-g21c4a93</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.0.3-32-g21c4a93&In-Reply-To=%3C20140107151713.7EFDD5DB9D%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-32-g21c4a93">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:13 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020345.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-36-gb60599d
+</A></li>
+        <LI>Next message: <A HREF="020618.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-33-ga7da6a7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20613">[ date ]</a>
+              <a href="thread.html#20613">[ thread ]</a>
+              <a href="subject.html#20613">[ subject ]</a>
+              <a href="author.html#20613">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  21c4a93cb38b98a7c20a39b91d5faeaab88c77db (commit)
+      from  2051ce5c73f9abe4d0124173f1bb784684202560 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    2 ++
+ x2go/backends/control/_stdout.py |    4 ----
+ x2go/session.py                  |   46 +++++++++++++++++++++++++-------------
+ 3 files changed, 32 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b5f5cab..c2d04af 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -15,6 +15,8 @@ python-x2go (0.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix multiple notifications for the same session state change, reliably
+       differentiate between found sessions after connect and newly started 
+       sessions from another client.
++    - Mark terminals as PENDING even before the X2goTerminalSession object is
++      created.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Wed, 22 Jun 2011 01:20:48 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 5c7ce76..98cda04 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -563,10 +563,6 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         _success = False
+         if session_name is not None:
+-            if self.is_running(session_name):
+-                self.suspend(session_name)
+-                gevent.sleep(10)
+-
+             try:
+                 _success = _terminal.resume()
+             except x2go_exceptions.X2goFwTunnelException:
+diff --git a/x2go/session.py b/x2go/session.py
+index 01441c7..8893583 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -624,6 +624,8 @@ class X2goSession(object):
+         @rtype: C{X2goControlTerminal*} instance
+ 
+         &quot;&quot;&quot;
++        if self.terminal_session == 'PENDING':
++            return None
+         return self.terminal_session
+     __get_terminal_session = get_terminal_session
+ 
+@@ -636,7 +638,7 @@ class X2goSession(object):
+ 
+ 
+         &quot;&quot;&quot;
+-        return self.terminal_session is not None
++        return self.terminal_session not in (None, 'PENDING')
+     __has_terminal_session = has_terminal_session
+ 
+     def check_host(self):
+@@ -936,25 +938,30 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
++        self.terminal_session == 'PENDING'
+         _new_session = False
+         if self.session_name is None:
+             self.session_name = session_name
+ 
+         if self.is_alive():
+             _control = self.control_session
+-            _terminal = _control.resume(session_name=self.session_name, 
+-                                        session_instance=self,
+-                                        logger=self.logger, **self.terminal_params)
++
++            if _control.is_running(session_name):
++                _control.suspend(session_name)
++                gevent.sleep(10)
++
++            self.terminal_session = _control.resume(session_name=self.session_name, 
++                                                    session_instance=self,
++                                                    logger=self.logger, **self.terminal_params)
+ 
+             if self.session_name is None:
+                 _new_session = True
+-                self.session_name = _terminal.session_info.name
++                self.session_name = self.terminal_session.session_info.name
+ 
+-            if _terminal is not None:
++            if self.terminal_session != 'PENDING':
+ 
+-                self.terminal_session = _terminal
+                 if SUPPORTED_SOUND and self.terminal_session.params.snd_system is not 'none':
+-                    _terminal.start_sound()
++                    self.terminal_session.start_sound()
+ 
+                 if (SUPPORTED_PRINTING and self.printing) or \
+                    (SUPPORTED_MIMEBOX and self.allow_mimebox) or \
+@@ -990,6 +997,7 @@ class X2goSession(object):
+                 return True
+ 
+             else:
++                self.terminal_session = None
+                 return False
+ 
+             return self.running
+@@ -1031,12 +1039,13 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
++        self.terminal_session = 'PENDING'
+         if self.is_alive():
+             _control = self.control_session
+-            _terminal = _control.share_desktop(desktop=desktop, user=user, display=display, share_mode=share_mode,
+-                                               logger=self.logger, **self.terminal_params)
++            self.terminal_session = _control.share_desktop(desktop=desktop, user=user, display=display, share_mode=share_mode,
++                                                           logger=self.logger, **self.terminal_params)
+ 
+-            if _terminal:
++            if self.terminal_session != 'PENDING':
+                 self.terminal_session = _terminal
+                 self.session_name = self.terminal_session.session_info.name
+ 
+@@ -1052,6 +1061,7 @@ class X2goSession(object):
+ 
+                 return self.running
+             else:
++                self.terminal_session = None
+                 return False
+ 
+         else:
+@@ -1169,7 +1179,7 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if self.terminal_session is not None:
++        if self.has_terminal_session():
+             return self.terminal_session.ok()
+         return False
+     __session_ok = session_ok
+@@ -1262,10 +1272,13 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if self.allow_share_local_folders:
+-            return self.terminal_session.share_local_folder(folder_name=folder_name)
++        if self.has_terminal_session():
++            if self.allow_share_local_folders:
++                return self.terminal_session.share_local_folder(folder_name=folder_name)
++            else:
++                self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
+         else:
+-            self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
++            raise X2goSessionException('this X2goSession object does not have any associated terminal')
+     __share_local_folder = share_local_folder
+ 
+     def session_cleanup(self):
+@@ -1275,5 +1288,6 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+             self.terminal_session.release_proxy()
++        if self.has_terminal_session():
+             self.terminal_session.__del__()
+-            self.terminal_session = None
++        self.terminal_session = None
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020345.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-36-gb60599d
+</A></li>
+	<LI>Next message: <A HREF="020618.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.3-33-ga7da6a7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20613">[ date ]</a>
+              <a href="thread.html#20613">[ thread ]</a>
+              <a href="subject.html#20613">[ subject ]</a>
+              <a href="author.html#20613">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

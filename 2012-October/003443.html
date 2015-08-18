@@ -1,0 +1,650 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient2.git - master (branch) updated:	fc019c57e118c79e8406dbe613f55f11e4c9beac
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09fc019c57e118c79e8406dbe613f55f11e4c9beac&In-Reply-To=%3C20121031152345.DB3455DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003442.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient2.git - master (branch) updated:	fc019c57e118c79e8406dbe613f55f11e4c9beac</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09fc019c57e118c79e8406dbe613f55f11e4c9beac&In-Reply-To=%3C20121031152345.DB3455DB18%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient2.git - master (branch) updated:	fc019c57e118c79e8406dbe613f55f11e4c9beac">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Oct 31 16:23:45 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003442.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	a992a08cf9c3f1a00b213f9bce08071154faffba
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3443">[ date ]</a>
+              <a href="thread.html#3443">[ thread ]</a>
+              <a href="subject.html#3443">[ subject ]</a>
+              <a href="author.html#3443">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  fc019c57e118c79e8406dbe613f55f11e4c9beac (commit)
+      from  a992a08cf9c3f1a00b213f9bce08071154faffba (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit fc019c57e118c79e8406dbe613f55f11e4c9beac
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Wed Oct 31 16:23:13 2012 +0100
+
+    create class X2GoBroker (only HTTP yet)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ messagebox.cpp                                  |    3 +
+ messagebox.h                                    |    8 +-
+ profile.cpp                                     |    2 +
+ x2goapplication.cpp                             |   24 +-
+ x2goapplication.h                               |    5 +
+ x2gobroker.cpp                                  |  296 +++++++++++++++++++++++
+ profiledetailconfiguratorform.h =&gt; x2gobroker.h |   64 ++---
+ x2goclient2.pro                                 |    2 +
+ 8 files changed, 372 insertions(+), 32 deletions(-)
+ create mode 100644 x2gobroker.cpp
+ copy profiledetailconfiguratorform.h =&gt; x2gobroker.h (61%)
+
+The diff of changes is:
+diff --git a/messagebox.cpp b/messagebox.cpp
+index 0b8ba33..ca2291d 100644
+--- a/messagebox.cpp
++++ b/messagebox.cpp
+@@ -96,7 +96,10 @@ void MessageBox::setupDialog(QString pix, QString text, int buttons, QString inp
+     if(leInput-&gt;isHidden())
+         vlDisplayLayout-&gt;removeItem(hlInputLayout);
+     else
++    {
++        leInput-&gt;selectAll();
+         leInput-&gt;setFocus();
++    }
+ }
+ 
+ MessageBox::Buttons MessageBox::critical(QString text, int buttons)
+diff --git a/messagebox.h b/messagebox.h
+index 9a3f4cb..7b216dd 100644
+--- a/messagebox.h
++++ b/messagebox.h
+@@ -29,6 +29,10 @@ class MessageBox: public QMdiSubWindow, public Ui_MessageBox
+ {
+     Q_OBJECT
+ public:
++    X2GO_PROPERTY_GETTER(QPushButton*, pbYes)
++    X2GO_PROPERTY_GETTER(QPushButton*, pbNo)
++    X2GO_PROPERTY_GETTER(QPushButton*, pbCancel)
++    X2GO_PROPERTY_GETTER(QPushButton*, pbOk)
+     enum Buttons {YES=1,NO=2,OK=8,CANCEL=16};
+ private:
+     QEventLoop* loop;
+@@ -44,11 +48,11 @@ public:
+     static Buttons warning(QString text, int buttons);
+     static Buttons input(QString text, QString inputLabel, QString&amp; input, QLineEdit::EchoMode echoMode = QLineEdit::Normal,
+                          QString pixPath=QString::null);
+-private:
+     MessageBox();
+     virtual ~MessageBox();
+     Buttons exec();
+-    void setupDialog(QString pix, QString text, int buttons, QString inputLabel = QString::null, QLineEdit::EchoMode echoMode = QLineEdit::Normal);
++    void setupDialog(QString pix, QString text, int buttons, QString inputLabel = QString::null,
++                     QLineEdit::EchoMode echoMode = QLineEdit::Normal);
+ };
+ 
+ #endif // MESSAGEBOX_H
+diff --git a/profile.cpp b/profile.cpp
+index 57bb433..8d2c8cd 100644
+--- a/profile.cpp
++++ b/profile.cpp
+@@ -243,6 +243,8 @@ void Profile::updateProfileDetails()
+         desktopName=X2GoApplication::instance()-&gt;getReadableDesktopName(desktop);
+     else
+         desktopName=X2GoApplication::instance()-&gt;getReadableAppName(desktop);
++    if(desktopName.length()&lt;=0)
++        desktopName=desktop;
+     QString infoText=desktopName+
+                      &quot; (&quot;+user+&quot;@&quot;+server+&quot;), &quot;+tr(&quot;display:&quot;)+&quot; &quot;+display+&quot;, &quot;+tr(&quot;sound:&quot;)+&quot; &quot;+snd;
+     QString statusText=&quot;not running&quot;;
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index 4112ff6..8abe77f 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -32,6 +32,7 @@
+ #include &quot;x2goclientconfig.h&quot;
+ #include &quot;helpdialog.h&quot;
+ #include &quot;mainwindow.h&quot;
++#include &quot;x2gobroker.h&quot;
+ 
+ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplication(argc, argv, flags)
+ {
+@@ -57,12 +58,17 @@ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplicatio
+ X2GoApplication::~X2GoApplication()
+ {
+     delete clientConfig;
+-    delete sessionSettings;
++    if(sessionSettings)
++        delete sessionSettings;
++    if(broker)
++        delete broker;
+     qDebug()&lt;&lt;&quot;X2Go Application exited&quot;;
+ }
+ 
+ void X2GoApplication::slotInitApplication()
+ {
++    broker=0;
++    sessionSettings=0;
+     clientConfig=new X2GoClientConfig;
+     clientConfig-&gt;loadConfigFiles();
+     if(!clientConfig-&gt;parseCommandLineArguments(arguments()))
+@@ -87,10 +93,24 @@ void X2GoApplication::slotInitApplication()
+     {
+         sessionSettings=new X2GoSettings(&quot;sessions&quot;);
+         initProfiles();
++        mainWindow-&gt;show();
+     }
+-    mainWindow-&gt;show();
++    else
++    {
++        mainWindow-&gt;show();
++        broker=new X2GoBroker();
++	connect(broker, SIGNAL(signalSessionsLoaded()), this, SLOT(slotBrokerSessionsConfig()));
++        broker-&gt;getUserSessions();
++    }
++}
++
++void X2GoApplication::slotBrokerSessionsConfig()
++{
++    sessionSettings=new X2GoSettings(broker-&gt;get_sessionsConfig(),QSettings::IniFormat);
++    initProfiles();
+ }
+ 
++
+ X2GoApplication* X2GoApplication::instance()
+ {
+     return (X2GoApplication*) QApplication::instance();
+diff --git a/x2goapplication.h b/x2goapplication.h
+index 69227cf..0f0b543 100644
+--- a/x2goapplication.h
++++ b/x2goapplication.h
+@@ -40,6 +40,7 @@ class MainWindow;
+ class ProfileDetailConfiguratorForm;
+ class X2GoClientConfig;
+ class X2GoSettings;
++class X2GoBroker;
+ 
+ struct nameTranslator
+ {
+@@ -68,6 +69,7 @@ class X2GoApplication: public QApplication
+     X2GO_PROPERTY(ProfileDetailConfiguratorForm*, profileDetailConfiguratorForm)
+     X2GO_RO_PROPERTY(X2GoClientConfig*, clientConfig)
+     X2GO_RO_PROPERTY(X2GoSettings*, sessionSettings)
++    X2GO_RO_PROPERTY(X2GoBroker*, broker)
+ public:
+     ~X2GoApplication();
+     X2GoApplication(int&amp; argc, char** argv, int  = ApplicationFlags);
+@@ -114,6 +116,9 @@ public:
+     {
+         return getTranslator(desktopNames, index);
+     }
++
++private slots:
++    void slotBrokerSessionsConfig();
+ signals:
+     void signalUpdateProfiles();
+     void signalProfilesSelectionChanged(Profile* profile);
+diff --git a/x2gobroker.cpp b/x2gobroker.cpp
+new file mode 100644
+index 0000000..714ce11
+--- /dev/null
++++ b/x2gobroker.cpp
+@@ -0,0 +1,296 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++#include &lt;QHttp&gt;
++#include &lt;QTextStream&gt;
++#include &lt;QFile&gt;
++#include &lt;QDir&gt;
++#include &lt;QDebug&gt;
++#include &quot;x2gobroker.h&quot;
++#include &quot;x2goapplication.h&quot;
++#include &quot;x2goclientconfig.h&quot;
++#include &quot;messagebox.h&quot;
++
++X2GoBroker::X2GoBroker(QObject* parent): QObject(parent)
++{
++    http=0;
++    X2GoClientConfig* cfg=X2GoApplication::instance()-&gt;get_clientConfig();
++    QString urlString=cfg-&gt;get_brokerUrl().get_value().toString();
++    url = QUrl( urlString);
++    if(url.userName().length()&gt;0)
++        user=url.userName();
++    if(urlString.indexOf(&quot;<A HREF="ssh://">ssh://</A>&quot;)==0)
++    {
++        brokerType=SSH;
++    }
++    else
++    {
++        brokerType=HTTP;
++        http=new QHttp ( this );
++        if ( urlString.indexOf ( &quot;<A HREF="https://">https://</A>&quot; ) ==0 )
++            http-&gt;setHost ( url.host(),QHttp::ConnectionModeHttps,
++                            url.port ( 443 ) );
++        else
++            http-&gt;setHost ( url.host(),QHttp::ConnectionModeHttp,
++                            url.port ( 80 ) );
++        connect ( http,SIGNAL ( requestFinished ( int,bool ) ),this,
++                  SLOT ( slotRequestFinished ( int,bool ) ) );
++        connect ( http,SIGNAL ( sslErrors ( const QList&lt;QSslError&gt;&amp; ) ),this,
++                  SLOT ( slotSslErrors ( const QList&lt;QSslError&gt;&amp; ) ) );
++    }
++    if(cfg-&gt;get_authId().get_value().toString()!=QString::null)
++    {
++        QFile file(cfg-&gt;get_authId().get_value().toString());
++        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
++        {
++            MessageBox::critical(tr(&quot;Can't open file&quot;)+&quot; - &quot;+cfg-&gt;get_authId().get_value().toString(), MessageBox::OK);
++            X2GoApplication::exit(-1);
++        }
++        QTextStream in(&amp;file);
++        authId = in.readLine();
++    }
++    if(!cfg-&gt;get_defaultNoBrockerAuth().get_value().toBool())
++    {
++        getLoginData();
++    }
++}
++
++X2GoBroker::~X2GoBroker()
++{
++    if(http)
++        delete http;
++}
++
++void X2GoBroker::getLoginData()
++{
++    if(url.userName().length()&lt;=0)
++    {
++        MessageBox::Buttons res=MessageBox::input(tr(&quot;Enter user name for authentication on broker&quot;),tr(&quot;User:&quot;),user);
++        if(res!=MessageBox::OK)
++            X2GoApplication::exit(-1);
++    }
++    pass=QString::null;
++    MessageBox::Buttons res=MessageBox::input(tr(&quot;Enter password for authentication on broker&quot;),tr(&quot;Password:&quot;),pass, QLineEdit::Password);
++    if(res!=MessageBox::OK)
++        X2GoApplication::exit(-1);
++}
++
++
++void X2GoBroker::getUserSessions()
++{
++    if(brokerType==HTTP)
++    {
++        QString req;
++        QTextStream ( &amp;req ) &lt;&lt;
++                             &quot;task=listsessions&amp;&quot;&lt;&lt;
++                             &quot;user=&quot;&lt;&lt;user&lt;&lt;&quot;&amp;&quot;&lt;&lt;
++                             &quot;password=&quot;&lt;&lt;pass&lt;&lt;&quot;&amp;&quot;&lt;&lt;
++                             &quot;authid=&quot;&lt;&lt;authId;
++        httpSessionAnswer.close();
++        httpSessionAnswer.setData ( 0,0 );
++        sessionsRequest=http-&gt;post ( url.path(),req.toUtf8(),&amp;httpSessionAnswer );
++    }
++}
++
++void X2GoBroker::slotRequestFinished(int id, bool error)
++{
++    if ( error )
++    {
++        MessageBox::critical(&quot;&lt;b&gt;&quot;+tr(&quot;Error&quot;)+&quot;&lt;/b&gt;&lt;br&gt;&quot;+http-&gt;errorString(),MessageBox::OK);
++        X2GoApplication::exit(-1);
++        return;
++    }
++
++    QString answer ( httpSessionAnswer.data() );
++    qDebug()&lt;&lt;answer;
++    if (id == sessionsRequest)
++    {
++        slotListSessions(true, answer,0);
++    }
++//     if (id == selSessRequest)
++//     {
++//         slotSelectSession(true,answer,0);
++//     }
++}
++
++void X2GoBroker::slotListSessions(bool success, QString answer, int)
++{
++    if(!success)
++    {
++        MessageBox::critical(&quot;&lt;b&gt;&quot;+tr(&quot;Error&quot;)+&quot;&lt;/b&gt;&lt;br&gt;&quot;+answer,MessageBox::OK);
++        X2GoApplication::exit(-1);
++    }
++    if(!checkAccess(answer))
++    {
++        getLoginData();
++        getUserSessions();
++        return;
++    }
++    createIniFile(answer);
++    emit signalSessionsLoaded();
++
++}
++
++void X2GoBroker::createIniFile(const QString&amp; content)
++{
++    QString cont;
++    QStringList lines=content.split(&quot;START_USER_SESSIONS&lt;br&gt;&quot;);
++    if (lines.count()&gt;1)
++    {
++        cont=lines[1];
++        cont=cont.split(&quot;END_USER_SESSIONS&quot;)[0];
++        cont.replace(&quot;\n&quot;,&quot;&quot;);
++        cont.replace(&quot;&lt;br&gt;&quot;,&quot;\n&quot;);
++    }
++    sessionsConfig=cont;
++}
++
++bool X2GoBroker::checkAccess(QString answer)
++{
++    if (answer.indexOf(&quot;Access granted&quot;)==-1)
++    {
++        MessageBox::critical (
++            &quot;&lt;b&gt;&quot;+tr ( &quot;Error&quot; )+&quot;&lt;/b&gt;&lt;br&gt;&quot;+
++            tr ( &quot;Login failed!&lt;br&gt;&quot;
++                 &quot;Please try again&quot; ),MessageBox::OK );
++        return false;
++    }
++    return true;
++}
++
++
++void X2GoBroker::slotSslErrors(const QList&lt; QSslError &gt;&amp; errors)
++{
++    QStringList err;
++    QSslCertificate cert;
++    for ( int i=0; i&lt;errors.count(); ++i )
++    {
++        err&lt;&lt;errors[i].errorString();
++        if ( !errors[i].certificate().isNull() )
++            cert=errors[i].certificate();
++    }
++    QString md5=getHexVal ( cert.digest() );
++    QString fname=md5;
++    fname=fname.replace(&quot;:&quot;,&quot;_&quot;);
++    QString homeDir=QDir::homePath();
++    if ( QFile::exists ( homeDir+&quot;/ssl/exceptions/&quot;+
++                         url.host() +&quot;/&quot;+fname ) )
++    {
++        QFile fl ( homeDir+&quot;/ssl/exceptions/&quot;+
++                   url.host() +&quot;/&quot;+fname );
++        fl.open ( QIODevice::ReadOnly | QIODevice::Text );
++        QSslCertificate mcert ( &amp;fl );
++        if ( mcert==cert )
++        {
++            http-&gt;ignoreSslErrors();
++            requestTime.restart();
++            return;
++        }
++    }
++
++    QString errText=tr ( &quot;&lt;br&gt;&lt;b&gt;Server uses an invalid &quot;
++                         &quot;security certificate.&lt;/b&gt;&lt;br&gt;&lt;br&gt;&quot; );
++    errText+=err.join ( &quot;&lt;br&gt;&quot; );
++    errText+=tr ( &quot;&lt;p style='background:#FFFFDC;'&gt;&quot;
++                  &quot;You should not add an exception &quot;
++                  &quot;if you are using an internet connection &quot;
++                  &quot;that you do not trust completely or if you are &quot;
++                  &quot;not used to seeing a warning for this server.&lt;/p&gt;&quot; );
++    QString text=QString::null;
++    QTextStream ( &amp;text ) &lt;&lt;err.join ( &quot;\n&quot; ) &lt;&lt;&quot;\n&quot;&lt;&lt;
++                          &quot;------------\n&quot;&lt;&lt;
++                          tr ( &quot;Issued to:\n&quot; ) &lt;&lt;
++                          tr ( &quot;Common Name(CN)\t&quot; ) &lt;&lt;
++                          cert.issuerInfo ( QSslCertificate::CommonName )
++                          &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Organization(O)\t&quot; ) &lt;&lt;
++                          cert.issuerInfo ( QSslCertificate::Organization )
++                          &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Organizational Unit(OU)\t&quot; ) &lt;&lt;
++                          cert.issuerInfo ( QSslCertificate::OrganizationalUnitName )
++                          &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Serial Number\t&quot; ) &lt;&lt;getHexVal ( cert.serialNumber() )
++                          &lt;&lt;endl&lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Issued by:\n&quot; ) &lt;&lt;
++                          tr ( &quot;Common Name(CN)\t&quot; ) &lt;&lt;
++                          cert.subjectInfo ( QSslCertificate::CommonName )
++                          &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Organization(O)\t&quot; ) &lt;&lt;
++                          cert.subjectInfo ( QSslCertificate::Organization )
++                          &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Organizational Unit(OU)\t&quot; ) &lt;&lt;
++                          cert.subjectInfo ( QSslCertificate::OrganizationalUnitName )
++                          &lt;&lt;endl&lt;&lt;endl&lt;&lt;
++
++                          tr ( &quot;Validity:\n&quot; ) &lt;&lt;
++                          tr ( &quot;Issued on\t&quot; ) &lt;&lt;cert.effectiveDate().toString() &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;expires on\t&quot; ) &lt;&lt;cert.expiryDate().toString() &lt;&lt;endl&lt;&lt;endl&lt;&lt;
++                          tr ( &quot;Fingerprints:\n&quot; ) &lt;&lt;
++                          tr ( &quot;SHA1\t&quot; ) &lt;&lt;
++                          getHexVal ( cert.digest ( QCryptographicHash::Sha1 ) ) &lt;&lt;endl&lt;&lt;
++                          tr ( &quot;MD5\t&quot; ) &lt;&lt;md5;
++
++    MessageBox mb;
++    mb.setupDialog(&quot;:/icons/32x32/critical.png&quot;, errText, MessageBox::YES|MessageBox::OK|MessageBox::CANCEL);
++    mb.get_pbYes()-&gt;setText(tr(&quot;Show Details...&quot;));
++    mb.get_pbOk()-&gt;setText(tr ( &quot;Add exception&quot;));
++    mb.get_pbCancel()-&gt;setText(tr ( &quot;Exit X2Go Client&quot;));
++    while(true)
++    {
++        switch (mb.exec())
++        {
++        case MessageBox::OK:
++        {
++            QDir dr;
++            dr.mkpath ( homeDir+&quot;/ssl/exceptions/&quot;+url.host() +&quot;/&quot; );
++            QFile fl ( homeDir+&quot;/ssl/exceptions/&quot;+
++                       url.host() +&quot;/&quot;+fname );
++            fl.open ( QIODevice::WriteOnly | QIODevice::Text );
++            QTextStream ( &amp;fl ) &lt;&lt;cert.toPem();
++            fl.close();
++            http-&gt;ignoreSslErrors();
++            requestTime.restart();
++            return;
++        }
++        case MessageBox::CANCEL:
++        {
++            X2GoApplication::exit(-1);
++            return;
++        }
++        default:
++        {
++            MessageBox::information(text, MessageBox::OK);
++            break;
++        }
++        }
++    }
++}
++
++QString X2GoBroker::getHexVal(const QByteArray&amp; ba)
++{
++    QStringList val;
++    for ( int i=0; i&lt;ba.size(); ++i )
++    {
++        QString bt;
++        bt.sprintf ( &quot;%02X&quot;, ( unsigned char ) ba[i] );
++        val&lt;&lt;bt;
++    }
++    return val.join ( &quot;:&quot; );
++}
++
+diff --git a/profiledetailconfiguratorform.h b/x2gobroker.h
+similarity index 61%
+copy from profiledetailconfiguratorform.h
+copy to x2gobroker.h
+index c8b2a8c..68dee95 100644
+--- a/profiledetailconfiguratorform.h
++++ b/x2gobroker.h
+@@ -19,41 +19,49 @@
+ ***************************************************************************/
+ 
+ 
+-#ifndef PROFILEDETAILCONFIGURATORFORM_H
+-#define PROFILEDETAILCONFIGURATORFORM_H
++#ifndef X2GOBROKER_H
++#define X2GOBROKER_H
+ 
+-#include &lt;QWidget&gt;
+-#include &quot;ui_profiledetailconfiguratorform.h&quot;
++#include &lt;QObject&gt;
++#include &lt;QUrl&gt;
++#include &lt;QBuffer&gt;
++#include &lt;QSslError&gt;
++#include &lt;QTime&gt;
+ #include &quot;x2goapplication.h&quot;
++class QHttp;
+ 
+-class ToolBar;
+-class ProfileDetailConfigurator;
+-class Profile;
+-
+-class ProfileDetailConfiguratorForm : public QWidget, public Ui_ProfileDetailConfiguratorForm
++class X2GoBroker : public QObject
+ {
++    X2GO_RO_PROPERTY(QString, sessionsConfig)
+     Q_OBJECT
+ public:
+-    enum configuratorType {PROFILE, SERVER, SESSIONTYPE, CONNECTION, DISPLAY, KEYBOARD, SOUND, PRINTING, FOLDERS};
+-    ProfileDetailConfiguratorForm(QWidget* parent = 0, Qt::WindowFlags f = 0);
+-    ~ProfileDetailConfiguratorForm();
+-    void setConfigurator(Profile* profile, configuratorType type);
+-    
+-private slots:
+-    void slotApply();
+-    void slotDefaults();
+-    void slotReset();
+-    void slotBack();
+-    void slotOk();
+-    void slotDetailModified();
+-
++    explicit X2GoBroker(QObject* parent = 0);
++    virtual ~X2GoBroker();
++    void getUserSessions();
+ private:
+-  void setModified(bool value);
+-    
++    enum {SSH,HTTP} brokerType;
++    QString user;
++    QString pass;
++    QString authId;
++    QHttp* http;
++    QUrl url;
++    QBuffer httpCmdAnswer;
++    QBuffer httpSessionAnswer;
++    int sessionsRequest;
++    int selSessRequest;
++    QTime requestTime;
+ private:
+-    ToolBar* toolBar;
+-    bool modified;
+-    ProfileDetailConfigurator* profileDetailConfigurator;
++    void getLoginData();
++    QString getHexVal ( const QByteArray&amp; ba );
++    bool checkAccess(QString answer);
++    void createIniFile(const QString&amp; content);
++
++private slots:
++    void slotRequestFinished ( int id, bool error );
++    void slotSslErrors ( const QList&lt;QSslError&gt; &amp; errors ) ;
++    void slotListSessions ( bool success, QString answer, int pid);
++signals:
++    void signalSessionsLoaded();
+ };
+ 
+-#endif // PROFILEDETAILCONFIGURATORFORM_H
++#endif // X2GOBROKER_H
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index 4484450..ea126d0 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -55,6 +55,7 @@ SOURCES += main.cpp \
+            x2goclientconfigdetail.cpp \
+            x2gosettings.cpp \
+            helpdialog.cpp \
++           x2gobroker.cpp \
+            profile.cpp
+ 
+ HEADERS += mainwindow.h \
+@@ -82,6 +83,7 @@ HEADERS += mainwindow.h \
+            x2goclientconfigdetail.h \
+            x2gosettings.h \
+            helpdialog.h \
++           x2gobroker.h \
+            profile.h
+ 
+ LIBS += -lssh
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003442.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	a992a08cf9c3f1a00b213f9bce08071154faffba
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3443">[ date ]</a>
+              <a href="thread.html#3443">[ thread ]</a>
+              <a href="subject.html#3443">[ subject ]</a>
+              <a href="author.html#3443">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

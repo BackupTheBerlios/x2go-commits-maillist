@@ -1,0 +1,435 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-138-ge6596c5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-138-ge6596c5&In-Reply-To=%3C20120316170025.9F9645DB35%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002512.html">
+   <LINK REL="Next"  HREF="002514.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-138-ge6596c5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.1.4-138-ge6596c5&In-Reply-To=%3C20120316170025.9F9645DB35%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-138-ge6596c5">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Mar 16 18:00:25 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002512.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.1-11-g8e54131
+</A></li>
+        <LI>Next message: <A HREF="002514.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-110-g8c05a02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2513">[ date ]</a>
+              <a href="thread.html#2513">[ thread ]</a>
+              <a href="subject.html#2513">[ subject ]</a>
+              <a href="author.html#2513">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  e6596c551489ab155e241299d30cc90a74fd25a1 (commit)
+      from  83b74e308c0b9dfd47c9f8815be2c161e21c7c54 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e6596c551489ab155e241299d30cc90a74fd25a1
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Mar 16 18:00:15 2012 +0100
+
+    Render and cache dictionary based published applications menu tree in Python X2Go. Cache the tree once rendered.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 +
+ x2go/backends/control/_stdout.py  |  155 ++++++++++++++++++++++++++++++++++---
+ x2go/backends/terminal/_stdout.py |    1 +
+ x2go/session.py                   |   35 ++++++---
+ 4 files changed, 171 insertions(+), 22 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 7e942d1..e92b8d4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -43,6 +43,8 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix base64 encoded icon string.
+     - Fix master session recognition.
+     - Handle empty control session in the session list cache.
++    - Render and cache dictionary based published applications menu tree in
++      Python X2Go. Cache the tree once rendered.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index b04dda3..4366f5f 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -30,11 +30,10 @@ import os
+ import types
+ import paramiko
+ import gevent
+-
+ import copy
+-
+ import string
+ import random
++import re
+ 
+ from gevent import socket
+ 
+@@ -141,7 +140,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.sessions_rootdir = sessions_rootdir
+         self.ssh_rootdir = ssh_rootdir
+ 
+-        self._published_applications_menu = None
++        self._published_applications_menu = {}
+ 
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+         if self.add_to_known_hosts:
+@@ -597,16 +596,46 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return True
+         return False
+ 
+-    def get_published_applications(self):
++    def get_published_applications(self, lang='en', refresh=False, raw=False, very_raw=False):
+         &quot;&quot;&quot;\
+         Retrieve the menu tree of published applications from X2Go server.
+ 
++        The C{raw} option lets this method return a C{list} of C{dict} elements. Each C{dict} elements has a 
++        C{desktop} key containing the text output of a .desktop file and an C{icon} key which contains the desktop
++        icon data base64 encoded.
++
++        The {very_raw} lets this method return the output of the C{x2gogetapps} script as is.
++
++        @param lang: locale/language identifier
++        @type lang: C{str}
++        @param refresh: force reload of the menu tree from X2Go server
++        @type refresh: C{bool}
++        @param raw: retrieve a raw output of the server list of published applications
++        @type raw: C{bool}
++        @param very_raw: retrieve a very raw output of the server list of published applications
++        @type very_raw: C{bool}
++
++        @return: an i18n capable menu tree packed as a Python dictionary
++        @rtype: C{list}
++
+         &quot;&quot;&quot;
++
+         if 'X2GO_PUBLISHED_APPLICATIONS' in self._x2go_server_features:
+-            if self._published_applications_menu is None:
++            if self._published_applications_menu is {} or not self._published_applications_menu.has_key(lang) or raw or very_raw or refresh:
++
++                ### STAGE 1: retrieve menu from server
++
+                 self.logger('querying server (%s) for list of published applications' % self.profile_name, loglevel=log.loglevel_NOTICE)
+                 (stdin, stdout, stderr) = self._x2go_exec_command('which x2gogetapps &gt;/dev/null &amp;&amp; x2gogetapps')
+-                _raw_menu_items = stdout.read().split('&lt;/desktop&gt;\n')
++                _raw_output = stdout.read()
++
++                if very_raw:
++                    self.logger('published applications query for %s finished, return very raw output' % self.profile_name, loglevel=log.loglevel_NOTICE)
++                    return _raw_output
++
++                ### STAGE 2: dissect the text file retrieved from server, cut into single menu elements
++
++                _raw_menu_items = _raw_output.split('&lt;/desktop&gt;\n')
+                 _raw_menu_items = [ i.replace('&lt;desktop&gt;\n', '') for i in _raw_menu_items ]
+                 _menu = []
+                 for _raw_menu_item in _raw_menu_items:
+@@ -621,11 +650,115 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                         _menu_item = None
+                         _icon_base64 = None
+ 
+-                self._published_applications_menu = _menu
+-                self.logger('published applications query for %s finished' % self.profile_name, loglevel=log.loglevel_NOTICE)
+-                return self._published_applications_menu
+-            else:
+-                return self._published_applications_menu
++                if raw:
++                    self.logger('published applications query for %s finished, returning raw output' % self.profile_name, loglevel=log.loglevel_NOTICE)
++                    return _menu
++
++
++                # STAGE 3: create menu structure in a Python dictionary
++
++                _category_map = {
++                    lang: {
++                        'Multimedia': [],
++                        'Development': [],
++                        'Education': [],
++                        'Games': [],
++                        'Graphics': [],
++                        'Internet': [],
++                        'Office': [],
++                        'System': [],
++                        'Utilities': [],
++                        'Other Applications': [],
++                    }
++                }
++                _empty_menus = _category_map[lang].keys()
++
++                for item in _menu:
++
++                    _menu_entry_name = ''
++                    _menu_entry_fallback_name = ''
++                    _menu_entry_comment = ''
++                    _menu_entry_fallback_comment = ''
++                    _menu_entry_exec = ''
++                    _menu_entry_cat = ''
++
++                    lang_regio = lang
++                    lang_only = lang_regio.split('_')[0]
++
++                    for line in item['desktop'].split('\n'):
++                        if re.match('^Name\[%s\]=.*' % lang_regio, line) or re.match('Name\[%s\]=.*' % lang_only, line):
++                            _menu_entry_name = line.split(&quot;=&quot;)[1].strip()
++                        elif re.match('^Comment\[%s\]=.*' % lang_regio, line) or re.match('Comment\[%s\]=.*' % lang_only, line):
++                            _menu_entry_comment = line.split(&quot;=&quot;)[1].strip()
++                        elif re.match('^Name=.*', line):
++                            _menu_entry_fallback_name = line.split(&quot;=&quot;)[1].strip()
++                        elif re.match('^Comment=.*', line):
++                            _menu_entry_fallback_comment = line.split(&quot;=&quot;)[1].strip()
++                        elif re.match('^Exec=.*', line):
++                            _menu_entry_exec = line.split(&quot;=&quot;)[1].strip()
++                        elif re.match('^Categories=.*', line):
++                            if 'Audio' in line or 'Video' in line:
++                                _menu_entry_cat = 'Multimedia'
++                            elif 'Development' in line:
++                                _menu_entry_cat = 'Development'
++                            elif 'Education' in line:
++                                _menu_entry_cat = 'Education'
++                            elif 'Game' in line:
++                                _menu_entry_cat = 'Games'
++                            elif 'Graphics' in line:
++                                _menu_entry_cat = 'Graphics'
++                            elif 'Network' in line:
++                                _menu_entry_cat = 'Internet'
++                            elif 'Office' in line:
++                                _menu_entry_cat = 'Office'
++                            elif 'Settings' in line:
++                                continue
++                            elif 'System' in line:
++                                _menu_entry_cat = 'System'
++                            elif 'Utilities' in line:
++                                _menu_entry_cat = 'Utilities'
++                            else:
++                                _menu_entry_cat = 'Other Applications'
++
++                    if not _menu_entry_exec:
++                        continue
++                    else:
++                        # FIXME: strip off any noted options (%f, %F, %u, %U, ...), this can be more intelligent
++                        _menu_entry_exec = _menu_entry_exec.replace('%f', '').replace('%F','').replace('%u','').replace('%U','')
++
++                    if not _menu_entry_cat:
++                        _menu_entry_cat = 'Other Applications'
++
++                    if _menu_entry_cat in _empty_menus:
++                        _empty_menus.remove(_menu_entry_cat)
++
++                    if not _menu_entry_name: _menu_entry_name = _menu_entry_fallback_name
++                    if not _menu_entry_comment: _menu_entry_comment = _menu_entry_fallback_comment
++                    if not _menu_entry_comment: _menu_entry_comment = _menu_entry_name
++
++                    _menu_entry_icon = item['icon']
++
++                    _category_map[lang][_menu_entry_cat].append(
++                        {
++                            'name': _menu_entry_name,
++                            'comment': _menu_entry_comment,
++                            'exec': _menu_entry_exec,
++                            'icon': _menu_entry_icon,
++                        }
++                    )
++
++                for _cat in _empty_menus:
++                    del _category_map[lang][_cat]
++
++                for _cat in _category_map[lang].keys():
++                    _sorted = sorted(_category_map[lang][_cat], key=lambda k: k['name'])
++                    _category_map[lang][_cat] = _sorted
++
++                self._published_applications_menu.update(_category_map)
++                self.logger('published applications query for %s finished, return menu tree' % self.profile_name, loglevel=log.loglevel_NOTICE)
++
++            return self._published_applications_menu
++
+         else:
+             # FIXME: ignoring the absence of the published applications feature for now, handle it appropriately later
+             pass
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 2155d2c..32798af 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -345,6 +345,7 @@ class X2goTerminalSessionSTDOUT(object):
+         self.release_proxy()
+ 
+         try:
++
+             if self.control_session.get_transport() is not None:
+                 try:
+                     for _tunnel in [ _tun[1] for _tun in self.reverse_tunnels[self.session_info.name].values() ]:
+diff --git a/x2go/session.py b/x2go/session.py
+index c966ac9..1079a59 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -724,7 +724,7 @@ class X2goSession(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+-        if self.terminal_session is not None:
++        if self.has_terminal_session():
+             return self.terminal_session.session_title
+         else:
+             return 'X2GO-%s' % self.get_session_name()
+@@ -1225,18 +1225,27 @@ class X2goSession(object):
+             return self.terminal_session.is_desktop_session()
+         return False
+ 
+-    def get_published_applications(self):
++    def get_published_applications(self, lang='en', refresh=False, raw=False, very_raw=False):
+         &quot;&quot;&quot;\
+         Return a list of published menu items from the X2Go server
+         for session type published applications.
+ 
++        @param lang: locale/language identifier
++        @type lang: C{str}
++        @param refresh: force reload of the menu tree from X2Go server
++        @type refresh: C{bool}
++        @param raw: retrieve a raw output of the server list of published applications
++        @type raw: C{bool}
++        @param very_raw: retrieve a very raw output of the server list of published applications (as-is output of x2gogetapps script)
++        @type very_raw: C{bool}
++
+         @return: A C{list} of C{dict} elements. Each C{dict} elements has a 
+             C{desktop} key containing the text output of a .desktop file and
+             an C{icon} key which contains the desktop icon data base64 encoded 
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+-        return self.control_session.get_published_applications()
++        return self.control_session.get_published_applications(lang=lang, refresh=refresh, raw=raw, very_raw=very_raw)
+ 
+     def exec_published_application(self, exec_name):
+         &quot;&quot;&quot;\
+@@ -1280,7 +1289,7 @@ class X2goSession(object):
+ 
+             try:
+                 if self.published_applications:
+-                    self.published_applications_menu = self.get_published_applications()
++                    self.published_applications_menu = gevent.spawn(self.get_published_applications)
+             except:
+                 # FIXME: test the code to see what exceptions may occur here...
+                 raise
+@@ -1303,13 +1312,13 @@ class X2goSession(object):
+ 
+                 # only run the session startup command if we do not resume...
+                 if _new_session:
+-                    self.terminal_session.run_command(env=self.session_environment)
++                    self.has_terminal_session() and self.terminal_session.run_command(env=self.session_environment)
+ 
+                 if self.get_session_cmd() != 'PUBLISHED':
+                     self.published_applications = False
+ 
+                 if self._SUPPORTED_SOUND and self.terminal_session.params.snd_system is not 'none':
+-                    self.terminal_session and not self.faulty and self.terminal_session.start_sound()
++                    self.has_terminal_session() and not self.faulty and self.terminal_session.start_sound()
+                 else:
+                     self._SUPPORTED_SOUND = False
+ 
+@@ -1317,7 +1326,7 @@ class X2goSession(object):
+                     if (self._SUPPORTED_PRINTING and self.printing) or \
+                        (self._SUPPORTED_MIMEBOX and self.allow_mimebox) or \
+                        (self._SUPPORTED_FOLDERSHARING and self.allow_share_local_folders):
+-                        self.terminal_session and not self.faulty and self.terminal_session.start_sshfs()
++                        self.has_terminal_session() and not self.faulty and self.terminal_session.start_sshfs()
+                 except x2go_exceptions.X2goUserException, e:
+                     self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+                     self.HOOK_sshfs_not_available()
+@@ -1327,8 +1336,8 @@ class X2goSession(object):
+ 
+                 try:
+                     if self._SUPPORTED_PRINTING and self.printing:
+-                        self.terminal_session and not self.faulty and self.terminal_session.start_printing()
+-                        self.terminal_session and not self.faulty and self.session_environment.update({'X2GO_SPOOLDIR': self.terminal_session.get_printing_spooldir(), })
++                        self.has_terminal_session() and not self.faulty and self.terminal_session.start_printing()
++                        self.has_terminal_session() and not self.faulty and self.session_environment.update({'X2GO_SPOOLDIR': self.terminal_session.get_printing_spooldir(), })
+                 except x2go_exceptions.X2goUserException, e:
+                     self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+                     self.HOOK_printing_not_available()
+@@ -1336,8 +1345,8 @@ class X2goSession(object):
+ 
+                 try:
+                     if self._SUPPORTED_MIMEBOX and self.allow_mimebox:
+-                        self.terminal_session and not self.faulty and self.terminal_session.start_mimebox(mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
+-                        self.terminal_session and self.session_environment.update({'X2GO_MIMEBOX': self.terminal_session.get_mimebox_spooldir(), })
++                        self.has_terminal_session() and not self.faulty and self.terminal_session.start_mimebox(mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
++                        self.has_terminal_session() and self.session_environment.update({'X2GO_MIMEBOX': self.terminal_session.get_mimebox_spooldir(), })
+                 except x2go_exceptions.X2goUserException, e:
+                     self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+                     self.HOOK_mimebox_not_available()
+@@ -1471,6 +1480,8 @@ class X2goSession(object):
+                     self.terminated = False
+                     self.faults = False
+                     self.session_cleanup()
++                    del self.terminal_session
++                    self.terminal_session = None
+                     return True
+ 
+             elif self.has_control_session() and self.session_name:
+@@ -1512,6 +1523,8 @@ class X2goSession(object):
+                     self.terminated = True
+                     self.faulty = False
+                     self.session_cleanup()
++                    del self.terminal_session
++                    self.terminal_session = None
+                     return True
+ 
+             elif self.has_control_session() and self.session_name:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002512.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.1-11-g8e54131
+</A></li>
+	<LI>Next message: <A HREF="002514.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-110-g8c05a02
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2513">[ date ]</a>
+              <a href="thread.html#2513">[ thread ]</a>
+              <a href="subject.html#2513">[ subject ]</a>
+              <a href="author.html#2513">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

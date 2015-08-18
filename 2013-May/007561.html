@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-13-g65db3d5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.5-13-g65db3d5&In-Reply-To=%3C20130519110453.F10955DB27%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007559.html">
+   <LINK REL="Next"  HREF="007567.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-13-g65db3d5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.5-13-g65db3d5&In-Reply-To=%3C20130519110453.F10955DB27%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-13-g65db3d5">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:53 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007559.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-6-ga62fb92
+</A></li>
+        <LI>Next message: <A HREF="007567.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-8-g94323f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7561">[ date ]</a>
+              <a href="thread.html#7561">[ thread ]</a>
+              <a href="subject.html#7561">[ subject ]</a>
+              <a href="author.html#7561">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  65db3d550c384ff0afbc0d9e97855ac1bf4bbea7 (commit)
+      from  c6fbb4cf743a450b4a251bf39e86822662b17a73 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker.conf               |   18 +++++++++---------
+ x2gobroker/brokers/base_broker.py |   38 +++++++++++++++++++------------------
+ x2gobroker/defaults.py            |    6 +++---
+ 3 files changed, 32 insertions(+), 30 deletions(-)
+
+The diff of changes is:
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index 70d0906..3e9ee23 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -50,20 +50,20 @@
+ # profile mapping in LDAP
+ 
+ 
+-# Allow unauthenticated connections? Then set check_credentials to false.
++# Allow unauthenticated connections? Then set check-credentials to false.
+ #check-credentials = true
+ 
+ # To secure server-client communication the client can start the communication
+-# with a pre-set, agreed on authentication ID. Set the below value to 1 to make
+-# use of this feature
+-#use-authid = false
++# with a pre-set, agreed on authentication ID. Set the below value to true
++# to make the X2Go Session Broker require this feature
++#require-cookie-auth = false
+ 
+-# X2Go supports two different auth ID modes (static and dynamic), for now set
+-# the below value to true
+-#use-static-authid = true
++# X2Go supports two different cookie authentication modes (static and dynamic).
++#use-static-cookie = false
+ 
+-# Make up your own authid below...
+-#authid = &lt;aaaavveeeerrrrryyyyylooonnnnggggssttrrriiinnnggg&gt;
++# Every server-client communication (between X2Go Client and broker) has to be
++# accompanied by this initial authentication cookie.
++#my-cookie = &lt;aaaavveeeerrrrryyyyylooonnnnggggssttrrriiinnnggg&gt;
+ 
+ # X2Go Session Broker knows about two output formats: a text/html based output
+ # and a text/json based output. The different outputs run under different URLs
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 2f9b6d2..c980119 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -66,7 +66,7 @@ class X2GoBroker(object):
+         if config_defaults is None: config_defaults = x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS
+         self.config = x2gobroker.config.X2GoBrokerConfigFile(config_files=self.config_file, defaults=config_defaults)
+ 
+-        self._dynamic_authid_map = {}
++        self._dynamic_cookie_map = {}
+         self._client_address = None
+ 
+     def __del__(self):
+@@ -687,7 +687,7 @@ class X2GoBroker(object):
+         else:
+             return []
+ 
+-    def check_access(self, username='', password='', authid=None, ):
++    def check_access(self, username='', password='', cookie=None, ):
+         &quot;&quot;&quot;\
+         Check if a given user with a given password may gain access to the
+         X2Go session broker.
+@@ -696,6 +696,8 @@ class X2GoBroker(object):
+         @type username: C{unicode}
+         @param password: a password that authenticates the user against the X2Go session broker
+         @type password: C{unicode}
++        @param cookie: an extra (static or dynamic) authentication token
++        @type cookie: C{unicode}
+ 
+         @return: returns C{True} if the authentication has been successful
+         @rtype: C{bool}
+@@ -717,46 +719,46 @@ class X2GoBroker(object):
+ 
+         ### HANDLING OF DYNAMIC AUTHENTICATION ID HASHES
+ 
+-        # using authid as extra security?
+-        if self.config.get_value('global', 'use-authid'):
++        # using cookie authentication as extra security?
++        if self.config.get_value('global', 'require-cookie-authentication'):
+ 
+-            if type(authid) is types.StringType:
+-                authid = unicode(authid)
++            if type(cookie) is types.StringType:
++                cookie = unicode(cookie)
+ 
+-            if self.config.get_value('global', 'use-static-authid'):
++            if self.config.get_value('global', 'use-static-cookie'):
+ 
+                 # evaluate access based on static authentication ID feature
+-                access = access and ( authid == self.config.get_value('global', 'authid') )
++                access = access and ( cookie == self.config.get_value('global', 'my-cookie') )
+ 
+             else:
+ 
+                 # evaluate access based on dynamic authentication ID feature
+-                if self._dynamic_authid_map.has_key(username):
+-                    access = access and ( authid == self._dynamic_authid_map[username] )
++                if self._dynamic_cookie_map.has_key(username):
++                    access = access and ( cookie == self._dynamic_cookie_map[username] )
+                     if access:
+-                        self._dynamic_authid_map[username] = uuid.uuid5(namespace=authid, name=username)
++                        self._dynamic_cookie_map[username] = uuid.uuid5(namespace=cookie, name=username)
+ 
+                 else:
+-                    access = access and ( authid == self.config.get_value('global', 'authid') )
++                    access = access and ( cookie == self.config.get_value('global', 'my-cookie') )
+                     if access:
+                         # generate a first uuid, initialize the dynamic authencation ID security feature
+-                        self._dynamic_authid_map[username] = uuid.uuid4()
++                        self._dynamic_cookie_map[username] = uuid.uuid4()
+ 
+         return access
+ 
+-    def get_next_authid(self, username):
++    def get_next_cookie(self, username):
+         &quot;&quot;&quot;\
+-        Get the next expected authentication ID for the given user name.
++        Get the next expected authentication cookie for the given user name.
+ 
+-        @param username: query next auth ID for this user
++        @param username: query next authentication cookie for this user
+         @type username: C{unicode}
+ 
+-        @return: returns next authentication ID for the given username, None if no auth ID has been generated, yet.
++        @return: returns next authentication cookie for the given username, None if no cookie has been generated, yet
+         @rtype: C{unicode} or C{None}
+ 
+         &quot;&quot;&quot;
+         try:
+-            return self._dynamic_authid_map[username]
++            return self._dynamic_cookie_map[username]
+         except KeyError:
+             return None
+ 
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 8274e71..4e52156 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -114,9 +114,9 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+     'global': {
+         u'backend': u'zeroconf',
+         u'check-credentials': True,
+-        u'use-authid': False,
+-        u'use-static-authid': True,
+-        u'authid': uuid.uuid4(),
++        u'require-cookie-auth': False,
++        u'use-static-cookie': False,
++        u'my-cookie': uuid.uuid4(),
+         u'enable-plain-output': True,
+         u'enable-json-output': False,
+         u'enable-html-output':  False,
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007559.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-6-ga62fb92
+</A></li>
+	<LI>Next message: <A HREF="007567.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.5-8-g94323f6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7561">[ date ]</a>
+              <a href="thread.html#7561">[ thread ]</a>
+              <a href="subject.html#7561">[ subject ]</a>
+              <a href="author.html#7561">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

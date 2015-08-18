@@ -1,0 +1,350 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-53-g8eafb11
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-53-g8eafb11&In-Reply-To=%3C20140107152129.81E755E16C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022005.html">
+   <LINK REL="Next"  HREF="022010.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-53-g8eafb11</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-53-g8eafb11&In-Reply-To=%3C20140107152129.81E755E16C%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-53-g8eafb11">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:29 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022005.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-49-g8ba5b25
+</A></li>
+        <LI>Next message: <A HREF="022010.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-50-gd89340e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22007">[ date ]</a>
+              <a href="thread.html#22007">[ thread ]</a>
+              <a href="subject.html#22007">[ subject ]</a>
+              <a href="author.html#22007">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  8eafb118d1654a534ab836d2f7275c8153e3b941 (commit)
+      from  9006f4a59cfe2149b93e4c726b42969b567f7d69 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog            |    2 ++
+ x2go/backends/proxy/base.py |    2 ++
+ x2go/forward.py             |    9 ++++++++-
+ x2go/session.py             |   11 +++++++++++
+ 4 files changed, 23 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 7502f95..89ac661 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -34,6 +34,8 @@ python-x2go (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+       authentication.
+     - Add progress bar support for session startup / resuming. Closes upstream
+       issue #14.
++    - Set the session name in case a session start failed due to lack of
++      forwarding tunneling support in the server's SSH daemon.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+   * /debian/control:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 1c62313..0a1ce72 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -105,6 +105,7 @@ class X2goProxyBASE(threading.Thread):
+ 
+         self.sessions_rootdir = sessions_rootdir
+         self.session_info = session_info
++        self.session_name = self.session_info.session_name
+         self.ssh_transport = ssh_transport
+         self.session_log = session_log
+         self.proxy_options = proxy_options
+@@ -186,6 +187,7 @@ class X2goProxyBASE(threading.Thread):
+                                                       remote_port=self.session_info.graphics_port,
+                                                       ssh_transport=self.ssh_transport,
+                                                       session_instance=self.session_instance,
++                                                      session_name=self.session_name,
+                                                       logger=self.logger,
+                                                      )
+ 
+diff --git a/x2go/forward.py b/x2go/forward.py
+index a933424..e06323a 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -45,7 +45,7 @@ class X2goFwServer(StreamServer):
+     through an external proxy command launched by a C{X2goProxy*} backend.
+ 
+     &quot;&quot;&quot;
+-    def __init__ (self, listener, remote_host, remote_port, ssh_transport, session_instance=None, logger=None, loglevel=log.loglevel_DEFAULT,):
++    def __init__ (self, listener, remote_host, remote_port, ssh_transport, session_instance=None, session_name=None, logger=None, loglevel=log.loglevel_DEFAULT,):
+         &quot;&quot;&quot;\
+         @param listener: listen on TCP/IP socket C{(&lt;IP&gt;, &lt;Port&gt;)}
+         @type listener: C{tuple}
+@@ -55,6 +55,11 @@ class X2goFwServer(StreamServer):
+         @type remote_port: C{int}
+         @param ssh_transport: a valid Paramiko/SSH transport object
+         @type ssh_transport: C{obj}
++        @param session_instance: the complete L{X2goSession} instance of the X2Go session this port forwarding server belongs to.
++            Note: for new L{X2goSession} instances the object has the session name not yet set(!!!)
++        @type session_instance: C{obj}
++        @param session_name: the session name of the X2Go session this port forwarding server belongs to
++        @type session_name: C{str}
+         @param logger: you can pass an L{X2goLogger} object to the
+             L{X2goFwServer} constructor
+         @type logger: C{obj}
+@@ -76,6 +81,7 @@ class X2goFwServer(StreamServer):
+         self.chain_host = remote_host
+         self.chain_port = remote_port
+         self.ssh_transport = ssh_transport
++        self.session_name = session_name
+         self.session_instance = session_instance
+ 
+         self.fw_socket = None
+@@ -130,6 +136,7 @@ class X2goFwServer(StreamServer):
+                                                                                 _count),
+                                                                                 loglevel=log.loglevel_ERROR)
+             if self.session_instance:
++                self.session_instance.set_session_name(self.session_name)
+                 self.session_instance.HOOK_forwarding_tunnel_setup_failed(chain_host=self.chain_host, chain_port=self.chain_port)
+             self.failed = True
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index e67fa93..21fd356 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -886,6 +886,17 @@ class X2goSession(object):
+         return self.session_name
+     __get_session_name = get_session_name
+ 
++    def set_session_name(self, session_name):
++        &quot;&quot;&quot;\
++        Manipulate the L{X2GoSession}'s session name.
++
++        @param session_name: the new session name to be set
++        @type session_name: C{str}
++
++        &quot;&quot;&quot;
++        self.session_name = session_name
++    __set_session_name = set_session_name
++
+     def get_session_info(self):
+         &quot;&quot;&quot;\
+         Retrieve the server-side X2Go session info object for this session.
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022005.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-49-g8ba5b25
+</A></li>
+	<LI>Next message: <A HREF="022010.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-50-gd89340e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22007">[ date ]</a>
+              <a href="thread.html#22007">[ thread ]</a>
+              <a href="subject.html#22007">[ subject ]</a>
+              <a href="author.html#22007">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

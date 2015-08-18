@@ -1,0 +1,483 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-29-g459bdd8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.0.0-29-g459bdd8&In-Reply-To=%3C20130315152657.957BD5DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004986.html">
+   <LINK REL="Next"  HREF="005013.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-29-g459bdd8</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.0.0-29-g459bdd8&In-Reply-To=%3C20130315152657.957BD5DB19%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-29-g459bdd8">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Mar 15 16:26:57 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004986.html">[X2Go-Commits] page changed: wiki:development:x2goclient-cli-study
+</A></li>
+        <LI>Next message: <A HREF="005013.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-30-g2849d5c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4987">[ date ]</a>
+              <a href="thread.html#4987">[ thread ]</a>
+              <a href="subject.html#4987">[ subject ]</a>
+              <a href="author.html#4987">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  459bdd89fcd867c68a3c48e99a50bd8a27538b29 (commit)
+      from  bfa63c366057f870f71fa0686aa913db6525df0b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 459bdd89fcd867c68a3c48e99a50bd8a27538b29
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Fri Mar 15 16:26:46 2013 +0100
+
+    support for recent cygwin API on Windows
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ onmainwindow.cpp |  205 ++++++------------------------------------------------
+ onmainwindow.h   |    3 -
+ wapi.cpp         |   18 +++--
+ wapi.h           |    2 +-
+ 5 files changed, 39 insertions(+), 190 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 74ef78e..4d537a1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -11,6 +11,7 @@ x2goclient (4.0.1.0-0~x2go1) UNRELEASED; urgency=low
+     - fix ONMainWindow layout in broker mode
+     - set passphrase for key to reverse ssh connection
+       fix closing client after getting passphrase (Fixes #137) 
++    - support for recent cygwin API on Windows 
+ 
+   [ Mike Gabriel ]
+   * New upstream version (4.0.1.0):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index c9741f8..e717c47 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -1399,10 +1399,6 @@ void ONMainWindow::closeClient()
+         {
+             removeCygwinEntry();
+         }
+-        if ( !cySolEntry )
+-        {
+-            removeCySolEntry();
+-        }
+ #endif
+         cleanPortable();
+     }
+@@ -8419,7 +8415,7 @@ void ONMainWindow::startX2goMount()
+     cuser=&quot;user&quot;;
+ #endif
+ #ifdef Q_OS_WIN
+-    cuser=&quot;sshuser&quot;;
++    cuser=wapiGetUserName();
+ #endif
+     QString cmd;
+     QString dirs=dir-&gt;dirList;
+@@ -8854,20 +8850,10 @@ void ONMainWindow::startWinServers()
+ // #endif
+ }
+ 
+-
+-bool ONMainWindow::haveCySolEntry()
+-{
+-    QSettings CySolSt ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                        &quot;\\Cygnus Solutions&quot;,
+-                        QSettings::NativeFormat );
+-    return ( CySolSt.childGroups().count() &gt; 0 ||
+-             CySolSt.childKeys().count() &gt; 0 );
+-}
+-
+ bool ONMainWindow::haveCygwinEntry()
+ {
+     QSettings CygwSt ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin&quot;,
++                       &quot;\\Cygwin&quot;,
+                        QSettings::NativeFormat );
+     return ( CygwSt.childGroups().count() &gt;0||CygwSt.childKeys().count() );
+ }
+@@ -8878,17 +8864,6 @@ void ONMainWindow::saveCygnusSettings()
+ {
+     if ( ONMainWindow::portable )
+     {
+-        if ( haveCySolEntry() )
+-        {
+-            x2goDebug&lt;&lt;&quot;Cygnus Solutions entry exist&quot;;
+-            cySolEntry=true;
+-        }
+-        else
+-        {
+-            cySolEntry=false;
+-            x2goDebug&lt;&lt;&quot;Cygnus Solutions entry not exist&quot;;
+-        }
+-
+         if ( haveCygwinEntry() )
+         {
+             x2goDebug&lt;&lt;&quot;Cygwin entry exist&quot;;
+@@ -8900,139 +8875,30 @@ void ONMainWindow::saveCygnusSettings()
+             cyEntry=false;
+         }
+     }
+-
+-    QSettings etcst ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                      &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/etc&quot;,
+-                      QSettings::NativeFormat );
+-    oldEtcDir=QString::null;
+-    oldEtcDir=etcst.value ( &quot;native&quot;,oldEtcDir ).toString();
+-    x2goDebug&lt;&lt;&quot;old etc:&quot;&lt;&lt;oldEtcDir&lt;&lt;endl;
+-    QString newEtc=homeDir+&quot;/.x2go/etc&quot;;
+-    QDir d ( newEtc );
+-    if ( !d.exists() )
+-        d.mkpath ( newEtc );
+-    newEtc.replace ( &quot;/&quot;,&quot;\\&quot; );
+-
+-    etcst.setValue ( &quot;native&quot;,wapiShortFileName ( newEtc ) );
+-    etcst.sync();
+-    x2goDebug&lt;&lt;&quot;new etc:&quot;&lt;&lt;wapiShortFileName ( newEtc ) &lt;&lt;endl;
+-
+-    QSettings binst ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                      &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/bin&quot;,
+-                      QSettings::NativeFormat );
+-    oldBinDir=QString::null;
+-    oldBinDir=binst.value ( &quot;native&quot;,oldBinDir ).toString();
+-    x2goDebug&lt;&lt;&quot;old bin:&quot;&lt;&lt;oldBinDir&lt;&lt;endl;
+-    QString newBin=appDir;
+-    newBin.replace ( &quot;/&quot;,&quot;\\&quot; );
+-    binst.setValue ( &quot;native&quot;,wapiShortFileName ( newBin ) );
+-    binst.sync();
+-    x2goDebug&lt;&lt;&quot;new bin:&quot;&lt;&lt;newBin&lt;&lt;endl;
+-
+-    QSettings tmpst ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                      &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/tmp&quot;,
+-                      QSettings::NativeFormat );
+-    oldTmpDir=QString::null;
+-    oldTmpDir=tmpst.value ( &quot;native&quot;,oldTmpDir ).toString();
+-    x2goDebug&lt;&lt;&quot;old tmp:&quot;&lt;&lt;oldTmpDir&lt;&lt;endl;
+-    QString newTmp=QDir::tempPath();
+-    newTmp.replace ( &quot;/&quot;,&quot;\\&quot; );
+-    tmpst.setValue ( &quot;native&quot;,wapiShortFileName ( newTmp ) );
+-    tmpst.sync();
+-    x2goDebug&lt;&lt;&quot;new tmp:&quot;&lt;&lt;newTmp&lt;&lt;endl;
+ }
+ 
+ void ONMainWindow::restoreCygnusSettings()
+ {
+-
+-    if ( oldEtcDir==QString::null )
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/etc&quot;,
+-                       QSettings::NativeFormat );
+-        x2goDebug&lt;&lt;&quot;Removing /etc from cygwin mounts\n&quot;;
+-        st.remove ( &quot;&quot; );
+-        st.sync();
+-    }
+-    else
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/etc&quot;,
+-                       QSettings::NativeFormat );
+-        st.setValue ( &quot;native&quot;,oldEtcDir );
+-        st.sync();
+-        x2goDebug&lt;&lt;&quot;Restoring /etc in cygwin mounts\n&quot;;
+-    }
+-    if ( oldBinDir==QString::null )
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/bin&quot;,
+-                       QSettings::NativeFormat );
+-        x2goDebug&lt;&lt;&quot;Removing /bin from cygwin mounts\n&quot;;
+-        st.remove ( &quot;&quot; );
+-        st.sync();
+-    }
+-    else
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/bin&quot;,
+-                       QSettings::NativeFormat );
+-        st.setValue ( &quot;native&quot;,oldBinDir );
+-        st.sync();
+-        x2goDebug&lt;&lt;&quot;Restoring /bin in cygwin mounts\n&quot;;
+-    }
+-    if ( oldTmpDir==QString::null )
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/tmp&quot;,
+-                       QSettings::NativeFormat );
+-        x2goDebug&lt;&lt;&quot;Removing /tmp from cygwin mounts\n&quot;;
+-        st.remove ( &quot;&quot; );
+-        st.sync();
+-    }
+-    else
+-    {
+-        QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                       &quot;\\Cygnus Solutions\\Cygwin\\mounts v2\\/tmp&quot;,
+-                       QSettings::NativeFormat );
+-        st.setValue ( &quot;native&quot;,oldTmpDir );
+-        st.sync();
+-        x2goDebug&lt;&lt;&quot;Restoring /tmp in cygwin mounts\n&quot;;
+-    }
+     if ( ONMainWindow::portable )
+     {
+         if ( !cyEntry )
+         {
+             removeCygwinEntry();
+         }
+-        if ( !cySolEntry )
+-        {
+-            removeCySolEntry();
+-        }
+     }
+ }
+ 
+ void ONMainWindow::removeCygwinEntry()
+ {
+     QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                   &quot;\\Cygnus Solutions\\Cygwin&quot;,
++                   &quot;\\Cygwin&quot;,
+                    QSettings::NativeFormat );
+-    x2goDebug&lt;&lt;&quot;Removing cygwin\n&quot;;
++    x2goDebug&lt;&lt;&quot;Removing cygwin from registry\n&quot;;
+     st.remove ( &quot;&quot; );
+     st.sync();
+ 
+ }
+ 
+-void ONMainWindow::removeCySolEntry()
+-{
+-    QSettings st ( &quot;HKEY_CURRENT_USER\\Software&quot;
+-                   &quot;\\Cygnus Solutions&quot;,
+-                   QSettings::NativeFormat );
+-    x2goDebug&lt;&lt;&quot;Removing cygnus solutions\n&quot;;
+-    st.remove ( &quot;&quot; );
+-    st.sync();
+-}
+-
+ void ONMainWindow::startPulsed()
+ {
+     while ( isServerRunning ( pulsePort ) )
+@@ -9165,54 +9031,26 @@ void ONMainWindow::generateEtcFiles()
+     QString etcDir=homeDir+&quot;/.x2go/etc&quot;;
+     QDir dr ( homeDir );
+     dr.mkpath ( etcDir );
++    QFile file ( etcDir +&quot;/sshd_config&quot; );
++    if ( !file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
++        return;
+ #ifdef Q_OS_WIN
+-    if ( !QFile::exists ( etcDir+&quot;/passwd&quot; ) )
+-    {
+-        QString sid, sys, user, grsid, grname;
+-        if ( !wapiAccountInfo ( &amp;sid,&amp;user,&amp;grsid, &amp;grname, &amp;sys ) )
+-        {
+-// 			x2goDebug&lt;&lt;&quot;Get account info failed\n&quot;;
+-            close();
+-        }
+-
+-// 		x2goDebug&lt;&lt;&quot;sid: &quot;&lt;&lt;sid &lt;&lt;&quot; system:&quot;&lt;&lt;
+-// 		sys&lt;&lt; &quot; user: &quot;&lt;&lt;user&lt;&lt;&quot; group sid:&quot;&lt;&lt;grsid&lt;&lt;
+-// 		&quot;group name: &quot;&lt;&lt;grname&lt;&lt;endl;
+-
+-        QStringList sidList=sid.split ( '-' );
+-        QString rid=sidList[sidList.count()-1];
+-        QStringList grsidList=grsid.split ( '-' );
+-        QString grid=grsidList[grsidList.count()-1];
+-        QFile file ( etcDir +&quot;/passwd&quot; );
+-        if ( !file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
+-            return;
+-        QTextStream out ( &amp;file );
+-        out &lt;&lt;&quot;sshuser::&quot;&lt;&lt;rid&lt;&lt;&quot;:&quot;&lt;&lt;grid&lt;&lt;&quot;:&quot;&lt;&lt;sys&lt;&lt;&quot;\\sshuser,&quot;
+-            &lt;&lt;sid&lt;&lt;&quot;:&quot;&lt;&lt;cygwinPath ( wapiShortFileName ( homeDir ) ) &lt;&lt;
+-            &quot;/.x2go&quot;&lt;&lt;&quot;:/bin/bash\n&quot;;
+-        file.close();
+-    }
+-
+-    if ( !QFile::exists ( etcDir+&quot;/sshd_config&quot; ) )
+-    {
++    QString authKeyPath=cygwinPath ( homeDir+&quot;/.x2go/.ssh/authorized_keys&quot; );
++    authKeyPath.replace(wapiGetUserName(),&quot;%u&quot;);
+ #endif
+-        QFile file ( etcDir +&quot;/sshd_config&quot; );
+-        if ( !file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
+-            return;
+-        QTextStream out ( &amp;file );
+-        out&lt;&lt;&quot;StrictModes no\n&quot;&lt;&lt;
+-           &quot;UsePrivilegeSeparation no\n&quot;&lt;&lt;
++    QTextStream out ( &amp;file );
++    out&lt;&lt;&quot;StrictModes no\n&quot;&lt;&lt;
++       &quot;UsePrivilegeSeparation no\n&quot;&lt;&lt;
+ #ifdef Q_OS_WIN
+-           &quot;Subsystem sftp /bin/sftp-server\n&quot;;
++       &quot;Subsystem shell &quot;&lt;&lt; wapiShortFileName ( appDir) +&quot;/sh&quot;+&quot;\n&quot;&lt;&lt;
++       &quot;Subsystem sftp &quot;&lt;&lt; wapiShortFileName ( appDir) +&quot;/sftp-server&quot;+&quot;\n&quot;&lt;&lt;
++       &quot;AuthorizedKeysFile \&quot;&quot;&lt;&lt;authKeyPath&lt;&lt;&quot;\&quot;&quot;;
+ #else
+-           &quot;Subsystem sftp &quot;
+-           &lt;&lt;appDir&lt;&lt;&quot;/sftp-server\n&quot;;
+-#endif
+-        file.close();
+-        x2goDebug&lt;&lt;etcDir +&quot;/sshd_config created&quot;;
+-#ifdef Q_OS_WIN
+-    }
++       &quot;Subsystem sftp &quot;
++       &lt;&lt;appDir&lt;&lt;&quot;/sftp-server\n&quot;;
+ #endif
++    file.close();
++    x2goDebug&lt;&lt;etcDir +&quot;/sshd_config created&quot;;
+ }
+ 
+ void ONMainWindow::generateHostDsaKey()
+@@ -9255,7 +9093,10 @@ void ONMainWindow::startSshd()
+ #ifdef Q_OS_WIN
+     std::string clientdir=wapiShortFileName ( appDir ).toStdString();
+     std::stringstream strm;
+-    strm&lt;&lt;clientdir&lt;&lt;&quot;\\sshd.exe -D -p&quot;&lt;&lt;clientSshPort.toInt();
++    std::string config=cygwinPath(etcDir+&quot;/sshd_config&quot;).toStdString();
++    std::string key=cygwinPath(etcDir+&quot;/ssh_host_dsa_key&quot;).toStdString();
++
++    strm&lt;&lt;clientdir&lt;&lt;&quot;\\sshd.exe -D -p &quot;&lt;&lt;clientSshPort.toInt()&lt;&lt;&quot; -f &quot;&lt;&lt; config &lt;&lt;&quot; -h &quot;&lt;&lt;key;
+ 
+     STARTUPINFOA si;
+     std::string desktopName=&quot;x2go_&quot;;
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 5a48cba..b51caca 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -513,9 +513,7 @@ public:
+     static QString cygwinPath ( const QString&amp; winPath );
+     void startXOrg();
+     void startPulsed();
+-    static bool haveCySolEntry();
+     static bool haveCygwinEntry();
+-    static void removeCySolEntry();
+     static void removeCygwinEntry();
+     static QString U3DevicePath()
+     {
+@@ -768,7 +766,6 @@ private:
+     QString oldBinDir;
+     QString oldTmpDir;
+ 
+-    bool cySolEntry;
+     bool cyEntry;
+ 
+     QString pulseDir;
+diff --git a/wapi.cpp b/wapi.cpp
+index affdbc4..e2dfc50 100644
+--- a/wapi.cpp
++++ b/wapi.cpp
+@@ -274,7 +274,7 @@ QString wapiGetDriveByLabel(const QString&amp; label)
+     {
+         TCHAR* buf=new TCHAR[len+1];
+         len=GetLogicalDriveStrings(len,buf);
+-        for (int i=0;i&lt;len;i+=4)
++        for (int i=0; i&lt;len; i+=4)
+         {
+             QString drive=QString::fromUtf16 ( ( const ushort* ) buf+i );
+             x2goDebug&lt;&lt;&quot;drive:&quot;&lt;&lt;drive;
+@@ -283,7 +283,7 @@ QString wapiGetDriveByLabel(const QString&amp; label)
+             GetVolumeInformation(buf+i,vol,MAX_PATH,0,0,0,fs,MAX_PATH);
+             QString volume=QString::fromUtf16 ( ( const ushort* ) vol );
+             x2goDebug&lt;&lt;&quot;vol:&quot;&lt;&lt;volume&lt;&lt;
+-            &quot;fs:&quot;&lt;&lt;QString::fromUtf16 ( ( const ushort* ) fs );
++                     &quot;fs:&quot;&lt;&lt;QString::fromUtf16 ( ( const ushort* ) fs );
+             if (!volume.compare(label,Qt::CaseInsensitive))
+             {
+                 x2goDebug&lt;&lt;&quot;matched! &quot;;
+@@ -506,12 +506,22 @@ QStringList wapiGetLocalPrinters()
+         delete []info_array;
+         return printers;
+     }
+-    for ( uint i=0;i&lt;sizeOfArray;++i )
++    for ( uint i=0; i&lt;sizeOfArray; ++i )
+     {
+         printers&lt;&lt;QString::fromUtf16 (
+-            ( const ushort* ) ( info_array[i].pPrinterName ) );
++                    ( const ushort* ) ( info_array[i].pPrinterName ) );
+     }
+     delete []info_array;
+     return printers;
+ }
++
++#define INFO_BUFFER_SIZE 32767
++QString wapiGetUserName()
++{
++    TCHAR  infoBuf[INFO_BUFFER_SIZE];
++    DWORD bufCharCount=INFO_BUFFER_SIZE;
++    if( !GetUserName( infoBuf, &amp;bufCharCount ) )
++        return QString::null;
++    return QString::fromUtf16 ( ( const ushort* ) infoBuf);
++}
+ #endif
+diff --git a/wapi.h b/wapi.h
+index 0ba6457..87960c0 100644
+--- a/wapi.h
++++ b/wapi.h
+@@ -74,7 +74,7 @@ QStringList wapiGetLocalPrinters();
+ long wapiSetFSWindow ( HWND hWnd, const QRect&amp; desktopGeometry );
+ void wapiRestoreWindow ( HWND hWnd, long style, const QRect&amp; desktopGeometry );
+ QString wapiGetDriveByLabel(const QString&amp; label);
+-
++QString wapiGetUserName();
+ 
+ 
+ #endif
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004986.html">[X2Go-Commits] page changed: wiki:development:x2goclient-cli-study
+</A></li>
+	<LI>Next message: <A HREF="005013.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.0.0-30-g2849d5c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4987">[ date ]</a>
+              <a href="thread.html#4987">[ thread ]</a>
+              <a href="subject.html#4987">[ subject ]</a>
+              <a href="author.html#4987">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

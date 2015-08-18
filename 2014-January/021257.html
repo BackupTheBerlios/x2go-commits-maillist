@@ -1,0 +1,276 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	5df89cef04909ce141d1447129d04dc801a46946
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%095df89cef04909ce141d1447129d04dc801a46946&In-Reply-To=%3C20140107151937.2BF455DF01%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021297.html">
+   <LINK REL="Next"  HREF="021277.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	5df89cef04909ce141d1447129d04dc801a46946</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%095df89cef04909ce141d1447129d04dc801a46946&In-Reply-To=%3C20140107151937.2BF455DF01%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	5df89cef04909ce141d1447129d04dc801a46946">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:19:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021297.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	67e7103edcf5cec2c0ebad49b648bbd365e2b9a9
+</A></li>
+        <LI>Next message: <A HREF="021277.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	e342b3a23e5f2a2451f46d54a2c7e7e84e9d6fa7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21257">[ date ]</a>
+              <a href="thread.html#21257">[ thread ]</a>
+              <a href="subject.html#21257">[ subject ]</a>
+              <a href="author.html#21257">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  5df89cef04909ce141d1447129d04dc801a46946 (commit)
+      from  056f7f11a7cf6888fc659b0e169571ebcb97f8d9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/base.py |    8 +++++---
+ x2go/backends/proxy/nx3.py  |    6 +++---
+ x2go/client.py              |    1 +
+ 3 files changed, 9 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 5836a57..915c923 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -98,7 +98,6 @@ class X2goProxyBASE(threading.Thread):
+ 
+         threading.Thread.__init__(self)
+         self.daemon = True
+-        self._keepalive = True
+ 
+     def __del__(self):
+         &quot;&quot;&quot;\
+@@ -140,6 +139,7 @@ class X2goProxyBASE(threading.Thread):
+         gets started here and is forked into background (Greenlet/gevent).
+ 
+         &quot;&quot;&quot;
++        self._keepalive = True
+         self.proxy = None
+         if self.session_info is None or self.ssh_transport is None:
+             return None
+@@ -169,10 +169,12 @@ class X2goProxyBASE(threading.Thread):
+         self.session_log_stderr = open('%s/%s' % (self.session_info.local_container, self.session_log, ), 'a')
+         self.logger('forking threaded subprocess: %s' % &quot; &quot;.join(cmd_line), log.loglevel_DEBUG)
+ 
++        print self.PROXY_ENV
+         while not self.proxy:
+             gevent.sleep(.2)
+             p = self.proxy = subprocess.Popen(cmd_line,
+-                                              env=self.PROXY_ENV, 
++                                              env=self.PROXY_ENV,
++                                              stdin=subprocess.PIPE,
+                                               stdout=self.session_log_stdout,
+                                               stderr=self.session_log_stderr,
+                                               shell=False)
+@@ -180,7 +182,7 @@ class X2goProxyBASE(threading.Thread):
+         while self._keepalive:
+             gevent.sleep(.5)
+ 
+-        p.terminate()
++        p.stdin.close()
+ 
+     def _update_local_proxy_socket(self, port):
+         pass
+diff --git a/x2go/backends/proxy/nx3.py b/x2go/backends/proxy/nx3.py
+index 274288d..01eee7d 100644
+--- a/x2go/backends/proxy/nx3.py
++++ b/x2go/backends/proxy/nx3.py
+@@ -105,13 +105,13 @@ class X2goProxyNX3(base.X2goProxyBASE):
+ 
+     def _generate_cmdline(self):
+ 
+-        if (_X2GOCLIENT_OS == &quot;Windows&quot;) and (len(&quot;,&quot;.join(self.PROXY_OPTIONS)) &gt;= 250):
++        if _X2GOCLIENT_OS == &quot;Windows&quot;:
+             _options_filename = os.path.join(self.session_info.local_container, 'options')
+             options = open(_options_filename, 'w')
+             options.write('%s:%s' % (','.join(self.PROXY_OPTIONS), self.PROXY_DISPLAY))
+             options.close()
+-            self.PROXY_OPTIONS= [ 'nx/nx', 'options=%s' % os.path.join(&quot;.&quot;, &quot;..&quot;, &quot;S-%s&quot; % self.session_info.name, 'options'), ]
+-
++            self.PROXY_OPTIONS= [ 'nx/nx', 'options=%s' % os.path.join(&quot;\\&quot;, &quot;..&quot;, &quot;S-%s&quot; % self.session_info.name, 'options'), ]
++            
+         cmd_line = [ self.PROXY_CMD, ]
+         cmd_line.append(self.PROXY_MODE)
+         _proxy_options = &quot;%s:%s&quot; % (&quot;,&quot;.join(self.PROXY_OPTIONS), self.PROXY_DISPLAY)
+diff --git a/x2go/client.py b/x2go/client.py
+index 5480e30..07a2938 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -121,6 +121,7 @@ import uuid
+ import copy
+ import sys
+ import types
++import os
+ 
+ # Python X2go modules
+ from settings import X2goClientSettings
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021297.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	67e7103edcf5cec2c0ebad49b648bbd365e2b9a9
+</A></li>
+	<LI>Next message: <A HREF="021277.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	e342b3a23e5f2a2451f46d54a2c7e7e84e9d6fa7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21257">[ date ]</a>
+              <a href="thread.html#21257">[ thread ]</a>
+              <a href="subject.html#21257">[ subject ]</a>
+              <a href="author.html#21257">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,544 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-30-g937fd25
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.1.0.0-30-g937fd25&In-Reply-To=%3C20131120114835.72ABA5DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014731.html">
+   <LINK REL="Next"  HREF="014733.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-30-g937fd25</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.1.0.0-30-g937fd25&In-Reply-To=%3C20131120114835.72ABA5DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-30-g937fd25">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Nov 20 12:48:35 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014731.html">[X2Go-Commits] page changed:	doc:deployment-stories:electronic-glovebox
+</A></li>
+        <LI>Next message: <A HREF="014733.html">[X2Go-Commits] page changed:	doc:deployment-stories:electronic-glovebox
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14732">[ date ]</a>
+              <a href="thread.html#14732">[ thread ]</a>
+              <a href="subject.html#14732">[ subject ]</a>
+              <a href="author.html#14732">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  937fd25f831c5a0e1a617eab132d8f416d5b36ee (commit)
+      from  7399e80bd8181c79b16d80a6c2213619dfe2ff87 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 937fd25f831c5a0e1a617eab132d8f416d5b36ee
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Nov 20 12:48:13 2013 +0100
+
+    Work around Debian bug #729373 during TCE creation. Replace alsa-utils init script and ALSA's utils.sh (for Debian wheezy+jessie chroots).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    4 +-
+ debian/x2gothinclient-chroot.install               |    1 +
+ .../patchsets/alsa-utils.wheezy/alsa-utils         |  209 ++++++++++++++++++++
+ .../patchsets/alsa-utils.wheezy/utils.sh           |  182 +++++++++++++++++
+ .../sbin/x2gothinclient_create                     |    7 +
+ 5 files changed, 401 insertions(+), 2 deletions(-)
+ create mode 100644 debian/x2gothinclient-chroot.install
+ create mode 100755 x2gothinclient-chroot/patchsets/alsa-utils.wheezy/alsa-utils
+ create mode 100644 x2gothinclient-chroot/patchsets/alsa-utils.wheezy/utils.sh
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 7d613da..5498d6c 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -15,8 +15,8 @@ x2gothinclient (1.1.0.1-0~x2go1) UNRELEASED; urgency=low
+       during thin client startup.
+     - Patch /etc/init.d/checkroot-bootclean.sh during TCE creation to
+       avoid failures when clean tmp files on the read-only NFS root-fs.
+-    - Work around Debian bug #729373 during TCE creation. Patch alsa-utils
+-      init script and ALSA's utils.sh.
++    - Work around Debian bug #729373 during TCE creation. Replace alsa-utils
++      init script and ALSA's utils.sh (for Debian wheezy+jessie chroots).
+     - Refrain from using &quot;~&lt;user&gt;&quot; when launching X2Go Client as it cannot
+       handle it, yet. Use &quot;~&quot; instead (handable by X2Go Client &gt;= 4.0.1.2).
+     - Tweak the /etc/os-release more comprehensively.
+diff --git a/debian/x2gothinclient-chroot.install b/debian/x2gothinclient-chroot.install
+new file mode 100644
+index 0000000..53435cc
+--- /dev/null
++++ b/debian/x2gothinclient-chroot.install
+@@ -0,0 +1 @@
++x2gothinclient-chroot/patchsets usr/share/x2go/tce/
+\ No newline at end of file
+diff --git a/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/alsa-utils b/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/alsa-utils
+new file mode 100755
+index 0000000..0dc8372
+--- /dev/null
++++ b/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/alsa-utils
+@@ -0,0 +1,209 @@
++#!/bin/sh
++#
++# alsa-utils initscript
++#
++### BEGIN INIT INFO
++# Provides:          alsa-utils
++# Required-Start:    $local_fs $remote_fs
++# Required-Stop:     $remote_fs
++# Default-Start:     S
++# Default-Stop:      0 1 6
++# Short-Description: Restore and store ALSA driver settings
++# Description:       This script stores and restores mixer levels on
++#                    shutdown and bootup.On sysv-rc systems: to
++#                    disable storing of mixer levels on shutdown,
++#                    remove /etc/rc[06].d/K50alsa-utils.  To disable
++#                    restoring of mixer levels on bootup, rename the
++#                    &quot;S50alsa-utils&quot; symbolic link in /etc/rcS.d/ to
++#                    &quot;K50alsa-utils&quot;.
++### END INIT INFO
++
++# Don't use set -e; check exit status instead
++
++# Exit silently if package is no longer installed
++[ -x /usr/sbin/alsactl ] || exit 0
++
++PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++MYNAME=/etc/init.d/alsa-utils
++export ALSACTLHOME=/var/run/alsa
++
++[ -d &quot;$ALSACTLHOME&quot; ] || mkdir -p &quot;$ALSACTLHOME&quot;
++
++. /lib/lsb/init-functions
++. /usr/share/alsa/utils.sh
++
++# $1 EXITSTATUS
++# [$2 MESSAGE]
++log_action_end_msg_and_exit()
++{
++	log_action_end_msg &quot;$1&quot; ${2:+&quot;$2&quot;}
++	exit $1
++}
++
++# $1 PROGRAM
++executable()
++{
++	# If which is not available then we must be running before
++	# /usr is mounted on a system that has which in /usr/bin/.
++	# Conclude that $1 is not executable.
++	[ -x /bin/which ] || [ -x /usr/bin/which ] || return 1
++	which &quot;$1&quot; &gt;/dev/null 2&gt;&amp;1
++}
++
++executable amixer || { echo &quot;${MYNAME}: Error: No amixer program available.&quot; &gt;&amp;2 ; exit 1 ; }
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++restore_levels()
++{
++	[ -f /var/lib/alsa/asound.state ] || return 1
++	CARD=&quot;$1&quot;
++	[ &quot;$1&quot; = all ] &amp;&amp; CARD=&quot;&quot;
++	# Assume that if alsactl prints a message on stderr
++	# then it failed somehow.  This works around the fact
++	# that alsactl doesn't return nonzero status when it
++	# can't restore settings for the card
++	if MSG=&quot;$(alsactl -E HOME=&quot;$ALSACTLHOME&quot; restore $CARD 2&gt;&amp;1 &gt;/dev/null)&quot; &amp;&amp; [ ! &quot;$MSG&quot; ] ; then
++		return 0
++	else
++		# Retry with the &quot;force&quot; option.  This restores more levels
++		# but it results in much longer error messages.
++		alsactl -F restore $CARD &gt;/dev/null 2&gt;&amp;1
++		log_action_cont_msg &quot;warning: 'alsactl -E HOME=&quot;$ALSACTLHOME&quot; restore${CARD:+ $CARD}' failed with error message '$MSG'&quot;
++		return 1
++	fi
++}
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++store_levels()
++{
++	CARD=&quot;$1&quot;
++	[ &quot;$1&quot; = all ] &amp;&amp; CARD=&quot;&quot;
++	if MSG=&quot;$(alsactl -E HOME=&quot;$ALSACTLHOME&quot; store $CARD 2&gt;&amp;1)&quot; ; then
++		sleep 1
++		return 0
++	else
++		log_action_cont_msg &quot;warning: 'alsactl store${CARD:+ $CARD}' failed with error message '$MSG'&quot;
++		return 1
++	fi
++}
++
++
++# $1 &lt;card ID&gt;
++mute_and_zero_levels_on_card()
++{
++	CARDOPT=&quot;-c $1&quot;
++	for CTL in \
++		Master \
++		PCM \
++		Synth \
++		CD \
++		Line \
++		Mic \
++		&quot;PCM,1&quot; \
++		Wave \
++		Music \
++		AC97 \
++		&quot;Master Digital&quot; \
++		DAC \
++		&quot;DAC,0&quot; \
++		&quot;DAC,1&quot; \
++		Headphone \
++		Speaker \
++		Playback
++	do
++		mute_and_zero_level &quot;$CTL&quot;
++	done
++#	for CTL in \
++#		&quot;Audigy Analog/Digital Output Jack&quot; \
++#		&quot;SB Live Analog/Digital Output Jack&quot;
++#	do
++#		switch_control &quot;$CTL&quot; off
++#	done
++	return 0
++}
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++mute_and_zero_levels()
++{
++	TTZML_RETURNSTATUS=0
++	case &quot;$1&quot; in
++	  all)
++		for CARD in $(echo_card_indices) ; do
++			mute_and_zero_levels_on_card &quot;$CARD&quot; || TTZML_RETURNSTATUS=1
++		done
++		;;
++	  *)
++		mute_and_zero_levels_on_card &quot;$1&quot; || TTZML_RETURNSTATUS=1
++		;;
++	esac
++	return $TTZML_RETURNSTATUS
++}
++
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++card_OK()
++{
++	[ &quot;$1&quot; ] || bugout
++	if [ &quot;$1&quot; = all ] ; then
++		[ -d /proc/asound ]
++		return $?
++	else
++		[ -d &quot;/proc/asound/card$1&quot; ] || [ -d &quot;/proc/asound/$1&quot; ]
++		return $?
++	fi
++}
++
++# If a card identifier is provided in $2 then regard it as an error
++# if that card is not present; otherwise don't regard it as an error.
++
++case &quot;$1&quot; in
++  start)
++	EXITSTATUS=0
++	TARGET_CARD=&quot;$2&quot;
++	case &quot;$TARGET_CARD&quot; in
++	  &quot;&quot;|all) TARGET_CARD=all ; log_action_begin_msg &quot;Setting up ALSA&quot; ;;
++	  *) log_action_begin_msg &quot;Setting up ALSA card ${TARGET_CARD}&quot; ;;
++	esac
++	card_OK &quot;$TARGET_CARD&quot; || log_action_end_msg_and_exit &quot;$( [ ! &quot;$2&quot; ] ; echo $? ; )&quot; &quot;none loaded&quot;
++	preinit_levels &quot;$TARGET_CARD&quot; || EXITSTATUS=1
++	if ! restore_levels &quot;$TARGET_CARD&quot; ; then
++		sanify_levels &quot;$TARGET_CARD&quot; || EXITSTATUS=1
++		restore_levels &quot;$TARGET_CARD&quot; &gt;/dev/null 2&gt;&amp;1 || :
++	fi
++	log_action_end_msg_and_exit &quot;$EXITSTATUS&quot;
++	;;
++  stop)
++	EXITSTATUS=0
++	TARGET_CARD=&quot;$2&quot;
++	case &quot;$TARGET_CARD&quot; in
++	  &quot;&quot;|all) TARGET_CARD=all ; log_action_begin_msg &quot;Shutting down ALSA&quot; ;;
++	  *) log_action_begin_msg &quot;Shutting down ALSA card ${TARGET_CARD}&quot; ;;
++	esac
++	card_OK &quot;$TARGET_CARD&quot; || log_action_end_msg_and_exit &quot;$( [ ! &quot;$2&quot; ] ; echo $? ; )&quot; &quot;none loaded&quot;
++	store_levels &quot;$TARGET_CARD&quot; || EXITSTATUS=1
++	#mute_and_zero_levels &quot;$TARGET_CARD&quot; || EXITSTATUS=1
++	log_action_end_msg_and_exit &quot;$EXITSTATUS&quot;
++	;;
++  restart|force-reload)
++	EXITSTATUS=0
++	$0 stop || EXITSTATUS=1
++	$0 start || EXITSTATUS=1
++	exit $EXITSTATUS
++	;;
++  reset)
++	TARGET_CARD=&quot;$2&quot;
++	case &quot;$TARGET_CARD&quot; in
++	  &quot;&quot;|all) TARGET_CARD=all ; log_action_begin_msg &quot;Resetting ALSA&quot; ;;
++	  *) log_action_begin_msg &quot;Resetting ALSA card ${TARGET_CARD}&quot; ;;
++	esac
++	card_OK &quot;$TARGET_CARD&quot; || log_action_end_msg_and_exit &quot;$( [ ! &quot;$2&quot; ] ; echo $? ; )&quot; &quot;none loaded&quot;
++	preinit_levels &quot;$TARGET_CARD&quot;
++	sanify_levels &quot;$TARGET_CARD&quot;
++	log_action_end_msg_and_exit &quot;$?&quot;
++	;;
++  *)
++	echo &quot;Usage: $MYNAME {start [CARD]|stop [CARD]|restart [CARD]|reset [CARD]}&quot; &gt;&amp;2
++	exit 3
++	;;
++esac
++
+diff --git a/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/utils.sh b/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/utils.sh
+new file mode 100644
+index 0000000..0d07caf
+--- /dev/null
++++ b/x2gothinclient-chroot/patchsets/alsa-utils.wheezy/utils.sh
+@@ -0,0 +1,182 @@
++# Shell snippet.
++
++bugout() { echo &quot;${MYNAME}: Programming error&quot; &gt;&amp;2 ; exit 123 ; }
++
++echo_card_indices()
++{
++	if [ -f /proc/asound/cards ] ; then
++		sed -n -e's/^[[:space:]]*\([0-7]\)[[:space:]].*/\1/p' /proc/asound/cards
++	fi
++}
++
++filter_amixer_output()
++{
++	sed \
++		-e '/Unable to find simple control/d' \
++		-e '/Unknown playback setup/d' \
++		-e '/^$/d'
++}
++
++# The following functions try to set many controls.
++# No card has all the controls and so some of the attempts are bound to fail.
++# Because of this, the functions can't return useful status values.
++
++# $1 &lt;control&gt;
++# $2 &lt;level&gt;
++# $CARDOPT
++unmute_and_set_level()
++{
++	{ [ &quot;$2&quot; ] &amp;&amp; [ &quot;$CARDOPT&quot; ] ; } || bugout
++	HOME=$ALSACTLHOME amixer $CARDOPT -q set &quot;$1&quot; &quot;$2&quot; unmute 2&gt;&amp;1 | filter_amixer_output || :
++	return 0
++}
++
++# $1 &lt;control&gt;
++# $CARDOPT
++mute_and_zero_level()
++{
++	{ [ &quot;$1&quot; ] &amp;&amp; [ &quot;$CARDOPT&quot; ] ; } || bugout
++	HOME=$ALSACTLHOME amixer $CARDOPT -q set &quot;$1&quot; &quot;0%&quot; mute 2&gt;&amp;1 | filter_amixer_output || :
++	return 0
++}
++
++# $1 &lt;control&gt;
++# $2 &quot;on&quot; | &quot;off&quot;
++# $CARDOPT
++switch_control()
++{
++	{ [ &quot;$2&quot; ] &amp;&amp; [ &quot;$CARDOPT&quot; ] ; } || bugout
++	HOME=$ALSACTLHOME amixer $CARDOPT -q set &quot;$1&quot; &quot;$2&quot; 2&gt;&amp;1 | filter_amixer_output || :
++	return 0
++}
++
++# $1 &lt;card ID&gt;
++sanify_levels_on_card()
++{
++	CARDOPT=&quot;-c $1&quot;
++
++	unmute_and_set_level &quot;Master&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;Master Mono&quot; &quot;80%&quot;   # See Bug#406047
++	unmute_and_set_level &quot;Master Digital&quot; &quot;80%&quot;   # E.g., cs4237B
++	unmute_and_set_level &quot;Playback&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;Headphone&quot; &quot;70%&quot;
++	unmute_and_set_level &quot;PCM&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;PCM,1&quot; &quot;80%&quot;   # E.g., ess1969
++	unmute_and_set_level &quot;DAC&quot; &quot;80%&quot;     # E.g., envy24, cs46xx
++	unmute_and_set_level &quot;DAC,0&quot; &quot;80%&quot;   # E.g., envy24
++	unmute_and_set_level &quot;DAC,1&quot; &quot;80%&quot;   # E.g., envy24
++	unmute_and_set_level &quot;Synth&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;CD&quot; &quot;80%&quot;
++
++	mute_and_zero_level &quot;Mic&quot;
++	mute_and_zero_level &quot;IEC958&quot;         # Ubuntu #19648
++
++	# Intel P4P800-MX  (Ubuntu bug #5813)
++	switch_control &quot;Master Playback Switch&quot; on
++	switch_control &quot;Master Surround&quot; on
++
++	# Trident/YMFPCI/emu10k1:
++	unmute_and_set_level &quot;Wave&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;Music&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;AC97&quot; &quot;80%&quot;
++
++	# DRC:
++	unmute_and_set_level &quot;Dynamic Range Compression&quot; &quot;80%&quot;
++
++	# Required for HDA Intel (hda-intel):
++	unmute_and_set_level &quot;Front&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;Master Front&quot; &quot;80%&quot;
++
++	# Required for SB Live 7.1/24-bit (ca0106):
++	unmute_and_set_level &quot;Analog Front&quot; &quot;80%&quot;
++
++	# Required at least for Via 823x hardware on DFI K8M800-MLVF Motherboard with kernels 2.6.10-3/4 (see ubuntu #7286):
++	switch_control &quot;IEC958 Capture Monitor&quot; off
++
++	# Required for hardware allowing toggles for AC97 through IEC958,
++	#  valid values are 0, 1, 2, 3. Needs to be set to 0 for PCM1.
++	unmute_and_set_level &quot;IEC958 Playback AC97-SPSA&quot; &quot;0&quot;
++
++	# Required for newer Via hardware (see Ubuntu #31784)
++	unmute_and_set_level &quot;VIA DXS,0&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;VIA DXS,1&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;VIA DXS,2&quot; &quot;80%&quot;
++	unmute_and_set_level &quot;VIA DXS,3&quot; &quot;80%&quot;
++
++	# Required on some notebooks with ICH4:
++	switch_control &quot;Headphone Jack Sense&quot; off
++	switch_control &quot;Line Jack Sense&quot; off
++
++	# Some machines need one or more of these to be on;
++	# others need one or more of these to be off:
++	#
++	# switch_control &quot;External Amplifier&quot; on
++	# switch_control &quot;Audigy Analog/Digital Output Jack&quot; on
++	# switch_control &quot;SB Live Analog/Digital Output Jack&quot; on
++	
++	# D1984 -- Thinkpad T61/X61
++	switch_control &quot;Speaker&quot; on
++	switch_control &quot;Headphone&quot; on
++
++	# HDA-Intel w/ &quot;Digital&quot; capture mixer (See Ubuntu #193823)
++	unmute_and_set_level &quot;Digital&quot; &quot;80%&quot;
++
++	# On MacBookPro5,3 and later models (See Bug#597791)
++	unmute_and_set_level &quot;Front Speaker&quot; &quot;80%&quot;
++	# On MacBook5,2 models (See Bug#602973)
++	unmute_and_set_level &quot;LFE&quot; &quot;80%&quot;
++
++	# On Intel 82801H (See Bug#603550)
++	unmute_and_set_level &quot;Speaker&quot; &quot;80%&quot;
++
++	return 0
++}
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++sanify_levels()
++{
++	TTSDML_RETURNSTATUS=0
++	case &quot;$1&quot; in
++	  all)
++		for CARD in $(echo_card_indices) ; do
++			sanify_levels_on_card &quot;$CARD&quot; || TTSDML_RETURNSTATUS=1
++		done
++		;;
++	  *)
++		sanify_levels_on_card &quot;$1&quot; || TTSDML_RETURNSTATUS=1
++		;;
++	esac
++	return $TTSDML_RETURNSTATUS
++}
++
++# $1 &lt;card ID&gt;
++preinit_levels_on_card()
++{
++	CARDOPT=&quot;-c $1&quot;
++
++	# Silly dance to activate internal speakers by default on PowerMac
++	# Snapper and Tumbler
++	id=$(cat /proc/asound/card$1/id 2&gt;/dev/null)
++	if [ &quot;$id&quot; = &quot;Snapper&quot; -o &quot;$id&quot; = &quot;Tumbler&quot; ]; then
++		switch_control &quot;Auto Mute&quot; off
++		switch_control &quot;PC Speaker&quot; off
++		switch_control &quot;Auto Mute&quot; on
++	fi
++}
++
++# $1 &lt;card ID&gt; | &quot;all&quot;
++preinit_levels()
++{
++	TTSDML_RETURNSTATUS=0
++	case &quot;$1&quot; in
++	  all)
++		for CARD in $(echo_card_indices) ; do
++			preinit_levels_on_card &quot;$CARD&quot; || TTSDML_RETURNSTATUS=1
++		done
++		;;
++	  *)
++		preinit_levels_on_card &quot;$1&quot; || TTSDML_RETURNSTATUS=1
++		;;
++	esac
++	return $TTSDML_RETURNSTATUS
++}
+diff --git a/x2gothinclientmanagement/sbin/x2gothinclient_create b/x2gothinclientmanagement/sbin/x2gothinclient_create
+index c59e062..b363f1f 100755
+--- a/x2gothinclientmanagement/sbin/x2gothinclient_create
++++ b/x2gothinclientmanagement/sbin/x2gothinclient_create
+@@ -213,6 +213,13 @@ fi
+ [ \$? -eq 0 ] &amp;&amp; test -e /etc/init.d/alsa-utils &amp;&amp; sed &quot;s/^ALSACTLHOME=/export ALSACTLHOME=/&quot; -i /etc/init.d/alsa-utils || true
+ [ \$? -eq 0 ] &amp;&amp; test -e /usr/share/alsa/utils.sh &amp;&amp; sed &quot;s/amixer \\\$CARDOPT/HOME=\\\$ALSACTLHOME amixer \\\$CARDOPT/g&quot; -i /usr/share/alsa/utils.sh || true
+ 
++###
++### apply patchsets if provided
++###
++# we will use our own alsa-utils init script for Debian wheezy chroots (very similar to the version found in Debian jessie): work around Debian bug #729373.
++[ \$? -eq 0 ] &amp;&amp; if [ &quot;\$TC_DISTRO_CODENAME&quot; == &quot;wheezy&quot; ]; then cp /usr/share/x2go/tce/patchsets/alsa-utils.wheezy/alsa-utils /etc/init.d/; cp /usr/share/x2go/tce/patchsets/alsa-utils.wheezy/utils.sh /usr/share/alsa/; fi
++[ \$? -eq 0 ] &amp;&amp; if [ &quot;\$TC_DISTRO_CODENAME&quot; == &quot;jessie&quot; ]; then cp /usr/share/x2go/tce/patchsets/alsa-utils.wheezy/alsa-utils /etc/init.d/; cp /usr/share/x2go/tce/patchsets/alsa-utils.wheezy/utils.sh /usr/share/alsa/; fi
++
+ # update all (mostly only one) initrd.img files
+ [ \$? -eq 0 ] &amp;&amp; update-initramfs -u -v -k all
+ 
+
+
+hooks/post-receive
+-- 
+x2gothinclient.git (X2Go Thin Client Environment)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gothinclient.git&quot; (X2Go Thin Client Environment).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014731.html">[X2Go-Commits] page changed:	doc:deployment-stories:electronic-glovebox
+</A></li>
+	<LI>Next message: <A HREF="014733.html">[X2Go-Commits] page changed:	doc:deployment-stories:electronic-glovebox
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14732">[ date ]</a>
+              <a href="thread.html#14732">[ thread ]</a>
+              <a href="subject.html#14732">[ subject ]</a>
+              <a href="author.html#14732">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

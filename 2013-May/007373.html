@@ -1,0 +1,1332 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1be2f404a96226fd28c4a39272b8eaf24987dd8d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091be2f404a96226fd28c4a39272b8eaf24987dd8d&In-Reply-To=%3C20130519110428.150D65DB3F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007365.html">
+   <LINK REL="Next"  HREF="007323.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1be2f404a96226fd28c4a39272b8eaf24987dd8d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091be2f404a96226fd28c4a39272b8eaf24987dd8d&In-Reply-To=%3C20130519110428.150D65DB3F%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	1be2f404a96226fd28c4a39272b8eaf24987dd8d">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:28 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007365.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	844c16a5ba5c1a80b0284a6c9a8ab2d0e7548a07
+</A></li>
+        <LI>Next message: <A HREF="007323.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	f39126eab193278cfe3542ead1350c95826d5cd7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7373">[ date ]</a>
+              <a href="thread.html#7373">[ thread ]</a>
+              <a href="subject.html#7373">[ subject ]</a>
+              <a href="author.html#7373">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  1be2f404a96226fd28c4a39272b8eaf24987dd8d (commit)
+      from  70d45f5895ec8ca79f3b6703d9e1e30997d39c51 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ Makefile                                          |   16 +-
+ Makefile.PL                                       |    9 +
+ Makefile =&gt; X2Go/Broker.pm                        |   57 +-
+ etc/x2gobroker-ldap.cfg =&gt; X2Go/Broker/Common.pm  |   33 +-
+ lib/x2gobroker-ldap.pm =&gt; X2Go/Broker/LDAP.pm     |    0
+ lib/x2gobroker-simple.pm =&gt; X2Go/Broker/Simple.pm |    0
+ X2Go/Broker/ZeroConf.pm                           |  177 ++++++
+ cgi/x2gobroker.cgi                                |   27 +-
+ debian/control                                    |   29 +
+ debian/rules                                      |    7 +-
+ debian/x2gobroker-ldap.install                    |    1 -
+ debian/x2gobroker-simple.install                  |    1 -
+ debian/x2gobroker-zeroconf.install                |    1 -
+ lib/x2gobroker-agent.pl                           |   18 +-
+ lib/x2gobroker-zeroconf.pm                        |  632 ---------------------
+ 15 files changed, 319 insertions(+), 689 deletions(-)
+ create mode 100644 Makefile.PL
+ copy Makefile =&gt; X2Go/Broker.pm (57%)
+ mode change 100755 =&gt; 100644
+ copy etc/x2gobroker-ldap.cfg =&gt; X2Go/Broker/Common.pm (63%)
+ rename lib/x2gobroker-ldap.pm =&gt; X2Go/Broker/LDAP.pm (100%)
+ rename lib/x2gobroker-simple.pm =&gt; X2Go/Broker/Simple.pm (100%)
+ create mode 100644 X2Go/Broker/ZeroConf.pm
+ delete mode 100644 debian/x2gobroker-zeroconf.install
+ delete mode 100644 lib/x2gobroker-zeroconf.pm
+
+The diff of changes is:
+diff --git a/Makefile b/Makefile
+index 0a107b1..0cf6a8b 100755
+--- a/Makefile
++++ b/Makefile
+@@ -43,6 +43,8 @@ BIN_SCRIPTS=$(shell cd bin &amp;&amp; echo *)
+ SBIN_SCRIPTS=$(shell cd sbin &amp;&amp; echo *)
+ LIB_FILES=$(shell cd lib &amp;&amp; echo *)
+ 
++PERL ?= /usr/bin/perl
++
+ all: clean build
+ 
+ build: build-arch build-indep
+@@ -53,9 +55,21 @@ build_setuidwrappers:
+ 	gcc -fPIE -pie -o lib/x2gobroker-agent src/x2gobroker-agent.c
+ 
+ build-indep:
++	$(PERL) Makefile.PL INSTALLDIRS=vendor
++	$(MAKE) -f Makefile.perl
++
++distclean: clean
+ 
+-clean: clean_arch
++clean: clean_arch clean_indep
+ 
+ clean_arch:
+ 	rm -f lib/x2gobroker-agent
+ 
++clean_indep:
++	-make -f Makefile.perl realclean
++
++test:
++	make -f Makefile.perl test
++
++install:
++	make -f Makefile.perl install
+diff --git a/Makefile.PL b/Makefile.PL
+new file mode 100644
+index 0000000..1b63b56
+--- /dev/null
++++ b/Makefile.PL
+@@ -0,0 +1,9 @@
++#!/usr/bin/perl
++
++use ExtUtils::MakeMaker;
++
++WriteMakefile(FIRST_MAKEFILE =&gt; 'Makefile.perl',
++	      PMLIBDIRS =&gt; ['X2Go'],
++	      NAME =&gt; '',
++	      VERSION =&gt; '0.0.0.1',
++	     );
+diff --git a/Makefile b/X2Go/Broker.pm
+old mode 100755
+new mode 100644
+similarity index 57%
+copy from Makefile
+copy to X2Go/Broker.pm
+index 0a107b1..62d0da0
+--- a/Makefile
++++ b/X2Go/Broker.pm
+@@ -1,5 +1,3 @@
+-#!/usr/bin/make -f
+-
+ # This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
+ # Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+ # Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+@@ -20,42 +18,43 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-SRC_DIR=$(CURDIR)
+-SHELL=/bin/bash
++package X2Go::Broker;
++
++=head1 NAME
++
++X2Go::Broker - X2GO Session Broker modules for Perl
++
++=head1 DESCRIPTION
++
++An X2Go Session Broker allows to manage X2Go server farms TTW (using
++https protocol).
++
++=head1 VERSION
++
++Version 0.0.0.1
+ 
+-INSTALL_DIR=install -d -o root -g root -m 755
+-INSTALL_FILE=install -o root -g root -m 644
+-INSTALL_PROGRAM=install -o root -g root -m 755
++=head1 AUTHOR
+ 
+-RM_FILE=rm -f
+-RM_DIR=rmdir -p --ignore-fail-on-non-empty
++Oleksandr Shneyder, C&lt;&lt; &lt;oleksandr.shneyder at obviously-nice.de&gt; &gt;&gt;
+ 
+-DESTDIR=
+-PREFIX=/usr/local
+-ETCDIR=/etc/x2go
+-BINDIR=$(PREFIX)/bin
+-SBINDIR=$(PREFIX)/sbin
+-LIBDIR=$(PREFIX)/lib/x2go
+-MANDIR=$(PREFIX)/share/man
+-SHAREDIR=$(PREFIX)/share/x2go
++Mike Gabriel, C&lt;&lt; &lt;mike.gabriel at das-netzwerkteam.de&gt; &gt;&gt;
+ 
+-BIN_SCRIPTS=$(shell cd bin &amp;&amp; echo *)
+-SBIN_SCRIPTS=$(shell cd sbin &amp;&amp; echo *)
+-LIB_FILES=$(shell cd lib &amp;&amp; echo *)
++=head1 LICENSE AND COPYRIGHT
+ 
+-all: clean build
++Copyright 2011-2012, Oleksandr Shneyder, C&lt;&lt; &lt;oleksandr.shneyder at obviously-nice.de&gt; &gt;&gt;
+ 
+-build: build-arch build-indep
++Copyright 2012, Mike Gabriel, C&lt;&lt; &lt;mike.gabriel at das-netzwerkteam.de&gt; &gt;&gt;
+ 
+-build-arch: build_setuidwrappers
++This program is free software; you can redistribute it and/or modify it
++under the terms of the AGPL-3+ license.
+ 
+-build_setuidwrappers:
+-	gcc -fPIE -pie -o lib/x2gobroker-agent src/x2gobroker-agent.c
++=cut
+ 
+-build-indep:
++use strict;
+ 
+-clean: clean_arch
++### for debugging purposes...
++#use Data::Dumper;
+ 
+-clean_arch:
+-	rm -f lib/x2gobroker-agent
++use base 'Exporter';
++our @EXPORT = ( );
+ 
+diff --git a/etc/x2gobroker-ldap.cfg b/X2Go/Broker/Common.pm
+similarity index 63%
+copy from etc/x2gobroker-ldap.cfg
+copy to X2Go/Broker/Common.pm
+index fe8e9bd..a81d85c 100644
+--- a/etc/x2gobroker-ldap.cfg
++++ b/X2Go/Broker/Common.pm
+@@ -18,7 +18,32 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-ldapuri=<A HREF="ldap://&lt;ldapmaster.localdomain">ldap://&lt;ldapmaster.localdomain</A>&gt;
+-#replica=<A HREF="ldapi:///">ldapi:///</A>
+-binddn=&quot;cn=admin,dc=example,dc=net&quot;
+-bindpw=&quot;&lt;very-secret&gt;&quot;
++package X2Go::Broker::Common;
++
++use strict;
++
++### for debugging purposes...
++#use Data::Dumper;
++
++use base 'Exporter';
++our @EXPORT = ('ExecBrokerAgent', );
++
++###
++### public functions
++###
++
++sub ExecBrokerAgent
++{
++	my ($user, $hostname, $cmd)=@_;
++	my $res=`ssh -o ConnectTimeout=15 -o UserKnownHostsFile=/etc/x2go/x2gobroker/ts_known_hosts x2gobroker\@$hostname -i /etc/x2go/x2gobroker/id_x2gobroker_dsa \&quot;/usr/lib/x2go/broker/x2gobroker-agent $user $cmd 2&gt;/dev/null\&quot;`;
++	my @rarr=split(&quot;\n&quot;,$res);
++	my $stat;
++	if( @rarr[0] eq 'OK' )
++	{
++		$stat=1;
++	} else {
++	$stat=0;
++	}
++	shift(@rarr);
++	return($stat,join(&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at rarr</A>));
++}
+diff --git a/lib/x2gobroker-ldap.pm b/X2Go/Broker/LDAP.pm
+similarity index 100%
+rename from lib/x2gobroker-ldap.pm
+rename to X2Go/Broker/LDAP.pm
+diff --git a/lib/x2gobroker-simple.pm b/X2Go/Broker/Simple.pm
+similarity index 100%
+rename from lib/x2gobroker-simple.pm
+rename to X2Go/Broker/Simple.pm
+diff --git a/X2Go/Broker/ZeroConf.pm b/X2Go/Broker/ZeroConf.pm
+new file mode 100644
+index 0000000..d5c66a4
+--- /dev/null
++++ b/X2Go/Broker/ZeroConf.pm
+@@ -0,0 +1,177 @@
++# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
++# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++package X2Go::Broker::ZeroConf;
++
++use strict;
++use Sys:Hostname;
++use Authen::PAM;
++use Authen::Simple::PAM;
++#use Data::Dumper;
++use X2Go::Broker::Common;
++
++### for debugging purposes...
++#use Data::Dumper;
++
++use base 'Exporter';
++our @EXPORT = ('CheckAccess', 'ListSessions', 'SelectSession', 'SetPass', );
++
++my $hostname = hostname;
++
++###
++### public functions, available to broker cgi
++###
++
++### exported function ###
++sub CheckAccess
++{
++	# zeroconf broker: use PAM to perform authentication against
++	#                  the local PAM login module
++	my ($user,$pass)=@_;
++	my $pam = Authen::Simple::PAM-&gt;new(service =&gt; 'login');
++	if ( $pam-&gt;authenticate( $username, $password ) ) {
++		# successfull authentication
++		return 0 
++	}
++	return 1;
++}
++
++### exported function ###
++sub SetPass
++{
++	###
++	### the broker API in X2Go Client currently requests a password change
++	### without verifying the old password, this needs to be fixed...
++	###
++
++	my ($username, $oldpassword, $newpassword)=@_;
++
++	# zeroconf broker: use PAM to initiate a local passwd change
++	my $service = &quot;passwd&quot;;
++	ref($pamh = new Authen::PAM($service, $username, \&amp;passwd_conv_func)) ||
++	    die &quot;Error code $pamh during PAM init!&quot;;
++	$state = 0;
++	$res = $pamh-&gt;pam_chauthtok;
++	die $pamh-&gt;pam_strerror($res) unless $res == PAM_SUCCESS();
++
++	print &quot;\n&lt;br&gt;CHANGING PASS OK&lt;br&gt;\n&quot;;
++}
++
++### exported function ###
++sub SelectSession
++{
++	my ($user, $sid)=@_;
++	my @words=split(&quot;\@&quot;,$sid);
++	###
++	### FIXME: why the heck is the $sid format &lt;host&gt;@&lt;session&gt;,
++	###        &lt;session&gt;@&lt;host&gt; would make much more sense!!! (for
++	###        the human eye...)
++	###
++	my $sess_id=@words[1];
++	my $host=@words[0];
++	check_and_start_session($user, $host, $sess_id);
++}
++
++### exported function ###
++sub ListSessions
++{
++	# print Dumper($message-&gt;entries);
++	print &quot;START_USER_SESSIONS&lt;br&gt;&quot;;
++	my($status,$sessions)=CallBrokerAgent($hostname, $user, 'listsessions');
++	if ( $status )
++	{
++		if($sessions)
++		{
++			my @sinfo = split(&quot;\\|&quot;,$sessions);
++			my $session_status = @sinfo[4];
++			my $sid = @sinfo[1];
++			print &quot;&lt;br&gt;[$hostname\@$sid]&lt;br&gt;&quot;;
++			print &quot;status=$session_status&lt;br&gt;&quot;;
++		} else {
++			print &quot;&lt;br&gt;[$hostname]&lt;br&gt;&quot;;
++		}
++	}
++	print &quot;END_USER_SESSIONS&lt;br&gt;&quot;;
++}
++
++###
++### private functions, not available to broker cgi
++###
++
++# helper function for SetPass
++sub passwd_conv_func {
++	my @res;
++	while ( @_ ) {
++		my $code = shift;
++		my $msg = shift;
++		my $ans = &quot;&quot;;
++
++		$ans = $username if ( $code == PAM_PROMPT_ECHO_ON() );
++		if ( $code == PAM_PROMPT_ECHO_OFF() ) {
++			$ans = $oldpassword if ($state == 0);
++			$ans = $newpassword if ($state == 1);
++			$ans = $newpassword if ($state == 2);
++			$state++;
++		}
++		push @res, (PAM_SUCCESS(),$ans);
++	}
++	push @res, PAM_SUCCESS();
++	return @res;
++}
++
++sub check_and_start_session
++{
++	my ($uid, $host, $sid) = @_;
++	my ($status, $sessions)=ExecRemoteBroker($user, $hostname, 'listsessions');
++	if ( ! $status )
++	{
++		print &quot;ERROR: X2Go server not available\n&quot;;
++		return;
++	}
++	my $running_sessions = 0;
++	if ( $sessions )
++	{
++		# suspend all running sessions first...
++		my @sinfo = split(&quot;\\|&quot;,$sessions);
++		my $session_status = @sinfo[4];
++		my $session_server = @sinfo[3];
++		$sid=@sinfo[1];
++		if( $session_status eq 'R' )
++		{
++			$running = 1;
++			my $str;
++			($status, $str) = ExecRemoteBroker($uid, $hostname, &quot;suspend $sid&quot;);
++			$sessions =~ s/\|R\|/\|S\|/;
++		}
++		if( $session_status eq 'S' )
++		{
++			$running = 1;
++		}
++	}
++
++	print &quot;SERVER:$hostname:$port\n&quot;;
++	if($running)
++	{
++		# use first session in session list...
++		print &quot;SESSION_INFO:&quot;.(split(&quot;\n&quot;,$sessions))[0].&quot;\n&quot;;
++	}
++}
++
++1;
+diff --git a/cgi/x2gobroker.cgi b/cgi/x2gobroker.cgi
+index fd62a62..06ed66b 100755
+--- a/cgi/x2gobroker.cgi
++++ b/cgi/x2gobroker.cgi
+@@ -28,14 +28,17 @@ my $broker_backend ~= s/x2gobroker-(.*)\.cgi/\1/
+ 
+ use lib &quot;/usr/lib/x2go/&quot;;
+ use lib &quot;/usr/lib/x2go/broker/&quot;;
+-use x2gobroker-$broker_backend;
++
++switch ( $broker_backend ) {
++	case 'zeroconf' { use X2Go::Broker::ZeroConf qw(CheckAccess SetPass SelectSession ListSessions) }
++	case 'simple' { use X2Go::Broker::Simple qw(CheckAccess SetPass SelectSession ListSessions) }
++	case 'ldap' { use X2Go::Broker::LDAP qw(CheckAccess SetPass SelectSession ListSessions) }
++}
+ 
+ use CGI;
+ use CGI::Carp qw(fatalsToBrowser);
+ 
+ my $cgi = new CGI;
+-
+-
+ my @formValues = $cgi-&gt;param();
+ 
+ print $cgi-&gt;header(
+@@ -49,11 +52,6 @@ print $cgi-&gt;header(
+         -meta    =&gt;{'keywords'   =&gt;'X2Go', 'description'=&gt;'X2Go Session Broker'}
+       );
+ 
+-#open (FL, &quot;&gt;&gt;/tmp/x2gobroker.log&quot;);
+-#print FL `date`;
+-#print FL &quot;called method &quot;.$cgi-&gt;param('task').&quot; from &quot;.$ENV{REMOTE_ADDR}.&quot;\n&quot;;
+-#close (FL);
+-
+ if($cgi-&gt;param('task') eq 'testcon')
+ {
+ 	for ( my $i=0;$i&lt;2*1024*1024;$i++ )
+@@ -63,10 +61,9 @@ if($cgi-&gt;param('task') eq 'testcon')
+ 	print $cgi-&gt;end_html();
+ }
+ 
+-
+-if ( ! checkAccess($cgi-&gt;param('user'), $cgi-&gt;param('password'), $cgi-&gt;param('authid')) == 1 )
++if ( ! CheckAccess($cgi-&gt;param('user'), $cgi-&gt;param('password'), $cgi-&gt;param('authid')) == 1 )
+ {
+-	printNoAccess();
++	print_no_access();
+ 	print $cgi-&gt;end_html();
+ 	exit (0);
+ }
+@@ -76,24 +73,24 @@ $cgi-&gt;strong('Access granted');
+ 
+ if ($cgi-&gt;param('task') eq 'listsessions')
+ {
+-	listSessions($cgi-&gt;param('user'));
++	ListSessions($cgi-&gt;param('user'));
+ }
+ 
+ if ($cgi-&gt;param('task') eq 'selectsession')
+ {
+-	selectSession($cgi-&gt;param('user'), $cgi-&gt;param('sid'));
++	SelectSession($cgi-&gt;param('user'), $cgi-&gt;param('sid'));
+ }
+ 
+ if ($cgi-&gt;param('task') eq 'setpass')
+ {
+-	setPass($cgi-&gt;param('user'), $cgi-&gt;param('newpass'));
++	SetPass($cgi-&gt;param('user'), $cgi-&gt;param('newpass'));
+ }
+ 
+ $cgi-&gt;hr(),
+ $cgi-&gt;end_form();
+ print $cgi-&gt;end_html();
+ 
+-sub printNoAccess 
++sub print_no_access
+ {
+ 	print $cgi-&gt;start_form(),
+ 	$cgi-&gt;hr(),
+diff --git a/debian/control b/debian/control
+index 10dc11a..85c15df 100644
+--- a/debian/control
++++ b/debian/control
+@@ -8,8 +8,37 @@ Uploaders:
+ Build-Depends:
+  debhelper (&gt;= 7.0.50~),
+  cdbs (&gt;= 0.4.90~),
++ dpkg-dev (&gt;= 1.16.1~),
+ Standards-Version: 3.9.3
+ 
++Package: libx2go-broker-perl
++Architecture: all
++Section: perl
++Depends:
++ ${misc:Depends},
++ ${perl:Depends},
++Description: X2Go http(s) based session broker (Perl modules)
++ X2Go is a serverbased computing environment with
++    - session resuming
++    - low bandwidth support
++    - LDAP support
++    - client side mass storage mounting support
++    - client side printing support
++    - audio support
++    - authentication by smartcard and USB stick
++ .
++ The session broker is a server tool for X2Go that
++ tells your X2Go Client application in a terminal
++ server cluster what servers and session types are
++ most appropriate for the user in front of the
++ X2Go terminal.
++ .
++ A session broker is most useful in load balanced
++ X2Go server farms.
++ .
++ This package contains the related Perl modules needed
++ by the X2Go Session Broker scripts.
++
+ Package: x2gobroker-common
+ Architecture: all
+ Depends:
+diff --git a/debian/rules b/debian/rules
+index 82087a5..8b53e5a 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -21,5 +21,8 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+ export DEB_CFLAGS_MAINT_APPEND = -Wall
+ include /usr/share/dpkg/buildflags.mk
+ 
+-include /usr/share/cdbs/1/class/makefile.mk
+-include /usr/share/cdbs/1/rules/debhelper.mk
+\ No newline at end of file
++DEB_PERL_PACKAGES=libx2go-broker-perl
++DEB_PERL_CLEAN_TARGET=realclean
++include /usr/share/cdbs/1/class/perl-makemaker.mk
++include /usr/share/cdbs/1/rules/debhelper.mk
++
+diff --git a/debian/x2gobroker-ldap.install b/debian/x2gobroker-ldap.install
+index 71e503b..c35da81 100644
+--- a/debian/x2gobroker-ldap.install
++++ b/debian/x2gobroker-ldap.install
+@@ -1,2 +1 @@
+ etc/x2gobroker-ldap.cfg etc/x2go/
+-lib/x2gobroker-ldap.pm usr/lib/x2go/broker/
+diff --git a/debian/x2gobroker-simple.install b/debian/x2gobroker-simple.install
+index 4313377..258c187 100644
+--- a/debian/x2gobroker-simple.install
++++ b/debian/x2gobroker-simple.install
+@@ -1,2 +1 @@
+ etc/x2gobroker-simple.cfg etc/x2go/
+-lib/x2gobroker-simple.pm usr/lib/x2go/broker/
+diff --git a/debian/x2gobroker-zeroconf.install b/debian/x2gobroker-zeroconf.install
+deleted file mode 100644
+index ea6bbbb..0000000
+--- a/debian/x2gobroker-zeroconf.install
++++ /dev/null
+@@ -1 +0,0 @@
+-lib/x2gobroker-zeroconf.pm usr/lib/x2go/broker/
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index 0bac8de..be9145c 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -26,11 +26,20 @@ sub initUser
+ {
+ 	my ($user, $uid, $gid, $home)=@_;
+ 	if (! -d &quot;$home&quot;)
++	###
++	### FIXME: it should no be our job to create homes...!!!
++	###        Use pam_mkhomedir.so or similar or just have a
++	###        genuine system administration tool... (Mike)
++	###
+ 	{
+ 		mkdir (&quot;$home&quot;, 0700);
+ 		chown ($uid, $gid, $home);
+ 	}
+ 	if (! -e &quot;$home/.x2go/sqlpass&quot;)
++	###
++	### FIXME: This code block will fail on most NFS mounted shares
++	###        and esp. on those mounted via NFSv4+Krb. (Mike)
++	###
+ 	{
+ 		open my $save_out, &quot;&gt;&amp;STDOUT&quot;;
+ 		close (STDOUT);
+@@ -41,6 +50,11 @@ sub initUser
+ 
+ sub createKey
+ {
++	###
++	### FIXME: This bit of code look dangerous... My
++	###        authorized_keys file is starting to get
++	###        scared... (Mike)
++	###
+ 	my ($uid, $gid, $home)=@_;
+ 	if (! -d &quot;$home/.ssh&quot;)
+ 	{
+@@ -69,7 +83,7 @@ $ENV{'PATH'} = '/bin:/usr/bin';
+ my $username=shift or die;
+ my $mode=shift or die;
+ 
+-my  ($name,$passwd,$uid,$gid, $quota,$comment,$gcos,$home,$shell,$expire) = getpwnam($username);
++my  ($name, $passwd, $uid, $gid, $quota, $comment, $gcos, $home, $shell, $expire) = getpwnam($username);
+ 
+ if($uid &lt; 1000)
+ {
+@@ -110,5 +124,3 @@ if($mode eq 'ping')
+ {
+ 	print &quot;OK\n&quot;;
+ }
+-
+-
+diff --git a/lib/x2gobroker-zeroconf.pm b/lib/x2gobroker-zeroconf.pm
+deleted file mode 100644
+index fae529a..0000000
+--- a/lib/x2gobroker-zeroconf.pm
++++ /dev/null
+@@ -1,632 +0,0 @@
+-# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
+-# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+-# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+-# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+-#
+-# X2Go Session Broker is free software; you can redistribute it and/or modify
+-# it under the terms of the GNU Affero General Public License as published by
+-# the Free Software Foundation; either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# X2Go Session Broker is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU Affero General Public License for more details.
+-#
+-# You should have received a copy of the GNU Affero General Public License
+-# along with this program; if not, write to the
+-# Free Software Foundation, Inc.,
+-# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+-
+-package x2gobroker-simple;
+-
+-use strict;
+-use Config::Simple;
+-use Crypt::SaltedHash;
+-use MIME::Base64;
+-use Data::Dumper;
+-
+-
+-my $cfg=new Config::Simple(syntax=&gt;'ini');
+-$cfg-&gt;read(&quot;/etc/x2go/x2gobroker-simple.cfg&quot;);
+-my $ldapuri=$cfg-&gt;param('ldapuri');
+-my $replica=$cfg-&gt;param('replica');
+-my $binddn=$cfg-&gt;param('binddn');
+-my $bindpw=$cfg-&gt;param('bindpw');
+-
+-use base 'Exporter';
+-our @EXPORT = ('checkAccess', 'listSessions', 'selectSession', 'setPass');
+-
+-sub getBase
+-###
+-### FIXME: provide that in /etc/x2go/x2gobroker-simple.cfg
+-### FIXME: put the pid of this process in the lock files
+-{
+-	my $login=shift;
+-	$login=~s/cn=ldapadmin,//;
+-	return $login;
+-}
+-
+-sub initLdap
+-###
+-### FIXME: lock files have to be in /run or /var/run...
+-###
+-{
+-	my $masterlocked=0;
+-	my $replicalocked=0;
+-	if ( ( -e &quot;/etc/x2go/x2gobroker/masterldap.lock&quot;) &amp;&amp; ( -e &quot;/etc/x2go/x2gobroker/replicaldap.lock&quot; ) )
+-	{
+-		die &quot;Can't connect to LDAP server&quot;;
+-	}
+-	if ( -e &quot;/etc/x2go/x2gobroker/replicaldap.lock&quot; )
+-	{
+-	$masterlocked=1;
+-		my ($ldap,$error)=initLDAPServer( $ldapuri );
+-		if( ! $ldap )
+-		{
+-			`touch /etc/x2go/x2gobroker/masterldap.lock`;
+-			die &quot;Can't connect to LDAP server&quot;;
+-		}
+-		return $ldap;
+-	}
+-	if( -e &quot;/etc/x2go/x2gobroker/masterldap.lock&quot; )
+-	{
+-		$replicalocked=1;
+-		my ($ldap,$error)=initLDAPServer( $replica ); 
+-		if ( ! $ldap )
+-		{
+-			`touch /etc/x2go/x2gobroker/replicaldap.lock`;
+-			die &quot;Can't connect to LDAP server&quot;;
+-		}
+-		return $ldap;
+-	}
+-	if( ! int(rand(2)) )
+-	{
+-		my ($ldap,$error)=initLDAPServer( $ldapuri ); 
+-		if( ! $ldap )
+-		{
+-			`touch /etc/x2go/x2gobroker/masterldap.lock`;
+-			return initLdap();
+-		}
+-		return $ldap;
+-	} else {
+-		my ($ldap,$error)=initLDAPServer( $replica );
+-		if(!$ldap)
+-		{
+-			`touch /etc/x2go/x2gobroker/replicaldap.lock`;
+-			return initLdap();
+-		}
+-		return $ldap;
+-	}
+-}
+-
+-sub initMasterLdap
+-{
+-	if(-e &quot;/etc/x2go/x2gobroker/masterldap.lock&quot;)
+-	{
+-		die &quot;Master LDAP server is down\n&quot;;
+-	}
+-	my ($ldap,$error)=initLDAPServer( $ldapuri );
+-	if( ! $ldap )
+-	{
+-		`touch /etc/x2go/x2gobroker/masterldap.lock`;
+-		die $error;
+-	}
+-	return $ldap;
+-}
+-
+-sub initLDAPServer
+-{
+-	my $url=shift;
+-	my $ldap=Net::LDAP-&gt;new( $url );
+-	if( ! $ldap )
+-	{
+-		notify(&quot;LDAP server $url is down ($@). Please, repair it and remove lock file in /etc/x2go/x2gobroker\n&quot;);
+-		return (0,&quot;$@&quot;);
+-	}
+-	my $message = $ldap-&gt;bind($binddn,password=&gt;$bindpw);
+-	if(!$message)
+-	{
+-		notify(&quot;LDAP server $url is down ($@). Please, repair it and remove lock file in /etc/x2go/x2gobroker\n&quot;);
+-		return (0,&quot;$@&quot;);
+-	}
+-	return ($ldap,0);  
+-}
+-
+-sub setPass
+-{
+-	my ($user, $newpass)=@_;
+-	# check if we have master ldap here
+-
+-	my $attr;
+-
+-	my $csh=Crypt::SaltedHash-&gt;new(algorithm =&gt; 'SHA-1');
+-	$csh-&gt;add($newpass);
+-	$newpass=$csh-&gt;generate;
+-
+-	push(@$attr,'userPassword'=&gt;$newpass);
+-	my $changes;
+-	push(@$changes,'replace'=&gt;$attr);
+-
+-	my $ldap = initMasterLdap();
+-
+-	my $dn=&quot;cn=$user,ou=BrokerUsers&quot;.getBase($binddn);
+-	my $message=$ldap-&gt;modify($dn, changes =&gt; $changes);
+-
+-	if($message-&gt;code)    
+-	{
+-		die $message-&gt;error.&quot;: &quot;.$message-&gt;error_desc;
+-	}
+-	print &quot;\n&lt;br&gt;CHANGING PASS OK&lt;br&gt;\n&quot;;
+-}
+-
+-sub selectSession
+-{
+-	my ($user, $sid)=@_;
+-	my @words=split(&quot;\@&quot;,$sid);
+-	my $sess_id=@words[1];
+-	my $host=@words[0];
+-	checkAndStartSession($user, $host, $sess_id);
+-}
+-
+-sub getExtCon
+-{
+-	my $host=shift;
+-
+-	my $ldap = initLdap();
+-
+-	my $dn=&quot;cn=$host,ou=Servers,ou=ON&quot;.getBase($binddn);
+-	####
+-	#### FIXME: get scope from config file in /etc/x2go/x2gobroker-*.conf
+-	####
+-	my $message=$ldap-&gt;search(base =&gt; $dn, 
+-	                          scope =&gt; 'base',
+-	                          filter =&gt; '(objectClass=ipHost)'
+-	            );
+-
+-	if($message-&gt;code)
+-	{
+-		die $message-&gt;error.&quot;: &quot;.$message-&gt;error_desc;
+-	}
+-	foreach ($message-&gt;entries)
+-	{
+-		my $asn=$_-&gt;{'asn'};
+-		my $attr=$asn-&gt;{'attributes'};
+-		foreach (@$attr)
+-		{
+-			my $type=$_-&gt;{'type'};
+-			my $value=$_-&gt;{'vals'}[0];
+-			if( $type eq 'description' )
+-			{
+-				my @words=split(&quot;:&quot;,$value);
+-				return (@words[0], @words[1]);
+-			}
+-		}
+-	}
+-}
+-
+-sub checkAndStartSession
+-{
+-	my ($uid,$host,$sid)=@_;
+-	my ($status,$sessions)=check_ts($host,$uid);
+-	if(!$status)
+-	{
+-		print &quot;ERROR check TS\n&quot;;
+-		return;
+-	}
+-	my $running=0;
+-	if( $sessions )
+-	{
+-		my @sinfo=split(&quot;\\|&quot;,$sessions);
+-		my $sess_stat=@sinfo[4];
+-		my $sess_srv=@sinfo[3];
+-		$sid=@sinfo[1];
+-		if( $sess_stat eq 'R' )
+-		{
+-			$running=1;
+-			my $str;
+-			($status,$str)=remoteBroker($host,$uid,&quot;suspend $sid&quot;);
+-			$sessions=~s/\|R\|/\|S\|/;
+-		}
+-		if( $sess_stat eq 'S' )
+-		{
+-			$running=1;
+-		}
+-	}
+-
+-	my($ip,$port)=getExtCon($host);
+-	print &quot;SERVER:$ip:$port\n&quot;;
+-	if($running)
+-	{
+-		print &quot;SESSION_INFO:&quot;.(split(&quot;\n&quot;,$sessions))[0].&quot;\n&quot;;
+-	}
+-}
+-
+-sub checkRunningSession
+-{
+-	my ($sess_srv, $sess_stat, $server_dn, $uid, $sid, $ldap)=@_;
+-	my @dn_el=split(',',$server_dn);
+-	shift(@dn_el);
+-	shift(@dn_el);
+-	my $node_dn=&quot;cn=&quot;.$sess_srv.&quot;,ou=Hosts,&quot;.join(','<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at dn_el</A>);
+-	####
+-	#### FIXME: get scope from config file in /etc/x2go/x2gobroker-*.conf
+-	####
+-	my $mesg=$ldap-&gt;search(base =&gt; $node_dn, 
+-	                       scope =&gt; 'base',
+-	                       filter =&gt; '(objectClass=X2GoServerNode)'
+-	         );
+-	if(!$mesg-&gt;code)
+-	{
+-		my @entries=$mesg-&gt;entries();
+-		if(@entries[0]-&gt;get_value('serverStatus') eq 'TRUE')
+-		{
+-			my $node_ref={};
+-			$node_ref-&gt;{'ip'}=@entries[0]-&gt;get_value('ipHostNumber');
+-			$node_ref-&gt;{'dn'}=$node_dn;
+-			my $status;
+-			my $str;
+-			if( $sess_stat eq 'R' )
+-			{
+-				print &quot;session running, suspend session $sid\n&quot;;
+-				($status,$str)=remoteBroker($node_ref-&gt;{'ip'},$uid,&quot;suspend $sid&quot;,$node_ref-&gt;{'dn'}, $ldap);
+-			} else {
+-				print &quot;session not running, ping node\n&quot;;
+-				($status,$str)=remoteBroker($node_ref-&gt;{'ip'},$uid,'ping',$node_ref-&gt;{'dn'}, $ldap);
+-			}
+-			if($status)
+-			{
+-				return $node_ref;
+-			}
+-			print &quot;error executing remote broker \n&quot;;
+-		}
+-		print &quot;node is down \n&quot;;
+-		return 0;
+-	}
+-	print &quot;error searching $node_dn: &quot;.$mesg-&gt;error.&quot;\n&quot;;
+-	return 0;
+-}
+-
+-sub startNewSession
+-{
+-	my ($dn, $ldap, $uid)=@_;
+-	####
+-	#### FIXME: get scope from config file in /etc/x2go/x2gobroker-*.conf
+-	####
+-	my $mesg=$ldap-&gt;search(base =&gt; $dn,
+-	                       scope =&gt; 'base',
+-	                       filter =&gt; '(objectClass=X2GoServer)'
+-	         );
+-
+-	if($mesg-&gt;code)
+-	{
+-		return 0;
+-	}
+-
+-	my @entries=$mesg-&gt;entries();
+-	my $ref = @entries[0]-&gt;get_value ( 'serverNode', asref =&gt; 1 );
+-	my $nodes;
+-	foreach(@$ref)
+-	{
+-		my $server=$_;
+-		my @sdn=split(&quot;,&quot;,$dn);
+-		shift(@sdn);
+-		shift(@sdn);
+-		my $server_dn=&quot;cn=$server,ou=Hosts,&quot;.join(&quot;,&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sdn</A>);
+-
+-		my $mesg=$ldap-&gt;search(base =&gt; $server_dn,
+-		                       scope =&gt; 'base',
+-		                       filter =&gt; '(objectClass=X2GoServerNode)'
+-		         );
+-		if( ! $mesg-&gt;code )
+-		{
+-			my @entries=$mesg-&gt;entries();
+-			if(@entries[0]-&gt;get_value('serverStatus') eq 'TRUE')
+-			{
+-				my $node_ref={};
+-				$node_ref-&gt;{'ip'}=@entries[0]-&gt;get_value('ipHostNumber');
+-				$node_ref-&gt;{'sessions'}=0;
+-				$node_ref-&gt;{'dn'}=$server_dn;
+-				$nodes-&gt;{$server}=$node_ref;
+-			}
+-		}
+-	}
+-	return findBestServer($nodes,$ldap, $uid);
+-}
+-
+-sub findBestServer
+-{
+-	my ($nodes, $ldap, $user)=@_;
+-	my $servers;
+-	my $status;
+-	while( my ($key,$value) = each(%$nodes))
+-	{
+-		if( ! $status )
+-		{
+-			my $ip=$value-&gt;{'ip'};
+-			my $dn=$value-&gt;{'dn'};
+-			($status,$servers)=remoteBroker($ip,$user,'getservers',$dn, $ldap);
+-			if(!$status)
+-			{
+-				delete $nodes-&gt;{$key};
+-			}
+-		}
+-	}
+-	if( ! $status )
+-	{
+-		return 0;
+-	}
+-	my @srvlines=split(&quot;\n&quot;,$servers);
+-	foreach(@srvlines)
+-	{
+-		my @words=split(' ',$_);
+-		my $ref=$nodes-&gt;{@words[0]};
+-		if( $ref )
+-		{
+-			$ref-&gt;{'sessions'}=1*@words[1];
+-		}
+-	}
+-	return checkServers($nodes, $ldap, $user);
+-}
+-
+-sub checkServers
+-{
+-	my ($nodes, $ldap, $user)=@_;
+-	my $bestnode=0;
+-	my $bestnodekey;
+-	my $key;
+-	my $value;
+-	while( ($key,$value) = each(%$nodes)) 
+-	{
+-		if(! $bestnode)
+-		{
+-			$bestnode=$value;
+-			$bestnodekey=$key;
+-		} else {
+-			if($value-&gt;{'sessions'}&lt;$bestnode-&gt;{'sessions'})
+-			{
+-				$bestnode=$value;
+-				$bestnodekey=$key;
+-			}
+-		}
+-	}
+-	if( ! $bestnode )
+-	{
+-		print &quot;bestnode is null: \n&quot;;
+-		return 0;
+-	} else {
+-		my $ip=$bestnode-&gt;{'ip'};
+-		my $dn=$bestnode-&gt;{'dn'};
+-		my ($status,$fakearr)=remoteBroker($ip,$user,'ping',$dn, $ldap);
+-		if( ! $status )
+-		{
+-			delete $nodes-&gt;{$bestnodekey};
+-			return checkServers($nodes, $ldap, $user);
+-		} else {
+-			return $bestnode;
+-		}
+-	}
+-}
+-
+-
+-sub check_ts
+-{
+-	my ($host, $user)=@_;
+-	my $server_dn;
+-	my $ldap;
+-	my($status,$sessions)=getSessionRunning($server_dn, $host, $user, $ldap);
+-	if( $status )
+-	{
+-		return (1,$sessions);
+-	}
+-	return (0,0);
+-}
+-
+-sub getSessionRunning
+-{
+-	my ($dn,$ip,$user, $ldap)=@_;
+-	my ($status,$sessions)=remoteBroker($ip,$user,'listsessions', $dn, $ldap);
+-	if( ! $status )
+-	{
+-		return (0,0);
+-	} else {
+-		return (1,$sessions);
+-	}
+-}
+-
+-sub remoteBroker
+-{
+-	my ($ip, $user, $cmd, $dn, $ldap)=@_;
+-	my $res=`ssh -o ConnectTimeout=15 -o UserKnownHostsFile=/etc/x2go/x2gobroker/ts_known_hosts x2gobroker\@$ip -i /etc/x2go/x2gobroker/id_x2gobroker_dsa \&quot;/usr/lib/x2go/broker/x2gobroker-command $user $cmd 2&gt;/dev/null\&quot;`;
+-	my @rarr=split(&quot;\n&quot;,$res);
+-	my $stat;
+-	if(@rarr[0] eq 'OK')
+-	{
+-		$stat=1;
+-	} else {
+-		$stat=0;
+-		# setNodeDown($dn, $ldap, $cmd, $user);
+-	}
+-	shift(@rarr);
+-	return($stat,join(&quot;\n&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at rarr</A>));
+-}
+-
+-sub notify
+-{
+-	my $message=shift;
+-	open (F,&quot;&gt;&gt;/tmp/x2gobroker.log&quot;);
+-	print F `date`.$message.&quot;\n&quot;;
+-	close(F);
+-}
+-
+-sub setNodeDown
+-{
+-	my($dn, $ldap, $cmd, $user)=@_;
+-	my $attr;
+-	push(@$attr,'serverStatus' =&gt; 'FALSE');
+-	my $changes;
+-	push (@$changes, 'replace' =&gt; $attr);
+-	$ldap-&gt;modify($dn,changes =&gt; $changes);  
+-	notify (&quot;set status of $dn to \&quot;down\&quot;, failed command: \&quot;$cmd\&quot;, user: \&quot;$user\&quot;\n&quot;);
+-}
+-
+-sub setServerDown
+-{
+-	my($dn, $ldap)=@_;
+-	my $attr;
+-	push(@$attr,'serverStatus' =&gt; 'FALSE');
+-	my $changes;
+-	push (@$changes, 'replace' =&gt; $attr);
+-	$ldap-&gt;modify($dn,changes =&gt; $changes);  
+-	notify (&quot;set status of $dn to \&quot;down\&quot;, all nodes are down\n&quot;);
+-}
+-
+-sub checkAccess 
+-{
+-	my ($user,$pass)=@_;
+-
+-	my $ldap = initLdap();
+-
+-	my $dn=&quot;uid=$user,ou=People&quot;.getBase($binddn);
+-	my $mesg=$ldap-&gt;search(base =&gt; $dn,
+-	                       scope =&gt; 'base',
+-	                       filter =&gt; '(objectClass=posixAccount)'
+-	         );
+-
+-	if( $mesg-&gt;code )
+-	{
+-		return 0;
+-	}
+-
+-	my @entries=$mesg-&gt;entries();
+-	my $crypted=@entries[0]-&gt;get_value('userPassword');
+-	$mesg = $ldap-&gt;unbind;
+-	if ( Crypt::SaltedHash-&gt;validate($crypted, $pass) )
+-	{
+-		return 1;
+-	}
+-	return 0;
+-}
+-
+-sub listSessions
+-{
+-	my $user=shift;
+-
+-	my $ldap = initLdap();
+-
+-	my $dn=&quot;ou=Servers,ou=ON&quot;.getBase($binddn);
+-	my $message=$ldap-&gt;search(base =&gt; $dn,
+-	                          scope =&gt; 'sub',
+-	                          filter =&gt; '(objectClass=ipHost)'
+-	);
+-
+-	if($message-&gt;code)
+-	{
+-		die $message-&gt;error.&quot;: &quot;.$message-&gt;error_desc;
+-	}
+-	# print Dumper($message-&gt;entries);
+-	print &quot;START_USER_SESSIONS&lt;br&gt;&quot;;
+-	foreach ($message-&gt;entries)
+-	{
+-		my $asn=$_-&gt;{'asn'};
+-		my $attr=$asn-&gt;{'attributes'};
+-		my $host;
+-		my $int_ip;
+-		my $ext_ip;
+-		my $ext_port;
+-		foreach (@$attr)
+-		{
+-			my $type=$_-&gt;{'type'};
+-			my $value=$_-&gt;{'vals'}[0];
+-			if( $type eq 'cn' )
+-			{
+-				$host=$value;
+-			}
+-		}
+-		my($status,$sessions)=getSessionRunning($dn,$host,$user, $ldap);
+-		if($status)
+-		{
+-			my $sess_srv;
+-			if($sessions)
+-			{
+-				my @sinfo=split(&quot;\\|&quot;,$sessions);
+-				my $sess_stat=@sinfo[4];
+-				$sess_srv=@sinfo[3];
+-				my $sid=@sinfo[1];
+-				print &quot;&lt;br&gt;[$host\@$sid]&lt;br&gt;&quot;;
+-				print &quot;status=$sess_stat&lt;br&gt;&quot;;
+-				#get ip
+-				#get port
+-			} else {
+-				my $sessions;
+-				($sess_srv,$ext_ip,$ext_port, $sessions)=getBestNode($dn, $ldap, $user, $host, $message);
+-				print &quot;&lt;br&gt;[$host]&lt;br&gt;&quot;;
+-			}
+-			#print &quot;host=$ext_ip&lt;br&gt;&quot;;
+-			print &quot;user=$user&lt;br&gt;&quot;;
+-			#print &quot;sshport=$ext_port&lt;br&gt;&quot;;
+-			print &quot;name=Stadt Treuchtlingen&lt;br&gt;&quot;;
+-			goto loop_end;
+-		}
+-	}
+-	loop_end:
+-	print &quot;END_USER_SESSIONS&lt;br&gt;&quot;;
+-	$ldap-&gt;unbind();
+-}
+-
+-sub getBestNode
+-{
+-	my ($dn, $ldap, $user, $ip, $message)=@_;
+-	my $servers;
+-	my $status;
+-	($status,$servers)=remoteBroker($ip,$user,'getservers',$dn, $ldap);
+-	my $srvref={};
+-	my @srvlines=split(&quot;\n&quot;,$servers);
+-	foreach(@srvlines)
+-	{
+-		my @words=split(' ',$_);
+-		$srvref-&gt;{@words[0]}=1*@words[1];
+-	}
+-	my $bestval=-1;
+-	my $bestsrv;
+-	my $bestext_ip;
+-	my $bestext_port;
+-	foreach ($message-&gt;entries)
+-	{
+-		my $asn=$_-&gt;{'asn'};
+-		my $attr=$asn-&gt;{'attributes'};
+-		my $host;
+-		my $ext_ip;
+-		my $ext_port;
+-		foreach (@$attr)
+-		{
+-			my $type=$_-&gt;{'type'};
+-			my $value=$_-&gt;{'vals'}[0];
+-			if( $type eq 'cn' )
+-			{
+-				$host=$value;
+-			}
+-			if($type eq 'description')
+-			{
+-				my @words=split(&quot;:&quot;,$value);
+-				$ext_ip=@words[0];
+-				$ext_port=@words[1];
+-			}
+-		}
+-		my $sess=$srvref-&gt;{$host};
+-		if( ! $sess )
+-		{
+-			return($host, $ext_ip, $ext_port,0);
+-		}
+-		if($sess &lt; $bestval || $bestval == -1)
+-		{
+-			$bestval=$sess;
+-			$bestsrv=$host;
+-			$bestext_ip=$ext_ip;
+-			$bestext_port=$ext_port;
+-		}
+-	}
+-	return($bestsrv, $bestext_ip, $bestext_port, $bestval);
+-}
+-
+-1;
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007365.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	844c16a5ba5c1a80b0284a6c9a8ab2d0e7548a07
+</A></li>
+	<LI>Next message: <A HREF="007323.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	f39126eab193278cfe3542ead1350c95826d5cd7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7373">[ date ]</a>
+              <a href="thread.html#7373">[ thread ]</a>
+              <a href="subject.html#7373">[ subject ]</a>
+              <a href="author.html#7373">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

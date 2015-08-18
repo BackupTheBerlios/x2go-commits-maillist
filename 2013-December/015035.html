@@ -1,0 +1,172 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] buildscripts.git - master (branch) updated:	3fd1dc346f2b9310ecbdeed2c696121d05dfdc2b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%093fd1dc346f2b9310ecbdeed2c696121d05dfdc2b&In-Reply-To=%3C20131203205020.2341A5DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015034.html">
+   <LINK REL="Next"  HREF="015036.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] buildscripts.git - master (branch) updated:	3fd1dc346f2b9310ecbdeed2c696121d05dfdc2b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%093fd1dc346f2b9310ecbdeed2c696121d05dfdc2b&In-Reply-To=%3C20131203205020.2341A5DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] buildscripts.git - master (branch) updated:	3fd1dc346f2b9310ecbdeed2c696121d05dfdc2b">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec  3 21:50:20 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015034.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	d77abe540ea30abb0d4b9e01d513b24d8011058b
+</A></li>
+        <LI>Next message: <A HREF="015036.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-2-g32b92c0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15035">[ date ]</a>
+              <a href="thread.html#15035">[ thread ]</a>
+              <a href="subject.html#15035">[ subject ]</a>
+              <a href="author.html#15035">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  3fd1dc346f2b9310ecbdeed2c696121d05dfdc2b (commit)
+       via  097ee18b3a57ad5a414646a84e84bc70d4558de1 (commit)
+       via  81324fff912a530295fddb187245d71808487a09 (commit)
+      from  d77abe540ea30abb0d4b9e01d513b24d8011058b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3fd1dc346f2b9310ecbdeed2c696121d05dfdc2b
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Dec 3 21:49:43 2013 +0100
+
+    prefer files in rpm/ subfolder, continue with next source file if we found a file here
+
+commit 097ee18b3a57ad5a414646a84e84bc70d4558de1
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Dec 3 21:48:39 2013 +0100
+
+    try to grab RPM source files from upstream project
+
+commit 81324fff912a530295fddb187245d71808487a09
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Dec 3 21:46:50 2013 +0100
+
+    add lock file support to build-rpm-package, as well
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/build-rpm-package |   32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+The diff of changes is:
+diff --git a/bin/build-rpm-package b/bin/build-rpm-package
+index 5f6b4ae..804f52b 100755
+--- a/bin/build-rpm-package
++++ b/bin/build-rpm-package
+@@ -81,6 +81,9 @@ set_vars() {
+ 	PROJECT_DIR=&quot;$HOME/build/$COMPONENT/$PROJECT&quot;
+ 	PKGDIST=&quot;$HOME/pkg-dist/$COMPONENT/$PROJECT&quot;
+ 
++	# lock file
++	LOCK_FILE=$PROJECT_DIR/../.$PROJECT.lock
++
+ 	# creating paths
+ 	mkdir -p &quot;$TEMP_BASE&quot;
+ 	mkdir -p &quot;$PROJECT_DIR&quot;
+@@ -177,6 +180,12 @@ build_packages() {
+ 		IS_RELEASE=&quot;1&quot;
+ 	fi
+ 	sed -i $PROJECT.spec -e &quot;s/%{?dist}/.$IS_RELEASE.git$DATE.$GITREV.$COMPONENT%{?dist}/&quot;
++
++	cat $PROJECT.spec | egrep &quot;^Source[0-9]+:.*&quot; | awk '{ print $2 }' | while read source_file; do
++		find $PROJECT/rpm/$source_file -maxdepth 0 1&gt; /dev/null &amp;&amp; cp $PROJECT/rpm/$source_file . &amp;&amp; continue
++		find $PROJECT/$source_file -maxdepth 0 1&gt; /dev/null &amp;&amp; cp $PROJECT/$source_file .
++	done
++
+ 	mv $TEMP_DIR/$PROJECT $TEMP_DIR/$PROJECT-$UPSTREAM_VERSION
+ 	tar -czf $PKGDIST/rpmbuild/SOURCES/$PROJECT-$UPSTREAM_VERSION.tar.gz $PROJECT-$UPSTREAM_VERSION
+ 
+@@ -257,14 +266,37 @@ upload_packages() {
+ 	return 0
+ }
+ 
++wait_for_lock() {
++	while [ -f $LOCK_FILE ]; do
++		pid=$(head -n1 $LOCK_FILE)
++		if ! ps $pid 1&gt;/dev/null; then rm -f $LOCK_FILE
++		else
++			echo &quot;PROJECT directory is locked, sleeping for 10 seconds...&quot;
++			sleep 10
++		fi
++	done
++}
++
++lock_workspace() {
++	wait_for_lock
++	echo $$ &gt; $LOCK_FILE
++}
++
++unlock_workspace() {
++	rm -f $LOCK_FILE
++}
++
+ ### MAIN ###
+ set_vars $@ &amp;&amp; {
+ 	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build-rpm-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-rpm-package&quot; ]; then
+ 		cd $PROJECT_DIR &amp;&amp; pkgneedsbuild $CHECKOUT || [ &quot;$FORCE_BUILD&quot; = &quot;yes&quot; ] &amp;&amp; {
++			lock_workspace
+ 			prepare_workspace &amp;&amp; {
++				unlock_workspace
+ 				clear_pkgdist
+ 				build_packages
+ 			}
++			unlock_workspace
+ 		}
+ 	fi
+ 	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-upload-rpm-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-rpm-package&quot; ]; then
+
+
+hooks/post-receive
+-- 
+buildscripts.git (X2Go packaging scripts)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;buildscripts.git&quot; (X2Go packaging scripts).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015034.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	d77abe540ea30abb0d4b9e01d513b24d8011058b
+</A></li>
+	<LI>Next message: <A HREF="015036.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	4.0.1.9-2-g32b92c0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15035">[ date ]</a>
+              <a href="thread.html#15035">[ thread ]</a>
+              <a href="subject.html#15035">[ subject ]</a>
+              <a href="author.html#15035">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,477 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-70-g6290a9f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-70-g6290a9f&In-Reply-To=%3C20131217144336.1CFD35DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016997.html">
+   <LINK REL="Next"  HREF="016991.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-70-g6290a9f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-70-g6290a9f&In-Reply-To=%3C20131217144336.1CFD35DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-70-g6290a9f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:36 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016997.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-67-g6f9ead7
+</A></li>
+        <LI>Next message: <A HREF="016991.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-74-gf7cdada
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16987">[ date ]</a>
+              <a href="thread.html#16987">[ thread ]</a>
+              <a href="subject.html#16987">[ subject ]</a>
+              <a href="author.html#16987">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  6290a9f307423210fdb7f8f08f2eb9c52e5ad551 (commit)
+      from  b69329589121f2476a111622ec1cc34b12b5c112 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    1 +
+ httpbrokerclient.cpp    |    4 +++-
+ onmainwindow.cpp        |   22 +++++++++++++++++-----
+ onmainwindow.h          |    4 +++-
+ sessionwidget.cpp       |   10 ++++++++++
+ sessionwidget.h         |    1 +
+ sshmasterconnection.cpp |   11 +++++++----
+ sshmasterconnection.h   |    5 +++--
+ sshprocess.cpp          |   14 +++++++++++---
+ sshprocess.h            |    1 +
+ 10 files changed, 57 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 86465bd..e27b1a9 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -68,6 +68,7 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+       if x2gostartagent send LIMIT error. Current commit fixes this issue. 
+     - SshMasterConnection should use current user name if no user name is
+       specified in session settings
++    - GSSApi(Kerberos 5) authentication for sshproxy and sshbroker 
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/httpbrokerclient.cpp b/httpbrokerclient.cpp
+index 5bf9caf..6e7e067 100644
+--- a/httpbrokerclient.cpp
++++ b/httpbrokerclient.cpp
+@@ -92,7 +92,8 @@ void HttpBrokerClient::createSshConnection()
+ {
+     QUrl lurl ( config-&gt;brokerurl );
+     sshConnection=new SshMasterConnection (this, lurl.host(), lurl.port(22),false,
+-                                           config-&gt;brokerUser, config-&gt;brokerPass,config-&gt;brokerSshKey,config-&gt;brokerAutologin, false,false);
++                                           config-&gt;brokerUser, config-&gt;brokerPass,config-&gt;brokerSshKey,config-&gt;brokerAutologin,
++					   config-&gt;brokerKrbLogin, false);
+ 
+     connect ( sshConnection, SIGNAL ( connectionOk(QString)), this, SLOT ( slotSshConnectionOk() ) );
+     connect ( sshConnection, SIGNAL ( serverAuthError ( int,QString, SshMasterConnection* ) ),this,
+@@ -643,3 +644,4 @@ QString HttpBrokerClient::getHexVal ( const QByteArray&amp; ba )
+     }
+     return val.join ( &quot;:&quot; );
+ }
++
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 4377e99..db2e349 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -106,6 +106,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     appSeparator=0;
+     config.brokerNoAuth=false;
+     config.brokerAutologin=false;
++    config.brokerKrbLogin=false;
+     config.brokerAutologoff=false;
+     config.published=false;
+     cmdAutologin=false;
+@@ -1004,7 +1005,7 @@ void ONMainWindow::slotGetBrokerAuth()
+     }
+     if(config.brokerNoAuth)
+         slotSessEnter();
+-    else if(config.brokerurl.indexOf(&quot;<A HREF="ssh://">ssh://</A>&quot;)==0 &amp;&amp; (config.brokerAutologin || config.brokerSshKey.length()&gt;0))
++    else if(config.brokerurl.indexOf(&quot;<A HREF="ssh://">ssh://</A>&quot;)==0 &amp;&amp; (config.brokerAutologin || config.brokerKrbLogin|| config.brokerSshKey.length()&gt;0))
+         slotSessEnter();
+ }
+ 
+@@ -2808,7 +2809,7 @@ SshMasterConnection* ONMainWindow::startSshConnection ( QString host, QString po
+         SshMasterConnection::ProxyType type,
+         QString proxyserver, quint16 proxyport,
+         QString proxylogin, QString proxypassword, QString proxyKey,
+-        bool proxyAutologin)
++        bool proxyAutologin, bool proxyKrbLogin)
+ {
+     x2goInfof(8)&lt;&lt;tr(&quot;Starting connection to server: &quot;) + host + &quot;:&quot; + port;
+     SshMasterConnection* con;
+@@ -2845,7 +2846,7 @@ SshMasterConnection* ONMainWindow::startSshConnection ( QString host, QString po
+ 
+     con=new SshMasterConnection (this, host, port.toInt(),acceptUnknownHosts,
+                                  login, password,currentKey, autologin, krbLogin,useproxy,
+-                                 type, proxyserver, proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin);
++                                 type, proxyserver, proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin, proxyKrbLogin);
+     if (!getSrv)
+         connect ( con, SIGNAL ( connectionOk(QString) ), this, SLOT ( slotSshConnectionOk() ) );
+     else
+@@ -3333,6 +3334,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+     QString proxypassword;
+     QString proxyKey;
+     bool proxyAutologin=false;
++    bool proxyKrbLogin=false;
+ 
+     user=getCurrentUname();
+     runRemoteCommand=true;
+@@ -3462,6 +3464,11 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+                         false
+                     ).toBool() );
+ 
++    proxyKrbLogin=(st-&gt;setting()-&gt;value (
++                       sid+&quot;/sshproxykrblogin&quot;,
++                       false
++                   ).toBool() );
++
+     if(proxyKey.length()&lt;=0 &amp;&amp; proxyType==SshMasterConnection::PROXYSSH)
+     {
+         proxyKey=findSshKeyForServer(proxylogin, proxyserver, QString::number(proxyport));
+@@ -3473,7 +3480,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+         proxypassword=passwd;
+     else
+     {
+-        if(useproxy &amp;&amp; !proxyAutologin &amp;&amp; proxyKey.length()&lt;=0)
++        if(useproxy &amp;&amp; !proxyAutologin &amp;&amp; !proxyKrbLogin &amp;&amp; proxyKey.length()&lt;=0)
+         {
+             bool ok;
+             bool useBrokerPassForProxy=false;
+@@ -3494,7 +3501,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+     delete st;
+ 
+     sshConnection=startSshConnection ( host,sshPort,acceptRsa,user,passwd,autologin, krblogin, false, useproxy,proxyType,proxyserver,
+-                                       proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin);
++                                       proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin, proxyKrbLogin);
+     return true;
+ }
+ 
+@@ -6532,6 +6539,11 @@ bool ONMainWindow::parseParameter ( QString param )
+         config.brokerAutologin=true;
+         return true;
+     }
++    if ( param == &quot;--broker-krblogin&quot;)
++    {
++        config.brokerKrbLogin=true;
++        return true;
++    }
+ 
+     if ( param == &quot;--broker-autologoff&quot;)
+     {
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 6f26417..116bccd 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -167,6 +167,7 @@ struct ConfigFile
+     bool brokerNoAuth;
+     bool brokerAutologin;
+     bool brokerAutologoff;
++    bool brokerKrbLogin;
+     QString brokerSshKey;
+     QString brokerCaCertFile;
+     QString iniFile;
+@@ -215,6 +216,7 @@ struct ConfigFile
+     QString proxypassword;
+     QString proxyKey;
+     bool proxyAutologin;
++    bool proxyKrbLogin;
+ 
+ };
+ 
+@@ -894,7 +896,7 @@ private:
+             SshMasterConnection::ProxyType type=SshMasterConnection::PROXYSSH,
+             QString proxyserver=QString::null, quint16 proxyport=0,
+             QString proxylogin=QString::null, QString proxypassword=QString::null, QString proxyKey=QString::null,
+-            bool proxyAutologin=false );
++            bool proxyAutologin=false, bool proxyKrbLogin=false );
+     void setProxyWinTitle();
+     QRect proxyWinGeometry();
+     void readApplications();
+diff --git a/sessionwidget.cpp b/sessionwidget.cpp
+index 179e6da..5874a92 100644
+--- a/sessionwidget.cpp
++++ b/sessionwidget.cpp
+@@ -154,6 +154,8 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+         QIcon ( mainWindow-&gt;iconsPath ( &quot;/16x16/file-open.png&quot; ) ),
+         QString::null,proxyBox );
+     cbProxyAutologin=new QCheckBox(tr(&quot;ssh-agent or default ssh key&quot;),proxyBox);
++    cbProxyKrbLogin=new QCheckBox(tr(&quot;Kerberos 5 (GSSAPI) authentication&quot;),proxyBox);
++
+ 
+     proxyLaout-&gt;addWidget(new QLabel(tr(&quot;Type:&quot;),proxyBox),0,0,1,2);
+     proxyLaout-&gt;addWidget(rbSshProxy,1,0,1,2);
+@@ -171,6 +173,7 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     proxyLaout-&gt;addWidget(proxyKey,3,4,1,1);
+     proxyLaout-&gt;addWidget(pbOpenProxyKey,3,5,1,1);
+     proxyLaout-&gt;addWidget(cbProxyAutologin,4,3,1,3);
++    proxyLaout-&gt;addWidget(cbProxyKrbLogin,5,3,1,3);
+ 
+ 
+ #ifndef Q_WS_HILDON
+@@ -333,6 +336,7 @@ void SessionWidget::slot_proxyType()
+ {
+     bool isSsh=rbSshProxy-&gt;isChecked();
+     cbProxyAutologin-&gt;setVisible(isSsh);
++    cbProxyKrbLogin-&gt;setVisible(isSsh);
+     proxyKey-&gt;setVisible(isSsh);
+     proxyKeyLabel-&gt;setVisible(isSsh);
+     pbOpenProxyKey-&gt;setVisible(isSsh);
+@@ -588,6 +592,10 @@ void SessionWidget::readConfig()
+                                      sessionId+&quot;/sshproxyautologin&quot;,
+                                      false
+                                  ).toBool() );
++    cbProxyKrbLogin-&gt;setChecked(st.setting()-&gt;value (
++                                     sessionId+&quot;/sshproxykrblogin&quot;,
++                                     false
++                                 ).toBool() );
+ 
+     if(proxyHost-&gt;text().indexOf(&quot;:&quot;)!=-1)
+     {
+@@ -750,6 +758,7 @@ void SessionWidget::setDefaults()
+     cbProxySamePass-&gt;setChecked(false);
+     cbProxySameUser-&gt;setChecked(false);
+     cbProxyAutologin-&gt;setChecked(false);
++    cbProxyKrbLogin-&gt;setChecked(false);
+ 
+     QTimer::singleShot(1, this,SLOT(slot_proxySameLogin()));
+     QTimer::singleShot(2, this,SLOT(slot_proxyType()));
+@@ -864,6 +873,7 @@ void SessionWidget::saveSettings()
+     st.setting()-&gt;setValue (sessionId+&quot;/sshproxysamepass&quot;,cbProxySamePass-&gt;isChecked());
+     st.setting()-&gt;setValue (sessionId+&quot;/sshproxysameuser&quot;,cbProxySameUser-&gt;isChecked());
+     st.setting()-&gt;setValue (sessionId+&quot;/sshproxyautologin&quot;,cbProxyAutologin-&gt;isChecked());
++    st.setting()-&gt;setValue (sessionId+&quot;/sshproxykrblogin&quot;,cbProxyKrbLogin-&gt;isChecked());
+ 
+     st.setting()-&gt;sync();
+ }
+diff --git a/sessionwidget.h b/sessionwidget.h
+index b8e7b1f..e3858cc 100644
+--- a/sessionwidget.h
++++ b/sessionwidget.h
+@@ -95,6 +95,7 @@ private:
+     QCheckBox* cbProxySameUser;
+     QCheckBox* cbProxySamePass;
+     QCheckBox* cbProxyAutologin;
++    QCheckBox* cbProxyKrbLogin;
+     QLineEdit* proxyKey;
+     QPushButton* pbOpenProxyKey;
+     QLabel* proxyKeyLabel;
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index fef5e5b..092cf9c 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -151,7 +151,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int por
+         QString pass, QString key, bool autologin, bool krblogin,
+         bool useproxy, ProxyType type, QString proxyserver, quint16 proxyport,
+         QString proxylogin, QString proxypassword, QString proxykey,
+-        bool proxyautologin ) : QThread ( parent )
++        bool proxyautologin, bool proxyKrbLogin ) : QThread ( parent )
+ {
+ #if defined ( Q_OS_DARWIN )
+     // Mac OS X provides only 512KB stack space for secondary threads.
+@@ -180,6 +180,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int por
+     this-&gt;proxyport=proxyport;
+     this-&gt;proxylogin=proxylogin;
+     this-&gt;proxypassword=proxypassword;
++    this-&gt;proxyKrbLogin=proxyKrbLogin;
+     reverseTunnel=false;
+     mainWnd=(ONMainWindow*) parent;
+     kerberos=krblogin;
+@@ -212,7 +213,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, ONMainWindow* mwd, QS
+         int remotePort, QString localHost, int localPort, SshProcess* creator,
+         bool useproxy, ProxyType type, QString proxyserver, quint16 proxyport,
+         QString proxylogin, QString proxypassword, QString proxykey,
+-        bool proxyautologin, int localProxyPort) : QThread ( parent )
++        bool proxyautologin, bool proxyKrbLogin, int localProxyPort) : QThread ( parent )
+ {
+ #if defined ( Q_OS_DARWIN )
+     setStackSize (sizeof (char) * 1024 * 1024 * 2);
+@@ -236,6 +237,7 @@ SshMasterConnection::SshMasterConnection (QObject* parent, ONMainWindow* mwd, QS
+     this-&gt;proxypassword=proxypassword;
+     this-&gt;proxytype=type;
+     this-&gt;proxyautologin=proxyautologin;
++    this-&gt;proxyKrbLogin=proxyKrbLogin;
+     this-&gt;proxykey=proxykey;
+     this-&gt;localProxyPort=localProxyPort;
+     reverseTunnelLocalHost=localHost;
+@@ -360,7 +362,7 @@ SshMasterConnection* SshMasterConnection::reverseTunnelConnection ( SshProcess*
+     SshMasterConnection* con=new SshMasterConnection (this, mainWnd, host,port,acceptUnknownServers,user,pass,
+             key,autologin, remotePort,localHost,
+             localPort,creator, useproxy, proxytype, proxyserver, proxyport, proxylogin,
+-            proxypassword, proxykey, proxyautologin, localProxyPort );
++            proxypassword, proxykey, proxyautologin, proxyKrbLogin, localProxyPort );
+     con-&gt;kerberos=kerberos;
+ 
+     con-&gt;setVerficationCode(challengeAuthVerificationCode);
+@@ -393,7 +395,7 @@ void SshMasterConnection::run()
+     {
+ 
+         sshProxy=new SshMasterConnection (0, proxyserver, proxyport,acceptUnknownServers,
+-                                          proxylogin, proxypassword, proxykey, proxyautologin, kerberos, false);
++                                          proxylogin, proxypassword, proxykey, proxyautologin, proxyKrbLogin, false);
+         connect ( sshProxy, SIGNAL ( connectionOk(QString) ), this, SLOT ( slotSshProxyConnectionOk() ) );
+ 
+         connect ( sshProxy, SIGNAL ( serverAuthError ( int,QString,SshMasterConnection* ) ),this,
+@@ -955,6 +957,7 @@ bool SshMasterConnection::userAuthWithPass()
+ 
+ bool SshMasterConnection::userAuthAuto()
+ {
++  x2goDebug&lt;&lt;&quot;auth auto&quot;;
+     int rc = ssh_userauth_autopubkey ( my_ssh_session, &quot;&quot; );
+     int i=0;
+     while(rc != SSH_AUTH_SUCCESS)
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index 8a8c6a2..7354e50 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -63,7 +63,7 @@ public:
+                         QString pass, QString key, bool autologin, bool krblogin=false,
+                         bool useproxy=false, ProxyType type=PROXYSSH, QString proxyserver=QString::null, quint16 proxyport=0,
+                         QString proxylogin=QString::null, QString proxypassword=QString::null, QString proxyKey=QString::null,
+-                        bool proxyAutologin=false);
++                        bool proxyAutologin=false, bool proxyKrbLogin=false);
+     ~SshMasterConnection();
+     static void finalizeLibSsh();
+     void addChannelConnection(SshProcess* creator, int sock, QString forwardHost,
+@@ -108,7 +108,7 @@ private:
+                         int remotePort, QString localHost, int localPort, SshProcess* creator,
+                         bool useproxy=false, ProxyType type=PROXYSSH, QString proxyserver=QString::null, quint16 proxyport=0,
+                         QString proxylogin=QString::null, QString proxypassword=QString::null, QString proxyKey=QString::null,
+-                        bool proxyAutologin=false, int localProxyPort=0);
++                        bool proxyAutologin=false, bool proxyKrbLogin=false, int localProxyPort=0);
+     bool sshConnect();
+     bool userAuthWithPass();
+     bool userAuthAuto();
+@@ -169,6 +169,7 @@ private:
+     QString proxypassword;
+     ProxyType proxytype;
+     bool proxyautologin;
++    bool proxyKrbLogin;
+     QString proxykey;
+     QStringList authErrors;
+     bool autologin;
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 3aaad4b..b147150 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -256,6 +256,7 @@ void SshProcess::startTunnel(const QString&amp; forwardHost, uint forwardPort, const
+                              uint localPort, bool reverse)
+ {
+     tunnel=true;
++    tunnelOkEmited=false;
+     if(!masterCon-&gt;useKerberos())
+     {
+         this-&gt;forwardHost=forwardHost;
+@@ -280,7 +281,7 @@ void SshProcess::startTunnel(const QString&amp; forwardHost, uint forwardPort, const
+ #endif
+                           QString::number(masterCon-&gt;getPort())+&quot; &quot;+
+                           masterCon-&gt;getUser()+&quot;@&quot;+
+-                          masterCon-&gt;getHost() + &quot; -N &quot;;
++                          masterCon-&gt;getHost() + &quot; -N -v &quot;;
+         if (!reverse)
+             sshString+=&quot; -L &quot; + QString::number(localPort)+&quot;:&quot;+forwardHost+&quot;:&quot;+QString::number(forwardPort);
+         else
+@@ -304,11 +305,9 @@ void SshProcess::startTunnel(const QString&amp; forwardHost, uint forwardPort, const
+                 SLOT(slotSshProcFinished(int,QProcess::ExitStatus)));
+         connect(proc,SIGNAL(readyReadStandardError()),this,SLOT(slotSshProcStdErr()));
+         connect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(slotSshProcStdOut()));
+-        emit sshTunnelOk(pid);
+     }
+ }
+ 
+-
+ void SshProcess::slotStdErr(SshProcess* creator, QByteArray data)
+ {
+     if (creator!=this)
+@@ -317,6 +316,15 @@ void SshProcess::slotStdErr(SshProcess* creator, QByteArray data)
+     x2goDebug&lt;&lt;&quot;new err data:&quot;&lt;&lt;data&lt;&lt;endl;
+ #endif
+     stdErrString+=data;
++
++    if(tunnel &amp;&amp; !tunnelOkEmited)
++    {
++        if(stdErrString.indexOf(&quot;Entering interactive session&quot;)!=-1)
++        {
++            tunnelOkEmited=true;
++            emit sshTunnelOk(pid);
++        }
++    }
+ }
+ 
+ void SshProcess::slotStdOut(SshProcess* creator, QByteArray data)
+diff --git a/sshprocess.h b/sshprocess.h
+index d1e05bf..e28f435 100644
+--- a/sshprocess.h
++++ b/sshprocess.h
+@@ -73,6 +73,7 @@ private:
+     QProcess* proc;
+     QString procUuid;
+     bool execProcess;
++    bool tunnelOkEmited;
+ 
+ private slots:
+     void slotCheckNewConnection();
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016997.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-67-g6f9ead7
+</A></li>
+	<LI>Next message: <A HREF="016991.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-74-gf7cdada
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16987">[ date ]</a>
+              <a href="thread.html#16987">[ thread ]</a>
+              <a href="subject.html#16987">[ subject ]</a>
+              <a href="author.html#16987">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

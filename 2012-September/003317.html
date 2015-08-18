@@ -1,0 +1,894 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-24-g965079d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.4-24-g965079d&In-Reply-To=%3C20120928074827.8CEE55DA6C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003316.html">
+   <LINK REL="Next"  HREF="003318.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-24-g965079d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.4-24-g965079d&In-Reply-To=%3C20120928074827.8CEE55DA6C%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-24-g965079d">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Sep 28 09:48:27 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003316.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-58-gdd0bb5c
+</A></li>
+        <LI>Next message: <A HREF="003318.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-25-ga46cf11
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3317">[ date ]</a>
+              <a href="thread.html#3317">[ thread ]</a>
+              <a href="subject.html#3317">[ subject ]</a>
+              <a href="author.html#3317">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  965079da790f5814e741af789de3b8f8e5c67c08 (commit)
+      from  2f797259c147c7d5546f1024bdf39e356236cf29 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 965079da790f5814e741af789de3b8f8e5c67c08
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Sep 28 09:48:19 2012 +0200
+
+    Rework session profile manager around SSH proxy settings. Implement session profile options ,,sshproxysameuser'' and ,,sshproxysamepass''.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    2 +
+ pyhoca/wxgui/frontend.py       |    8 +-
+ pyhoca/wxgui/logon.py          |   11 +-
+ pyhoca/wxgui/profilemanager.py |  465 ++++++++++++++++++++++------------------
+ 4 files changed, 280 insertions(+), 206 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 85c302f..ceabfbe 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -19,6 +19,8 @@ pyhoca-gui (0.2.0.5-0~x2go1) UNRELEASED; urgency=low
+       X2Go server via SSH.
+     - Configure SSH proxy port in a separate session profile option (sshproxyport).
+     - Make sure that SSH proxy port migration works flawlessly.
++    - Rework session profile manager around SSH proxy settings. Implement session
++      profile options ,,sshproxysameuser'' and ,,sshproxysamepass''.
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+     + Add Oleksandr Shneyder to Uploaders.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index d5bc355..d7b7907 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -597,6 +597,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             _can_session_auto_connect = self._X2goClient__session_can_auto_connect(session_uuid)
+             _can_sshproxy_auto_connect = self._X2goClient__session_can_sshproxy_auto_connect(session_uuid)
+             _session_uses_sshproxy = self._X2goClient__session_uses_sshproxy(session_uuid)
++            _session_reuses_sshproxy_authinfo = self._X2goClient__session_reuses_sshproxy_authinfo(session_uuid)
+             if _can_session_auto_connect:
+                 self._X2goClient__connect_session(session_uuid)
+                 if not self._X2goClient__server_valid_x2gouser(session_uuid):
+@@ -615,7 +616,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+                     except ValueError:
+                         pass
+             else:
+-                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=(not _can_sshproxy_auto_connect) and _session_uses_sshproxy)
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=((not _can_sshproxy_auto_connect) and _session_uses_sshproxy and (not _session_reuses_sshproxy_authinfo)))
+                 self._logon_windows[profile_name] = _logon_window
+ 
+         except x2go.AuthenticationException:
+@@ -624,7 +625,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self._logon_windows[profile_name] = _logon_window
+         except x2go.X2goSSHProxyAuthenticationException:
+             self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=True )
++            if _session_reuses_sshproxy_authinfo:
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=False, )
++            else:
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=True, )
+             self._logon_windows[profile_name] = _logon_window
+         except x2go.SSHException, e:
+             self.notifier.send(_(u'%s - SSH error') % profile_name, u'%s!' % str(e), icon='auth_error', timeout=4000)
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index e5ba605..95ea87f 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -194,8 +194,13 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+ 
+         if self.sshproxy_auth:
+ 
++            print self.current_profile_config
+             if self.current_profile_config.has_key('sshproxyuser'):
+-                self.sshProxyUserTxt.SetValue(self.current_profile_config['sshproxyuser'])
++                if self.current_profile_config.has_key('sshproxysameuser') and not self.current_profile_config['sshproxysameuser']:
++                    self.sshProxyUserTxt.SetValue(self.current_profile_config['sshproxyuser'])
++            if self.current_profile_config.has_key('user'):
++                if self.current_profile_config.has_key('sshproxysameuser') and self.current_profile_config['sshproxysameuser']:
++                    self.sshProxyUserTxt.SetValue(self.current_profile_config['user'])
+ 
+         # Logged in variable 
+         self.loggedIn = False
+@@ -262,6 +267,10 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             self.sshProxyLoginBtn.Enable(False)
+             self.cancelBtn.Enable(False)
+ 
++        elif self.current_profile_config['sshproxysamepass']:
++                sshproxy_user = None
++                sshproxy_password = self.passwordTxt.GetValue()
++
+         else:
+             sshproxy_user = sshproxy_password = None
+ 
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 0b52f4a..7404e97 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -90,7 +90,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'APPLICATION': _(u'Single Application'),
+             'XDMCP': _(u'XDMCP Query'),
+             'RDP': _(u'Windows Terminal Server (X2Go-proxied RDP)'),
+-            'DirectRDP': 'Windows Terminal Server (direct RDP)',
++            'DirectRDP': 'Windows Terminal Server (Direct RDP)',
+             'CUSTOM': _(u'Custom command'),
+             }
+         if self.action == 'EDIT_CONNECTED':
+@@ -171,6 +171,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.staticbox_Window = wx.StaticBox(self.tab_Profile, -1, ' %s ' % _(u'Session Window'))
+         self.staticbox_SessionType = wx.StaticBox(self.tab_Session, -1, ' %s ' % _(u'Session Startup'))
+         self.staticbox_Server = wx.StaticBox(self.tab_Connection, -1, ' %s ' % _(u&quot;Server&quot;))
++        self.staticbox_Proxy = wx.StaticBox(self.tab_Connection, -1, ' %s ' % _(u&quot;Proxy&quot;))
+         self.staticbox_LinkSpeed = wx.StaticBox(self.tab_Connection, -1, ' %s ' % _(u&quot;Connection Link Speed&quot;))
+         self.staticbox_Compression = wx.StaticBox(self.tab_Connection, -1, ' %s ' % _(u&quot;Compression&quot;))
+         self.staticbox_Display = wx.StaticBox(self.tab_Settings, -1, ' %s ' % _(u&quot;Display&quot;))
+@@ -183,7 +184,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         ###
+         ### widgets for the PROFILE tab
+         ###
+-        self.ProfileNameLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Name&quot;)+&quot;:&quot;)
++        self.ProfileNameLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Name&quot;)+&quot;: &quot;)
+         self.ProfileName = wx.TextCtrl(self.tab_Profile, -1, &quot;&quot;)
+ 
+         if self.action in (&quot;ADD_EXPLICITLY&quot;, &quot;EDIT_EXPLICITLY&quot;):
+@@ -192,7 +193,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.SetSessionWindowTitle = wx.CheckBox(self.tab_Profile, -1, _(u&quot;Set session window title&quot;))
+         self.UseDefaultSessionWindowTitle = wx.CheckBox(self.tab_Profile, -1, _(u&quot;Use a default session window title&quot;))
+-        self.CustomSessionWindowTitleLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Custom session window title&quot;) + &quot;:&quot;)
++        self.CustomSessionWindowTitleLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Custom session window title&quot;) + &quot;: &quot;)
+         self.CustomSessionWindowTitle = wx.TextCtrl(self.tab_Profile, -1, &quot;&quot;)
+         path_to_icon = os.path.normpath('%s/PyHoca/128x128/pyhoca-session.png' % _icons_location)
+         self.default_icon = True
+@@ -211,7 +212,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             path_to_icon = os.path.normpath('%s/PyHoca/128x128/pyhoca-session.png' % _icons_location)
+             self.default_icon = True
+         self.IconPath = path_to_icon
+-        self.IconButtonLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Window Icon&quot;)+':')
++        self.IconButtonLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Window Icon&quot;)+&quot;: &quot;)
+         self.IconButton = wx.BitmapButton(self.tab_Profile, -1, wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY), size=wx.Size(136,136), )
+ 
+         ###
+@@ -219,17 +220,17 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         ###
+         self.AutoStartSession = wx.CheckBox(self.tab_Session, -1, _(u&quot;Start session automatically after login&quot;))
+         self.AutoLoginSessionProfile = wx.CheckBox(self.tab_Session, -1, _(u&quot;Login automatically after %s has started&quot;) % self._PyHocaGUI.appname)
+-        self.SessionTypeLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Type&quot;)+':')
++        self.SessionTypeLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Type&quot;)+&quot;: &quot;)
+         self.SessionType = wx.ComboBox(self.tab_Session, -1, choices=self.sessionChoices.values(), style=wx.CB_DROPDOWN|wx.CB_READONLY)
+-        self.ApplicationLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Application&quot;)+':')
++        self.ApplicationLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Application&quot;)+&quot;: &quot;)
+         self.Application = wx.ComboBox(self.tab_Session, -1, choices=self.applicationChoices.values(), style=wx.CB_DROPDOWN|wx.CB_READONLY)
+-        self.CommandLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Custom command&quot;)+':')
++        self.CommandLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;Custom command&quot;)+&quot;: &quot;)
+         self.Command = wx.TextCtrl(self.tab_Session, -1, &quot;&quot;, )
+-        self.XDMCPServerLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;XDMCP server&quot;)+':')
++        self.XDMCPServerLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;XDMCP server&quot;)+&quot;: &quot;)
+         self.XDMCPServer = wx.TextCtrl(self.tab_Session, -1, &quot;&quot;, )
+-        self.RDPServerLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;RDP server&quot;)+':')
++        self.RDPServerLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;RDP server&quot;)+&quot;: &quot;)
+         self.RDPServer = wx.TextCtrl(self.tab_Session, -1, &quot;&quot;, )
+-        self.RDPOptionsLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;RDP options&quot;)+':')
++        self.RDPOptionsLabel = wx.StaticText(self.tab_Session, -1, _(u&quot;RDP options&quot;)+&quot;: &quot;)
+         self.RDPOptions = wx.TextCtrl(self.tab_Session, -1, &quot;&quot;, )
+         self.RootlessSession = wx.CheckBox(self.tab_Session, -1, _(u&quot;Integrate remote application(s) into local desktop (rootless mode)&quot;))
+         self.UsePublishedApplications = wx.CheckBox(self.tab_Session, -1, _(u&quot;Menu of published applications&quot;))
+@@ -239,29 +240,33 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         ###
+         ### widgets for the CONNECTION tab
+         ###
+-        self.UserNameLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;User&quot;)+':')
++        self.UserNameLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;User&quot;)+&quot;: &quot;)
+         self.UserName = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.HostLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Host&quot;)+':')
++        self.HostLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Host&quot;)+&quot;: &quot;)
+         self.Host = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.SSHPortLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Port&quot;)+':')
+-        self.SSHPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;0&quot;, min=1, max=65534)
+-        self.SSHKeyFileLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;RSA/DSA private key&quot;)+':')
++        self.SSHPortLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Port&quot;)+&quot;: &quot;)
++        self.SSHPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;22&quot;, min=1, max=65534)
++        self.SSHKeyFileLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Key&quot;)+&quot;: &quot;)
+         self.SSHKeyFile = wx.TextCtrl(self.tab_Connection, -1, style=wx.TE_PROCESS_ENTER)
+         self.SSHKeyFileBrowseButton = wx.BitmapButton(self.tab_Connection, -1, wx.Bitmap('%s/PyHoca/16x16/system-search.png' % _icons_location, wx.BITMAP_TYPE_ANY), size=wx.Size(self._textfield_height,self._textfield_height), )
+         self.UseSSHProxy = wx.CheckBox(self.tab_Connection, -1, _(u&quot;Server behind SSH proxy&quot;))
+-        self.SSHProxyUserLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;User&quot;)+':')
++        self.SSHProxyUserLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;User&quot;)+&quot;: &quot;)
+         self.SSHProxyUser = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(80,20))
+-        self.SSHProxyKeyFileLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Key file&quot;)+':')
++        self.SSHProxySameUser = wx.CheckBox(self.tab_Connection, -1, _(u&quot;Use same username for X2Go and proxy host&quot;))
++        self.SSHProxySamePassword = wx.CheckBox(self.tab_Connection, -1, _(u&quot;Use same authentication for X2Go and proxy host&quot;))
++        self.SSHProxyKeyFileLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Key file&quot;)+&quot;: &quot;)
+         self.SSHProxyKeyFile = wx.TextCtrl(self.tab_Connection, -1, style=wx.TE_PROCESS_ENTER)
+         self.SSHProxyKeyFileBrowseButton = wx.BitmapButton(self.tab_Connection, -1, wx.Bitmap('%s/PyHoca/16x16/system-search.png' % _icons_location, wx.BITMAP_TYPE_ANY), size=wx.Size(self._textfield_height,self._textfield_height), )
+-        self.SSHProxyHostLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Host[:Port]&quot;)+':')
++        self.SSHProxyHostLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Host&quot;)+&quot;: &quot;)
+         self.SSHProxyHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(80,20))
+-        self.SSHProxyTunnelLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;SSH Proxy Tunnel&quot;)+':')
++        self.SSHProxyPortLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Port&quot;)+&quot;: &quot;)
++        self.SSHProxyPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;22&quot;, min=1, max=65534)
++        self.SSHProxyTunnelLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;SSH Proxy Tunnel&quot;)+&quot;: &quot;)
+         self.SSHProxyTunnelFromHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.SSHProxyTunnelFromPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;0&quot;, min=1, max=65534)
++        self.SSHProxyTunnelFromPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;44444&quot;, min=1, max=65534)
+         self.SSHProxyTunnelBetweenLabel = wx.StaticText(self.tab_Connection, -1, &quot; -&gt; &quot;)
+         self.SSHProxyTunnelToHost = wx.TextCtrl(self.tab_Connection, -1, &quot;&quot;, size=wx.Size(200,20))
+-        self.SSHProxyTunnelToPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;0&quot;, min=1, max=65534)
++        self.SSHProxyTunnelToPort = wx.SpinCtrl(self.tab_Connection, -1, &quot;22&quot;, min=1, max=65534)
+ 
+         self.LinkSpeed = wx.Slider(self.tab_Connection, -1, 0, 0, 4)
+         self.ModemLabel = wx.StaticText(self.tab_Connection, -1, &quot;|\n &quot;+_(u&quot;Modem&quot;), style=wx.ALIGN_CENTRE)
+@@ -270,30 +275,30 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.WANLabel = wx.StaticText(self.tab_Connection, -1, &quot;|\n&quot;+_(u&quot;WAN&quot;), style=wx.ALIGN_CENTRE)
+         self.LANLabel = wx.StaticText(self.tab_Connection, -1, &quot;|\n&quot;+_(u&quot;LAN&quot;), style=wx.ALIGN_CENTRE)
+ 
+-        self.CompressionLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Method&quot;)+':')
++        self.CompressionLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Method&quot;)+&quot;: &quot;)
+         self.Compression = wx.ComboBox(self.tab_Connection, -1, choices=self.compressionChoices.values(), style=wx.CB_DROPDOWN)
+-        self.ImageQualityLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Image quality&quot;)+':')
++        self.ImageQualityLabel = wx.StaticText(self.tab_Connection, -1, _(u&quot;Image quality&quot;)+&quot;: &quot;)
+         self.ImageQuality = wx.SpinCtrl(self.tab_Connection, -1, &quot;9&quot;, min=0, max=9)
+ 
+         ###
+         ### wigdets for the SETTINGS tab
+         ###
+         self.DisplayTypeFullscreen = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Fullscreen&quot;), style=wx.RB_GROUP)
+-        self.DisplayTypeCustom = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Custom Size&quot;)+':')
++        self.DisplayTypeCustom = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Custom Size&quot;)+&quot;: &quot;)
+         self.ScreenWidthLabel = wx.StaticText(self.tab_Settings, -1, '')
+         self.ScreenWidth = wx.SpinCtrl(self.tab_Settings, -1, &quot;800&quot;, min=400, max=3000)
+         self.ScreenHeightLabel = wx.StaticText(self.tab_Settings, -1, &quot;x&quot;)
+         self.ScreenHeight = wx.SpinCtrl(self.tab_Settings, -1, &quot;600&quot;, min=500, max=3000)
+-        self.SetDisplayDPI = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Set display DPI&quot;)+':')
++        self.SetDisplayDPI = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Set display DPI&quot;)+&quot;: &quot;)
+         self.DisplayDPI = wx.SpinCtrl(self.tab_Settings, -1, &quot;96&quot;, min=32, max=512)
+         self.DontSetKeyboard = wx.RadioButton(self.tab_Settings, -1, label=_(u&quot;Do not set (use server-side tools to configure the keyboard)&quot;), style=wx.RB_GROUP)
+         self.AutoSetKeyboard = wx.RadioButton(self.tab_Settings, -1, label=_(u&quot;Automatically detect and use client-side keyboard configuration inside the session&quot;))
+-        self.CustomSetKeyboard = wx.RadioButton(self.tab_Settings, -1, label=_(u&quot;Use custom keyboard settings as provided below&quot;) + ':')
+-        self.KeyboardModelLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Keyboard model&quot;)+':')
++        self.CustomSetKeyboard = wx.RadioButton(self.tab_Settings, -1, label=_(u&quot;Use custom keyboard settings as provided below&quot;) + &quot;: &quot;)
++        self.KeyboardModelLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Keyboard model&quot;)+&quot;: &quot;)
+         self.KeyboardModel = wx.TextCtrl(self.tab_Settings, -1, &quot;&quot;)
+-        self.KeyboardLayoutLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Layout&quot;)+':')
++        self.KeyboardLayoutLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Layout&quot;)+&quot;: &quot;)
+         self.KeyboardLayout = wx.TextCtrl(self.tab_Settings, -1, &quot;&quot;)
+-        self.KeyboardVariantLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Layout variant&quot;)+':')
++        self.KeyboardVariantLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Layout variant&quot;)+&quot;: &quot;)
+         self.KeyboardVariant = wx.TextCtrl(self.tab_Settings, -1, &quot;&quot;)
+         self.EnableSound = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Enable sound support&quot;))
+         self.PulseAudio = wx.RadioButton(self.tab_Settings, -1, _(u&quot;Pulse Audio&quot;), style=wx.RB_GROUP)
+@@ -305,12 +310,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         self.Esd = wx.RadioButton(self.tab_Settings, -1, _(u&quot;esd&quot;))
+         self.DefaultSoundPort = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Use default sound port&quot;))
+-        self.SoundPortLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Custom sound port&quot;)+':')
++        self.SoundPortLabel = wx.StaticText(self.tab_Settings, -1, _(u&quot;Custom sound port&quot;)+&quot;: &quot;)
+         self.SoundPort = wx.SpinCtrl(self.tab_Settings, -1, &quot;4713&quot;, min=23, max=64889)
+         self.ClientSidePrinting = wx.CheckBox(self.tab_Settings, -1, _(u&quot;Client Side printing&quot;))
+ 
+         self.UseLocalFolderSharing = wx.CheckBox(self.tab_SharedFilesAndFolders, -1, _(u&quot;Use local folder sharing&quot;))
+-        self.SharedFolderPathLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Path&quot;)+':')
++        self.SharedFolderPathLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Path&quot;)+&quot;: &quot;)
+         self.SharedFolderPath = wx.TextCtrl(self.tab_SharedFilesAndFolders, -1, &quot;&quot;, style=wx.TE_PROCESS_ENTER)
+         self.SharedFolderPathBrowseButton = wx.BitmapButton(self.tab_SharedFilesAndFolders, -1, wx.Bitmap('%s/PyHoca/16x16/system-search.png' % _icons_location, wx.BITMAP_TYPE_ANY), size=wx.Size(self._textfield_height,self._textfield_height), )
+         self.AddSharedFolderPathButton = wx.Button(self.tab_SharedFilesAndFolders, -1, _(u&quot;Add&quot;))
+@@ -320,15 +325,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.DeleteSharedFolderPathButton = wx.Button(self.tab_SharedFilesAndFolders, -1, _(u&quot;Delete&quot;))
+ 
+         self.UseEncodingConverter = wx.CheckBox(self.tab_SharedFilesAndFolders, -1, _(u&quot;Convert between client and server encodings&quot;))
+-        self.ClientEncodingLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Client encoding&quot;)+':')
++        self.ClientEncodingLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Client encoding&quot;)+&quot;: &quot;)
+         self.ClientEncoding = wx.ComboBox(self.tab_SharedFilesAndFolders, -1, choices=_known_encodings, style=wx.CB_DROPDOWN|wx.CB_READONLY)
+-        self.ServerEncodingLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Server encoding&quot;)+':')
++        self.ServerEncodingLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Server encoding&quot;)+&quot;: &quot;)
+         self.ServerEncoding = wx.ComboBox(self.tab_SharedFilesAndFolders, -1, choices=_known_encodings, style=wx.CB_DROPDOWN|wx.CB_READONLY)
+ 
+         self.UseFileMIMEbox = wx.CheckBox(self.tab_SharedFilesAndFolders, -1, _(u&quot;Use file MIME box for local file import&quot;))
+-        self.FileMIMEboxExtensionsLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Extensions&quot;)+':')
++        self.FileMIMEboxExtensionsLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Extensions&quot;)+&quot;: &quot;)
+         self.FileMIMEboxExtensions = wx.TextCtrl(self.tab_SharedFilesAndFolders, -1, &quot;&quot;, style=wx.TE_PROCESS_ENTER)
+-        self.FileMIMEboxActionLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Action&quot;)+':')
++        self.FileMIMEboxActionLabel = wx.StaticText(self.tab_SharedFilesAndFolders, -1, _(u&quot;Action&quot;)+&quot;: &quot;)
+         self.FileMIMEboxAction = wx.ComboBox(self.tab_SharedFilesAndFolders, -1, choices=self.mimeboxactionChoices.values(), style=wx.CB_DROPDOWN|wx.CB_READONLY)
+ 
+         if self.action == 'ADD':
+@@ -348,10 +353,14 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Bind(wx.EVT_COMBOBOX, self.OnSessionTypeSelected, self.SessionType)
+         self.Bind(wx.EVT_CHECKBOX, self.OnUseDefaultSessionWindowTitle, self.UseDefaultSessionWindowTitle)
+         self.Bind(wx.EVT_CHECKBOX, self.OnSetSessionWindowTitle, self.SetSessionWindowTitle)
++        self.Bind(wx.EVT_TEXT, self.OnUserNameKeyPressed, self.UserName)
+         self.Bind(wx.EVT_TEXT, self.OnHostKeyPressed, self.Host)
++        self.Bind(wx.EVT_TEXT, self.OnSSHKeyFileKeyPressed, self.SSHKeyFile)
+         self.Bind(wx.EVT_BUTTON, self.OnSSHKeyFileBrowse, self.SSHKeyFileBrowseButton)
+         self.Bind(wx.EVT_BUTTON, self.OnSSHProxyKeyFileBrowse, self.SSHProxyKeyFileBrowseButton)
+         self.Bind(wx.EVT_CHECKBOX, self.OnUseSSHProxy, self.UseSSHProxy)
++        self.Bind(wx.EVT_CHECKBOX, self.OnSSHProxySameUser, self.SSHProxySameUser)
++        self.Bind(wx.EVT_CHECKBOX, self.OnSSHProxySamePassword, self.SSHProxySamePassword)
+         self.Bind(wx.EVT_TEXT, self.OnUpdateSSHProxyTunnelFromHost, self.SSHProxyTunnelFromHost)
+         self.Bind(wx.EVT_TEXT, self.OnUpdateSSHProxyTunnelFromPort, self.SSHProxyTunnelFromPort)
+         self.Bind(wx.EVT_COMBOBOX, self.OnCompressionSelected, self.Compression)
+@@ -427,24 +436,26 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.RootlessSession.SetMinSize((-1, self._textfield_height))
+         self.UsePublishedApplications.SetMinSize((-1, self._textfield_height))
+ 
+-        self.UserNameLabel.SetMinSize((110, 16))
++        self.UserNameLabel.SetMinSize((-1, 16))
+         self.UserName.SetMinSize((220, self._textfield_height))
+-        self.HostLabel.SetMinSize((110, 16))
++        self.HostLabel.SetMinSize((-1, 16))
+         self.Host.SetMinSize((220, self._textfield_height))
+-        self.SSHPortLabel.SetMinSize((110, 16))
++        self.SSHPortLabel.SetMinSize((-1, 16))
+         self.SSHPort.SetMinSize((65, self._textfield_height))
+         self.SSHKeyFileLabel.SetMinSize((-1, 16))
+-        self.SSHKeyFile.SetMinSize((152, self._textfield_height))
+-        self.SSHProxyUserLabel.SetMinSize((140, 16))
+-        self.SSHProxyUser.SetMinSize((180, self._textfield_height))
+-        self.SSHProxyHostLabel.SetMinSize((140, 16))
+-        self.SSHProxyHost.SetMinSize((180, self._textfield_height))
+-        self.SSHProxyKeyFile.SetMinSize((120, self._textfield_height))
+-        self.SSHProxyTunnelLabel.SetMinSize((140, 16))
+-        self.SSHProxyTunnelFromPort.SetMinSize((60, self._textfield_height))
+-        self.SSHProxyTunnelToPort.SetMinSize((60, self._textfield_height))
+-        self.SSHProxyTunnelFromHost.SetMinSize((120, self._textfield_height))
+-        self.SSHProxyTunnelToHost.SetMinSize((120, self._textfield_height))
++        self.SSHKeyFile.SetMinSize((220, self._textfield_height))
++        self.SSHProxyUserLabel.SetMinSize((-1, 16))
++        self.SSHProxyUser.SetMinSize((220, self._textfield_height))
++        self.SSHProxyHostLabel.SetMinSize((-1, 16))
++        self.SSHProxyHost.SetMinSize((220, self._textfield_height))
++        self.SSHProxyPortLabel.SetMinSize((-1, 16))
++        self.SSHProxyPort.SetMinSize((65, self._textfield_height))
++        self.SSHProxyKeyFile.SetMinSize((220, self._textfield_height))
++        self.SSHProxyTunnelLabel.SetMinSize((-1, 16))
++        self.SSHProxyTunnelFromPort.SetMinSize((65, self._textfield_height))
++        self.SSHProxyTunnelToPort.SetMinSize((65, self._textfield_height))
++        self.SSHProxyTunnelFromHost.SetMinSize((140, self._textfield_height))
++        self.SSHProxyTunnelToHost.SetMinSize((140, self._textfield_height))
+         if X2GOCLIENT_OS == 'Windows':
+             self.LinkSpeed.SetMinSize((425, self._textfield_height))
+         else:
+@@ -547,94 +558,81 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         ## CONNECTION TAB
+         sizer_3 = wx.BoxSizer(wx.VERTICAL)
+         sizer_3_1 = wx.StaticBoxSizer(self.staticbox_Server, wx.VERTICAL)
+-        sizer_3_1_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_1_1_1 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_1_1.Add(self.UserNameLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_1_1.Add(self.UserName)
+-        sizer_3_1_1_1.Add((0,32))
+-        sizer_3_1_1_2 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_1_2.Add(self.HostLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_1_2.Add(self.Host)
+-        sizer_3_1_1_2.Add((0,32))
+-        sizer_3_1_1_3 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_1_3.Add(self.SSHPortLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_1_3.Add(self.SSHPort)
+-        sizer_3_1_1_3.Add((16,0))
+-        sizer_3_1_1_3.Add(self.SSHKeyFileLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_1_3.Add((8,0))
+-        sizer_3_1_1_3.Add(self.SSHKeyFile, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_1_3.Add(self.SSHKeyFileBrowseButton, flag=wx.ALIGN_CENTRE_VERTICAL|wx.LEFT, border=2)
+-        sizer_3_1_1_3.Add((0,32))
+-        sizer_3_1_1.Add(sizer_3_1_1_1, flag=wx.EXPAND)
+-        sizer_3_1_1.Add(sizer_3_1_1_2, flag=wx.EXPAND)
+-        sizer_3_1_1.Add(sizer_3_1_1_3, flag=wx.EXPAND)
+-
+-        sizer_3_1_2 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_1_2_1 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_2_1.Add(self.UseSSHProxy, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_2 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_2_2.Add(self.SSHProxyUserLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_2.Add(self.SSHProxyUser, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_2.Add((16,0))
+-        sizer_3_1_2_2.Add(self.SSHProxyKeyFileLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_2.Add((8,0))
+-        sizer_3_1_2_2.Add(self.SSHProxyKeyFile, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_2.Add(self.SSHProxyKeyFileBrowseButton, flag=wx.ALIGN_CENTRE_VERTICAL|wx.LEFT, border=2)
+-        sizer_3_1_2_2.Add((0,32))
+-        sizer_3_1_2_3 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_2_3.Add(self.SSHProxyHostLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_3.Add(self.SSHProxyHost, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_3.Add((0,32))
+-        sizer_3_1_2_4 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelFromHost, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_4.Add((4, 0))
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelFromPort, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_4.Add((8, 0))
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelBetweenLabel, flag=wx.ALIGN_CENTRE_VERTICAL|wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_1_2_4.Add((8, 0))
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelToHost, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_4.Add((4, 0))
+-        sizer_3_1_2_4.Add(self.SSHProxyTunnelToPort, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_1_2_4.Add((0,32))
+-        sizer_3_1_2.Add(sizer_3_1_2_1, flag=wx.EXPAND)
+-        sizer_3_1_2.Add(sizer_3_1_2_2, flag=wx.EXPAND)
+-        sizer_3_1_2.Add(sizer_3_1_2_3, flag=wx.EXPAND)
+-        sizer_3_1_2.Add(sizer_3_1_2_4, flag=wx.EXPAND)
++        sizer_3_1_1 = wx.GridBagSizer(hgap=3,vgap=6)
++        sizer_3_1_1.Add(self.UserNameLabel, pos=(0,0), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_1_1.Add(self.UserName, pos=(0,1))
++        sizer_3_1_1.Add((16,0), pos=(0,2))
++        sizer_3_1_1.Add(self.SSHKeyFileLabel, pos=(0,3), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_1_1.Add(self.SSHKeyFile, pos=(0,4), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_1_1.Add(self.SSHKeyFileBrowseButton, pos=(0,5), flag=wx.ALIGN_CENTRE_VERTICAL|wx.LEFT, border=2)
++        sizer_3_1_1.Add(self.HostLabel, pos=(1,0), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_1_1.Add(self.Host, pos=(1,1))
++        sizer_3_1_1.Add(self.SSHPortLabel, pos=(1,3), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_1_1.Add(self.SSHPort, pos=(1,4), span=(1,2))
++        sizer_3_1_1.Add(self.UseSSHProxy, pos=(2,0), span=(1,6), flag=wx.ALIGN_CENTRE_VERTICAL)
+         sizer_3_1.Add(sizer_3_1_1, flag=wx.EXPAND|wx.ALL, border=7)
+-        sizer_3_1.Add(sizer_3_1_2, flag=wx.EXPAND|wx.ALL, border=7)
+-
+-        sizer_3_2 = wx.StaticBoxSizer(self.staticbox_LinkSpeed, wx.VERTICAL)
+-        sizer_3_2_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_2_1_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_2_1_1.Add(self.LinkSpeed)
+-        sizer_3_2_1_2 = wx.GridSizer(1,5,0,0)
+-        sizer_3_2_1_2.SetMinSize((454/5*6 - 30, 36))
+-        sizer_3_2_1_2.Add(self.ModemLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1_2.Add(self.ISDNLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1_2.Add(self.ADSLLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1_2.Add(self.WANLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1_2.Add(self.LANLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1.Add(sizer_3_2_1_1, flag=wx.ALIGN_CENTRE_HORIZONTAL)
+-        sizer_3_2_1.Add(sizer_3_2_1_2, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++
++        sizer_3_2 = wx.StaticBoxSizer(self.staticbox_Proxy, wx.VERTICAL)
++        sizer_3_2_1 = wx.GridBagSizer(hgap=5,vgap=6)
++        sizer_3_2_1.Add(self.SSHProxySameUser, pos=(0,0), span=(1,6))
++        sizer_3_2_1.Add(self.SSHProxySamePassword, pos=(1,0), span=(1,6), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyUserLabel, pos=(2,0), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyUser, pos=(2,1), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add((16,0), pos=(2,2))
++        sizer_3_2_1.Add(self.SSHProxyKeyFileLabel, pos=(2,3),  flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyKeyFile, pos=(2,4), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyKeyFileBrowseButton, pos=(2,5), flag=wx.ALIGN_CENTRE_VERTICAL|wx.LEFT, border=2)
++        sizer_3_2_1.Add(self.SSHProxyHostLabel, pos=(3,0), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyHost, pos=(3,1), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyPortLabel, pos=(3,3), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1.Add(self.SSHProxyPort, pos=(3,4), span=(1,2), flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1 = wx.BoxSizer(wx.HORIZONTAL)
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelFromHost, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1.Add((4, 0))
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelFromPort, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1.Add((8, 0))
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelBetweenLabel, flag=wx.ALIGN_CENTRE_VERTICAL|wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_2_1_1.Add((8, 0))
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelToHost, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1.Add((4, 0))
++        sizer_3_2_1_1.Add(self.SSHProxyTunnelToPort, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_2_1_1.Add((0,32))
++        sizer_3_2_1.Add(sizer_3_2_1_1, pos=(4,0), span=(1,6))
+         sizer_3_2.Add(sizer_3_2_1, flag=wx.EXPAND|wx.ALL, border=7)
+ 
+-        sizer_3_3 = wx.StaticBoxSizer(self.staticbox_Compression, wx.VERTICAL)
++        sizer_3_3 = wx.StaticBoxSizer(self.staticbox_LinkSpeed, wx.VERTICAL)
+         sizer_3_3_1 = wx.BoxSizer(wx.VERTICAL)
+-        sizer_3_3_1_1 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_3_1_1.Add(self.CompressionLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_3_1_1.Add(self.Compression)
+-        sizer_3_3_1_1.Add((0,32))
+-        sizer_3_3_1_2 = wx.BoxSizer(wx.HORIZONTAL)
+-        sizer_3_3_1_2.Add(self.ImageQualityLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
+-        sizer_3_3_1_2.Add(self.ImageQuality)
+-        sizer_3_3_1.Add(sizer_3_3_1_1, flag=wx.EXPAND)
+-        sizer_3_3_1.Add(sizer_3_3_1_2, flag=wx.EXPAND)
+-        sizer_3_3.Add(sizer_3_3_1, proportion=1, flag=wx.EXPAND|wx.ALL, border=7)
++        sizer_3_3_1_1 = wx.BoxSizer(wx.VERTICAL)
++        sizer_3_3_1_1.Add(self.LinkSpeed)
++        sizer_3_3_1_2 = wx.GridSizer(1,5,0,0)
++        sizer_3_3_1_2.SetMinSize((454/5*6 - 30, 36))
++        sizer_3_3_1_2.Add(self.ModemLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1_2.Add(self.ISDNLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1_2.Add(self.ADSLLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1_2.Add(self.WANLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1_2.Add(self.LANLabel, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1.Add(sizer_3_3_1_1, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3_1.Add(sizer_3_3_1_2, flag=wx.ALIGN_CENTRE_HORIZONTAL)
++        sizer_3_3.Add(sizer_3_3_1, flag=wx.EXPAND|wx.ALL, border=7)
++
++        sizer_3_4 = wx.StaticBoxSizer(self.staticbox_Compression, wx.VERTICAL)
++        sizer_3_4_1 = wx.BoxSizer(wx.VERTICAL)
++        sizer_3_4_1_1 = wx.BoxSizer(wx.HORIZONTAL)
++        sizer_3_4_1_1.Add(self.CompressionLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_4_1_1.Add(self.Compression)
++        sizer_3_4_1_1.Add((0,32))
++        sizer_3_4_1_2 = wx.BoxSizer(wx.HORIZONTAL)
++        sizer_3_4_1_2.Add(self.ImageQualityLabel, flag=wx.ALIGN_CENTRE_VERTICAL)
++        sizer_3_4_1_2.Add(self.ImageQuality)
++        sizer_3_4_1.Add(sizer_3_4_1_1, flag=wx.EXPAND)
++        sizer_3_4_1.Add(sizer_3_4_1_2, flag=wx.EXPAND)
++        sizer_3_4.Add(sizer_3_4_1, proportion=1, flag=wx.EXPAND|wx.ALL, border=7)
+ 
+         sizer_3.Add(sizer_3_1, flag=wx.EXPAND|wx.ALL, border=5)
+-        sizer_3.Add(sizer_3_2, proportion=1, flag=wx.EXPAND|wx.ALL, border=5)
+-        sizer_3.Add(sizer_3_3, flag=wx.EXPAND|wx.ALL, border=5)
++        sizer_3.Add(sizer_3_2, flag=wx.EXPAND|wx.ALL, border=5)
++        sizer_3.Add(sizer_3_3, proportion=1, flag=wx.EXPAND|wx.ALL, border=5)
++        sizer_3.Add(sizer_3_4, flag=wx.EXPAND|wx.ALL, border=5)
+         self.tab_Connection.SetSizerAndFit(sizer_3)
+         self.tab_Connection.Layout()
+ 
+@@ -836,13 +834,22 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         _ssh_proxy = self.profile_config['usesshproxy']
+         _ssh_proxy_host = self.profile_config['sshproxyhost']
+         _ssh_proxy_port = 22
+-        if self.profile_config['sshproxyport']:
++        try:
+             _ssh_proxy_port = int(self.profile_config['sshproxyport'])
++        except TypeError:
++            pass
+         if &quot;:&quot; in _ssh_proxy_host:
+-            _ssh_proxy_port = _ssh_proxy_host.split(&quot;:&quot;)[1]
++            try:
++                _ssh_proxy_port = int(_ssh_proxy_host.split(&quot;:&quot;)[1])
++            except TypeError:
++                pass
+             _ssh_proxy_host = _ssh_proxy_host.split(&quot;:&quot;)[0]
+-        self.SSHProxyHost.SetValue(&quot;%s:%s&quot; % (_ssh_proxy_host, _ssh_proxy_port))
+-        self.SSHProxyUser.SetValue(self.profile_config['sshproxyuser'])
++        self.SSHProxyHost.SetValue(_ssh_proxy_host)
++        self.SSHProxyPort.SetValue(_ssh_proxy_port)
++        if self.profile_config['sshproxysameuser']:
++            self.SSHProxyUser.SetValue(self.profile_config['user'])
++        else:
++            self.SSHProxyUser.SetValue(self.profile_config['sshproxyuser'])
+         self.SSHProxyKeyFile.SetValue(self.profile_config['sshproxykeyfile'])
+ 
+         _from_host = _from_port = _to_host = _to_port = None
+@@ -856,46 +863,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         if _from_port: self.SSHProxyTunnelFromPort.SetValue(int(_from_port))
+         if _to_host: self.SSHProxyTunnelToHost.SetValue(_to_host)
+         if _to_port: self.SSHProxyTunnelToPort.SetValue(int(_to_port))
+-        if _ssh_proxy:
+-            self.SSHProxyHostLabel.Enable(True)
+-            self.SSHProxyHost.Enable(True)
+-            self.SSHProxyUserLabel.Enable(True)
+-            self.SSHProxyUser.Enable(True)
+-            self.SSHProxyKeyFileLabel.Enable(True)
+-            self.SSHProxyKeyFile.Enable(True)
+-            self.SSHProxyKeyFileBrowseButton.Enable(True)
+-            self.SSHProxyTunnelLabel.Enable(True)
+-            self.SSHProxyTunnelFromHost.Enable(True)
+-            self.SSHProxyTunnelFromPort.Enable(True)
+-            self.SSHProxyTunnelBetweenLabel.Enable(True)
+-            self.SSHProxyTunnelToHost.Enable(True)
+-            self.SSHProxyTunnelToPort.Enable(True)
+-            self.Host.Enable(False)
+-            self.HostLabel.Enable(False)
+-            self.Host.SetValue(self.SSHProxyTunnelFromHost.GetValue())
+-            self.SSHPort.Enable(False)
+-            self.SSHPortLabel.Enable(False)
+-            self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
+-        else:
+-            self.SSHProxyHostLabel.Enable(False)
+-            self.SSHProxyHost.Enable(False)
+-            self.SSHProxyUserLabel.Enable(False)
+-            self.SSHProxyUser.Enable(False)
+-            self.SSHProxyKeyFileLabel.Enable(False)
+-            self.SSHProxyKeyFile.Enable(False)
+-            self.SSHProxyKeyFileBrowseButton.Enable(False)
+-            self.SSHProxyTunnelLabel.Enable(False)
+-            self.SSHProxyTunnelFromHost.Enable(False)
+-            self.SSHProxyTunnelFromPort.Enable(False)
+-            self.SSHProxyTunnelBetweenLabel.Enable(False)
+-            self.SSHProxyTunnelToHost.Enable(False)
+-            self.SSHProxyTunnelToPort.Enable(False)
+-            self.Host.Enable(True)
+-            self.HostLabel.Enable(True)
+-            self.Host.SetValue(self.profile_config_bak['host'])
+-            self.SSHPort.Enable(True)
+-            self.SSHPortLabel.Enable(True)
+-            self.SSHPort.SetValue(self.profile_config_bak['sshport'])
++
++        self.UseSSHProxy.SetValue(_ssh_proxy)
++        self.SSHProxySameUser.SetValue(self.profile_config['sshproxysameuser'])
++        self.SSHProxySamePassword.SetValue(self.profile_config['sshproxysamepass'])
++        self.ToggleSSHProxy()
+ 
+         self.AutoStartSession.SetValue(self.profile_config['autostart'])
+         self.AutoLoginSessionProfile.SetValue(self.profile_config['autologin'])
+@@ -960,6 +932,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         if _command == 'RDP':
+             if self.profile_config['directrdp']:
+                 self.enable_DirectRDP()
++                self.SSHPort.SetValue(self.profile_config['rdpport'])
+                 self.RDPOptions.SetValue(self.profile_config['directrdpsettings'])
+                 self.RDPServerLabel.Enable(True)
+                 self.RDPServer.Enable(False)
+@@ -1164,19 +1137,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHKeyFileLabel.Enable(False)
+             self.SSHKeyFile.Enable(False)
+             self.UseSSHProxy.Enable(False)
+-            self.SSHProxyHostLabel.Enable(False)
+-            self.SSHProxyHost.Enable(False)
+-            self.SSHProxyUserLabel.Enable(False)
+-            self.SSHProxyUser.Enable(False)
+-            self.SSHProxyKeyFileLabel.Enable(False)
+-            self.SSHProxyKeyFile.Enable(False)
+-            self.SSHProxyKeyFileBrowseButton.Enable(False)
+-            self.SSHProxyTunnelLabel.Enable(False)
+-            self.SSHProxyTunnelFromHost.Enable(False)
+-            self.SSHProxyTunnelFromPort.Enable(False)
+-            self.SSHProxyTunnelBetweenLabel.Enable(False)
+-            self.SSHProxyTunnelToHost.Enable(False)
+-            self.SSHProxyTunnelToPort.Enable(False)
++            self.staticbox_Proxy.Enable(False)
+ 
+     def __update_from_screen(self):
+         &quot;&quot;&quot;\
+@@ -1201,27 +1162,33 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.profile_config['key'] = self.SSHKeyFile.GetValue()
+         if self.UseSSHProxy.GetValue():
+             self.profile_config['usesshproxy'] = True
++            self.profile_config['sshproxyautologin'] = self.profile_config['autologin']
+             self.profile_config['host'] = self.SSHProxyTunnelFromHost.GetValue()
+             self.profile_config['sshport'] = self.SSHProxyTunnelFromPort.GetValue()
+         else:
+             self.profile_config['usesshproxy'] = False
++            self.profile_config['sshproxyautologin'] = False
+             self.profile_config['host'] = self.Host.GetValue()
+             if _session_type != 'DirectRDP':
+                 self.profile_config['sshport'] = self.SSHPort.GetValue()
+-        _ssh_proxy_host = self.SSHProxyHost.GetValue()
+-        _ssh_proxy_port = 22
+-        if &quot;:&quot; in _ssh_proxy_host:
+-            _ssh_proxy_port = _ssh_proxy_host.split(&quot;:&quot;)[1]
+-            _ssh_proxy_host = _ssh_proxy_host.split(&quot;:&quot;)[0]
+-        self.profile_config['sshproxyhost'] = _ssh_proxy_host
+-        self.profile_config['sshproxyport'] = _ssh_proxy_port
+-        self.profile_config['sshproxyuser'] = self.SSHProxyUser.GetValue()
++        self.profile_config['sshproxysameuser'] = self.SSHProxySameUser.GetValue()
++        self.profile_config['sshproxysamepass'] = self.SSHProxySamePassword.GetValue()
++
++        self.profile_config['sshproxyhost'] = self.SSHProxyHost.GetValue()
++        self.profile_config['sshproxyport'] = self.SSHProxyPort.GetValue()
+         self.profile_config['sshproxytunnel'] = '%s:%s:%s:%s' % (self.SSHProxyTunnelFromHost.GetValue(),
+                                                                  self.SSHProxyTunnelFromPort.GetValue(),
+                                                                  self.SSHProxyTunnelToHost.GetValue(),
+                                                                  self.SSHProxyTunnelToPort.GetValue(),
+                                                                 )
+-        self.profile_config['sshproxykeyfile'] = self.SSHProxyKeyFile.GetValue()
++        if self.profile_config['sshproxysameuser']:
++            self.profile_config['sshproxyuser'] = ''
++        else:
++            self.profile_config['sshproxyuser'] = self.SSHProxyUser.GetValue()
++        if self.profile_config['sshproxysamepass']:
++            self.profile_config['sshproxykeyfile'] = ''
++        else:
++            self.profile_config['sshproxykeyfile'] = self.SSHProxyKeyFile.GetValue()
+ 
+         self.profile_config['applications'] = self.applicationChoices.keys()
+         self.profile_config['directrdp'] = False
+@@ -1516,6 +1483,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.XDMCPServer.Enable(False)
+ 
+         if _session_type == 'DirectRDP':
++            self.profile_config_bak['sshport'] = self.SSHPort.GetValue()
++            self.profile_config_bak['rdpserver'] = self.RDPServer.GetValue()
++            self.profile_config_bak['rdpoptions'] = self.RDPOptions.GetValue()
+             self.enable_DirectRDP()
+             self.RDPServerLabel.Enable(True)
+             self.RDPServer.Enable(False)
+@@ -1526,6 +1496,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.RootlessSession.SetValue(False)
+             self.RootlessSession.Enable(False)
+         elif _session_type == 'RDP':
++            self.profile_config_bak['rdpport'] = self.SSHPort.GetValue()
++            self.profile_config_bak['directrdpsettings'] = self.RDPOptions.GetValue()
+             self.disable_DirectRDP()
+             self.RDPServerLabel.Enable(True)
+             self.RDPServer.Enable(True)
+@@ -1536,6 +1508,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.RootlessSession.SetValue(False)
+             self.RootlessSession.Enable(False)
+         else:
++            self.profile_config_bak['rdpport'] = self.SSHPort.GetValue()
++            self.profile_config_bak['directrdpsettings'] = self.RDPOptions.GetValue()
++            if self.RDPServer.GetValue() != self.Host.GetValue():
++                self.profile_config_bak['rdpserver'] = self.RDPServer.GetValue()
++                self.profile_config_bak['rdpoptions'] = self.RDPOptions.GetValue()
+             self.disable_DirectRDP()
+             self.RDPServerLabel.Enable(False)
+             self.RDPServer.Enable(False)
+@@ -1576,6 +1553,28 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         else:
+             self.ImageQuality.Enable(False)
+ 
++    def OnUserNameKeyPressed(self, event):
++        &quot;&quot;&quot;\
++        Gets called whenever something gets typed in the user name field.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if self.UseSSHProxy.GetValue() and self.SSHProxySameUser.GetValue():
++            self.SSHProxyUser.SetValue(self.UserName.GetValue())
++
++    def OnSSHKeyFileKeyPressed(self, event):
++        &quot;&quot;&quot;\
++        Gets called whenever something gets typed in the SSH key file field.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if self.UseSSHProxy.GetValue() and self.SSHProxySamePassword.GetValue():
++            self.SSHProxyKeyFile.SetValue(self.SSHKeyFile.GetValue())
++
+     def OnHostKeyPressed(self, event):
+         &quot;&quot;&quot;\
+         Gets called whenever something gets typed in the host name field.
+@@ -1608,6 +1607,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             # This returns a Python list of files that were selected.
+             path = dlg.GetPath()
+             self.SSHKeyFile.SetValue(path)
++            if self.SSHProxySamePassword.GetValue():
++                self.SSHProxyKeyFile.SetValue(path)
+ 
+     def OnSSHProxyKeyFileBrowse(self, event):
+         &quot;&quot;&quot;\
+@@ -1640,17 +1641,70 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+ 
+         &quot;&quot;&quot;
+         if self.UseSSHProxy.GetValue():
++            self.profile_config_bak['host'] = self.Host.GetValue()
++            self.profile_config_bak['sshport'] = self.SSHPort.GetValue()
++        self.ToggleSSHProxy()
++
++    def OnSSHProxySameUser(self, event):
++        &quot;&quot;&quot;\
++        Gets called if the use-same-user-for-proxy checkbox gets marked.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if self.SSHProxySameUser.GetValue():
++            self.profile_config_bak['sshproxyuser'] = self.SSHProxyUser.GetValue()
++        self.ToggleSSHProxy()
++
++    def OnSSHProxySamePassword(self, event):
++        &quot;&quot;&quot;\
++        Gets called if the use-same-user-authinfo checkbox gets marked.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if self.SSHProxySamePassword.GetValue():
++            self.profile_config_bak['sshproxykeyfile'] = self.SSHProxyKeyFile.GetValue()
++        self.ToggleSSHProxy()
++
++    def ToggleSSHProxy(self):
++        &quot;&quot;&quot;\
++        Gets called if the use-ssh-proxy checkbox gets marked.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if self.UseSSHProxy.GetValue():
++            self.staticbox_Proxy.Enable(True)
++            self.SSHProxySameUser.Enable(True)
++            self.SSHProxySamePassword.Enable(True)
+             self.SSHProxyHostLabel.Enable(True)
+             self.SSHProxyHost.Enable(True)
+-            self.SSHProxyUserLabel.Enable(True)
+-            self.SSHProxyUser.Enable(True)
+-            self.SSHProxyKeyFileLabel.Enable(True)
+-            self.SSHProxyKeyFile.Enable(True)
+-            self.SSHProxyKeyFileBrowseButton.Enable(True)
++            self.SSHProxyPortLabel.Enable(True)
++            self.SSHProxyPort.Enable(True)
++            if self.SSHProxySameUser.GetValue():
++                self.SSHProxyUser.SetValue(self.UserName.GetValue())
++                self.SSHProxyUser.Enable(False)
++            else:
++                self.SSHProxyUser.SetValue(self.profile_config_bak['sshproxyuser'])
++                self.SSHProxyUserLabel.Enable(True)
++                self.SSHProxyUser.Enable(True)
++            if self.SSHProxySamePassword.GetValue():
++                self.SSHProxyKeyFile.SetValue(self.SSHKeyFile.GetValue())
++                self.SSHProxyKeyFile.Enable(False)
++                self.SSHProxyKeyFileBrowseButton.Enable(False)
++            else:
++                self.SSHProxyKeyFile.SetValue(self.profile_config_bak['sshproxykeyfile'])
++                self.SSHProxyKeyFileLabel.Enable(True)
++                self.SSHProxyKeyFile.Enable(True)
++                self.SSHProxyKeyFileBrowseButton.Enable(True)
+             self.SSHProxyTunnelLabel.Enable(True)
+             self.SSHProxyTunnelFromHost.Enable(True)
+-            self.SSHProxyTunnelBetweenLabel.Enable(True)
+             self.SSHProxyTunnelFromPort.Enable(True)
++            self.SSHProxyTunnelBetweenLabel.Enable(True)
+             self.SSHProxyTunnelToHost.Enable(True)
+             self.SSHProxyTunnelToPort.Enable(True)
+             self.Host.Enable(False)
+@@ -1660,8 +1714,13 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHPortLabel.Enable(False)
+             self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
+         else:
++            self.staticbox_Proxy.Enable(False)
++            self.SSHProxySameUser.Enable(False)
++            self.SSHProxySamePassword.Enable(False)
+             self.SSHProxyHostLabel.Enable(False)
+             self.SSHProxyHost.Enable(False)
++            self.SSHProxyPortLabel.Enable(False)
++            self.SSHProxyPort.Enable(False)
+             self.SSHProxyUserLabel.Enable(False)
+             self.SSHProxyUser.Enable(False)
+             self.SSHProxyKeyFileLabel.Enable(False)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003316.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-58-gdd0bb5c
+</A></li>
+	<LI>Next message: <A HREF="003318.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-25-ga46cf11
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3317">[ date ]</a>
+              <a href="thread.html#3317">[ thread ]</a>
+              <a href="subject.html#3317">[ subject ]</a>
+              <a href="author.html#3317">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

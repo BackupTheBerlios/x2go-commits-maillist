@@ -1,0 +1,349 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 2ab7ddf42913b5abb4e8ed11401d4abe30bece3d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%202ab7ddf42913b5abb4e8ed11401d4abe30bece3d&In-Reply-To=%3C20130827112036.E24455DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010169.html">
+   <LINK REL="Next"  HREF="010148.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 2ab7ddf42913b5abb4e8ed11401d4abe30bece3d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%202ab7ddf42913b5abb4e8ed11401d4abe30bece3d&In-Reply-To=%3C20130827112036.E24455DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 2ab7ddf42913b5abb4e8ed11401d4abe30bece3d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:20:36 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010169.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 3f3bb85fe91a0b8d8e76bcfe2ea14b6fd87ddad0
+</A></li>
+        <LI>Next message: <A HREF="010148.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 2a68b11349f8888ceaef7767c1ea7adc1fb08876
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10147">[ date ]</a>
+              <a href="thread.html#10147">[ thread ]</a>
+              <a href="subject.html#10147">[ subject ]</a>
+              <a href="author.html#10147">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  2ab7ddf42913b5abb4e8ed11401d4abe30bece3d (commit)
+      from  4d5862b911b74d8897c068370f224fc2ee70df18 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py |    6 ++-
+ pyhoca/wxgui/notify.py   |  131 ++++++++++------------------------------------
+ pyhoca/wxgui/taskbar.py  |   75 +++++++++++++++++++++++++-
+ 3 files changed, 108 insertions(+), 104 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 2848ad1..b8bcd67 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -181,7 +181,11 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         #self._chooser_selected_profile_name = None
+         self.taskbar = taskbar.PyHocaGUI_TaskBarIcon(self)
+         self.taskbar.Bind(wx.EVT_TASKBAR_LEFT_DOWN, self.taskbar.CreateSessionManagerPopupMenu)
+-        self.notifier = notify.libnotify_NotifierPopup(self)
++
++        if x2go.X2GOCLIENT_OS in ('Linux', 'Mac'):
++            self.notifier = notify.libnotify_NotifierPopup(self)
++        if x2go.X2GOCLIENT_OS in ('Windows'):
++            self.notifier = notify.win32gui_NotifierPopup(self)
+ 
+         self._sub_windows = []
+         self._eventid_profilenames_map = {}
+diff --git a/pyhoca/wxgui/notify.py b/pyhoca/wxgui/notify.py
+index 7f7e838..f8eb545 100644
+--- a/pyhoca/wxgui/notify.py
++++ b/pyhoca/wxgui/notify.py
+@@ -67,109 +67,36 @@ class libnotify_NotifierPopup(object):
+     def Close(self):
+         pass
+ 
+-class wx_NotifierPopup(wx.Frame):
+-    &quot;&quot;&quot;notifier's popup window&quot;&quot;&quot;
+ 
+-    def __init__(self, _PyHocaGUI):
++class win32gui_NotifierPopup(object):
++
++    title = {}
++    text = {}
+ 
++    def __init__(self, _PyHocaGUI):
+         self._PyHocaGUI = _PyHocaGUI
+-        wx.Frame.__init__(self, None, -1, style=wx.NO_BORDER|wx.FRAME_NO_TASKBAR)
+-        self.padding = 12 # padding between edge, icon and text
+-        self.popped = 0 # the time popup was opened
+-        self.delay = 4 # time to leave the popup opened
+-
+-        # platform specific hacks
+-        lines = 2
+-        lineHeight = wx.MemoryDC().GetTextExtent(&quot; &quot;)[1]
+-        if wx.Platform == &quot;__WXGTK__&quot;:
+-            # use the popup window widget on gtk as the
+-            # frame widget can't animate outside the screen
+-            self.popup = wx.PopupWindow(self, -1)
+-        elif wx.Platform == &quot;__WXMSW__&quot;:
+-            # decrement line height on windows as the text calc below is off otherwise
+-            self.popup = self
+-            lineHeight -= 3
+-        elif wx.Platform == &quot;__WXMAC__&quot;:
+-            # untested
+-            self.popup = self
+-
+-        self.popup.SetSize((250, (lineHeight * (lines + 1)) + (self.padding * 2)))
+-        self.panel = wx.Panel(self.popup, -1, size=self.popup.GetSize())
+-
+-        # popup's click handler
+-        self.panel.Bind(wx.EVT_LEFT_DOWN, self.click)
+-
+-        # popup's logo
+-        self.logo = wx.BitmapFromImage(images.getx2goclientImage())
+-        wx.StaticBitmap(self.panel, -1, pos=(self.padding, self.padding)).SetBitmap(self.logo)
+-
+-        # main timer routine
+-        self.timer = wx.Timer(self, -1)
+-        self.Bind(wx.EVT_TIMER, self.main, self.timer)
+-        self.timer.Start(700)
+-
+-    def main(self, event):
+-
+-        if self.focused():
+-            # maintain opened state if focused
+-            self.popped = time.time()
+-        elif self.opened() and self.popped + self.delay &lt; time.time():
+-            # hide the popup once delay is reached
+-            self.hide()
+-
+-    def click(self, event):
+-        &quot;&quot;&quot;handles popup click&quot;&quot;&quot;
+-
+-        self.popped = 0
+-        self.hide()
+-
+-    def send(self, title, text):
+-        &quot;&quot;&quot;shows the popup&quot;&quot;&quot;
+-
+-        # create new text
+-        if hasattr(self, &quot;text&quot;):
+-            self.text.Destroy()
+-        popupSize = self.popup.GetSize()
+-        logoSize = self.logo.GetSize()
+-        self.text = wx.StaticText(self.panel, -1, title)
+-        self.text = wx.StaticText(self.panel, -1, text)
+-        self.text.Bind(wx.EVT_LEFT_DOWN, self.click)
+-        #self.text.Move((logoSize.width + (self.padding * 2), self.padding))
+-        self.text.SetSize((
+-            popupSize.width - logoSize.width - (self.padding * 3),
+-            popupSize.height - (self.padding * 2)
+-        ))
+-
+-        # animate the popup
+-        screen = wx.GetClientDisplayRect()
+-        self.popup.Show()
+-        for i in range(1, popupSize.height + 1):
+-            self.popup.Move((screen.width - popupSize.width, screen.height - i))
+-            self.popup.SetTransparent(int(float(240) / popupSize.height * i))
+-            self.popup.Update()
+-            self.popup.Refresh()
+-            time.sleep(0.01)
+-        self.popped = time.time()
+-
+-    def hide(self):
+-        &quot;&quot;&quot;hides the popup&quot;&quot;&quot;
+-
+-        self.popup.Hide()
+-        self.popped = 0
+-
+-    def focused(self):
+-        &quot;&quot;&quot;returns true if popup has mouse focus&quot;&quot;&quot;
+-
+-        mouse = wx.GetMousePosition()
+-        popup = self.popup.GetScreenRect()
+-        return (
+-            self.popped and
+-            mouse.x in range(popup.x, popup.x + popup.width)
+-            and mouse.y in range(popup.y, popup.y + popup.height)
+-        )
+-
+-    def opened(self):
+-        &quot;&quot;&quot;returns true if popup is open&quot;&quot;&quot;
+-
+-        return self.popped != 0
++        self.taskbar = self._PyhocaGUI.taskbar
++
++    def prepare(self, context, title=None, text=None):
++        if title is not None:
++            self.title[context] = title
++        if text is not None:
++            self.text[context] = text
+ 
++    def send(self, title=None, text=None, context=None, timeout=8000):
++        if context is not None:
++            try:
++                title = self.title[context]
++                del self.title[context]
++            except KeyError:
++                pass
++            try:
++                text = self.text[context]
++                del self.text[context]
++            except KeyError:
++                pass
++
++        self.taskbar.ShowBalloon(title, text, msec=timeout)
++
++    def Close(self):
++        pass
+diff --git a/pyhoca/wxgui/taskbar.py b/pyhoca/wxgui/taskbar.py
+index 3e1af8a..20dad7f 100644
+--- a/pyhoca/wxgui/taskbar.py
++++ b/pyhoca/wxgui/taskbar.py
+@@ -79,6 +79,7 @@ class PyHocaGUI_TaskBarIcon(wx.TaskBarIcon):
+         icon = self.MakeIcon(images.getx2goclientImage())
+         self.SetIcon(icon, &quot;PyHoca-GUI (Python X2go Client)&quot;)
+         self.imgidx = 1
++        self.tooltip = &quot;&quot;
+ 
+     def CreateSessionManagerPopupMenu(self, evt):
+         &quot;&quot;&quot;\
+@@ -113,4 +114,76 @@ class PyHocaGUI_TaskBarIcon(wx.TaskBarIcon):
+         return icon
+ 
+     def Close(self):
+-        self.Destroy()
+\ No newline at end of file
++        self.Destroy()
++
++    def ShowBalloon(self, title, text, msec=0, flags=0):
++        &quot;&quot;&quot;
++        Show Balloon tooltip
++
++        @param title - Title for balloon tooltip
++        @param msg   - Balloon tooltip text
++        @param msec  - Timeout for balloon tooltip, in milliseconds
++        @param flags -  one of wx.ICON_INFORMATION, wx.ICON_WARNING, wx.ICON_ERROR
++        &quot;&quot;&quot;
++        if WIN32 and self.IsIconInstalled():
++            try:
++                self.__SetBalloonTip(self.icon.GetHandle(), title, text, msec, flags)
++            except Exception, e:
++                self._PyHocaGUI._pyhoca_logger(str(e))
++ 
++    def __SetBalloonTip(self, hicon, title, msg, msec, flags):
++
++        # translate flags
++        infoFlags = 0
++        if flags &amp; wx.ICON_INFORMATION:
++            infoFlags |= win32gui.NIIF_INFO
++        elif flags &amp; wx.ICON_WARNING:
++            infoFlags |= win32gui.NIIF_WARNING
++        elif flags &amp; wx.ICON_ERROR:
++            infoFlags |= win32gui.NIIF_ERROR
++
++        # Show balloon
++        lpdata = (self.__GetIconHandle(),   # hWnd
++                  99,                       # ID
++                  win32gui.NIF_MESSAGE|win32gui.NIF_INFO|win32gui.NIF_ICON, # flags: Combination of NIF_* flags
++                  0,                        # CallbackMessage: Message id to be pass to hWnd when processing messages
++                  hicon,                    # hIcon: Handle to the icon to be displayed
++                  '',                       # Tip: Tooltip text
++                  msg,                      # Info: Balloon tooltip text
++                  msec,                     # Timeout: Timeout for balloon tooltip, in milliseconds
++                  title,                    # InfoTitle: Title for balloon tooltip
++                  infoFlags                 # InfoFlags: Combination of NIIF_* flags
++                  )
++        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, lpdata)
++        self.SetIcon(self.icon, self.tooltip)   # Hack: because we have no access to the real CallbackMessage value
++
++    def __GetIconHandle(self):
++        &quot;&quot;&quot;
++        Find the icon window.
++        This is ugly but for now there is no way to find this window directly from wx
++        &quot;&quot;&quot;
++        if not hasattr(self, &quot;_chwnd&quot;):
++            try:
++                for handle in wx.GetTopLevelWindows():
++                    if handle.GetWindowStyle():
++                        continue
++                    handle = handle.GetHandle()
++                    if len(win32gui.GetWindowText(handle)) == 0 and \
++                       win32gui.GetWindowRect(handle) == (0,0,400,250):
++                        self._chwnd = handle
++                        break
++                if not hasattr(self, &quot;_chwnd&quot;):
++                    raise Exception
++            except:
++                raise Exception, &quot;Icon window not found&quot;
++        return self._chwnd
++
++    def SetIcon(self, icon, tooltip=&quot;&quot;):
++        self.icon = icon
++        self.tooltip = tooltip
++        wx.TaskBarIcon.SetIcon(self, icon, tooltip)
++
++    def RemoveIcon(self):
++        self.icon = None
++        self.tooltip = &quot;&quot;
++        wx.TaskBarIcon.RemoveIcon(self) 
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010169.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 3f3bb85fe91a0b8d8e76bcfe2ea14b6fd87ddad0
+</A></li>
+	<LI>Next message: <A HREF="010148.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 2a68b11349f8888ceaef7767c1ea7adc1fb08876
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10147">[ date ]</a>
+              <a href="thread.html#10147">[ thread ]</a>
+              <a href="subject.html#10147">[ subject ]</a>
+              <a href="author.html#10147">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

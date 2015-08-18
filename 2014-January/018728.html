@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-18-gbf935ac
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.0.1-18-gbf935ac&In-Reply-To=%3C20140103195120.990A35DB3C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="018727.html">
+   <LINK REL="Next"  HREF="018732.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-18-gbf935ac</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.0.1-18-gbf935ac&In-Reply-To=%3C20140103195120.990A35DB3C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-18-gbf935ac">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:51:20 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="018727.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-19-g07cea7e
+</A></li>
+        <LI>Next message: <A HREF="018732.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-22-gbdf58be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18728">[ date ]</a>
+              <a href="thread.html#18728">[ thread ]</a>
+              <a href="subject.html#18728">[ subject ]</a>
+              <a href="author.html#18728">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  bf935ac7259bec7d23e6ffd3605ceae7de793b1d (commit)
+      from  e2dce016a660b225acf1b0376daa3de9c2b09899 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2goserver/lib/x2gosqlitewrapper.pl |   30 ++++++++++++++++++++++++++++--
+ x2goserver/x2gosqlitewrapper.c      |    2 +-
+ 2 files changed, 29 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/x2goserver/lib/x2gosqlitewrapper.pl b/x2goserver/lib/x2gosqlitewrapper.pl
+index c8752e1..cb71017 100755
+--- a/x2goserver/lib/x2gosqlitewrapper.pl
++++ b/x2goserver/lib/x2gosqlitewrapper.pl
+@@ -24,8 +24,34 @@ use strict;
+ use DBI;
+ use POSIX;
+ use Sys::Syslog qw( :standard :macros );
+-use lib `echo -n \$(x2gobasepath)/lib/x2go`;
+-use x2gologlevel;
++
++#### NOTE: this script is run setgid &lt;group&gt; and it cannot do system() calls.
++
++####
++#### One consequence of this is...
++#### This first part of code that handles syslogging is duplicated from
++#### x2gologlevel.pm. This is because we are not able to detect the
++#### installation path automatically via the x2gobasepath in this
++#### script.
++####
++
++my $Config = new Config::Simple(syntax=&gt;'ini');
++$Config-&gt;read('/etc/x2go/x2goserver.conf' );
++my $strloglevel = $Config-&gt;param(&quot;log.loglevel&quot;);
++my $loglevel = LOG_NOTICE;
++if    ( $strloglevel eq &quot;emerg&quot; )  { $loglevel = LOG_EMERG; }
++elsif ( $strloglevel eq &quot;alert&quot; )  { $loglevel = LOG_ALERT; }
++elsif ( $strloglevel eq &quot;crit&quot; )   { $loglevel = LOG_CRIT; }
++elsif ( $strloglevel eq &quot;err&quot; )    { $loglevel = LOG_ERR; }
++elsif ( $strloglevel eq &quot;warning&quot; )   { $loglevel = LOG_WARNING; }
++elsif ( $strloglevel eq &quot;notice&quot; ) { $loglevel = LOG_NOTICE; }
++elsif ( $strloglevel eq &quot;info&quot; )   { $loglevel = LOG_INFO; }
++elsif ( $strloglevel eq &quot;debug&quot; )  { $loglevel = LOG_DEBUG; }
++setlogmask( LOG_UPTO(x2gologlevel()) );
++
++####
++#### end of duplicated syslogging code
++####
+ 
+ # retrieve home dir of x2gouser
+ my $x2gouser='x2gouser';
+diff --git a/x2goserver/x2gosqlitewrapper.c b/x2goserver/x2gosqlitewrapper.c
+index 78ea68d..a134efc 100644
+--- a/x2goserver/x2gosqlitewrapper.c
++++ b/x2goserver/x2gosqlitewrapper.c
+@@ -60,7 +60,7 @@ int main( int argc, char *argv[] ) {
+ 		}
+ 
+ 		// derive the full path of x2gosqlitewrapper.pl from path of this binary
+-		rvap = asprintf(&amp;x2gosqlitewrapper, &quot;PATH=/usr/local/bin:/usr/bin/:/bin %s/%s&quot;, dirname(buffer), &quot;x2gosqlitewrapper.pl&quot;);
++		rvap = asprintf(&amp;x2gosqlitewrapper, &quot;%s/%s&quot;, dirname(buffer), &quot;x2gosqlitewrapper.pl&quot;);
+ 		if(rvap == -1){
+ 			fprintf(stderr, &quot;Failed to allocate memory calling asprintf\n&quot;);
+ 			exit(EXIT_FAILURE);
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="018727.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-19-g07cea7e
+</A></li>
+	<LI>Next message: <A HREF="018732.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.0.1-22-gbdf58be
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18728">[ date ]</a>
+              <a href="thread.html#18728">[ thread ]</a>
+              <a href="subject.html#18728">[ subject ]</a>
+              <a href="author.html#18728">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

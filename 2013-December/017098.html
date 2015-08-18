@@ -1,0 +1,334 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-134-g4a138b8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-134-g4a138b8&In-Reply-To=%3C20131220132721.7D3935DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017097.html">
+   <LINK REL="Next"  HREF="017099.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-134-g4a138b8</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-134-g4a138b8&In-Reply-To=%3C20131220132721.7D3935DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-134-g4a138b8">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Dec 20 14:27:21 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017097.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-133-ge488cf4
+</A></li>
+        <LI>Next message: <A HREF="017099.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-135-g617d046
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17098">[ date ]</a>
+              <a href="thread.html#17098">[ thread ]</a>
+              <a href="subject.html#17098">[ subject ]</a>
+              <a href="author.html#17098">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  4a138b8dc508f36034a6020c2b4ba104b981cbb2 (commit)
+      from  e488cf4b69f877fd0fe83caf39fbd36bcb33367e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4a138b8dc508f36034a6020c2b4ba104b981cbb2
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Dec 20 14:27:14 2013 +0100
+
+    x2gobroker.spec: rework init scripts for EPEL-6
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/x2gobroker                  |    2 +-
+ rpm/x2gobroker-authservice.init |   27 +++++++++++++++++++--------
+ rpm/x2gobroker-daemon.init      |   24 +++++++++++++++++-------
+ sbin/x2gobroker-authservice     |    2 +-
+ 4 files changed, 38 insertions(+), 17 deletions(-)
+ mode change 100644 =&gt; 100755 rpm/x2gobroker-authservice.init
+ mode change 100644 =&gt; 100755 rpm/x2gobroker-daemon.init
+
+The diff of changes is:
+diff --git a/bin/x2gobroker b/bin/x2gobroker
+index 8e54b27..a505f30 100755
+--- a/bin/x2gobroker
++++ b/bin/x2gobroker
+@@ -276,8 +276,8 @@ if __name__ == &quot;__main__&quot;:
+                 keep_fds = [int(fd) for fd in os.listdir('/proc/self/fd') if fd not in (0,1,2) ]
+                 daemon_stdout = file(daemon_logdir+'x2gobroker-daemon.stdout', 'w+')
+                 daemon_stderr = file(daemon_logdir+'x2gobroker-daemon.stderr', 'w+')
+-                file(pidfile, 'w+').write(str(os.getpid()))
+                 with daemon.DaemonContext(stdout=daemon_stdout, stderr=daemon_stderr, files_preserve=keep_fds, umask=0o027, pidfile=lockfile.FileLock(pidfile)):
++                    file(pidfile, 'w+').write(str(os.getpid()))
+                     launch_ioloop()
+             else:
+                 launch_ioloop()
+diff --git a/rpm/x2gobroker-authservice.init b/rpm/x2gobroker-authservice.init
+old mode 100644
+new mode 100755
+index b73ce43..7dd3567
+--- a/rpm/x2gobroker-authservice.init
++++ b/rpm/x2gobroker-authservice.init
+@@ -15,13 +15,14 @@
+ # Description:       PAM authentication service for X2Go Session Broker
+ ### END INIT INFO
+ 
+-set -e
+-
+ # Source function library.
+ . /etc/rc.d/init.d/functions
+ 
++set -xe
++
+ AUTHSERVICE=/usr/sbin/x2gobroker-authservice
+ test -d /run &amp;&amp; RUNDIR=/run || RUNDIR=/var/run
++PIDFILE_AUTHSERVICE=$RUNDIR/x2gobroker/x2gobroker-authservice.pid
+ DEFAULTCONFIG_COMMON=/etc/default/python-x2gobroker
+ DEFAULTCONFIG_AUTHSERVICE=/etc/default/x2gobroker-authservice
+ 
+@@ -50,7 +51,7 @@ export X2GOBROKER_AUTHSERVICE_SOCKET
+ exec=$AUTHSERVICE
+ prog=$(basename $AUTHSERVICE)
+ config=$DEFAULTCONFIG_AUTHSERVICE
+-OPTS=&quot;-D -s $X2GOBROKER_AUTHSERVICE_SOCKET -o root -g $X2GOBROKER_DAEMON_GROUP -p 0660&quot;
++OPTS=&quot;-D -P $PIDFILE_AUTHSERVICE -s $X2GOBROKER_AUTHSERVICE_SOCKET -o root -g $X2GOBROKER_DAEMON_GROUP -p 0660&quot;
+ 
+ lockfile=/var/lock/subsys/$prog
+ 
+@@ -66,14 +67,13 @@ is_true()
+ 
+ start() {
+ [ -x $exec ] || exit 5
+-	if ps a -u root | grep $(basename $AUTHSERVICE) 1&gt;/dev/null 2&gt;/dev/null; then
++	if ps a -u root | grep -v grep | grep $AUTHSERVICE 1&gt;/dev/null 2&gt;/dev/null; then
+ 		echo &quot;X2Go Broker Authentication Service already running&quot;
+ 		START_AUTHSERVICE=no
+ 	fi
+ 	if is_true $START_AUTHSERVICE; then
+ 		# Make sure these are created by default so that nobody else can
+ 		echo -n $&quot;Starting $prog: &quot;
+-		rm -f $X2GOBROKER_AUTHSERVICE_SOCKET
+ 		set +e
+ 		daemon $exec $OPTS
+ 		retval=$?
+@@ -87,11 +87,12 @@ start() {
+ stop() {
+ 	echo -n $&quot;Stopping $prog: &quot;
+ 	set +e
+-	killproc $exec
++	killproc -p $PIDFILE_AUTHSERVICE $exec
+ 	retval=$?
+ 	set -e
+ 	echo
+ 	rm -f $lockfile
++	return $retval
+ }
+ 
+ 
+@@ -113,39 +114,49 @@ force_reload() {
+ 
+ rh_status() {
+ 	# run checks to determine if the service is running or use generic status
+-	status $prog
++	status -p $PIDFILE_AUTHSERVICE $exec
+ }
+ 
+ 
+ rh_status_q() {
+-	rh_status &gt;/dev/null 2&gt;&amp;1
++	rh_status 1&gt;/dev/null 2&gt;&amp;1
+ }
+ 
+ 
+ case &quot;$1&quot; in
+ 	start)
++		set +e
+ 		rh_status_q &amp;&amp; exit 0
++		set -e
+ 		$1
+ 		;;
+ 	stop)
++		set +e
+ 		rh_status_q || exit 0
++		set -e
+ 		$1
+ 		;;
+ 	restart)
+ 		$1
+ 		;;
+ 	reload)
++		set +e
+ 		rh_status_q || exit 7
++		set -e
+ 		$1
+ 		;;
+ 	force-reload)
+ 		force_reload
+ 		;;
+ 	status)
++		set +e
+ 		rh_status
++		set -e
+ 		;;
+ 	condrestart|try-restart)
++		set +e
+ 		rh_status_q || exit 0
++		set -e
+ 		restart
+ 		;;
+ 	*)
+diff --git a/rpm/x2gobroker-daemon.init b/rpm/x2gobroker-daemon.init
+old mode 100644
+new mode 100755
+index b653a17..83da87f
+--- a/rpm/x2gobroker-daemon.init
++++ b/rpm/x2gobroker-daemon.init
+@@ -15,7 +15,10 @@
+ # Description:      X2Go Session Broker comes with its own HTTP daemon
+ ### END INIT INFO
+ 
+-set -e
++# Source function library.
++. /etc/rc.d/init.d/functions
++
++set -ex
+ 
+ DAEMON=/usr/bin/x2gobroker
+ test -d /run &amp;&amp; RUNDIR=/run || RUNDIR=/var/run
+@@ -63,9 +66,6 @@ export X2GOBROKER_AUTHSERVICE_SOCKET
+ export X2GOBROKER_SSL_CERTFILE
+ export X2GOBROKER_SSL_KEYFILE
+ 
+-# Source function library.
+-. /etc/rc.d/init.d/functions
+-
+ exec=$DAEMON
+ prog=$(basename $DAEMON)
+ config=$DEFAULTCONFIG_DAEMON
+@@ -75,7 +75,7 @@ lockfile=/var/lock/subsys/$prog
+ 
+ start() {
+ [ -x $exec ] || exit 5
+-	if ps a -u $X2GOBROKER_DAEMON_USER | grep $(basename $DAEMON) 1&gt;/dev/null 2&gt;/dev/null; then
++	if ps a -u $X2GOBROKER_DAEMON_USER | grep -v grep | grep $DAEMON 1&gt;/dev/null 2&gt;/dev/null; then
+ 		echo &quot;X2Go Session Broker already running&quot;
+ 		START_BROKER=no
+ 	fi
+@@ -92,7 +92,7 @@ start() {
+ 
+ stop() {
+ 	echo -n $&quot;Stopping $prog: &quot;
+-	killproc $exec
++	killproc -p $PIDFILE_BROKER $exec
+ 	retval=$?
+ 	echo
+ 	rm -f $lockfile
+@@ -113,7 +113,7 @@ force_reload() {
+ 
+ rh_status() {
+ 	# run checks to determine if the service is running or use generic status
+-	status $prog
++	status -p $PIDFILE_BROKER $exec
+ }
+ 
+ rh_status_q() {
+@@ -123,28 +123,38 @@ rh_status_q() {
+ 
+ case &quot;$1&quot; in
+ 	start)
++		set +e
+ 		rh_status_q &amp;&amp; exit 0
++		set -e
+ 		$1
+ 		;;
+ 	stop)
++		set +e
+ 		rh_status_q || exit 0
++		set -e
+ 		$1
+ 		;;
+ 	restart)
+ 		$1
+ 		;;
+ 	reload)
++		set +e
+ 		rh_status_q || exit 7
++		set -e
+ 		$1
+ 		;;
+ 	force-reload)
+ 		force_reload
+ 		;;
+ 	status)
++		set +e
+ 		rh_status
++		set -e
+ 		;;
+ 	condrestart|try-restart)
++		set +e
+ 		rh_status_q || exit 0
++		set -e
+ 		restart
+ 		;;
+ 	*)
+diff --git a/sbin/x2gobroker-authservice b/sbin/x2gobroker-authservice
+index ff9bbff..5aae163 100755
+--- a/sbin/x2gobroker-authservice
++++ b/sbin/x2gobroker-authservice
+@@ -240,8 +240,8 @@ if __name__ == '__main__':
+             keep_fds = [int(fd) for fd in os.listdir('/proc/self/fd') if fd not in (0,1,2) ]
+             daemon_stdout = file(daemon_logdir+'x2gobroker-authservice.stdout', 'w+')
+             daemon_stderr = file(daemon_logdir+'x2gobroker-authservice.stderr', 'w+')
+-            file(pidfile, 'w+').write(str(os.getpid()))
+             with daemon.DaemonContext(stdout=daemon_stdout, stderr=daemon_stderr, files_preserve=keep_fds, umask=0o027, pidfile=lockfile.FileLock(pidfile)):
++                file(pidfile, 'w+').write(str(os.getpid())+&quot;\n&quot;)
+                 loop()
+         else:
+             loop()
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017097.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-133-ge488cf4
+</A></li>
+	<LI>Next message: <A HREF="017099.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-135-g617d046
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17098">[ date ]</a>
+              <a href="thread.html#17098">[ thread ]</a>
+              <a href="subject.html#17098">[ subject ]</a>
+              <a href="author.html#17098">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

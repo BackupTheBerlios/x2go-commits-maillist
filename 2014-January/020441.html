@@ -1,0 +1,320 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2-5-g0a3dd9e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.0.2-5-g0a3dd9e&In-Reply-To=%3C20140107151708.F18335DC93%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020422.html">
+   <LINK REL="Next"  HREF="020479.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2-5-g0a3dd9e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.0.2-5-g0a3dd9e&In-Reply-To=%3C20140107151708.F18335DC93%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2-5-g0a3dd9e">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:08 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020422.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2
+</A></li>
+        <LI>Next message: <A HREF="020479.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2-1-g1a5aed7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20441">[ date ]</a>
+              <a href="thread.html#20441">[ thread ]</a>
+              <a href="subject.html#20441">[ subject ]</a>
+              <a href="author.html#20441">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  0a3dd9e121e701ff33f0574e5736d2af9ae539bf (commit)
+      from  f457a2a390e7b06c7f7194f59bf7f3ccf225cdc4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   11 +++++++++--
+ x2go/forward.py                  |    3 ++-
+ x2go/sshproxy.py                 |    3 +++
+ 3 files changed, 14 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 959ac9f..1daa82f 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -190,12 +190,18 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 self.locked = False
+             except AttributeError:
+                 self.session_died = True
++                if self.sshproxy_session:
++                    self.sshproxy_session.stop_thread()
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except EOFError:
+                 self.session_died = True
++                if self.sshproxy_session:
++                    self.sshproxy_session.stop_thread()
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except gevent.timeout.Timeout:
+                 self.session_died = True
++                if self.sshproxy_session:
++                    self.sshproxy_session.stop_thread()
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session command timed out')
+             finally:
+                 self.locked = False
+@@ -357,10 +363,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+                 # divert port to sshproxy_session's local forwarding port (it might have changed due to 
+                 # SSH connection errors
+-                gevent.sleep(1)
++                gevent.sleep(.1)
+                 port = self.sshproxy_session.get_local_proxy_port()
+ 
+-
+         if not add_to_known_hosts and session_instance:
+             self.set_missing_host_key_policy(checkhosts.X2goInteractiveAddPolicy(caller=self, session_instance=session_instance))
+ 
+@@ -383,6 +388,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                            look_for_keys=look_for_keys)
+ 
+             except paramiko.AuthenticationException, e:
++
++                self.close()
+                 if password:
+                     self.logger('next auth mechanism we\'ll try is keyboard-interactive authentication', loglevel=log.loglevel_DEBUG)
+                     try:
+diff --git a/x2go/forward.py b/x2go/forward.py
+index b7e3712..e683904 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -123,7 +123,8 @@ class X2goFwServer(StreamServer):
+                     if len(data) == 0:
+                         break
+                     fw_socket.send(data)
+-            self.chan.close()
++            try: self.chan.close()
++            except EOFError: pass
+             fw_socket.close()
+         except socket.error:
+             pass
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index fdbea3f..ddcd380 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -173,6 +173,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                  allow_agent=False,
+                                 )
+                 except AuthenticationException, e:
++                    self.close()
+                     raise X2goSSHProxyAuthenticationException('pubkey auth mechanisms both failed')
+ 
+             # if there is not private key, we will use the given password, if any
+@@ -188,9 +189,11 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                  allow_agent=False,
+                                 )
+                 except AuthenticationException:
++                    self.close()
+                     raise X2goSSHProxyAuthenticationException('interactive auth mechanisms failed')
+ 
+         except paramiko.SSHException, e:
++            self.close()
+             raise X2goSSHProxyException(str(e))
+ 
+         self.set_missing_host_key_policy(paramiko.RejectPolicy())
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020422.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2
+</A></li>
+	<LI>Next message: <A HREF="020479.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.0.2-1-g1a5aed7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20441">[ date ]</a>
+              <a href="thread.html#20441">[ thread ]</a>
+              <a href="subject.html#20441">[ subject ]</a>
+              <a href="author.html#20441">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,191 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-February/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2009/18%3A%20try%20moving%20setup_consolelog%20out%0A%20of%20the%20PyHocaGUI_Launcher%20class&In-Reply-To=%3C20140207122625.DACDE3BDEE%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026244.html">
+   <LINK REL="Next"  HREF="026246.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2009/18%3A%20try%20moving%20setup_consolelog%20out%0A%20of%20the%20PyHocaGUI_Launcher%20class&In-Reply-To=%3C20140207122625.DACDE3BDEE%40ymir%3E"
+       TITLE="[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Feb  7 13:26:25 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026244.html">[X2Go-Commits] [pyhoca-gui] 12/18: Move setup_win32log to a	separate module file.
+</A></li>
+        <LI>Next message: <A HREF="026246.html">[X2Go-Commits] [pyhoca-gui] 02/18: Make default cmdline option parameters overridable before the arg parser gets initialized.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26245">[ date ]</a>
+              <a href="thread.html#26245">[ thread ]</a>
+              <a href="subject.html#26245">[ subject ]</a>
+              <a href="author.html#26245">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch brokerclient
+in repository pyhoca-gui.
+
+commit a0a4c3a9a3cdc1e512c33b3b836994fd755c2394
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Feb 6 01:14:05 2014 +0100
+
+    try moving setup_consolelog out of the PyHocaGUI_Launcher class
+---
+ pyhoca-gui               |    5 ++--
+ pyhoca/wxgui/launcher.py |   72 +++++++++++++++++++++++-----------------------
+ 2 files changed, 39 insertions(+), 38 deletions(-)
+
+diff --git a/pyhoca-gui b/pyhoca-gui
+index 93c2c1e..390ec14 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -25,14 +25,15 @@ import sys
+ from pyhoca.wxgui import *
+ from pyhoca.wxgui import __VERSION__
+ 
++from pyhoca.wxgui.launcher import setup_consolelog, PyHocaGUI_Launcher
++
+ __author__ = &quot;Mike Gabriel, Dick Kniep&quot;
+ __version__ = __VERSION__
+ 
++setup_consolelog()
+ 
+ if __name__ == '__main__':
+     app = PyHocaGUI_Launcher()
+-    #app.setup_progname('MyProgramme')
+-    app.setup_consolelog()
+     app.setup_process()
+     app.setup_devmode()
+     args, logger, liblogger = app.parseargs()
+diff --git a/pyhoca/wxgui/launcher.py b/pyhoca/wxgui/launcher.py
+index 58d48dc..845aaf5 100644
+--- a/pyhoca/wxgui/launcher.py
++++ b/pyhoca/wxgui/launcher.py
+@@ -56,6 +56,42 @@ import defaults
+ import basepath
+ import taskbar
+ 
++def setup_consolelog(self):
++    if hasattr(sys, 'frozen') and str(sys.frozen) in (&quot;windows_exe&quot;, &quot;console_exe&quot;, &quot;1&quot;, ):
++        class Win32_Logging(object):
++
++            softspace = 0
++            _fname = os.path.join(os.environ['AppData'], self.PROG_NAME, '%s.log' % self.PROG_NAME)
++            _file = None
++
++            def __init__(self, filemode='a'):
++                self._filemode = filemode
++                if os.path.isfile(self._fname) and self._filemode == &quot;w+&quot;:
++                    os.remove(self._fname)
++
++            def write(self, text, **kwargs):
++                if self._file is None:
++                    try:
++                        try:
++                            os.mkdir(os.path.dirname(self._fname))
++                        except:
++                            pass
++                        self._file = open(self._fname, self._filemode)
++                    except:
++                        pass
++                else:
++                    self._file.write(text)
++                    self._file.flush()
++
++            def flush(self):
++                if self._file is not None:
++                    self._file.flush()
++
++        sys.stdout = Win32_Logging(filemode='w+')
++        sys.stderr = Win32_Logging(filemode='a')
++        del Win32_Logging
++
++
+ class PyHocaGUI_Launcher(object):
+ 
+     def __init__(self):
+@@ -105,42 +141,6 @@ VERSION: %s
+             reload(basepath)
+             reload(taskbar)
+ 
+-    def setup_consolelog(self):
+-        if hasattr(sys, 'frozen') and str(sys.frozen) in (&quot;windows_exe&quot;, &quot;console_exe&quot;, &quot;1&quot;, ):
+-            class Win32_Logging(object):
+-
+-                softspace = 0
+-                _fname = os.path.join(os.environ['AppData'], self.PROG_NAME, '%s.log' % self.PROG_NAME)
+-                _file = None
+-
+-                def __init__(self, filemode='a'):
+-                    self._filemode = filemode
+-                    if os.path.isfile(self._fname) and self._filemode == &quot;w+&quot;:
+-                        os.remove(self._fname)
+-
+-                def write(self, text, **kwargs):
+-                    if self._file is None:
+-                        try:
+-                            try:
+-                                os.mkdir(os.path.dirname(self._fname))
+-                            except:
+-                                pass
+-                            self._file = open(self._fname, self._filemode)
+-                        except:
+-                            pass
+-                    else:
+-                        self._file.write(text)
+-                        self._file.flush()
+-
+-                def flush(self):
+-                    if self._file is not None:
+-                        self._file.flush()
+-
+-            sys.stdout = Win32_Logging(filemode='w+')
+-            sys.stderr = Win32_Logging(filemode='a')
+-            del Win32_Logging
+-
+-
+     def check_running(self):
+         if X2GOCLIENT_OS  in ('Linux', 'Mac'):
+ 
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/pyhoca-gui.git
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026244.html">[X2Go-Commits] [pyhoca-gui] 12/18: Move setup_win32log to a	separate module file.
+</A></li>
+	<LI>Next message: <A HREF="026246.html">[X2Go-Commits] [pyhoca-gui] 02/18: Make default cmdline option parameters overridable before the arg parser gets initialized.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26245">[ date ]</a>
+              <a href="thread.html#26245">[ thread ]</a>
+              <a href="subject.html#26245">[ subject ]</a>
+              <a href="author.html#26245">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

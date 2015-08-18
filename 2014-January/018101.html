@@ -1,0 +1,597 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-223-g9ae8662
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-223-g9ae8662&In-Reply-To=%3C20140103170516.5D5B95DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="018098.html">
+   <LINK REL="Next"  HREF="018102.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-223-g9ae8662</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-223-g9ae8662&In-Reply-To=%3C20140103170516.5D5B95DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-223-g9ae8662">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 18:05:16 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="018098.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-224-g73007f8
+</A></li>
+        <LI>Next message: <A HREF="018102.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-225-g664a418
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18101">[ date ]</a>
+              <a href="thread.html#18101">[ thread ]</a>
+              <a href="subject.html#18101">[ subject ]</a>
+              <a href="author.html#18101">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  9ae866256d908d941880720e71864430a6d8ee24 (commit)
+      from  05a7500abbff09c469962b0518d29c400aed4756 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/{Utils.pm =&gt; Config.pm}          |   45 ++++---
+ X2Go/SupeReNicer.pm                   |  226 +++++++++++++++++++++++++++++++++
+ X2Go/Utils.pm                         |   48 ++++++-
+ debian/changelog                      |    4 +
+ x2goserver-common/etc/x2goserver.conf |   21 +++
+ x2goserver/sbin/x2gocleansessions     |   42 +++++-
+ 6 files changed, 361 insertions(+), 25 deletions(-)
+ copy X2Go/{Utils.pm =&gt; Config.pm} (66%)
+ create mode 100644 X2Go/SupeReNicer.pm
+
+The diff of changes is:
+diff --git a/X2Go/Utils.pm b/X2Go/Config.pm
+similarity index 66%
+copy from X2Go/Utils.pm
+copy to X2Go/Config.pm
+index f5e4cf6..d058753 100644
+--- a/X2Go/Utils.pm
++++ b/X2Go/Config.pm
+@@ -20,42 +20,41 @@
+ # Copyright (C) 2007-2013  Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+ # Copyright (C) 2007-2013  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ 
+-package X2Go::Utils;
++package X2Go::Config;
+ 
+ =head1 NAME
+ 
+-X2Go::Utils - X2Go utilities and helper functions for Perl
++X2Go::Config - X2Go Config package for Perl
+ 
+ =head1 DESCRIPTION
+ 
+-X2Go::Utils Perl package.
++X2Go::Config Perl package for X2Go components.
+ 
+ =cut
+ 
+ use strict;
++use Config::Simple;
++
+ use base 'Exporter';
++our @EXPORT = ( 'get_config', 'get_sqlconfig', );
++
++my $Config;
++my $SqlConfig;
++
++sub get_config {
++	if (! defined $Config) {
++		$Config = new Config::Simple(syntax=&gt;'ini');
++		$Config-&gt;read('/etc/x2go/x2goserver.conf' );
++	}
++	return $Config;
++}
+ 
+-our @EXPORT = ('source_environment');
+-
+-sub source_environment {
+-	my $name = shift;
+-
+-	open my $fh, &quot;&lt;&quot;, $name
+-	     or return -1;
+-
+-	while (&lt;$fh&gt;) {
+-		chomp;
+-		my $line = $_;
+-		if ( $line =~ m/^#.*/ )
+-		{
+-			next;
+-		}
+-		my ($k, $v) = split /=/, $line, 2;
+-		$v =~ s/^(['&quot;])(.*)\1/$2/; #' fix highlighter
+-		$v =~ s/\$([a-zA-Z]\w*)/$ENV{$1}/g;
+-		$v =~ s/`(.*?)`/`$1`/ge; #dangerous
+-		$ENV{$k} = $v;
++sub get_sqlconfig {
++	if (! defined $SqlConfig) {
++		$SqlConfig = new Config::Simple(syntax=&gt;'ini');
++		$SqlConfig-&gt;read('/etc/x2go/x2gosql/sql' );
+ 	}
++	return $SqlConfig;
+ }
+ 
+ 1;
+diff --git a/X2Go/SupeReNicer.pm b/X2Go/SupeReNicer.pm
+new file mode 100644
+index 0000000..e08f3ed
+--- /dev/null
++++ b/X2Go/SupeReNicer.pm
+@@ -0,0 +1,226 @@
++#!/usr/bin/perl
++
++# Copyright (C) 2013 X2Go Project - <A HREF="http://wiki.x2go.org">http://wiki.x2go.org</A>
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++#
++# Copyright (C) 2013 Guangzhou Nianguan Electronics Technology Co.Ltd. &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">opensource at gznianguan.com</A>&gt;
++# Copyright (C) 2013 Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++
++package X2Go::SuperRenicer;
++
++=head1 NAME
++
++X2Go::SuperRenicer- X2Go SuperRenicer package for Perl
++
++=head1 DESCRIPTION
++
++X2Go::SuperRenicer Perl package.
++
++=cut
++
++use strict;
++use Sys::Syslog qw( :standard :macros );
++use X2Go::Utils qw( sanitizer clups );
++
++use base 'Exporter';
++
++our @EXPORT=('superenice');
++
++
++sub checkPID {
++	my $pid = sanitizer(&quot;num&quot;,$_[0]);
++	open(PS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -p $pid|&quot;);
++	my ($pidInf,undef) = &lt;PS&gt;;
++	close(PS);
++	my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($pidInf));
++	$pid =~ s/\D//g;
++	return ($pid,$user,$nice,$cmd)
++}
++
++
++sub sanitizeNL {
++	my $NL = shift;
++	my $fallbackNL = shift;
++	if ($NL =~ m/^(-|\+|)\d+$/) {
++		$NL = int $NL;
++		if ($NL &gt; 19) { $NL = 19; }
++		elsif ($NL &lt; -19) { $NL = -19; }
++	} else {
++	    $NL = $fallbackNL;
++	}
++	return $NL;
++}
++
++
++sub superrenice {
++	# Normal: Nice LEVEL?
++	my $normalNL = shift; $normalNL = 0 unless defined $normalNL;
++	$normalNL = sanitizeNL($normalNL, 0);
++	# Idle: Nice LEVEL?
++	my $idleNL = shift; $idleNL = 19 unless defined $idleNL;
++	$idleNL = sanitizeNL($idleNL, 19);
++	# Ignore these users (comma separated list as string)
++	my $ignore_users = shift; $ignore_users = &quot;&quot; unless defined $ignore_users;
++	# if set to &quot;1&quot; we will force renicing of entire user, even on systems with &quot;/proc&quot;
++	my $forceUSERrenice = shift; $forceUSERrenice = 0 unless defined $forceUSERrenice;
++	#Path to the &quot;x2golistsessions_root&quot; perl script...
++
++	my $x2golsrpath = `x2gopath base` . &quot;/sbin/x2golistsessions_root&quot;;
++
++	###########################################################################################
++	# Load list of users to &quot;ignore&quot;. These users will never be reniced...
++	my %ignore;
++	while (split(&quot;,&quot;, $ignore_users)) {my $iu = clups($_);if (length($iu) &gt; 0) {$ignore{$iu} = 1;}}
++	# Load list of users to &quot;ignore&quot;. These users will never be reniced...
++	###########################################################################################
++
++	if ((-f &quot;/proc/$$/environ&quot;) and ($forceUSERrenice ne 1)) {
++		###########################################################################################
++		# Great! We're on a system with &quot;/proc&quot; so we're able to do this on individual sessions!
++		# Basicaly we're checking the users /proc/&lt;$PID&gt;/environ files for the &quot;X2GO_SESSION&quot; env...
++		my @x2goSessions;
++		# Read the current list of X2Go sessions and their running state
++		open(XGOLS,&quot;$x2golsrpath|&quot;);
++		while (&lt;XGOLS&gt;) {
++			my $line = clups($_);
++			my ($agentPid,$x2gosid,undef,undef,$x2goState,undef,undef,undef,undef,undef,undef,$userID,undef,undef) = split(/\|/,$line);
++			#syslog('debug', &quot;$agentPid,$x2gosid,$x2goState,$userID&quot;);
++			unless ($ignore{$userID} eq 1) {
++				push @x2goSessions, &quot;$x2goState:$agentPid:$x2gosid:$userID&quot;;
++			}
++		}
++		close(XGOLS);
++
++		foreach my $x2goSInf (@x2goSessions) {
++			my ($x2goState,$agentPid,$x2gosid,$userID,undef) = split(/\:/,$x2goSInf);
++			$agentPid = sanitizer(&quot;num&quot;,$agentPid);
++
++			# We're only working with &quot;portable&quot; unix usernames.
++			$userID = sanitizer(&quot;anumazcsdaus&quot;,$userID);
++
++			# So if the sanitizer returns something we'll do this....
++			if ($userID) {
++
++				# Using the NICE value of the agent to figgure out the current nice state...
++				my ($psP,$psU,$psN,$psC) = checkPID($agentPid);
++
++				if ($x2goState eq &quot;R&quot;) {
++
++					# State is R (Running?)...
++					if ($psN ne $normalNL) {
++						# If nice level is not normal, renice to normal...
++						syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $normalNL for session \&quot;$x2gosid\&quot;&quot;);
++						# For the sake of getting a user back to normal ASAP...  We'll renice the entire user not just individual sessions...
++						system(&quot;renice -n $normalNL -u $userID 1&gt;/dev/null 2&gt;/dev/null&quot;);
++					}
++
++				} elsif ($x2goState eq &quot;S&quot;) {
++
++					# State is S (suspended)
++					if ($psN ne $idleNL) {
++
++						# Did we renice this?
++						open(AUPS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -u $userID|&quot;); # use PS to fetch a list of the users current processes
++						while (&lt;AUPS&gt;) {
++							my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($_));
++							$pid  = sanitizer(&quot;num&quot;,$pid);
++
++							if (-f &quot;/proc/$pid/environ&quot;) {
++								open(ENVIRON,&quot;/proc/$pid/environ&quot;);my ($Environ,undef) = &lt;ENVIRON&gt;;close(ENVIRON);
++								if ($Environ =~ m/X2GO_SESSION=$x2gosid/) {       # If the x2go Session ID is in environ... renice the pid...
++									#syslog('debug', &quot;$pid: X2GO_SESSION=$x2gosid&quot;);
++									system(&quot;renice -n $idleNL -p $pid 1&gt;/dev/null 2&gt;/dev/null&quot;);
++								}
++							}
++
++						}
++						close(AUPS);
++
++						# Renice the AGENT so that we'll know that this one is already reniced.
++						system(&quot;renice -n $idleNL -p $agentPid 1&gt;/dev/null 2&gt;/dev/null&quot;);
++						syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $idleNL for session \&quot;$x2gosid\&quot;&quot;);
++
++					}
++				}
++			}
++		}
++
++		# Great! We're on a system with &quot;/proc&quot; so we're able to do this on individual sessions!
++		############################################################################################
++
++	} else {
++
++		###########################################################################################
++		# Oh no.... No &quot;/proc&quot;?  Lets do this on a per user basis instead then...  
++		# If a user have more than one session, both need to be suspended before we renice....
++		# Resuming any of that users sessions would return them all to normal priority.
++
++		my %niceUsers;
++		# Read the current list of X2Go sessions and their running state
++		open(XGOLS,&quot;$x2golsrpath|&quot;);
++		while (&lt;XGOLS&gt;) {
++			my $line = clups($_);
++			my ($agentPid,$x2gosid,undef,undef,$x2goState,undef,undef,undef,undef,undef,undef,$userID,undef,undef) = split(/\|/,$line);
++			syslog('debug', &quot;$agentPid,$x2gosid,,$x2goState,$userID&quot;);
++
++			# If user is in ignore list... we're not going a damn thing..
++			unless ($ignore{$userID} eq 1) {
++				unless ($niceUsers{$userID} =~ /^R:/) {   # Basically if we got an R we're sticking with it...
++					$niceUsers{$userID} = &quot;$x2goState:$agentPid&quot;;
++				}
++			}
++		}
++		close(XGOLS);
++
++		foreach my $nUser (keys %niceUsers) {
++			$nUser = sanitizer(&quot;anumazcsdaus&quot;,$nUser);
++
++			# We're only working with &quot;portable&quot; unix usernames..  
++			if ($nUser) {
++
++				# So if the sanitizer return something we'll do this....
++				my ($x2goState,$agentPid) = split(/\:/, $niceUsers{$nUser});
++
++				# Using the NICE value of the agent to figgure out the current nice state...
++				my ($psP,$psU,$psN,$psC) = checkPID($agentPid);
++				syslog('debug', &quot;$nUser:$x2goState,$agentPid:$psP,$psU,$psN,$psC&quot;);
++				# State is R (Running?)...
++				if ($x2goState eq &quot;R&quot;) {
++
++					# If nice level is not normal, renice to normal...
++					if ($psN ne $normalNL) {
++						syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $normalNL&quot;);
++						system(&quot;renice -n $normalNL -u $nUser 1&gt;/dev/null 2&gt;/dev/null&quot;);
++					}
++
++				# State is S (suspended)
++				} elsif ($x2goState eq &quot;S&quot;) {
++
++					# Did we renice this?
++					if ($psN ne $idleNL) {
++						syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $idleNL&quot;);
++						system(&quot;renice -n $idleNL -u $nUser 1&gt;/dev/null 2&gt;/dev/null&quot;);
++					}
++				}
++			}
++		}
++		# Oh no.... No &quot;/proc&quot;?  Lets do this on a per user basis instead then...  
++		###########################################################################################
++	}
++}
++
++1;
+diff --git a/X2Go/Utils.pm b/X2Go/Utils.pm
+index f5e4cf6..928eb67 100644
+--- a/X2Go/Utils.pm
++++ b/X2Go/Utils.pm
+@@ -19,6 +19,8 @@
+ #
+ # Copyright (C) 2007-2013  Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+ # Copyright (C) 2007-2013  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2013 Guangzhou Nianguan Electronics Technology Co.Ltd. &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">opensource at gznianguan.com</A>&gt;
++# Copyright (C) 2013 Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ 
+ package X2Go::Utils;
+ 
+@@ -35,7 +37,7 @@ X2Go::Utils Perl package.
+ use strict;
+ use base 'Exporter';
+ 
+-our @EXPORT = ('source_environment');
++our @EXPORT = ('source_environment', 'clups', 'sanitizer', );
+ 
+ sub source_environment {
+ 	my $name = shift;
+@@ -58,4 +60,48 @@ sub source_environment {
+ 	}
+ }
+ 
++# Over-zealous string sanitizer that makes perl strict and  perl -T happy...
++sub sanitizer {
++	my $type   = $_[0];
++	my $string = $_[1];
++	if ($type eq &quot;anumazcs&quot;) {
++		$string =~ s/[^a-zA-Z0-9]//g;
++		if ($string =~ /^([a-zA-Z0-9]*)$/) {
++			$string = $1;
++			return $string;
++		} else {return 0;}
++	} elsif ($type eq &quot;anumazlc&quot;) {
++		$string = lc($string);
++		$string =~ s/[^a-z0-9]//g;
++		if ($string =~ /^([a-z0-9]*)$/) {
++			$string = $1;
++			return $string;
++		} else {return 0;}
++	} elsif ($type eq &quot;num&quot;) {
++		$string =~ s/\D//g;
++		if ($string =~ /^([0-9]*)$/) {
++			$string = $1;
++			return $string;
++		} else {return 0;}
++	} elsif ($type eq &quot;anumazcsdaus&quot;) {
++		$string =~ s/[^a-zA-Z0-9\_\-]//g;
++		if ($string =~ /^([a-zA-Z0-9\_\-]*)$/) {
++			$string = $1;
++			return $string;
++		} else {return 0;}
++	} elsif ($type eq &quot;SOMETHINGELSE&quot;) {
++		return 0;
++	} else {
++		return 0;
++	}
++}
++
++sub clups {
++	my $string = &quot;@_&quot;;
++	$string =~ s/\n//g;
++	$string =~ s/\ //g;
++	$string =~ s/\s//g;
++	return $string;
++}
++
+ 1;
+diff --git a/debian/changelog b/debian/changelog
+index 6401701..0328845 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -40,6 +40,10 @@ x2goserver (4.1.0.0-0~x2go1) UNRELEASED; urgency=low
+     not set. (Fixes: #82).
+   * Make x2goruncommand aware of the Cinnamon desktop shell. (Fixes: #117).
+ 
++  [ Guangzhou Nianguan Electronics Technology Co.Ltd. ]
++  * New upstream version (4.1.0.0):
++    - Add SupeReNicer support.
++
+   [ Otto Kjell ]
+   * New upstream version (4.1.0.0):
+     - Add markdown files for most of the X2Go Server project folders. (Fixes:
+diff --git a/x2goserver-common/etc/x2goserver.conf b/x2goserver-common/etc/x2goserver.conf
+index 5fa6baf..fc98c90 100644
+--- a/x2goserver-common/etc/x2goserver.conf
++++ b/x2goserver-common/etc/x2goserver.conf
+@@ -4,6 +4,27 @@
+ [limit groups]
+ #bar-group=1
+ 
++[security]
++# SSHFS umask for client-side folder sharing. Leave uncommented to keep the server's default umask
++#umask=&quot;0117&quot;
++
++[superenicer]
++# enable the superrenicer code in x2gocleansessions, this will renice suspended sessions to nice level 19
++# and renice them to level 0 if the session becomes marked as running again...
++enable=yes
++
++# list of users that shall never be reniced
++#ignored_users=
++
++# force renicing of the complete user, don't set it to 'yes' unless you know what you are doing
++#force-user-renice=no
++
++# the normal nice level (for running sessions)
++#normal-nice-level=0
++
++# the idle nice level (for suspended sessions)
++#idle-nice-level=19
++
+ [log]
+ # possible levels are: emerg, alert, crit, err, warning, notice, info, debug
+ loglevel=notice
+diff --git a/x2goserver/sbin/x2gocleansessions b/x2goserver/sbin/x2gocleansessions
+index 3c9bbf0..728ead3 100755
+--- a/x2goserver/sbin/x2gocleansessions
++++ b/x2goserver/sbin/x2gocleansessions
+@@ -21,11 +21,16 @@
+ # Copyright (C) 2007-2013  Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
+ 
+ use strict;
++
++$ENV{'PATH'} = &quot;/bin:/sbin:/usr/bin:/usr/sbin&quot;;
++
+ use Sys::Hostname;
+ use Sys::Syslog qw( :standard :macros );
+ 
+ my $x2go_lib_path = `x2gopath libexec`;
+-use X2Go::Log qw(loglevel);
++use X2Go::Config qw( get_config );
++use X2Go::Log qw( loglevel );
++use X2Go::SupeReNicer qw( superenice );
+ 
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(loglevel()) );
+@@ -107,6 +112,30 @@ elsif ($pid != 0)
+ }
+ elsif ($pid == 0 )
+ {
++
++	# check if we are to use the superenicer script for throttling does the nice level
++        # of suspended sessions...
++	my $Config = get_config();
++
++	my $superenice_enable=$Config-&gt;param(&quot;superenicer.enable&quot;);
++	my $superenice_forceuser=$Config-&gt;param(&quot;superenicer.force-user-renice&quot;);
++	my $superenice_normal=$Config-&gt;param(&quot;superenicer.normal-nice-level&quot;);
++	my $superenice_idle=$Config-&gt;param(&quot;superenicer.idle-nice-level&quot;);
++	my $superenice_ignoredusers=$Config-&gt;param(&quot;superenicer.ignored-users&quot;);
++
++	if ($superenice_enable =~ m/(1|yes|Yes|YES|on|On|ON|True|true|TRUE)/ )
++	{
++		$superenice_enable=1;
++	} else {
++		$superenice_enable=0;
++	}
++	if ($superenice_forceuser =~ m/(1|yes|Yes|YES|on|On|ON|True|true|TRUE)/ )
++	{
++		$superenice_forceuser=1;
++	} else {
++		$superenice_forceuser=0;
++	}
++
+ 	# close any open file descriptor left open by our parent before the fork
+ 	for (glob &quot;/proc/$$/fd/*&quot;) { POSIX::close($1) if m{/(\d+)$}; }
+ 
+@@ -115,6 +144,7 @@ elsif ($pid == 0 )
+ 
+ 	my %remembered_sessions_status = ();
+ 	my %remembered_sessions_since = ();
++	my $last_reniced = 0;
+ 
+ 	while(sleep 2)
+ 	{
+@@ -201,5 +231,15 @@ elsif ($pid == 0 )
+ 				}
+ 			}
+ 		}
++
++		# call superenicer script if requested through x2goserver.conf every six seconds
++		if ( $superenice_enable ) {
++			$last_reniced += 2;
++			if ( $last_reniced ge 4 ) {
++				superenice($superenice_normal, $superenice_idle, $superenice_ignoredusers, $superenice_forceuser);
++				$last_reniced = 0;
++			}
++		}
++
+ 	}
+ }
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="018098.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-224-g73007f8
+</A></li>
+	<LI>Next message: <A HREF="018102.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-225-g664a418
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18101">[ date ]</a>
+              <a href="thread.html#18101">[ thread ]</a>
+              <a href="subject.html#18101">[ subject ]</a>
+              <a href="author.html#18101">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

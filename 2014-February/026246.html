@@ -1,0 +1,497 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [pyhoca-gui] 02/18: Make default cmdline option parameters overridable before the arg parser gets initialized.
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-February/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2002/18%3A%20Make%20default%20cmdline%20option%0A%20parameters%20overridable%20before%20the%20arg%20parser%20gets%20initialized.&In-Reply-To=%3C20140207122625.845933BDEE%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026245.html">
+   <LINK REL="Next"  HREF="026248.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [pyhoca-gui] 02/18: Make default cmdline option parameters overridable before the arg parser gets initialized.</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2002/18%3A%20Make%20default%20cmdline%20option%0A%20parameters%20overridable%20before%20the%20arg%20parser%20gets%20initialized.&In-Reply-To=%3C20140207122625.845933BDEE%40ymir%3E"
+       TITLE="[X2Go-Commits] [pyhoca-gui] 02/18: Make default cmdline option parameters overridable before the arg parser gets initialized.">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Feb  7 13:26:25 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026245.html">[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class
+</A></li>
+        <LI>Next message: <A HREF="026248.html">[X2Go-Commits] [pyhoca-gui] 08/18: Don't refer to py2exe anymore in nsis_template's naming scheme.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26246">[ date ]</a>
+              <a href="thread.html#26246">[ thread ]</a>
+              <a href="subject.html#26246">[ subject ]</a>
+              <a href="author.html#26246">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch brokerclient
+in repository pyhoca-gui.
+
+commit 3cf6798f0b170c7580d901f2045f6f196d5ad7f9
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Feb 5 12:41:06 2014 +0100
+
+    Make default cmdline option parameters overridable before the arg parser gets initialized.
+---
+ debian/changelog         |    2 +
+ pyhoca-gui               |    3 +-
+ pyhoca/wxgui/defaults.py |   96 +++++++++++++++++++++++++++++++++++++++
+ pyhoca/wxgui/launcher.py |  112 ++++++++++++++++++++++++++++++++++++++++++----
+ pyhoca/wxgui/options.py  |  109 --------------------------------------------
+ 5 files changed, 203 insertions(+), 119 deletions(-)
+
+diff --git a/debian/changelog b/debian/changelog
+index e41afdf..dd42756 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,8 @@ pyhoca-gui (0.5.0.0-0x2go1) UNRELEASED; urgency=low
+     named PyHocaGUI_Launcher.
+   * Allow automatic image branding (splash, about image, tray icon) by
+     setting another application name than the default.
++  * Make default cmdline option parameters overridable before the
++    arg parser gets initialized.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 08 Jan 2014 21:28:37 +0100
+ 
+diff --git a/pyhoca-gui b/pyhoca-gui
+index cd6bcf4..93c2c1e 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -35,4 +35,5 @@ if __name__ == '__main__':
+     app.setup_consolelog()
+     app.setup_process()
+     app.setup_devmode()
+-    app.main()
++    args, logger, liblogger = app.parseargs()
++    app.main(args=args, logger=logger, liblogger=liblogger)
+diff --git a/pyhoca/wxgui/defaults.py b/pyhoca/wxgui/defaults.py
+new file mode 100644
+index 0000000..c6f6615
+--- /dev/null
++++ b/pyhoca/wxgui/defaults.py
+@@ -0,0 +1,96 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2010-2013 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++#
++# PyHoca GUI is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# PyHoca GUI is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++from x2go import X2GOCLIENT_OS
++from x2go import BACKENDS
++ 
++_profiles_backend_default = BACKENDS['X2GoSessionProfiles']['default']
++_settings_backend_default = BACKENDS['X2GoClientSettings']['default']
++_printing_backend_default = BACKENDS['X2GoClientPrinting']['default']
++
++if X2GOCLIENT_OS == 'Windows':
++    from x2go import X2GoClientXConfig
++    _x = X2GoClientXConfig()
++    _known_xservers = _x.known_xservers
++    _installed_xservers = _x.installed_xservers
++
++if X2GOCLIENT_OS == 'Windows':
++    _config_backends = ('FILE', 'WINREG')
++elif X2GOCLIENT_OS == 'Linux':
++    _config_backends = ('FILE', 'GCONF')
++else:
++    _config_backends = ('FILE')
++
++default_options = {
++  'debug': False,
++  'quiet': False,
++  'libdebug': False,
++  'libdebug_sftpxfer': False,
++  'version': False,
++
++  'session_profile': '',
++  'remember_username': False,
++  'non_interactive': False,
++  'auto_connect': False,
++  'show_profile_metatypes': False,
++  'single_session_profile': False,
++  'tray_icon': '',
++  'tray_icon_connecting': '',
++  'restricted_trayicon': False,
++  'add_to_known_hosts': False,
++  'start_on_connect': False,
++  'exit_on_disconnect': False,
++  'resume_newest_on_connect': False,
++  'resume_oldest_on_connect': False,
++  'resume_all_on_connect': False,
++  'disconnect_on_suspend': False,
++  'disconnect_on_terminate': False,
++  'splash_image': '',
++  'about_image': '',
++  'disable_splash': False,
++  'disable_options': False,
++  'disable_printingprefs': False,
++  'disable_profilemanager': False,
++  'disable_notifications': False,
++  'display': '',
++  'logon_window_position': False,
++  'published_applications_no_submenus': 10,
++  'backend_controlsession': '',
++  'backend_terminalsession': '',
++  'backend_serversessioninfo': '',
++  'backend_serversessionlist': '',
++  'backend_proxy': '',
++  'backend_sessionprofiles': '',
++  'backend_clientsettings': '',
++  'backend_clientprinting': '',
++  'client_rootdir': '',
++  'sessions_rootdir': '',
++  'ssh_rootdir': '',
++}
++
++if X2GOCLIENT_OS == 'Windows':
++    default_options.update(
++        { 'lang': 'en',
++          'start_xserver': False,
++          'preferred_xserver': '',
++          'start_pulseaudio': False,
++        }
++    )
+diff --git a/pyhoca/wxgui/launcher.py b/pyhoca/wxgui/launcher.py
+index 42638f6..58d48dc 100644
+--- a/pyhoca/wxgui/launcher.py
++++ b/pyhoca/wxgui/launcher.py
+@@ -27,6 +27,7 @@ import shutil
+ import argparse
+ import gettext
+ import subprocess
++import copy
+ 
+ import gevent.monkey
+ gevent.monkey.patch_all()
+@@ -41,18 +42,19 @@ try:
+     wxversion.select('2.8')
+ except: pass
+ 
++import wx
+ 
+ from x2go import X2GOCLIENT_OS
+ from x2go import CURRENT_LOCAL_USER
++from x2go import BACKENDS
+ from x2go import X2GoLogger
+ 
+-import basepath
+-import taskbar
+ from pyhoca.wxgui import PyHocaGUI, __VERSION__
+-from options import *
+ from messages import PyHoca_MessageWindow_Ok
+ 
+-import wx
++import defaults
++import basepath
++import taskbar
+ 
+ class PyHocaGUI_Launcher(object):
+ 
+@@ -70,6 +72,8 @@ VERSION: %s
+ 
+ &quot;&quot;&quot; % (self.PROG_NAME, self.PROG_PID, self.VERSION)
+ 
++        self.default_options = defaults.default_options
++
+     def setup_progname(self, pname):
+         self.PROG_NAME = pname
+ 
+@@ -88,6 +92,11 @@ VERSION: %s
+             from pyhoca.wxgui.basepath import nxproxy_binary
+             os.environ.update({'NXPROXY_BINARY': nxproxy_binary, })
+ 
++    def modify_default_option(self, option, value):
++        if self.default_options.has_key(option):
++            if type(self.default_options[option]) == type(value):
++                self.default_options[option] = value
++
+     def setup_devmode(self):
+         if sys.argv[0].startswith('./') or sys.argv[0].startswith('python'):
+             sys.path.insert(0, os.getcwd())
+@@ -188,7 +197,7 @@ VERSION: %s
+ 
+ 
+     # sometimes we have to fail...
+-    def runtime_error(m, parser=None, exitcode=-1):
++    def runtime_error(self, m, parser=None, exitcode=-1):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+         &quot;&quot;&quot;
+@@ -210,8 +219,94 @@ VERSION: %s
+ 
+     def parseargs(self):
+ 
+-        global DEBUG
+-        global print_action_args
++        _profiles_backend_default = BACKENDS['X2GoSessionProfiles']['default']
++        _settings_backend_default = BACKENDS['X2GoClientSettings']['default']
++        _printing_backend_default = BACKENDS['X2GoClientPrinting']['default']
++
++        if X2GOCLIENT_OS == 'Windows':
++            from x2go import X2GoClientXConfig
++            _x = X2GoClientXConfig()
++            _known_xservers = _x.known_xservers
++            _installed_xservers = _x.installed_xservers
++
++        if X2GOCLIENT_OS == 'Windows':
++            _config_backends = ('FILE', 'WINREG')
++        elif X2GOCLIENT_OS == 'Linux':
++            _config_backends = ('FILE', 'GCONF')
++        else:
++            _config_backends = ('FILE')
++
++        _default_options = copy.deepcopy(self.default_options)
++        for key in _default_options.keys():
++            if not _default_options[key]:
++                _default_options[key] = None
++
++        # debug options...
++        debug_options =  [
++            {'args':['-d','--debug'], 'default': _default_options['debug'], 'action': 'store_true', 'help': 'enable application debugging code', },
++            {'args':['--quiet'], 'default': _default_options['quiet'], 'action': 'store_true', 'help': 'disable any kind of log output', },
++            {'args':['--libdebug'], 'default': _default_options['libdebug'], 'action': 'store_true', 'help': 'enable debugging code of the underlying Python X2Go module', },
++            {'args':['--libdebug-sftpxfer'], 'default': _default_options['libdebug_sftpxfer'], 'action': 'store_true', 'help': 'enable debugging code of Python X2Go\'s sFTP server code (very verbose, and even promiscuous)', },
++            {'args':['-V', '--version'], 'default': _default_options['version'], 'action': 'store_true', 'help': 'print version number and exit', },
++        ]
++        x2go_gui_options = [
++            {'args':['-P','--session-profile'], 'default': _default_options['session_profile'], 'metavar': '&lt;profile-name&gt;', 'help': 'directly connect to a session profile', },
++            {'args':['--remember-username'], 'default': _default_options['remember_username'], 'action': 'store_true', 'help': 'for profiles with interactive authentication, remember the last-used username', },
++            {'args':['--non-interactive'], 'default': _default_options['non_interactive'], 'action': 'store_true', 'help': 'run the session manager in non-interactive mode, this option sets the following options to true: --restricted-trayicon, --single_session_profile, --start-on-connect, --resume-all-on-connect, --exit-on-disconnect, --disconnect-on-suspend and --disconnect-on-terminate', },
++            {'args':['--auto-connect'], 'default': _default_options['auto_connect'], 'action': 'store_true', 'help': 'connect sessions via SSH pubkey authentication if possible', },
++            {'args':['--show-profile-metatypes'], 'default': _default_options['show_profile_metatypes'], 'action': 'store_true', 'help': 'show descriptive meta information on session profiles in menus (NOTE: this makes menus appear a bit more sluggish, use it mostly for debugging)', },
++            {'args':['--single-session-profile'], 'default': _default_options['single_session_profile'], 'action': 'store_true', 'help': 'disable support of handling multiple session profiles', },
++            {'args':['--tray-icon'], 'default': _default_options['tray_icon'], 'metavar': '&lt;your-logo&gt;', 'help': 'define an alternative system tray icon file (PNG files only, leave out file extension here, size 22x22 on Linux, 16x16 on Windows)', },
++            {'args':['--tray-icon-connecting'], 'default': _default_options['tray_icon_connecting'], 'metavar': '&lt;your-logo-while-connecting&gt;', 'help': 'define an alternative system tray icon file while connecting to a server (PNG files only, leave out file extension here, size 22x22 on Linux, 16x16 on Windows)', },
++            {'args':['--restricted-trayicon'], 'default': _default_options['restricted_trayicon'], 'action': 'store_true', 'help': 'restricts session manager\'s main icon functionality to information window and application exit; on left-click only a minimal session menu is shown', },
++            {'args':['--add-to-known-hosts'], 'default': _default_options['add_to_known_hosts'], 'action': 'store_true', 'help': 'automatically add SSH host keys to the known_hosts files of the client-side user', },
++            {'args':['--start-on-connect'], 'default': _default_options['start_on_connect'], 'action': 'store_true', 'help': 'This is now the hard-coded default. start a session directly after authentication if no session is currently running/suspended', },
++            {'args':['--exit-on-disconnect'], 'default': _default_options['exit_on_disconnect'], 'action': 'store_true', 'help': 'exit the session manager after a server connection has died', },
++            {'args':['--resume-newest-on-connect', '--resume-on-connect'], 'default': _default_options['resume_newest_on_connect'], 'action': 'store_true', 'help': 'This is now the hard-coded default. On connect auto-resume the newest suspended session', },
++            {'args':['--resume-oldest-on-connect'], 'default': _default_options['resume_oldest_on_connect'], 'action': 'store_true', 'help': 'on connect auto-resume the oldest suspended session', },
++            {'args':['--resume-all-on-connect'], 'default': _default_options['resume_all_on_connect'], 'action': 'store_true', 'help': 'auto-resume all suspended sessions on connect', },
++            {'args':['--disconnect-on-suspend'], 'default': _default_options['disconnect_on_suspend'], 'action': 'store_true', 'help': 'disconnect a server if a session has been suspended', },
++            {'args':['--disconnect-on-terminate'], 'default': _default_options['disconnect_on_terminate'], 'action': 'store_true', 'help': 'disconnect a server if a session has been terminated', },
++            {'args':['--splash-image'], 'default': _default_options['splash_image'], 'metavar': '&lt;your-splash-image&gt;', 'help': 'define an alternative splash image that gets shown on application startup (PNG files only, full path or filename as found in &lt;share&gt;/img)', },
++            {'args':['--about-image'], 'default': _default_options['about_image'], 'metavar': '&lt;your-about-window-image&gt;', 'help': 'define an alternative image for the application\'s ,,About\'\' window (PNG files only, full path or filename as found in &lt;share&gt;/img)', },
++            {'args':['--disable-splash'], 'default': _default_options['disable_splash'], 'action': 'store_true', 'help': 'disable the applications splash screen', },
++            {'args':['--disable-options'], 'default': _default_options['disable_options'], 'action': 'store_true', 'help': 'disable the client options configuration window', },
++            {'args':['--disable-printingprefs'], 'default': _default_options['disable_printingprefs'], 'action': 'store_true', 'help': 'disable the client\'s printing preferences window', },
++            {'args':['--disable-profilemanager'], 'default': _default_options['disable_profilemanager'], 'action': 'store_true', 'help': 'disable the session profile manager window', },
++            {'args':['--disable-notifications'], 'default': _default_options['disable_notifications'], 'action': 'store_true', 'help': 'disable all applet notifications', },
++            {'args':['--display'], 'default': _default_options['display'], 'metavar': '&lt;hostname&gt;:&lt;screennumber&gt;', 'help': 'set the DISPLAY environment variable to &lt;hostname&gt;:&lt;screennumber&gt;', },
++            {'args':['--logon-window-position'], 'default': _default_options['logon_window_position'], 'metavar': '&lt;x-pos&gt;x&lt;y-pos&gt;', 'help': 'give a custom position for the logon window, use negative values to position relative to right/bottom border', },
++            {'args':['--published-applications-no-submenus'], 'default': _default_options['published_applications_no_submenus'], 'metavar': '&lt;number&gt;', 'help': 'the number of published applications that will be rendered without submenus', },
++        ]
++
++        if X2GOCLIENT_OS == 'Windows':
++            x2go_gui_options.append(
++                {'args':['--lang'], 'default': _default_options['lang'], 'metavar': 'LANGUAGE', 'help': 'set the GUI language (currently available: en, de, nl, es)', },
++            )
++
++        backend_options = [
++            {'args':['--backend-controlsession'], 'default': _default_options['backend_controlsession'], 'metavar': '&lt;CONTROLSESSION_BACKEND&gt;', 'choices': BACKENDS['X2GoControlSession'].keys(), 'help': 'force usage of a certain CONTROLSESSION_BACKEND (do not use this unless you know exactly what you are doing)', },
++            {'args':['--backend-terminalsession'], 'default': _default_options['backend_terminalsession'], 'metavar': '&lt;TERMINALSESSION_BACKEND&gt;', 'choices': BACKENDS['X2GoTerminalSession'].keys(), 'help': 'force usage of a certain TERMINALSESSION_BACKEND (do not use this unless you know exactly what you are doing)', },
++            {'args':['--backend-serversessioninfo'], 'default': _default_options['backend_serversessioninfo'], 'metavar': '&lt;SERVERSESSIONINFO_BACKEND&gt;', 'choices': BACKENDS['X2GoServerSessionInfo'].keys(), 'help': 'force usage of a certain SERVERSESSIONINFO_BACKEND (do not use this unless you know exactly what you are doing)', },
++            {'args':['--backend-serversessionlist'], 'default': _default_options['backend_serversessionlist'], 'metavar': '&lt;SERVERSESSIONLIST_BACKEND&gt;', 'choices': BACKENDS['X2GoServerSessionList'].keys(), 'help': 'force usage of a certain SERVERSESSIONLIST_BACKEND (do not use this unless you know exactly what you are doing)', },
++            {'args':['--backend-proxy'], 'default': _default_options['backend_proxy'], 'metavar': '&lt;PROXY_BACKEND&gt;', 'choices': BACKENDS['X2GoProxy'].keys(), 'help': 'force usage of a certain PROXY_BACKEND (do not use this unless you know exactly what you are doing)', },
++            {'args':['--backend-sessionprofiles'], 'default': _default_options['backend_sessionprofiles'], 'metavar': '&lt;SESSIONPROFILES_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing session profiles, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _profiles_backend_default), },
++            {'args':['--backend-clientsettings'], 'default': _default_options['backend_clientsettings'], 'metavar': '&lt;CLIENTSETTINGS_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing the client settings configuration, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _settings_backend_default), },
++            {'args':['--backend-clientprinting'], 'default': _default_options['backend_clientprinting'], 'metavar': '&lt;CLIENTPRINTING_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing the client printing configuration, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _printing_backend_default), },
++        ]
++
++        if X2GOCLIENT_OS == 'Windows':
++            contrib_options = [
++                {'args':['--start-xserver'], 'default': _default_options['start_xserver'], 'action': 'store_true', 'help': 'start the XServer before starting the session manager application, detect best XServer automatically, if more than one XServer is installed on your system', },
++                {'args':['-X', '--preferred-xserver'], 'default': _default_options['preferred_xserver'], 'metavar': '&lt;XSERVER&gt;', 'choices': _known_xservers, 'help': 'start either of the currently supported XServers: %s -- make sure your preferred XServer is installed on your system' % _known_xservers, },
++                {'args':['--start-pulseaudio'], 'default': _default_options['start_pulseaudio'], 'action': 'store_true', 'help': 'start the PulseAudio server before starting the session manager application', },
++            ]
++
++        portable_options = [
++            {'args':['--client-rootdir'], 'default': _default_options['client_rootdir'], 'metavar': '&lt;/path/to/.x2goclient/dir&gt;', 'help': 'define an alternative location where to find plain text config files (default: &lt;HOME&gt;/.x2goclient). This option will set ,,--backend-profiles FILE\'\', ,,--backend-clientsettings FILE\'\' and ,,--backend-clientprinting FILE\'\'', },
++            {'args':['--sessions-rootdir'], 'default': _default_options['sessions_rootdir'], 'metavar': '&lt;/path/to/.x2go/dir&gt;', 'help': 'define an alternative location for session runtime files'},
++            {'args':['--ssh-rootdir'], 'default': _default_options['ssh_rootdir'], 'metavar': '&lt;/path/to/.ssh/dir&gt;', 'help': 'define an alternative location for SSH files', },
++        ]
+ 
+         p = argparse.ArgumentParser(description='Graphical X2Go client implemented in (wx)Python.',\
+                                     formatter_class=argparse.RawDescriptionHelpFormatter, \
+@@ -306,8 +401,7 @@ VERSION: %s
+         return a, logger, liblogger
+ 
+ 
+-    def main(self):
+-        args, logger, liblogger = self.parseargs()
++    def main(self, args, logger=None, liblogger=None):
+         if X2GOCLIENT_OS == 'Windows':
+             if args.lang:
+                 lang = gettext.translation('PyHoca-GUI', localedir=basepath.locale_basepath, languages=[args.lang], )
+diff --git a/pyhoca/wxgui/options.py b/pyhoca/wxgui/options.py
+deleted file mode 100644
+index 3a79cce..0000000
+--- a/pyhoca/wxgui/options.py
++++ /dev/null
+@@ -1,109 +0,0 @@
+-#!/usr/bin/env python
+-# -*- coding: utf-8 -*-
+-
+-# Copyright (C) 2010-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+-# Copyright (C) 2010-2013 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
+-#
+-# PyHoca GUI is free software; you can redistribute it and/or modify
+-# it under the terms of the GNU Affero General Public License as published by
+-# the Free Software Foundation; either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# PyHoca GUI is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU Affero General Public License for more details.
+-#
+-# You should have received a copy of the GNU Affero General Public License
+-# along with this program; if not, write to the
+-# Free Software Foundation, Inc.,
+-# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+-
+-from x2go import X2GOCLIENT_OS
+-from x2go import BACKENDS
+- 
+-_profiles_backend_default = BACKENDS['X2GoSessionProfiles']['default']
+-_settings_backend_default = BACKENDS['X2GoClientSettings']['default']
+-_printing_backend_default = BACKENDS['X2GoClientPrinting']['default']
+-
+-if X2GOCLIENT_OS == 'Windows':
+-    from x2go import X2GoClientXConfig
+-    _x = X2GoClientXConfig()
+-    _known_xservers = _x.known_xservers
+-    _installed_xservers = _x.installed_xservers
+-
+-if X2GOCLIENT_OS == 'Windows':
+-    _config_backends = ('FILE', 'WINREG')
+-elif X2GOCLIENT_OS == 'Linux':
+-    _config_backends = ('FILE', 'GCONF')
+-else:
+-    _config_backends = ('FILE')
+-
+-
+-# debug options...
+-debug_options =  [
+-                   {'args':['-d','--debug'], 'default': False, 'action': 'store_true', 'help': 'enable application debugging code', },
+-                   {'args':['--quiet'], 'default': False, 'action': 'store_true', 'help': 'disable any kind of log output', },
+-                   {'args':['--libdebug'], 'default': False, 'action': 'store_true', 'help': 'enable debugging code of the underlying Python X2Go module', },
+-                   {'args':['--libdebug-sftpxfer'], 'default': False, 'action': 'store_true', 'help': 'enable debugging code of Python X2Go\'s sFTP server code (very verbose, and even promiscuous)', },
+-                   {'args':['-V', '--version'], 'default': False, 'action': 'store_true', 'help': 'print version number and exit', },
+-                 ]
+-x2go_gui_options = [
+-                   {'args':['-P','--session-profile'], 'default': None, 'metavar': '&lt;profile-name&gt;', 'help': 'directly connect to a session profile', },
+-                   {'args':['--remember-username'], 'default': False, 'action': 'store_true', 'help': 'for profiles with interactive authentication, remember the last-used username', },
+-                   {'args':['--non-interactive'], 'default': False, 'action': 'store_true', 'help': 'run the session manager in non-interactive mode, this option sets the following options to true: --restricted-trayicon, --single_session_profile, --start-on-connect, --resume-all-on-connect, --exit-on-disconnect, --disconnect-on-suspend and --disconnect-on-terminate', },
+-                   {'args':['--auto-connect'], 'default': False, 'action': 'store_true', 'help': 'connect sessions via SSH pubkey authentication if possible', },
+-                   {'args':['--show-profile-metatypes'], 'default': False, 'action': 'store_true', 'help': 'show descriptive meta information on session profiles in menus (NOTE: this makes menus appear a bit more sluggish, use it mostly for debugging)', },
+-                   {'args':['--single-session-profile'], 'default': False, 'action': 'store_true', 'help': 'disable support of handling multiple session profiles', },
+-                   {'args':['--tray-icon'], 'default': None, 'metavar': '&lt;your-logo&gt;', 'help': 'define an alternative system tray icon file (PNG files only, leave out file extension here, size 22x22 on Linux, 16x16 on Windows)', },
+-                   {'args':['--tray-icon-connecting'], 'default': None, 'metavar': '&lt;your-logo-while-connecting&gt;', 'help': 'define an alternative system tray icon file while connecting to a server (PNG files only, leave out file extension here, size 22x22 on Linux, 16x16 on Windows)', },
+-                   {'args':['--restricted-trayicon'], 'default': False, 'action': 'store_true', 'help': 'restricts session manager\'s main icon functionality to information window and application exit; on left-click only a minimal session menu is shown', },
+-                   {'args':['--add-to-known-hosts'], 'default': False, 'action': 'store_true', 'help': 'automatically add SSH host keys to the known_hosts files of the client-side user', },
+-                   {'args':['--start-on-connect'], 'default': False, 'action': 'store_true', 'help': 'This is now the hard-coded default. start a session directly after authentication if no session is currently running/suspended', },
+-                   {'args':['--exit-on-disconnect'], 'default': False, 'action': 'store_true', 'help': 'exit the session manager after a server connection has died', },
+-                   {'args':['--resume-newest-on-connect', '--resume-on-connect'], 'default': False, 'action': 'store_true', 'help': 'This is now the hard-coded default. On connect auto-resume the newest suspended session', },
+-                   {'args':['--resume-oldest-on-connect'], 'default': False, 'action': 'store_true', 'help': 'on connect auto-resume the oldest suspended session', },
+-                   {'args':['--resume-all-on-connect'], 'default': False, 'action': 'store_true', 'help': 'auto-resume all suspended sessions on connect', },
+-                   {'args':['--disconnect-on-suspend'], 'default': False, 'action': 'store_true', 'help': 'disconnect a server if a session has been suspended', },
+-                   {'args':['--disconnect-on-terminate'], 'default': False, 'action': 'store_true', 'help': 'disconnect a server if a session has been terminated', },
+-                   {'args':['--splash-image'], 'default': None, 'metavar': '&lt;your-splash-image&gt;', 'help': 'define an alternative splash image that gets shown on application startup (PNG files only, full path or filename as found in &lt;share&gt;/img)', },
+-                   {'args':['--about-image'], 'default': None, 'metavar': '&lt;your-about-window-image&gt;', 'help': 'define an alternative image for the application\'s ,,About\'\' window (PNG files only, full path or filename as found in &lt;share&gt;/img)', },
+-                   {'args':['--disable-splash'], 'default': False, 'action': 'store_true', 'help': 'disable the applications splash screen', },
+-                   {'args':['--disable-options'], 'default': False, 'action': 'store_true', 'help': 'disable the client options configuration window', },
+-                   {'args':['--disable-printingprefs'], 'default': False, 'action': 'store_true', 'help': 'disable the client\'s printing preferences window', },
+-                   {'args':['--disable-profilemanager'], 'default': False, 'action': 'store_true', 'help': 'disable the session profile manager window', },
+-                   {'args':['--disable-notifications'], 'default': False, 'action': 'store_true', 'help': 'disable all applet notifications', },
+-                   {'args':['--display'], 'default': None, 'metavar': '&lt;hostname&gt;:&lt;screennumber&gt;', 'help': 'set the DISPLAY environment variable to &lt;hostname&gt;:&lt;screennumber&gt;', },
+-                   {'args':['--logon-window-position'], 'default': None, 'metavar': '&lt;x-pos&gt;x&lt;y-pos&gt;', 'help': 'give a custom position for the logon window, use negative values to position relative to right/bottom border', },
+-                   {'args':['--published-applications-no-submenus'], 'default': 10, 'metavar': '&lt;number&gt;', 'help': 'the number of published applications that will be rendered without submenus', },
+-                 ]
+-if X2GOCLIENT_OS == 'Windows':
+-    x2go_gui_options.append(
+-                   {'args':['--lang'], 'default': None, 'metavar': 'LANGUAGE', 'help': 'set the GUI language (currently available: en, de, nl, es)', },
+-        )
+-
+-backend_options = [
+-                   {'args':['--backend-controlsession'], 'default': None, 'metavar': '&lt;CONTROLSESSION_BACKEND&gt;', 'choices': BACKENDS['X2GoControlSession'].keys(), 'help': 'force usage of a certain CONTROLSESSION_BACKEND (do not use this unless you know exactly what you are doing)', },
+-                   {'args':['--backend-terminalsession'], 'default': None, 'metavar': '&lt;TERMINALSESSION_BACKEND&gt;', 'choices': BACKENDS['X2GoTerminalSession'].keys(), 'help': 'force usage of a certain TERMINALSESSION_BACKEND (do not use this unless you know exactly what you are doing)', },
+-                   {'args':['--backend-serversessioninfo'], 'default': None, 'metavar': '&lt;SERVERSESSIONINFO_BACKEND&gt;', 'choices': BACKENDS['X2GoServerSessionInfo'].keys(), 'help': 'force usage of a certain SERVERSESSIONINFO_BACKEND (do not use this unless you know exactly what you are doing)', },
+-                   {'args':['--backend-serversessionlist'], 'default': None, 'metavar': '&lt;SERVERSESSIONLIST_BACKEND&gt;', 'choices': BACKENDS['X2GoServerSessionList'].keys(), 'help': 'force usage of a certain SERVERSESSIONLIST_BACKEND (do not use this unless you know exactly what you are doing)', },
+-                   {'args':['--backend-proxy'], 'default': None, 'metavar': '&lt;PROXY_BACKEND&gt;', 'choices': BACKENDS['X2GoProxy'].keys(), 'help': 'force usage of a certain PROXY_BACKEND (do not use this unless you know exactly what you are doing)', },
+-                   {'args':['--backend-sessionprofiles'], 'default': None, 'metavar': '&lt;SESSIONPROFILES_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing session profiles, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _profiles_backend_default), },
+-                   {'args':['--backend-clientsettings'], 'default': None, 'metavar': '&lt;CLIENTSETTINGS_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing the client settings configuration, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _settings_backend_default), },
+-                   {'args':['--backend-clientprinting'], 'default': None, 'metavar': '&lt;CLIENTPRINTING_BACKEND&gt;', 'choices': _config_backends, 'help': 'use given backend for accessing the client printing configuration, available backends on your system: %s (default: %s)' % (', '.join(_config_backends), _printing_backend_default), },
+-                  ]
+-
+-if X2GOCLIENT_OS == 'Windows':
+-    contrib_options = [
+-                       {'args':['--start-xserver'], 'default': False, 'action': 'store_true', 'help': 'start the XServer before starting the session manager application, detect best XServer automatically, if more than one XServer is installed on your system', },
+-                       {'args':['-X', '--preferred-xserver'], 'default': None, 'metavar': '&lt;XSERVER&gt;', 'choices': _known_xservers, 'help': 'start either of the currently supported XServers: %s -- make sure your preferred XServer is installed on your system' % _known_xservers, },
+-                       {'args':['--start-pulseaudio'], 'default': False, 'action': 'store_true', 'help': 'start the PulseAudio server before starting the session manager application', },
+-                      ]
+-
+-portable_options = [
+-                   {'args':['--client-rootdir'], 'default': None, 'metavar': '&lt;/path/to/.x2goclient/dir&gt;', 'help': 'define an alternative location where to find plain text config files (default: &lt;HOME&gt;/.x2goclient). This option will set ,,--backend-profiles FILE\'\', ,,--backend-clientsettings FILE\'\' and ,,--backend-clientprinting FILE\'\'', },
+-                   {'args':['--sessions-rootdir'], 'default': None, 'metavar': '&lt;/path/to/.x2go/dir&gt;', 'help': 'define an alternative location for session runtime files'},
+-                   {'args':['--ssh-rootdir'], 'default': None, 'metavar': '&lt;/path/to/.ssh/dir&gt;', 'help': 'define an alternative location for SSH files', },
+-                  ]
+-
+-
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/pyhoca-gui.git
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026245.html">[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class
+</A></li>
+	<LI>Next message: <A HREF="026248.html">[X2Go-Commits] [pyhoca-gui] 08/18: Don't refer to py2exe anymore in nsis_template's naming scheme.
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26246">[ date ]</a>
+              <a href="thread.html#26246">[ thread ]</a>
+              <a href="subject.html#26246">[ subject ]</a>
+              <a href="author.html#26246">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

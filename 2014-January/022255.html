@@ -1,0 +1,219 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-43-ga93d4f2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-43-ga93d4f2&In-Reply-To=%3C20140107152139.7BBF95DD07%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022249.html">
+   <LINK REL="Next"  HREF="022260.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-43-ga93d4f2</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-43-ga93d4f2&In-Reply-To=%3C20140107152139.7BBF95DD07%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-43-ga93d4f2">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022249.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-42-g79f1296
+</A></li>
+        <LI>Next message: <A HREF="022260.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-39-g86055d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22255">[ date ]</a>
+              <a href="thread.html#22255">[ thread ]</a>
+              <a href="subject.html#22255">[ subject ]</a>
+              <a href="author.html#22255">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  a93d4f2646aa310295eacaf4f7c6b1bb2566c19e (commit)
+      from  79f1296a15b362e57161632519c796ea43994104 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    6 +++++-
+ x2go/backends/control/_stdout.py |   15 +++++++++++++++
+ x2go/session.py                  |    3 +++
+ 3 files changed, 23 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index defa533..b42d0b0 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -16,7 +16,8 @@ python-x2go (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+       True or False in cases where I/O errors occur.
+     - Avoid the known_hosts file being flushed with localhost:[&lt;someport&gt;]
+       entries. Store host keys of SSH-proxied hosts under the [&lt;address&gt;]:&lt;port&gt;
+-      the system has _behind_ the SSH proxy gateway. (Hopefully fixes: #18).
++      the system has _behind_ the SSH proxy gateway. (Hopefully fixes: #18,
++      partially fixes: #53).
+     - Add session profile option: uniquehostkeyaliases. Allow the
+       (by-design-unique) X2Go session profile ID to be a representative for
+       &lt;hostname&gt;:&lt;port&gt;. Update session profile IDs on hostname changes.
+@@ -31,6 +32,9 @@ python-x2go (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+     - Sort X2Go feature list, add force option for X2GoClient queries of server
+       features and server components. Add alias get_server_components (for 
+       get_server_versions).
++    - Add low latency support for link types 'modem' and 'isdn'. Selecting
++      either link quality will double nearly all connection timeout values.
++      (Fixes: #53).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Dec 2012 08:58:44 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index fdf8449..0050147 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -128,6 +128,7 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+                  ssh_rootdir=os.path.join(defaults.LOCAL_HOME, defaults.X2GO_SSH_ROOTDIR),
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  published_applications_no_submenus=0,
++                 low_latency=False,
+                  **kwargs):
+         &quot;&quot;&quot;\
+         Initialize an X2Go control session. For each connected session profile there will be one SSH-based
+@@ -170,6 +171,8 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         @param loglevel: if no L{X2GoLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
++        @param low_latency: set this boolean switch for weak connections, it will double all timeout values.
++        @type low_latency: C{bool}
+         @param kwargs: catch any non-defined parameters in C{kwargs}
+         @type kwargs: C{dict}
+ 
+@@ -223,6 +226,8 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self.session_died = False
+ 
++        self.low_latency = low_latency
++
+         self.published_applications_no_submenus = published_applications_no_submenus
+         self._already_querying_published_applications = threading.Lock()
+ 
+@@ -394,6 +399,7 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         ssh_transport = self.get_transport()
+         if ssh_transport and ssh_transport.is_authenticated():
+ 
++            if self.low_latency: timeout = timeout * 2
+             timer = gevent.Timeout(timeout)
+             timer.start()
+             try:
+@@ -837,6 +843,9 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         if forward_sshagent is not None:
+             self.forward_sshagent = forward_sshagent
+ 
++        if timeout and self.low_latency:
++            timeout = timeout * 2
++
+         if key_filename or pkey or look_for_keys or allow_agent or (password and force_password_auth):
+             try:
+                 if password and force_password_auth:
+@@ -1403,6 +1412,9 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+             # this _success loop will catch errors in case the x2golistsessions output is corrupt
+             # this should not be needed and is a workaround for the current X2Go server implementation
+ 
++            if self.low_latency:
++                maxwait = maxwait * 2
++
+             timeout = gevent.Timeout(maxwait)
+             timeout.start()
+             try:
+@@ -1445,6 +1457,9 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         else:
+ 
++            if self.low_latency:
++                maxwait = maxwait * 2
++
+             # this _success loop will catch errors in case the x2golistmounts output is corrupt
+ 
+             timeout = gevent.Timeout(maxwait)
+diff --git a/x2go/session.py b/x2go/session.py
+index 2b70432..7a66bbd 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -591,6 +591,8 @@ class X2GoSession(object):
+         Initialize a new control session (C{X2GoControlSession*}).
+ 
+         &quot;&quot;&quot;
++        low_latency = self.terminal_params.has_key('link') and self.terminal_params['link'].lower() in ('modem', 'isdn')
++
+         if self.control_session is None:
+             self.logger('initializing X2GoControlSession', loglevel=log.loglevel_DEBUG)
+             self.control_session = self.control_backend(profile_name=self.profile_name,
+@@ -604,6 +606,7 @@ class X2GoSession(object):
+                                                         client_rootdir=self.client_rootdir,
+                                                         sessions_rootdir=self.sessions_rootdir,
+                                                         ssh_rootdir=self.ssh_rootdir,
++                                                        low_latency=low_latency,
+                                                         logger=self.logger)
+     __init_control_session = init_control_session
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022249.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-42-g79f1296
+</A></li>
+	<LI>Next message: <A HREF="022260.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-39-g86055d5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22255">[ date ]</a>
+              <a href="thread.html#22255">[ thread ]</a>
+              <a href="subject.html#22255">[ subject ]</a>
+              <a href="author.html#22255">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

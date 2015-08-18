@@ -1,0 +1,550 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	baa434a6db77809e7172d7811221f7e3d21ac33d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09baa434a6db77809e7172d7811221f7e3d21ac33d&In-Reply-To=%3C20130914135546.294955DBB9%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013069.html">
+   <LINK REL="Next"  HREF="013071.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	baa434a6db77809e7172d7811221f7e3d21ac33d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09baa434a6db77809e7172d7811221f7e3d21ac33d&In-Reply-To=%3C20130914135546.294955DBB9%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	baa434a6db77809e7172d7811221f7e3d21ac33d">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013069.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03
+</A></li>
+        <LI>Next message: <A HREF="013071.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-117-g2bc0921
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13070">[ date ]</a>
+              <a href="thread.html#13070">[ thread ]</a>
+              <a href="subject.html#13070">[ subject ]</a>
+              <a href="author.html#13070">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  baa434a6db77809e7172d7811221f7e3d21ac33d (commit)
+      from  af69549053bc2d447ecdd415ec3bb7bcf7e75e68 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py  |    2 +
+ x2go/backends/terminal/_stdout.py |    6 +--
+ x2go/client.py                    |   42 ++++++++++--------
+ x2go/registry.py                  |   88 ++++++++++++++++++++++---------------
+ x2go/session.py                   |    4 +-
+ 5 files changed, 83 insertions(+), 59 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 011b5d4..52e157b 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -489,6 +489,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         if session_name is not None:
+             if self.is_running(session_name):
+                 self.suspend(session_name)
++                gevent.sleep(3)
+ 
+             while not _terminal.ok():
+ 
+@@ -527,6 +528,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         &quot;&quot;&quot;
+         if raw:
++            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2golistsessions&quot;)
+             return stdout.read(), stderr.read()
+ 
+         else:
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index cb6edbc..a021b6b 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -353,16 +353,16 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         Currently supported audio protocols:
+ 
+-            - Pulse Audio
++            - PulseAudio
+             - Esound 
+ 
+         &quot;&quot;&quot;
+         _tunnel = None
+         if self.reverse_tunnels[self.session_info.name]['snd'][1] is None:
+             if self.params.snd_system == 'pulse':
+-                self.logger('initializing Pulse Audio sound support in X2go session', loglevel=log.loglevel_INFO)
++                self.logger('initializing PulseAudio sound support in X2go session', loglevel=log.loglevel_INFO)
+                 ###
+-                ### PULSE AUDIO
++                ### PULSEAUDIO
+                 ###
+                 # setup pulse client config file on X2go server
+                 cmd_line = &quot;echo 'default-server=localhost:%s'&gt;%s/.pulse-client.conf;&quot; % (self.session_info.snd_port, self.session_info.remote_container) + \
+diff --git a/x2go/client.py b/x2go/client.py
+index 9b92f1e..46a96f2 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -290,6 +290,8 @@ class X2goClient(object):
+         self.logger('HOOK_on_session_has_resumed_by_me (session_uuid: %s, profile_name: %s): suspended session %s has been resumed by this application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
+     def HOOK_on_session_has_resumed_by_other(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_on_session_has_resumed_by_other (session_uuid: %s, profile_name: %s): suspended session %s has been resumed by other application' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
++    def HOOK_on_found_session_running_after_connect(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
++        self.logger('HOOK_found_session_running_after_connect (session_uuid: %s, profile_name: %s): running session %s has been found after connecting to session profile %s' %  (session_uuid, profile_name, session_name, profile_name), loglevel=log.loglevel_NOTICE)
+     def HOOK_on_session_has_been_suspended(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_on_session_has_been_suspended (session_uuid: %s, profile_name: %s): session %s has been suspended' %  (session_uuid, profile_name, session_name), loglevel=log.loglevel_NOTICE)
+     def HOOK_on_session_has_terminated(self, session_uuid='UNKNOWN', profile_name='UNKNOWN', session_name='UNKNOWN'):
+@@ -1017,12 +1019,12 @@ class X2goClient(object):
+     ### Provide access to the X2goClient's session registry
+     ### 
+ 
+-    def client_connected_sessions(self, return_objects=False, return_profile_names=False):
++    def client_connected_sessions(self, return_objects=False, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.connected_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
++        return self.session_registry.connected_sessions(return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+     __client_connected_sessions = client_connected_sessions
+ 
+     @property
+@@ -1034,12 +1036,12 @@ class X2goClient(object):
+         return self.session_registry.has_connected_sessions
+     __client_has_connected_sessions = client_has_connected_sessions
+ 
+-    def client_associated_sessions(self, return_objects=False, return_profile_names=False):
++    def client_associated_sessions(self, return_objects=False, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.associated_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
++        return self.session_registry.associated_sessions(return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+     __client_associated_sessions = client_associated_sessions
+ 
+     @property
+@@ -1051,12 +1053,12 @@ class X2goClient(object):
+         return self.session_registry.has_associated_sessions
+     __client_has_associated_sessions = client_has_associated_sessions
+ 
+-    def client_running_sessions(self, return_objects=False, return_profile_names=False):
++    def client_running_sessions(self, return_objects=False, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
++        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+     __client_running_sessions = client_running_sessions
+ 
+     @property
+@@ -1068,12 +1070,12 @@ class X2goClient(object):
+         return self.session_registry.has_running_sessions
+     __client_has_running_sessions = client_has_running_sessions
+ 
+-    def client_suspended_sessions(self, return_objects=False, return_profile_names=False):
++    def client_suspended_sessions(self, return_objects=False, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
++        return self.session_registry.running_sessions(return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+     __client_suspended_sessions = client_suspended_sessions
+ 
+     @property
+@@ -1086,12 +1088,12 @@ class X2goClient(object):
+     __client_has_suspended_sessions = client_has_suspended_sessions
+ 
+     @property
+-    def client_registered_sessions(self, return_objects=True, return_profile_names=False):
++    def client_registered_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.registered_sessions(return_objects=return_objects, return_profile_names=return_profile_names)
++        return self.session_registry.registered_sessions(return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+     __client_registered_sessions = client_registered_sessions
+ 
+     @property
+@@ -1127,28 +1129,28 @@ class X2goClient(object):
+         return self.client_registered_session_of_name(session_name) is not None
+     __client_has_registered_session_of_name = client_registered_session_of_name
+ 
+-    def client_registered_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def client_registered_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=return_objects)
++        return self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_registered_sessions_of_profile_name = client_registered_sessions_of_profile_name
+ 
+-    def client_connected_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def client_connected_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.connected_sessions_of_profile_name(profile_name, return_objects=return_objects)
++        return self.session_registry.connected_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_connected_sessions_of_profile_name = client_connected_sessions_of_profile_name
+ 
+-    def client_associated_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def client_associated_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.session_registry.associated_sessions_of_profile_name(profile_name, return_objects=return_objects)
++        return self.session_registry.associated_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_associated_sessions_of_profile_name = client_associated_sessions_of_profile_name
+ 
+     ###
+@@ -1273,7 +1275,8 @@ class X2goClient(object):
+                       profile_name=None, profile_id=None, 
+                       no_cache=False, refresh_cache=False, 
+                       update_sessionregistry=True,
+-                      register_sessions=False):
++                      register_sessions=False,
++                      raw=False):
+         &quot;&quot;&quot;\
+         Use the X2go session registered under C{session_uuid} to
+         retrieve a list of running or suspended X2go sessions on the 
+@@ -1306,6 +1309,9 @@ class X2goClient(object):
+         else:
+             raise x2go_exceptions.X2goClientException('must either specify session UUID or profile name')
+ 
++        if raw:
++            return self.session_registry(session_uuid).list_sessions(raw=raw)
++
+         if not self.use_listsessions_cache or no_cache:
+             _session_list = self.session_registry(session_uuid).list_sessions()
+         elif refresh_cache:
+@@ -1473,7 +1479,7 @@ class X2goClient(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        session_uuids = self.client_registered_sessions_of_profile_name(profile_name)
++        session_uuids = self.client_registered_sessions_of_profile_name(profile_name, return_objects=False)
+         if session_uuids:
+             if session_list is None:
+                 session_list = self.list_sessions(session_uuids[0],
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 0f7ace3..b028f7b 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -179,7 +179,10 @@ class X2goSessionRegistry(object):
+                         # as a new session
+                         self.client_instance.HOOK_on_session_has_started_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                 else:
+-                    if _last_status['suspended']:
++                    if not _last_status['connected']:
++                        # from a suspended state
++                        self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                    elif _last_status['suspended']:
+                         # from a suspended state
+                         self.client_instance.HOOK_on_session_has_resumed_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                     else:
+@@ -240,11 +243,12 @@ class X2goSessionRegistry(object):
+ 
+                     # this if clause catches problems when x2golistsessions commands give weird results
+                     if not self.has_session_of_session_name(session_name):
+-                        self.register(server, profile_id, profile_name,
+-                                      session_name=session_name,
+-                                      virgin=False, running=False, suspended=True, terminated=None,
+-                                      **kwargs
+-                                     )
++                        session_uuid = self.register(server, profile_id, profile_name,
++                                                     session_name=session_name,
++                                                     virgin=False, running=False, suspended=True, terminated=None,
++                                                     **kwargs
++                                                    )
++                        self(session_uuid).connected = True
+                         self.update_status(profile_name=profile_name, session_list=session_list)
+ 
+     def register(self, server, profile_id, profile_name,
+@@ -291,6 +295,7 @@ class X2goSessionRegistry(object):
+             except: pass
+ 
+             self(session_uuid).update_params(_params)
++
+             self.logger('using already initially-registered yet-unused session %s' % session_uuid, log.loglevel_NOTICE)
+             return session_uuid
+ 
+@@ -373,9 +378,11 @@ class X2goSessionRegistry(object):
+         else:
+             raise X2goSessionException('no session of name ,,%s\'\' registered' % session_name)
+ 
+-    def _sessionsWithState(self, state, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def _sessionsWithState(self, state, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         if state == 'associated':
+             sessions = [ ts for ts in self.registry.values() if ts.has_terminal_session() ]
++        elif state == 'registered':
++            sessions = [ ts for ts in self.registry.values() ]
+         else:
+             sessions = [ ts for ts in self.registry.values() if eval('ts.%s' % state) ]
+         if return_profile_names:
+@@ -390,52 +397,58 @@ class X2goSessionRegistry(object):
+                 if session.profile_id not in profile_ids:
+                     profile_ids.append(session.profile_id)
+             return profile_ids
++        elif return_session_names:
++            session_names = []
++            for session in sessions:
++                if session.session_name not in session_names:
++                    session_names.append(session.session_name)
++            return session_names
+         elif return_objects:
+             return sessions
+         else:
+             return [s.get_uuid() for s in sessions ]
+ 
+-    def connected_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def connected_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('connected', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('connected', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+-    def associated_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def associated_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('associated', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('associated', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+-    def virgin_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def virgin_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+-    def running_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def running_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('running', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('running', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+-    def suspended_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def suspended_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('suspended', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('suspended', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+-    def terminated_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
++    def terminated_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('terminated', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
++        return self._sessionsWithState('terminated', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+     @property
+     def has_running_sessions(self):
+@@ -453,21 +466,12 @@ class X2goSessionRegistry(object):
+         &quot;&quot;&quot;
+         return self.suspended_sessions and len(self.suspended_sessions) &gt; 0
+ 
+-    def registered_sessions(self, return_objects=True, return_profile_names=False):
++    def registered_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if return_objects:
+-            return self.registry.values()
+-        elif return_profile_names:
+-            profile_names = []
+-            for session in self.registry.values():
+-                if session.profile_name not in profile_names:
+-                    profile_names.append(profile_name)
+-            return profile_names
+-        else:
+-            return self.registry.keys()
++        return self._sessionsWithState('registered', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+     @property
+     def non_running_sessions(self):
+@@ -477,27 +481,31 @@ class X2goSessionRegistry(object):
+         &quot;&quot;&quot;
+         return [ s for s in self.registry.values() if s not in self.running_sessions() ]
+ 
+-    def connected_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def connected_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+             return self.connected_sessions() and [ s for s in self.connected_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.connected_sessions() and [ s.session_name for s in self.connected_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.connected_sessions() and [ s.get_uuid() for s in self.connected_sessions() if s.profile_name == profile_name ]
+ 
+-    def associated_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def associated_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+             return self.associated_sessions() and [ s for s in self.associated_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.associated_sessions() and [ s.session_name for s in self.associated_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.associated_sessions() and [ s.get_uuid() for s in self.associated_sessions() if s.profile_name == profile_name ]
+ 
+-    def registered_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def registered_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+@@ -505,34 +513,42 @@ class X2goSessionRegistry(object):
+ 
+         if return_objects:
+             return self.registered_sessions() and [ s for s in self.registered_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.registered_sessions() and [ s.session_name for s in self.registered_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.registered_sessions() and [ s.get_uuid() for s in self.registered_sessions() if s.profile_name == profile_name ]
+ 
+-    def virgin_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def virgin_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+ 
+         if return_objects:
+             return self.virgin_sessions() and [ s for s in self.virgin_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.virgin_sessions() and [ s.session_name for s in self.virgin_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.virgin_sessions() and [ s.get_uuid() for s in self.virgin_sessions() if s.profile_name == profile_name ]
+ 
+ 
+-    def running_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def running_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+             return self.running_sessions() and [ s for s in self.running_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.running_sessions() and [ s.session_name for s in self.running_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.running_sessions() and [ s.get_uuid() for s in self.running_sessions() if s.profile_name == profile_name ]
+ 
+-    def suspended_sessions_of_profile_name(self, profile_name, return_objects=False):
++    def suspended_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if return_objects:
+             return self.suspended_sessions() and [ s for s in self.suspended_sessions() if s.profile_name == profile_name ]
++        elif return_session_names:
++            return self.suspended_sessions() and [ s.session_name for s in self.suspended_sessions() if s.profile_name == profile_name ]
+         else:
+             return self.suspended_sessions() and [ s.get_uuid() for s in self.suspended_sessions() if s.profile_name == profile_name ]
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index d54de5c..2f2ea79 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -484,14 +484,14 @@ class X2goSession(object):
+             self._X2goSession__disconnect()
+     __clean_sessions = clean_sessions
+ 
+-    def list_sessions(self):
++    def list_sessions(self, raw=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if not self.is_alive():
+             self._X2goSession__disconnect()
+-        return self.control_session.list_sessions()
++        return self.control_session.list_sessions(raw=raw)
+     __list_sessions = list_sessions
+ 
+     def update_status(self, session_list=None):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013069.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03
+</A></li>
+	<LI>Next message: <A HREF="013071.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-117-g2bc0921
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13070">[ date ]</a>
+              <a href="thread.html#13070">[ thread ]</a>
+              <a href="subject.html#13070">[ subject ]</a>
+              <a href="author.html#13070">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

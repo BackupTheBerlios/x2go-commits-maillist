@@ -1,0 +1,617 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-15-g68c31a6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20release/4.0.1.x%20%28branch%29%20updated%3A%0A%093.0.99.9-15-g68c31a6&In-Reply-To=%3C20130606113510.C3EA85DBC0%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008800.html">
+   <LINK REL="Next"  HREF="008808.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-15-g68c31a6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20release/4.0.1.x%20%28branch%29%20updated%3A%0A%093.0.99.9-15-g68c31a6&In-Reply-To=%3C20130606113510.C3EA85DBC0%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-15-g68c31a6">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Jun  6 13:35:10 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008800.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-16-g66b2de1
+</A></li>
+        <LI>Next message: <A HREF="008808.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-14-gc6ecbea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8801">[ date ]</a>
+              <a href="thread.html#8801">[ thread ]</a>
+              <a href="subject.html#8801">[ subject ]</a>
+              <a href="author.html#8801">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/4.0.1.x has been updated
+       via  68c31a60197982a605f9e38a6e4720ab05e56825 (commit)
+      from  c6ecbeac0b53bea969d82c2cf8fe54ac28f762f8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    4 +-
+ x2goserver/bin/x2gomountdirs   |  380 +++++++++++++++++++++++-----------------
+ x2goserver/etc/x2goserver.conf |    4 +
+ 3 files changed, 222 insertions(+), 166 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 58ff0d3..311a312 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -2,7 +2,7 @@ x2goserver (3.0.99.10-0~x2go1) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+   * New upstream version (3.0.99.10):
+-    - Replace all string ,,X2Go.' with ,,X2Go''.
++    - Replace all string ,,X2go.' with ,,X2Go''.
+     - Use $(MAKE) -C &lt;subdir&gt; calls to run Makefiles in subfolders.
+     - Disable rastering in &gt;= KDE4.8 and Qt4.8.
+   * x2goserver.postinst script leaves the DB file alone if
+@@ -19,7 +19,7 @@ x2goserver (3.0.99.10-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (3.0.99.10):
+     - Check whether the associated TCP/IP port is available before
+       assigning a display number.
+-  * Add net-tools packaged as dependency.
++  * Add net-tools package as dependency.
+ 
+   [ John Williams ]
+   * New upstream version (3.0.99.10):
+diff --git a/x2goserver/bin/x2gomountdirs b/x2goserver/bin/x2gomountdirs
+index 0d52a7b..883c3cb 100755
+--- a/x2goserver/bin/x2gomountdirs
++++ b/x2goserver/bin/x2gomountdirs
+@@ -22,6 +22,7 @@
+ 
+ use strict;
+ use Sys::Syslog qw( :standard :macros );
++use Config::IniFiles;
+ 
+ use lib `echo -n \$(x2gobasepath)/lib/x2go`;
+ use x2godbwrapper;
+@@ -30,9 +31,20 @@ use x2gologlevel;
+ openlog($0,'cons,pid','user');
+ setlogmask( LOG_UPTO(x2gologlevel()) );
+ 
++if ( @ARGV lt 5 ) {
++	print(&quot;usage: x2gomountdirs &lt;mount-type&gt; &lt;session-id&gt; &lt;user&gt; &lt;key&gt; &lt;client-folder-1&gt; [&lt;client-folder-2&gt; [...]]\n&quot;);
++	exit -1;
++}
+ 
+ syslog('info', &quot;x2gomountdirs has been called with options: @ARGV&quot;);
+ 
++my $Config = Config::IniFiles-&gt;new( -file =&gt; &quot;/etc/x2go/x2goserver.conf&quot; );
++my $allow_foldersharing = $Config-&gt;val(&quot;clientshares&quot;, &quot;folders&quot;, 1);
++my $allow_mimebox = $Config-&gt;val(&quot;clientshares&quot;, &quot;mimebox&quot;, 1);
++my $allow_printing = $Config-&gt;val(&quot;clientshares&quot;, &quot;printers&quot;, 1);
++
++syslog('debug', &quot;allow client-side sharing... folders: $allow_foldersharing, printers: $allow_printing, mimebox: $allow_mimebox&quot;);
++
+ my $type=shift;
+ my $session=shift;
+ my $user=shift;
+@@ -98,227 +110,267 @@ close(F);
+ chmod(0600,&quot;$key&quot;);
+ chmod(0600,&quot;$key.ident&quot;);
+ 
+-my $mdir=&quot;/tmp/$ENV{'USER'}_media&quot;;
+-my $ldir=&quot;$ENV{'HOME'}/media&quot;;
+-my $spooldir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/spool&quot;;
+-my $spooldir=&quot;/tmp/spool_$ENV{'USER'}&quot;;
+-my $mimeboxdir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/mimebox&quot;;
+-my $mimeboxdir=&quot;/tmp/mimebox_$ENV{'USER'}&quot;;
++my $mdir;
++my $spooldir;
++my $mimeboxdir;
++my $plasmstamp;
+ 
+-if (! -e $mdir)
+-{
+-	mkdir($mdir);
+-}
+-chmod(0700,$mdir);
+ 
+-if (! -e &quot;$mdir/disk&quot;)
++if ( $allow_foldersharing eq 1 )
+ {
+-	mkdir(&quot;$mdir/disk&quot;);
+-}
+-chmod(0700,&quot;$mdir/disk&quot;);
++	$mdir=&quot;/tmp/$ENV{'USER'}_media&quot;;
++	my $ldir=&quot;$ENV{'HOME'}/media&quot;;
+ 
+-if (! -e &quot;$mdir/cd&quot;)
+-{
+-	mkdir(&quot;$mdir/cd&quot;);
+-}
+-chmod(0700,&quot;$mdir/cd&quot;);
+-
+-if (! -e &quot;$mdir/rm&quot;)
+-{
+-	mkdir(&quot;$mdir/rm&quot;);
+-}
+-chmod(0700,&quot;$mdir/rm&quot;);
++	if (! -e $mdir)
++	{       
++		mkdir($mdir);
++	}
++	chmod(0700,$mdir);
+ 
+-my $plasmstamp=$mdir.&quot;/&quot;.$session.&quot;.plasmoid&quot;;
++	if (! -e &quot;$mdir/disk&quot;)
++	{
++		mkdir(&quot;$mdir/disk&quot;);
++	}
++	chmod(0700,&quot;$mdir/disk&quot;);
+ 
+-if (! -e $spooldir)
+-{
+-	mkdir($spooldir);
+-}
+-chmod(0700,$spooldir);
++	if (! -e &quot;$mdir/cd&quot;)
++	{
++		mkdir(&quot;$mdir/cd&quot;);
++	}
++	chmod(0700,&quot;$mdir/cd&quot;);
+ 
+-$spooldir=&quot;$spooldir/$session&quot;;
+-if (! -e $spooldir)
+-{
+-	mkdir($spooldir);
+-}
+-chmod(0700,$spooldir);
++	if (! -e &quot;$mdir/rm&quot;)
++	{
++		mkdir(&quot;$mdir/rm&quot;);
++	}
++	chmod(0700,&quot;$mdir/rm&quot;);
+ 
+-if (! -e $mimeboxdir)
+-{
+-	mkdir($mimeboxdir);
+-}
+-chmod(0700,$mimeboxdir);
++	$plasmstamp=$mdir.&quot;/&quot;.$session.&quot;.plasmoid&quot;;
+ 
+-$mimeboxdir=&quot;$mimeboxdir/$session&quot;;
+-if (! -e $mimeboxdir)
+-{
+-	mkdir($mimeboxdir);
+-}
+-chmod(0700,$mimeboxdir);
++	if ( -d $ldir)
++	{
++		rmdir($ldir);
++	}
+ 
+-if ( -d $ldir)
+-{
+-	rmdir($ldir);
++	if ( ! -l $ldir)
++	{
++		system (&quot;ln -s $mdir $ldir&quot;);
++	}
+ }
+ 
+-if ( ! -l $ldir)
++if ( $allow_printing eq 1 )
+ {
+-	system (&quot;ln -s $mdir $ldir&quot;);
+-}
++	my $spooldir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/spool&quot;;
++	$spooldir=&quot;/tmp/spool_$ENV{'USER'}&quot;;
++	if (! -e $spooldir)
++	{
++		mkdir($spooldir);
++	}
++	chmod(0700,$spooldir);
+ 
+-if ( -d $spooldir_lnk)
+-{
+-	rmdir($spooldir_lnk);
+-}
++	$spooldir=&quot;$spooldir/$session&quot;;
++	if (! -e $spooldir)
++	{
++		mkdir($spooldir);
++	}
++	chmod(0700,$spooldir);
++	if ( -d $spooldir_lnk)
++	{
++		rmdir($spooldir_lnk);
++	}
+ 
+-if ( ! -l $spooldir_lnk)
+-{
+-	system (&quot;ln -s $spooldir $spooldir_lnk&quot;);
++	if ( ! -l $spooldir_lnk)
++	{
++		system (&quot;ln -s $spooldir $spooldir_lnk&quot;);
++	}
+ }
+ 
+-if ( -d $mimeboxdir_lnk)
++if ( $allow_mimebox eq 1 )
+ {
+-	rmdir($mimeboxdir_lnk);
+-}
++	my $mimeboxdir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/mimebox&quot;;
++	$mimeboxdir=&quot;/tmp/mimebox_$ENV{'USER'}&quot;;
+ 
+-if ( ! -l $mimeboxdir_lnk)
+-{
+-	system (&quot;ln -s $mimeboxdir $mimeboxdir_lnk&quot;);
+-}
++	if (! -e $mimeboxdir)
++	{
++	mkdir($mimeboxdir);
++	}
++	chmod(0700,$mimeboxdir);
+ 
+-my $uname=$ENV{'USER'};
++	$mimeboxdir=&quot;$mimeboxdir/$session&quot;;
++	if (! -e $mimeboxdir)
++	{
++		mkdir($mimeboxdir);
++	}
++	chmod(0700,$mimeboxdir);
+ 
+-my @dirs=split(':',$dirlist);
+-for (my $i=0;$i&lt;@dirs;$i++)
+-{
+-	my $printspool=0;
+-	my $mimeboxspool=0;
+-	my $mntpath;
+-	if(@dirs[$i]=~m/__PRINT_SPOOL_/)
++	if ( -d $mimeboxdir_lnk)
+ 	{
+-		@dirs[$i]=~s/__PRINT_SPOOL_//;
+-		$printspool=1;
+-		$mntpath=$spooldir;
+-		syslog('debug', &quot;mounting $spooldir, mount point type is print spool directory&quot;);
++		rmdir($mimeboxdir_lnk);
+ 	}
+-	elsif(@dirs[$i]=~m/__MIMEBOX_SPOOL_/)
++
++	if ( ! -l $mimeboxdir_lnk)
+ 	{
+-		@dirs[$i]=~s/__MIMEBOX_SPOOL_//;
+-		$mimeboxspool=1;
+-		$mntpath=$mimeboxdir;
+-		syslog('debug', &quot;mounting $mimeboxdir, mount point type is MIME box directory&quot;);
++		system (&quot;ln -s $mimeboxdir $mimeboxdir_lnk&quot;);
+ 	}
+-	else
++}
++
++if ( $allow_foldersharing | $allow_printing | $allow_mimebox gt 0 )
++{
++	my $uname=$ENV{'USER'};
++
++	my @dirs=split(':',$dirlist);
++	for (my $i=0;$i&lt;@dirs;$i++)
+ 	{
+-		my $p=@dirs[$i];
+-		if ($type ne &quot;dir&quot;)
++		my $skip_mount=0;
++		my $printspool=0;
++		my $mimeboxspool=0;
++		my $mntpath;
++		if(@dirs[$i]=~m/__PRINT_SPOOL_/)
+ 		{
+-			$p=~s/\/ramdrive\/mnt\///;
+-			if ($p =~ m/CDROM/)
++			if ( $allow_printing eq 1 )
+ 			{
+-				$mdir=$mdir.&quot;/cd&quot;;
++				@dirs[$i]=~s/__PRINT_SPOOL_//;
++				$printspool=1;
++				$mntpath=$spooldir;
++				syslog('debug', &quot;mounting $spooldir, mount point type is print spool directory&quot;);
++			} else {
++				syslog('warning', &quot;client tried to mount $spooldir which is denied by server configuration&quot;);
++				print &quot;\nX2Go server denied client-side printing.\n&quot;;
++				$skip_mount=1;
+ 			}
+-			else
++		}
++		elsif(@dirs[$i]=~m/__MIMEBOX_SPOOL_/)
++		{
++			if ( $allow_mimebox eq 1 )
+ 			{
+-				$mdir=$mdir.&quot;/rm&quot;;
++				@dirs[$i]=~s/__MIMEBOX_SPOOL_//;
++				$mimeboxspool=1;
++				$mntpath=$mimeboxdir;
++				syslog('debug', &quot;mounting $mimeboxdir, mount point type is MIME box directory&quot;);
++			} else {
++				syslog('warning', &quot;client tried to mount $mimeboxdir which is denied by server configuration&quot;);
++				print &quot;\nX2Go server denied MIME box usage.\n&quot;;
++				$skip_mount=1;
+ 			}
+ 		}
+ 		else
+ 		{
+-			$mdir=$mdir.&quot;/disk&quot;;
++			if ( $allow_foldersharing eq 1 )
++			{
++				my $p=@dirs[$i];
++				if ($type ne &quot;dir&quot;)
++				{
++					$p=~s/\/ramdrive\/mnt\///;
++					if ($p =~ m/CDROM/)
++					{
++						$mdir=$mdir.&quot;/cd&quot;;
++					}
++					else
++					{
++						$mdir=$mdir.&quot;/rm&quot;;
++					}
++				}
++				else
++				{
++					$mdir=$mdir.&quot;/disk&quot;;
++				}
++				$p=~s/\//_/g;
++				$p=~s/ /_/g;
++				$p=~s/_cygdrive_//g;
++				$p=~s/~//g;
++				mkdir(&quot;$mdir/$p&quot;);
++				$mntpath=&quot;$mdir/$p&quot;;
++			} else {
++				syslog('warning', &quot;client tried to mount $mdir which is denied by server configuration&quot;);
++				print &quot;\nX2Go server denied client-side folder sharing.\n&quot;;
++				$skip_mount=1;
++			}
+ 		}
+-		$p=~s/\//_/g;
+-		$p=~s/ /_/g;
+-		$p=~s/_cygdrive_//g;
+-		$p=~s/~//g;
+-		mkdir(&quot;$mdir/$p&quot;);
+-		$mntpath=&quot;$mdir/$p&quot;;
+-	}
+ 
+-	if (db_insertmount( $session, $mntpath, $host))
+-	{
+-		my $code_conv=$ENV{'X2GO_ICONV'};
+-		if ($code_conv ne &quot;&quot;)
+-		{
+-			$code_conv=&quot;-o $code_conv&quot;;
+-		}
+-		$msg = &quot;sshfs $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port&quot;;
+-		syslog('debug', &quot;executing: $msg&quot;);
+-		print &quot;inserted, $msg\n&quot;;
+-		if (system(&quot;sshfs  $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port 2&gt;&gt;~/mounts.log&quot;)==0)
++		if ( ( $skip_mount eq 0 ) &amp;&amp; ( db_insertmount( $session, $mntpath, $host) ) )
+ 		{
+-			print &quot;mount @dirs[$i] ok\n&quot;;
+-			syslog('notice', &quot;successfully mounted $user\@$host:$<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">port at dirs</A>[$i] to $mntpath&quot;);
+-			# check if kde4 plasmoid running
+-			my $useplasmoid=0;
+-			if ( -e $plasmstamp )
++			my $code_conv=$ENV{'X2GO_ICONV'};
++			if ($code_conv ne &quot;&quot;)
+ 			{
+-				open(STMP,&quot;&lt;$plasmstamp&quot;);
+-				my $stamp=&lt;STMP&gt;;
+-				close (STMP);
+-				if (abs($stamp-time())&lt;15)
+-				{
+-					$useplasmoid=1;
+-				}
++				$code_conv=&quot;-o $code_conv&quot;;
+ 			}
+-			if (! $printspool &amp;&amp; ! $mimeboxspool &amp;&amp; ! $useplasmoid )
++			$msg = &quot;sshfs $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port&quot;;
++			syslog('debug', &quot;executing: $msg&quot;);
++			print &quot;inserted, $msg\n&quot;;
++			if (system(&quot;sshfs  $code_conv -o idmap=user,uid=`id -u`,gid=`id -g`,ServerAliveInterval=300,Cipher=blowfish,IdentityFile=$key,UserKnownHostsFile=$key.ident \&quot;$user\&quot;\@$host:\&quot;@dirs[$i]\&quot; \&quot;$mntpath\&quot; -p $port 2&gt;&gt;~/mounts.log&quot;)==0)
+ 			{
+-				my $fname=&quot;$ENV{'HOME'}/Desktop&quot;;
+-				my $current_desktop = &quot;&quot;;
+-				if ($session =~ m/stDGNOME/)
++				print &quot;mount @dirs[$i] ok\n&quot;;
++				syslog('notice', &quot;successfully mounted $user\@$host:$<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">port at dirs</A>[$i] to $mntpath&quot;);
++				# check if kde4 plasmoid running
++				my $useplasmoid=0;
++				if ( -e $plasmstamp )
+ 				{
+-					$current_desktop=&quot;-gnome&quot;;
++					open(STMP,&quot;&lt;$plasmstamp&quot;);
++					my $stamp=&lt;STMP&gt;;
++					close (STMP);
++					if (abs($stamp-time())&lt;15)
++					{
++						$useplasmoid=1;
++					}
+ 				}
+-				elsif ($session =~ m/stDLXDE/)
++				if (! $printspool &amp;&amp; ! $mimeboxspool &amp;&amp; ! $useplasmoid )
+ 				{
+-					$current_desktop=&quot;-lxde&quot;;
+-				}
++					my $fname=&quot;$ENV{'HOME'}/Desktop&quot;;
++					my $current_desktop = &quot;&quot;;
++					if ($session =~ m/stDGNOME/)
++					{
++						$current_desktop=&quot;-gnome&quot;;
++					}
++					elsif ($session =~ m/stDLXDE/)
++					{
++						$current_desktop=&quot;-lxde&quot;;
++					}
+ 
+-				my $p=@dirs[$i];
+-				$p=~s/\/cygdrive\///g;
+-				$p=~s/\//_/g;
+-				$fname=&quot;$fname/$p&quot;;
+-				if ($type eq &quot;dir&quot;)
+-				{
+-					$fname=&quot;$fname\ (sshfs-disk$current_desktop)&quot;;
+-					syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: client-side folder on harddrive&quot;);
+-				}
+-				else
+-				{
+-					if ($fname =~ m/CDROM/)
++					my $p=@dirs[$i];
++					$p=~s/\/cygdrive\///g;
++					$p=~s/\//_/g;
++					$fname=&quot;$fname/$p&quot;;
++					if ($type eq &quot;dir&quot;)
+ 					{
+-						$fname=&quot;$fname\ (sshfs-cdrom$current_desktop)&quot;;
+-						syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: optical disc&quot;);
++						$fname=&quot;$fname\ (sshfs-disk$current_desktop)&quot;;
++						syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: client-side folder on harddrive&quot;);
+ 					}
+ 					else
+ 					{
+-						$fname=&quot;$fname\ (sshfs-removable$current_desktop)&quot;;
+-						syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: removable device&quot;);
++						if ($fname =~ m/CDROM/)
++						{
++							$fname=&quot;$fname\ (sshfs-cdrom$current_desktop)&quot;;
++							syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: optical disc&quot;);
++						}
++						else
++						{
++							$fname=&quot;$fname\ (sshfs-removable$current_desktop)&quot;;
++							syslog('info', &quot;creating desktop icon for <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">,, at dirs</A>[$i]'' at ,,$fname'', media type is: removable device&quot;);
++						}
++						$fname=~s/_ramdrive_mnt_//;
+ 					}
+-					$fname=~s/_ramdrive_mnt_//;
++					print &quot;fname: $fname\n&quot;;
++					open(F,&quot;&gt;$fname&quot;);
++					print F &quot;$mntpath\n$session\n\n\0&quot;;
++					close(F);
+ 				}
+-				print &quot;fname: $fname\n&quot;;
+-				open(F,&quot;&gt;$fname&quot;);
+-				print F &quot;$mntpath\n$session\n\n\0&quot;;
+-				close(F);
++			}
++			else
++			{
++				$msg = &quot;mounting of @dirs[$i] failed&quot;;
++				print &quot;$msg\n&quot;;
++				syslog('warning', &quot;WARNING: $msg&quot;);
++				db_deletemount( $session, $mntpath);
++				rmdir($mntpath);
+ 			}
+ 		}
+ 		else
+ 		{
+-			$msg = &quot;mounting of @dirs[$i] failed&quot;;
+-			print &quot;$msg\n&quot;;
++			$msg = &quot;insertion of @dirs[$i] failed (already mounted? access denied?), not mounting&quot;;
+ 			syslog('warning', &quot;WARNING: $msg&quot;);
+-			db_deletemount( $session, $mntpath);
+-			rmdir($mntpath);
++			print &quot;$msg\n&quot;;
+ 		}
+ 	}
+-	else
+-	{
+-		$msg = &quot;insertion of @dirs[$i] failed (already mounted?), not mounting&quot;;
+-		syslog('warning', &quot;WARNING: $msg&quot;);
+-		print &quot;$msg\n&quot;;
+-	}
+ }
+ 
+ unlink($key);
+diff --git a/x2goserver/etc/x2goserver.conf b/x2goserver/etc/x2goserver.conf
+index 5fa6baf..7dac7a9 100644
+--- a/x2goserver/etc/x2goserver.conf
++++ b/x2goserver/etc/x2goserver.conf
+@@ -4,6 +4,10 @@
+ [limit groups]
+ #bar-group=1
+ 
++[clientshares]
++printers=0
++folders=1
++
+ [log]
+ # possible levels are: emerg, alert, crit, err, warning, notice, info, debug
+ loglevel=notice
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008800.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-16-g66b2de1
+</A></li>
+	<LI>Next message: <A HREF="008808.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	3.0.99.9-14-gc6ecbea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8801">[ date ]</a>
+              <a href="thread.html#8801">[ thread ]</a>
+              <a href="subject.html#8801">[ subject ]</a>
+              <a href="author.html#8801">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

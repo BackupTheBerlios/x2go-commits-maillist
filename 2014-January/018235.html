@@ -1,0 +1,257 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-4-g4c34844
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-4-g4c34844&In-Reply-To=%3C20140103195028.8BC325DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="018234.html">
+   <LINK REL="Next"  HREF="018243.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-4-g4c34844</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-4-g4c34844&In-Reply-To=%3C20140103195028.8BC325DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-4-g4c34844">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:50:28 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="018234.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2
+</A></li>
+        <LI>Next message: <A HREF="018243.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-7-g6ec9965
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18235">[ date ]</a>
+              <a href="thread.html#18235">[ thread ]</a>
+              <a href="subject.html#18235">[ subject ]</a>
+              <a href="author.html#18235">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  4c3484419eb32f645709352a52523df57c0e813f (commit)
+      from  17f0a8f6d633ba495a2f22f9fbe0d99ceff212a4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4c3484419eb32f645709352a52523df57c0e813f
+Author: Alexander Wuerstlein &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">arw at arw.name</A>&gt;
+Date:   Tue Feb 15 14:08:02 2011 +0100
+
+    Use prepared statements, fix sql injections
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gosqlitewrapper |   58 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 29 insertions(+), 29 deletions(-)
+
+The diff of changes is:
+diff --git a/x2gosqlitewrapper b/x2gosqlitewrapper
+index b6a7156..55b8e43 100755
+--- a/x2gosqlitewrapper
++++ b/x2gosqlitewrapper
+@@ -24,8 +24,8 @@ if($cmd eq  &quot;rmsessionsroot&quot;)
+ {
+ 	checkroot();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id='$sid'&quot;);
+-	$sth-&gt;execute()or die;
++	my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id=?&quot;);
++	$sth-&gt;execute($id)or die;
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -40,8 +40,8 @@ elsif($cmd eq  &quot;listsessionsroot&quot;)
+ 	                       substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),0,6)||substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),9,11),
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
+-	                       where server='$server'  order by status desc&quot;);
+-	$sth-&gt;execute() or die;
++	                       where server=?  order by status desc&quot;);
++	$sth-&gt;execute($server) or die;
+ 	fetchrow_printall_array($sth);
+ }
+ 
+@@ -64,8 +64,8 @@ elsif($cmd eq  &quot;getmounts&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my @strings;
+-	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id='$sid'&quot;);
+-	$sth-&gt;execute()or die;
++	my $sth=$dbh-&gt;prepare(&quot;select client, path from mounts where session_id=?&quot;);
++	$sth-&gt;execute($sid)or die;
+ 	fetchrow_printall_array($sth);
+ }
+ 
+@@ -73,8 +73,8 @@ elsif($cmd eq  &quot;deletemount&quot;)
+ {
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+-	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id='$sid' and path='$path'&quot;);
+-	$sth-&gt;execute();
++	my $sth=$dbh-&gt;prepare(&quot;delete from mounts where session_id=? and path=?&quot;);
++	$sth-&gt;execute($sid, $path);
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -83,8 +83,8 @@ elsif($cmd eq  &quot;insertmount&quot;)
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $path=shift or die &quot;argument \&quot;path\&quot; missed&quot;;
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+-	my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  ('$sid','$path','$client')&quot;);
+-	$sth-&gt;execute();
++	my $sth=$dbh-&gt;prepare(&quot;insert into mounts (session_id,path,client) values  (?, ?, ?)&quot;);
++	$sth-&gt;execute($sid, $path, $client);
+ 	if(!$sth-&gt;err())
+ 	{
+ 		print &quot;ok&quot;;
+@@ -98,8 +98,8 @@ elsif($cmd eq  &quot;insertsession&quot;)
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;insert into sessions (display,server,uname,session_id, init_time, last_time) values
+-	                       ('$display','$server','$realuser','$sid', datetime('now','localtime'), datetime('now','localtime'))&quot;);
+-	$sth-&gt;execute()or die $_;
++	                       (?, ?, ?, ?, datetime('now','localtime'), datetime('now','localtime'))&quot;);
++	$sth-&gt;execute($display, $server, $realuser, $sid) or die $_;
+ 	$sth-&gt;finish();
+ 	print &quot;ok&quot;;
+ }
+@@ -113,9 +113,9 @@ elsif($cmd eq  &quot;createsession&quot;)
+ 	my $snd_port=shift or die&quot;argument \&quot;snd_port\&quot; missed&quot;;
+ 	my $fs_port=shift or die&quot;argument \&quot;fs_port\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+-	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie='$cookie',agent_pid='$pid',
+-	                       client='$client',gr_port='$gr_port',sound_port='$snd_port',fs_port='$fs_port' where session_id='$sid' and uname='$realuser'&quot;);
+-	$sth-&gt;execute()or die;
++	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
++	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
++	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $realuid)or die;
+ 	$sth-&gt;finish();
+ 	print &quot;ok&quot;;
+ }
+@@ -125,8 +125,8 @@ elsif($cmd eq  &quot;insertport&quot;)
+ 	my $server=shift or die &quot;argument \&quot;server\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sshport=shift or die &quot;argument \&quot;port\&quot; missed&quot;;
+-	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  ('$server','$sid','$sshport')&quot;);
+-	$sth-&gt;execute()or die;
++	my $sth=$dbh-&gt;prepare(&quot;insert into used_ports (server,session_id,port) values  (?, ?, ?)&quot;);
++	$sth-&gt;execute($server, $sid, $sshport) or die;
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -135,8 +135,8 @@ elsif($cmd eq  &quot;resume&quot;)
+ 	my $client=shift or die &quot;argument \&quot;client\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),status='R',
+-	                       client='$client' where session_id = '$sid' and uname='$realuser'&quot;);
+-	$sth-&gt;execute()or die;
++	                       client=? where session_id = ? and uname=?&quot;);
++	$sth-&gt;execute($client, $sid, $realuser) or die;
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -145,8 +145,8 @@ elsif($cmd eq  &quot;changestatus&quot;)
+ 	my $status=shift or die &quot;argument \&quot;status\&quot; missed&quot;;
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set last_time=datetime('now','localtime'),
+-	                       status='$status' where session_id = '$sid' and uname='$realuser'&quot;);
+-	$sth-&gt;execute()or die;
++	                       status=? where session_id = ? and uname=?&quot;);
++	$sth-&gt;execute($status, $sid, $realuser)or die;
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -205,8 +205,8 @@ elsif($cmd eq  &quot;getagent&quot;)
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $agent;
+ 	my $sth=$dbh-&gt;prepare(&quot;select agent_pid from sessions
+-	                       where session_id ='$sid'&quot;);
+-	$sth-&gt;execute()or die;
++	                       where session_id=?&quot;);
++	$sth-&gt;execute($sid)or die;
+ 	my @data;
+ 	my $i=0;
+ 	if(@data = $sth-&gt;fetchrow_array)
+@@ -222,8 +222,8 @@ elsif($cmd eq  &quot;getdisplay&quot;)
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $display;
+ 	my $sth=$dbh-&gt;prepare(&quot;select display from sessions
+-	                       where session_id ='$sid'&quot;);
+-	$sth-&gt;execute()or die;
++	                       where session_id =?&quot;);
++	$sth-&gt;execute($sid)or die;
+ 	my @data;
+ 	my $i=0;
+ 	if(@data = $sth-&gt;fetchrow_array)
+@@ -244,9 +244,9 @@ elsif($cmd eq  &quot;listsessions&quot;)
+ 	                       substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),0,6)||substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),9,11),
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions
+-	                       where status !='F' and server='$server' and uname='$realuser'
++	                       where status !='F' and server=? and uname=?
+ 	                       and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
+-	$sth-&gt;execute()or die;
++	$sth-&gt;execute($server, $realuser)or die;
+ 	fetchrow_printall_array($sth);
+ }
+ 
+@@ -259,8 +259,8 @@ elsif($cmd eq  &quot;listsessions_all&quot;)
+ 	                       substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),0,6)||substr(strftime('%d.%m.%Y*%H:%M:%S',last_time),9,11),
+ 	                       uname,
+ 	                       strftime('%s','now','localtime') - strftime('%s',init_time),fs_port from  sessions 
+-	                       where status !='F' and uname='$realuser' and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
+-	$sth-&gt;execute()or die;
++	                       where status !='F' and uname=? and  (  session_id not like '%XSHAD%')  order by status desc&quot;);
++	$sth-&gt;execute($realuser)or die;
+ 	fetchrow_printall_array($sth);
+ }
+ else
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="018234.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2
+</A></li>
+	<LI>Next message: <A HREF="018243.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-7-g6ec9965
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#18235">[ date ]</a>
+              <a href="thread.html#18235">[ thread ]</a>
+              <a href="subject.html#18235">[ subject ]</a>
+              <a href="author.html#18235">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

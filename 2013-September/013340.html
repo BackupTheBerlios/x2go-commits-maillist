@@ -1,0 +1,186 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-9-g46be5e3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-9-g46be5e3&In-Reply-To=%3C20130914135618.247D35DCCE%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013337.html">
+   <LINK REL="Next"  HREF="013342.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-9-g46be5e3</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-9-g46be5e3&In-Reply-To=%3C20130914135618.247D35DCCE%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-9-g46be5e3">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:18 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013337.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-11-gd2cfd08
+</A></li>
+        <LI>Next message: <A HREF="013342.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-12-gb8235fc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13340">[ date ]</a>
+              <a href="thread.html#13340">[ thread ]</a>
+              <a href="subject.html#13340">[ subject ]</a>
+              <a href="author.html#13340">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  46be5e3b5b1f56c6c3084bccc5e36e6eb81b574b (commit)
+      from  794df417583d5de50cb34ebedb922fe16aa0d423 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    3 +++
+ pyhoca/wxgui/profilemanager.py |   34 ++++++++++++++++++++++------------
+ 2 files changed, 25 insertions(+), 12 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 72496a2..e8f019e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -6,6 +6,9 @@ pyhoca-gui (0.2.0.5-0~x2go1) UNRELEASED; urgency=low
+       definded.
+     - Make sure RDP (X2Go-proxy) sessions stored by PyHoca-GUI get recognized
+       as such by X2goClient.
++    - Make session icon handling more robust, be more compatible with X2Go Client
++      about the session icon name. Rewrite mistakes pyhoca-gui &lt;= 0.2.0.4 did
++      on the icon attribute in the session profile config.
+   * /debian/control:
+     + Add Oleksandr Shneyder to Uploaders.
+ 
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 174824f..2349547 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -184,13 +184,22 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.UseDefaultSessionWindowTitle = wx.CheckBox(self.tab_Profile, -1, _(u&quot;Use a default session window title&quot;))
+         self.CustomSessionWindowTitleLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Custom session window title&quot;) + &quot;:&quot;)
+         self.CustomSessionWindowTitle = wx.TextCtrl(self.tab_Profile, -1, &quot;&quot;)
+-        _share_location = os.path.split(_icons_location)[0]
+-        if 'icon' in self.profile_config:
+-            path_to_icon = self.profile_config['icon']
+-            path_to_icon = path_to_icon.lstrip(':')
+-            path_to_icon = os.path.join(os.path.normpath(_share_location), os.path.normpath(path_to_icon))
+-        if not os.path.exists(path_to_icon) or not 'icon' in self.profile_config:
+-            path_to_icon = os.path.normpath('%s/icons/PyHoca/128x128/pyhoca-session.png' % _share_location)
++        path_to_icon = os.path.normpath('%s/PyHoca/128x128/pyhoca-session.png' % _icons_location)
++        self.default_icon = True
++        if 'icon' in self.profile_config and self.profile_config['icon'] == ':icons/128x128/x2gosession.png':
++            # interpret the default x2gosession.png icon entry in session profile config as the PyHoca icon...
++            pass
++        elif 'icon' in self.profile_config and self.profile_config['icon'] == path_to_icon:
++            # rewrite absolute path to PyHoca icon in session profile config back to the default icon path used
++            # by X2Go Client, fixes behaviour of PyHoca-GUI &lt;= 0.2.0.4.
++            pass
++        elif 'icon' in self.profile_config:
++            path_to_icon = self.profile_config['icon'].strip()
++            path_to_icon = os.path.normpath(path_to_icon)
++            self.default_icon = False
++        if not os.path.exists(path_to_icon):
++            path_to_icon = os.path.normpath('%s/PyHoca/128x128/pyhoca-session.png' % _icons_location)
++            self.default_icon = True
+         self.IconPath = path_to_icon
+         self.IconButtonLabel = wx.StaticText(self.tab_Profile, -1, _(u&quot;Window Icon&quot;)+':')
+         self.IconButton = wx.BitmapButton(self.tab_Profile, -1, wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY), size=wx.Size(136,136), )
+@@ -1154,7 +1163,10 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.profile_config['autostart'] = self.AutoStartSession.GetValue()
+         self.profile_config['autologin'] = self.AutoLoginSessionProfile.GetValue()
+         self.profile_config['published'] = self.UsePublishedApplications.GetValue()
+-        self.profile_config['icon'] = self.IconPath
++        if not self.default_icon:
++            self.profile_config['icon'] = self.IconPath
++        else:
++            self.profile_config['icon'] = ':icons/128x128/x2gosession.png'
+         self.profile_config['user'] = self.UserName.GetValue()
+         self.profile_config['key'] = self.SSHKeyFile.GetValue()
+         if self.UseSSHProxy.GetValue():
+@@ -1277,7 +1289,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
+-        _share_location = os.path.split(_icons_location)[0]
+         iconsdir = _icons_location
+         if not os.path.exists(iconsdir):
+             iconsdir = os.getcwd()
+@@ -1292,9 +1303,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             # This returns a Python list of files that were selected.
+             path_to_icon = dlg.GetPath()
+             self.IconButton.SetBitmapLabel(wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY))
+-            rel_path = path_to_icon.replace('%s/' % _share_location, ':')
+-            rel_path = rel_path.replace( 'icons/PyHoca/128x128/pyhoca-session.png', 'icons/128x128/x2gosession.png')
+-            self.IconPath = rel_path
++            self.IconPath = path_to_icon
++            default_icon = False
+ 
+     def OnSetSessionWindowTitle(self, event):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013337.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-11-gd2cfd08
+</A></li>
+	<LI>Next message: <A HREF="013342.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-12-gb8235fc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13340">[ date ]</a>
+              <a href="thread.html#13340">[ thread ]</a>
+              <a href="subject.html#13340">[ subject ]</a>
+              <a href="author.html#13340">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

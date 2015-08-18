@@ -1,0 +1,487 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-28-g1864f20
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-28-g1864f20&In-Reply-To=%3C20140108143032.C4EEB5DBEC%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024973.html">
+   <LINK REL="Next"  HREF="024898.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-28-g1864f20</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-28-g1864f20&In-Reply-To=%3C20140108143032.C4EEB5DBEC%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-28-g1864f20">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:32 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024973.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-30-gd43d6a8
+</A></li>
+        <LI>Next message: <A HREF="024898.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-36-gb60599d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25918">[ date ]</a>
+              <a href="thread.html#25918">[ thread ]</a>
+              <a href="subject.html#25918">[ subject ]</a>
+              <a href="author.html#25918">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  1864f206b495fe38b2b9e6e2569de1b215279de0 (commit)
+      from  40032c72120c5b58f9135488f3120902fce77e7a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    6 ++--
+ x2go/backends/control/_stdout.py |   41 ++++++++++++++++++-----
+ x2go/cache.py                    |   30 +++++++++++++----
+ x2go/client.py                   |   68 ++++++++++++++++++++++++++++++++------
+ x2go/guardian.py                 |    8 ++++-
+ x2go/session.py                  |    5 +++
+ 6 files changed, 128 insertions(+), 30 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b34e4bd..a3d162d 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,10 +8,12 @@ python-x2go (0.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Add X2goSession status property ,,faulty''.
+     - Make sure list session and list desktop commands always return.
+     - Rely on X2goSessionListInfo backend to handle exceptions appropriately.
+-    - Assure that rev forwarding tunnels use IPv4 (replace localhost with 127.0.0.1)
++    - Assure that rev forwarding tunnels use IPv4 (replace localhost with 127.0.0.1).
+     - Explicitly tunnel over IPv4 for NX proxy.
++    - Make cache more configurable (session list updates, desktop list updates).
++    - Adds an auto_update_listdesktops_cache to X2goClient constructor argvs.
+ 
+- -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Tue, 21 Jun 2011 15:39:08 +0200
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Tue, 21 Jun 2011 19:48:12 +0200
+ 
+ python-x2go (0.1.0.3-0~x2go1) unstable; urgency=low
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index d6ebe72..b953234 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -626,7 +626,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         return self.start(**kwargs)
+ 
+-    def list_desktops(self, raw=False):
++    def list_desktops(self, raw=False, maxwait=20):
+         &quot;&quot;&quot;\
+         List all desktop-like sessions of current user (or of users that have 
+         granted desktop sharing) on the connected server.
+@@ -648,10 +648,19 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             # this _success loop will catch errors in case the x2golistsessions output is corrupt
+             # this should not be needed and is a workaround for the current X2go server implementation
+ 
+-            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistdesktops&quot;)
+-            _stdout_read = stdout.read()
+-
+-            _listdesktops = _stdout_read.split('\n')
++            timeout = gevent.Timeout(maxwait)
++            timeout.start()
++            try:
++                (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistdesktops&quot;)
++                _stdout_read = stdout.read()
++                _listdesktops = _stdout_read.split('\n')
++            except gevent.timeout.Timeout:
++                # if we do not get a reply here after &lt;maxwait&gt; seconds we will raise a time out, we have to
++                # make sure that we catch this at places where we want to ignore timeouts (e.g. in the 
++                # desktop list cache)
++                raise x2go_exceptions.X2goTimeOutException('x2golistdesktop command timed out')
++            finally:
++                timeout.cancel()
+ 
+             return _listdesktops
+ 
+@@ -681,10 +690,24 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             _success = False
+             _count = 0
+ 
+-            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;)
+-            _stdout_read = stdout.read()
+-
+-            _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++            # we will try this 20 times before giving up... we might simply catch the x2golistsessions
++            # output in the middle of creating a session in the database...
++            while not _success and _count &lt; 20:
++                _count += 1
++                try:
++                    (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;)
++                    _stdout_read = stdout.read()
++                    _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++                    _success = True
++                except KeyError:
++                    gevent.sleep(1)
++                except IndexError:
++                    gevent.sleep(1)
++                except ValueError:
++                    gevent.sleep(1)
++
++            if _count &gt;= 20:
++                raise x2go_exceptions.X2goControlSessionException('x2golistsessions command failed after we have tried 20 times')
+ 
+             # update internal variables when list_sessions() is called
+             for _session_name, _session_info in self.associated_terminals.items():
+diff --git a/x2go/cache.py b/x2go/cache.py
+index dda6faa..2a8643b 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -94,30 +94,41 @@ class X2goListSessionsCache(object):
+             if profile_name not in self.client_instance.client_connected_profiles(return_profile_names=True):
+                 del self.x2go_listsessions_cache[profile_name]
+ 
+-    def update_all(self):
++    def update_all(self, update_sessions=True, update_desktops=False):
+         &quot;&quot;&quot;\
+         Update L{X2goListSessionsCache} for all connected session profiles.
+ 
++        @param update_sessions: cache recent session lists from all connected servers
++        @type update_session: C{bool}
++        @param update_desktops: cache recent desktop lists from all connected servers
++        @type update_desktops: C{bool}
++
+         &quot;&quot;&quot;
+         for profile_name in self.client_instance.client_connected_profiles(return_profile_names=True):
+-            self.update(profile_name)
++            self.update(profile_name, update_sessions=update_sessions, update_desktops=update_desktops)
+ 
+         self.check_cache()
+ 
+-    def update(self, profile_name):
++    def update(self, profile_name, update_sessions=True, update_desktops=False):
+         &quot;&quot;&quot;\
+         Update L{X2goListSessionsCache} (i.e. session/desktops) for session profile C{profile_name}.
+ 
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
++        @param update_sessions: cache recent session list from server
++        @type update_session: C{bool}
++        @param update_desktops: cache recent desktop list from server
++        @type update_desktops: C{bool}
+ 
+         &quot;&quot;&quot;
+         self.last_listsessions_cache = copy.deepcopy(self.x2go_listsessions_cache)
+         control_session = self.client_instance.client_control_session_of_profile_name(profile_name)
+         if not self.x2go_listsessions_cache.has_key(profile_name):
+             self.x2go_listsessions_cache[profile_name] = {'sessions': None, 'desktops': None, }
+-        self._update_sessions(profile_name, control_session)
+-        self._update_desktops(profile_name, control_session)
++        if update_sessions:
++            self._update_sessions(profile_name, control_session)
++        if update_desktops:
++            self._update_desktops(profile_name, control_session)
+ 
+     def _update_desktops(self, profile_name, control_session):
+         &quot;&quot;&quot;\
+@@ -188,7 +199,7 @@ class X2goListSessionsCache(object):
+         else:
+             return None
+ 
+-    def is_cached(self, profile_name=None, session_uuid=None):
++    def is_cached(self, profile_name=None, session_uuid=None, cache_type=None):
+         &quot;&quot;&quot;\
+         Check if session list is cached.
+ 
+@@ -200,4 +211,9 @@ class X2goListSessionsCache(object):
+         &quot;&quot;&quot;
+         if profile_name is None and session_uuid:
+             profile_name = self.client_instance.get_session_profile_name(session_uuid)
+-        return self.x2go_listsessions_cache.has_key(profile_name)
++        _is_profile_cached = self.x2go_listsessions_cache.has_key(profile_name)
++        _is_cache_type_cached = _is_profile_cached and self.x2go_listsessions_cache[profile_name].has_key(cache_type)
++        if cache_type is None:
++            return _is_profile_cached
++        else:
++            return _is_cache_type_cached
+\ No newline at end of file
+diff --git a/x2go/client.py b/x2go/client.py
+index ae4dec1..fa87e4c 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -193,6 +193,7 @@ class X2goClient(object):
+                  start_pulseaudio=False,
+                  use_listsessions_cache=False, 
+                  auto_update_listsessions_cache=False,
++                 auto_update_listdesktops_cache=False,
+                  auto_update_sessionregistry=False,
+                  auto_register_sessions=False,
+                  refresh_interval=5,
+@@ -225,10 +226,12 @@ class X2goClient(object):
+         @type start_xserver: C{bool}
+         @param start_pulseaudio: start Pulseaudio daemon when registering an L{X2goClient} instance
+         @type start_pulseaudio: C{bool}
+-        @param use_listsessions_cache: activate the X2go session list cache (L{X2goListSessionsCache})
++        @param use_listsessions_cache: activate the X2go session list cache in (L{X2goListSessionsCache})
+         @type use_listsessions_cache: C{bool}
+         @param auto_update_listsessions_cache: activate automatic updates of the X2go session list cache (L{X2goListSessionsCache})
+         @type auto_update_listsessions_cache: C{bool}
++        @param auto_update_listdesktops_cache: activate automatic updates of desktop lists in (L{X2goListSessionsCache})
++        @type auto_update_listdesktops_cache: C{bool}
+         @param auto_update_sessionregistry: activate automatic updates of the X2go session registry
+         @type auto_update_sessionregistry: C{bool}
+         @param auto_register_sessions: activate automatic X2go session registration
+@@ -309,16 +312,20 @@ class X2goClient(object):
+ 
+         self.auto_register_sessions = auto_register_sessions
+         self.session_registry = X2goSessionRegistry(self, logger=self.logger)
+-        self.session_guardian = X2goSessionGuardian(self, auto_update_listsessions_cache=auto_update_listsessions_cache &amp; use_listsessions_cache, 
++        self.session_guardian = X2goSessionGuardian(self, auto_update_listsessions_cache=auto_update_listsessions_cache &amp; use_listsessions_cache,
++                                                    auto_update_listdesktops_cache=auto_update_listdesktops_cache &amp; use_listsessions_cache,
+                                                     auto_update_sessionregistry=auto_update_sessionregistry,
+                                                     auto_register_sessions=auto_register_sessions, 
+                                                     refresh_interval=refresh_interval,
+                                                     logger=self.logger
+                                                    )
++
+         if use_listsessions_cache:
+             self.listsessions_cache = X2goListSessionsCache(self, logger=self.logger)
+ 
+         self.use_listsessions_cache = use_listsessions_cache
++        self.auto_update_listsessions_cache = auto_update_listsessions_cache
++        self.auto_update_listdesktops_cache = auto_update_listdesktops_cache
+ 
+     # user hooks for detecting/notifying what happened during application runtime
+     def HOOK_no_known_xserver_found(self):
+@@ -1869,7 +1876,7 @@ class X2goClient(object):
+         if raw:
+             return self.session_registry(session_uuid).list_sessions(raw=raw)
+ 
+-        if not self.use_listsessions_cache or no_cache:
++        if not self.use_listsessions_cache or not self.auto_update_listsessions_cache or no_cache:
+             _session_list = self.session_registry(session_uuid).list_sessions()
+         elif refresh_cache:
+             self.update_cache_by_session_uuid(session_uuid)
+@@ -1877,7 +1884,7 @@ class X2goClient(object):
+         else:
+             # if there is no cache for this session_uuid available, make sure the cache gets updated
+             # before reading from it...
+-            if self.use_listsessions_cache and (not self.listsessions_cache.is_cached(session_uuid=session_uuid)):
++            if self.use_listsessions_cache and (not self.listsessions_cache.is_cached(session_uuid=session_uuid, cache_type=('sessions'))):
+                 self.__update_cache_by_session_uuid(session_uuid)
+             _session_list = self.listsessions_cache.list_sessions(session_uuid)
+ 
+@@ -1938,9 +1945,11 @@ class X2goClient(object):
+         if raw:
+             return self.session_registry(session_uuid).list_desktops(raw=raw)
+ 
+-        if not self.use_listsessions_cache or no_cache:
++        if not self.use_listsessions_cache or not self.auto_update_listdesktops_cache or no_cache:
+             _desktop_list = self.session_registry(session_uuid).list_desktops()
+         else:
++            if self.use_listsessions_cache and (not self.listsessions_cache.is_cached(session_uuid=session_uuid, cache_types=('desktops'))):
++                self.__update_cache_by_session_uuid(session_uuid, update_sessions=False, update_desktops=True)
+             _desktop_list = self.listsessions_cache.list_desktops(session_uuid)
+ 
+         return _desktop_list
+@@ -2156,45 +2165,82 @@ class X2goClient(object):
+     __update_sessionregistry_status_all_profiles = update_sessionregistry_status_all_profiles
+ 
+ 
+-    def update_cache_by_profile_name(self, profile_name):
++    def update_cache_by_profile_name(self, profile_name, cache_types=('sessions'), update_sessions=None, update_desktops=None):
+         &quot;&quot;&quot;\
+         Update the session list cache by profile name.
+ 
+         @param profile_name: the X2go session profile name
+         @type profile_name: C{str}
++        @param cache_types: specify what cache type to update (available: C{sessions}, C{desktops})
++        @type cache_types: C{tuple} or C{list}
++        @param update_sessions: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update sessions in the session list cache.
++        @type update_session: C{bool}
++        @param update_desktops: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update available desktops in the desktop list cache.
++        @type update_desktops: C{bool}
+ 
+         &quot;&quot;&quot;
+         if self.listsessions_cache is not None:
++            _update_sessions = ('sessions' in cache_types) or update_sessions
++            _update_desktops = ('desktops' in cache_types) or update_desktops
+             try:
+-                self.listsessions_cache.update(profile_name)
++                self.listsessions_cache.update(profile_name, update_sessions=_update_sessions, update_desktops=_update_desktops)
+             except x2go_exceptions.X2goControlSessionException:
+                 if self.disconnect_profile(profile_name):
+                     self.HOOK_on_control_session_death(profile_name)
+     __update_cache_by_profile_name = update_cache_by_profile_name
+ 
+-    def update_cache_by_session_uuid(self, session_uuid):
++    def update_cache_by_session_uuid(self, session_uuid, cache_types=('sessions'), update_sessions=None, update_desktops=None):
+         &quot;&quot;&quot;\
+         Update the session list cache of a specific L{X2goSession} instance with
+         session identifier &lt;session_uuid&gt;.
+ 
+         @param session_uuid: the X2go session's UUID registry hash
+         @type session_uuid: C{str}
++        @param cache_types: specify what cache type to update (available: C{sessions}, C{desktops})
++        @type cache_types: C{tuple} or C{list}
++        @param update_sessions: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update sessions in the session list cache.
++        @type update_session: C{bool}
++        @param update_desktops: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update available desktops in the desktop list cache.
++        @type update_desktops: C{bool}
+ 
+         &quot;&quot;&quot;
+         profile_name = self.get_session_profile_name(session_uuid)
+-        self.__update_cache_by_profile_name(profile_name)
++        self.__update_cache_by_profile_name(profile_name,
++                                            cache_types=cache_types,
++                                            update_sessions=update_sessions,
++                                            update_desktops=update_desktops,
++                                           )
+     __update_cache_by_session_uuid = update_cache_by_session_uuid
+ 
+-    def update_cache_all_profiles(self):
++    def update_cache_all_profiles(self, cache_types=('sessions'), update_sessions=None, update_desktops=None):
+         &quot;&quot;&quot;\
+         Update the session list cache of all session profiles.
+ 
++        @param cache_types: specify what cache type to update (available: C{sessions}, C{desktops})
++        @type cache_types: C{tuple} or C{list}
++        @param update_sessions: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update sessions in the session list cache.
++        @type update_session: C{bool}
++        @param update_desktops: instead of giving a list of cache types, plainly say C{True} here, if 
++            you want to update available desktops in the desktop list cache.
++        @type update_desktops: C{bool}
++
+         &quot;&quot;&quot;
+         if self.listsessions_cache is not None:
+             for profile_name in self.client_connected_profiles(return_profile_names=True):
+-                self.__update_cache_by_profile_name(profile_name)
++                self.__update_cache_by_profile_name(profile_name,
++                                                    cache_types=cache_types,
++                                                    update_sessions=update_sessions,
++                                                    update_desktops=update_desktops,
++                                                   )
+ 
++            # remove profiles that are not connected any more from cache object
+             self.listsessions_cache.check_cache()
++
+     __update_cache_all_profiles = update_cache_all_profiles
+ 
+     def register_available_server_sessions_by_profile_name(self, profile_name):
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 36b0623..a5791e3 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -54,6 +54,7 @@ class X2goSessionGuardian(threading.Thread):
+ 
+     def __init__(self, client_instance, 
+                  auto_update_listsessions_cache=False, 
++                 auto_update_listdesktops_cache=False, 
+                  auto_update_sessionregistry=False,
+                  auto_register_sessions=False,
+                  refresh_interval=5,
+@@ -61,6 +62,8 @@ class X2goSessionGuardian(threading.Thread):
+         &quot;&quot;&quot;\
+         @param auto_update_listsessions_cache: let L{X2goSessionGuardian} refresh the session list cache for all L{X2goSession} objects
+         @type auto_update_listsessions_cache: C{bool}
++        @param auto_update_listdesktops_cache: let L{X2goSessionGuardian} refresh desktop lists in the session list cache for all L{X2goSession} objects
++        @type auto_update_listdesktops_cache: C{bool}
+         @param auto_update_sessionregistry: if set to C{True} the session status will be updated in regular intervals
+         @type auto_update_sessionregistry: C{bool}
+         @param auto_register_sessions: register new sessions automatically once they appear in the X2go session (e.g. 
+@@ -83,6 +86,7 @@ class X2goSessionGuardian(threading.Thread):
+ 
+         self.client_instance = client_instance
+         self.auto_update_listsessions_cache = auto_update_listsessions_cache
++        self.auto_update_listdesktops_cache = auto_update_listdesktops_cache
+         self.auto_update_sessionregistry = auto_update_sessionregistry
+         self.auto_register_sessions = auto_register_sessions
+         self.refresh_interval = refresh_interval
+@@ -110,7 +114,9 @@ class X2goSessionGuardian(threading.Thread):
+ 
+ 
+                 if self.auto_update_listsessions_cache:
+-                    self.client_instance.update_cache_all_profiles()
++                    self.client_instance.update_cache_all_profiles(update_sessions=self.auto_update_listsessions_cache, 
++                                                                   update_desktops=self.auto_update_listdesktops_cache,
++                                                                  )
+ 
+                 if self.auto_update_sessionregistry and not self.auto_register_sessions:
+                     self.client_instance.update_sessionregistry_status_all_profiles()
+diff --git a/x2go/session.py b/x2go/session.py
+index 52cb682..0767340 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -831,6 +831,11 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         try:
+             return self.control_session.list_desktops(raw=raw)
++        except X2goDesktopSharingException:
++            if raw:
++                return ('','')
++            else:
++                return []
+         except X2goControlSessionException:
+             self._X2goSession_disconnect()
+             return None
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024973.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-30-gd43d6a8
+</A></li>
+	<LI>Next message: <A HREF="024898.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-36-gb60599d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25918">[ date ]</a>
+              <a href="thread.html#25918">[ thread ]</a>
+              <a href="subject.html#25918">[ subject ]</a>
+              <a href="author.html#25918">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

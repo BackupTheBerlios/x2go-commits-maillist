@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] nxcompshad.git - master (branch) updated:	3.4.0.4-13-gcae6a34
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nxcompshad.git%20-%20master%20%28branch%29%20updated%3A%0A%093.4.0.4-13-gcae6a34&In-Reply-To=%3C20111013212454.617D25DD11%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001754.html">
+   <LINK REL="Next"  HREF="001756.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] nxcompshad.git - master (branch) updated:	3.4.0.4-13-gcae6a34</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20nxcompshad.git%20-%20master%20%28branch%29%20updated%3A%0A%093.4.0.4-13-gcae6a34&In-Reply-To=%3C20111013212454.617D25DD11%40ymir%3E"
+       TITLE="[X2go-Commits] nxcompshad.git - master (branch) updated:	3.4.0.4-13-gcae6a34">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Oct 13 23:24:54 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001754.html">[X2go-Commits] nxcomp.git - master (branch) updated:	3.5.0-1-7-g02ab8c6
+</A></li>
+        <LI>Next message: <A HREF="001756.html">[X2go-Commits] nxcompext.git - master (branch) updated:	3.5.0-1-3-gcb77771
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1755">[ date ]</a>
+              <a href="thread.html#1755">[ thread ]</a>
+              <a href="subject.html#1755">[ subject ]</a>
+              <a href="author.html#1755">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  cae6a347cda7e42f976a39aecd902d6d423ed50c (commit)
+      from  b38269fdd9b966f694c71da88447aecb1cc109d2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit cae6a347cda7e42f976a39aecd902d6d423ed50c
+Author: Reinhard Tartler &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">siretart at tauware.de</A>&gt;
+Date:   Thu Oct 13 23:22:54 2011 +0200
+
+    Workaround linking against libx11 without libx11-dev
+    
+    the package x11proto-nx-dev conflicts against x11proto-core-dev, which
+    in turn is a dependency of libx11-dev. Normally, we need libx11-dev (and
+    similar packages) for linking for the actual headers (which we want to
+    replace) and the symlink in /usr/lib. We provide the headers in
+    x11proto-nx-dev, and the symlink is hacked in on the fly.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ Makefile.in    |    2 +-
+ debian/control |    8 ++++----
+ debian/rules   |   21 +++++++++++++++++++++
+ 3 files changed, 26 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/Makefile.in b/Makefile.in
+index e93c896..71f7026 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -47,7 +47,7 @@ CCFLAGS     = @X_CFLAGS@ @DEFS@ \
+ CCINCLUDES  =
+ CCDEFINES   =
+ 
+-LDFLAGS     = @LDFLAGS@
++LDFLAGS     = @LDFLAGS@ -L.
+ LIBS        = @LIBS@ -L/usr/X11R6/lib -lX11 -lXext
+ 
+ #
+diff --git a/debian/control b/debian/control
+index 46143f4..11c2862 100644
+--- a/debian/control
++++ b/debian/control
+@@ -6,11 +6,11 @@ Uploaders:
+ Build-Depends: 
+  dh-autoreconf,
+  debhelper (&gt;= 7.0.50),
+- libxtst-dev,
+- libxdamage-dev,
+- libxrandr-dev,
++ libxext6,
++ libxdamage1,
++ libxrandr2,
+  automake,
+- libxi-dev
++ libxcompext-dev,
+ Section: x11
+ Standards-Version: 3.9.2
+ Homepage: <A HREF="http://code.x2go.org/releases/source/nxcompshad">http://code.x2go.org/releases/source/nxcompshad</A>
+diff --git a/debian/rules b/debian/rules
+index c32641f..87006da 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -5,5 +5,26 @@
+ 
+ override_dh_auto_install:
+ 
++define link_library
++	if test  -f /usr/lib/$(DEB_BUILD_MULTIARCH)/$(1); then \
++	     ln -sf /usr/lib/$(DEB_BUILD_MULTIARCH)/$(1) $(2); \
++	elif test -f /usr/lib/$(1); then \
++	     ln -sf /usr/lib/$(1) $(2) ;\
++	else echo $(1) not found; false ;\
++	fi
++endef
++
++override_dh_auto_build:
++	$(call link_library,libX11.so.6,libX11.so)
++	$(call link_library,libXext.so.6,libXext.so)
++	$(call link_library,libXtst.so.6,libXtst.so)
++	$(call link_library,libXrandr.so.2,libXrandr.so)
++	$(call link_library,libXdamage.so.1,libXdamage.so)
++	dh_auto_build
++
++override_dh_clean:
++	dh_clean
++	rm -f *.so
++
+ override_dh_strip:
+ 	dh_strip --dbg-package=libxcompshad-dbg
+
+
+hooks/post-receive
+-- 
+nxcompshad.git (NX compshad library)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nxcompshad.git&quot; (NX compshad library).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001754.html">[X2go-Commits] nxcomp.git - master (branch) updated:	3.5.0-1-7-g02ab8c6
+</A></li>
+	<LI>Next message: <A HREF="001756.html">[X2go-Commits] nxcompext.git - master (branch) updated:	3.5.0-1-3-gcb77771
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1755">[ date ]</a>
+              <a href="thread.html#1755">[ thread ]</a>
+              <a href="subject.html#1755">[ subject ]</a>
+              <a href="author.html#1755">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

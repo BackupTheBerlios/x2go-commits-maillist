@@ -1,0 +1,337 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	f305e1f4d7f9465d52990a1938e4323cccc7bf86
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%09f305e1f4d7f9465d52990a1938e4323cccc7bf86&In-Reply-To=%3C20140107151619.B99E75DBC5%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020564.html">
+   <LINK REL="Next"  HREF="020364.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	f305e1f4d7f9465d52990a1938e4323cccc7bf86</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%09f305e1f4d7f9465d52990a1938e4323cccc7bf86&In-Reply-To=%3C20140107151619.B99E75DBC5%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	f305e1f4d7f9465d52990a1938e4323cccc7bf86">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:16:19 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020564.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	6c87cc5cfc6864e49a435085fd2885fe356a841b
+</A></li>
+        <LI>Next message: <A HREF="020364.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	e1654ad4c743a4d3e3748dc4c105c727f984ba4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20339">[ date ]</a>
+              <a href="thread.html#20339">[ thread ]</a>
+              <a href="subject.html#20339">[ subject ]</a>
+              <a href="author.html#20339">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  f305e1f4d7f9465d52990a1938e4323cccc7bf86 (commit)
+      from  76ef55a968c001b62890acb37bad29cf203fe0bd (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   16 ++++++++++++++--
+ x2go/cache.py                    |   11 +++++++++++
+ x2go/client.py                   |   25 ++++++++++++-------------
+ x2go/registry.py                 |   32 +++++++++++++++++---------------
+ x2go/session.py                  |   10 ++++++----
+ 6 files changed, 61 insertions(+), 34 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index d20d79d..3776aa4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -3,6 +3,7 @@ python-x2go (0.0.36-0~nwt1) lucid maverick testing unstable; urgency=low
+   * fixed non-starting sshfs issue
+   * made XServer VcXsrv known to Python X2go (relevant for Windows)
+   * catching forward tunnel setup failure by session and client hook method
++  * improved handling of network failures (i.e. when triggering disconnect events)
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Jan 2011 23:00:00 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index dd9af27..370b9ff 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -139,6 +139,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             utils.touch_file(self.known_hosts)
+             self.load_host_keys(self.known_hosts)
+ 
++        self.session_died = False
++
+     def __del__(self):
+ 
+         self.disconnect()
+@@ -182,10 +184,13 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 _retval = self.exec_command(_rewrite_password(cmd, user=self.get_transport().get_username(), password=self._session_password), **kwargs)
+                 self.locked = False
+             except AttributeError:
++                self.session_died = True
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except EOFError:
++                self.session_died = True
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except gevent.timeout.Timeout:
++                self.session_died = True
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session command timed out')
+             finally:
+                 self.locked = False
+@@ -392,6 +397,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         ssh_transport._x2go_session_marker = True
+         self._session_password = password
+ 
++        if self.get_transport():
++            self.session_died = False
+         return (self.get_transport() is not None)
+ 
+     def dissociate(self, terminal_session):
+@@ -414,7 +421,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             t_names = self.associated_terminals.keys()
+             for  t_obj in self.associated_terminals.values():
+                 try:
+-                    t_obj.suspend()
++                    if not self.session_died:
++                        t_obj.suspend()
+                 except x2go_exceptions.X2goTerminalSessionException:
+                     pass
+                 except x2go_exceptions.X2goControlSessionException:
+@@ -436,10 +444,14 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         try:
+             if self.get_transport() is not None:
++                still_active = self.get_transport().is_active()
+                 self.get_transport().close()
++                return still_active
++            return False
+         except AttributeError:
+             # if the Paramiko _transport object has not yet been initialized, ignore it
+-            pass
++            # but state that this method call did not close the SSH client, but was already closed
++            return False
+ 
+     def is_alive(self):
+         if self._x2go_exec_command('echo', loglevel=log.loglevel_DEBUG):
+diff --git a/x2go/cache.py b/x2go/cache.py
+index 2a41b8c..57dc8b7 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -60,8 +60,19 @@ class X2goListSessionsCache(object):
+ 
+         self.client_instance = client_instance
+ 
++    def delete(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        try: del self.x2go_listsessions_cache[profile_name]
++        except KeyError: pass
++
+     def check_cache(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
+ 
++        &quot;&quot;&quot;
+         for profile_name in self.x2go_listsessions_cache.keys():
+             if profile_name not in self.client_instance.client_connected_profiles(return_profile_names=True):
+                 del self.x2go_listsessions_cache[profile_name]
+diff --git a/x2go/client.py b/x2go/client.py
+index d5b2078..855187d 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1192,8 +1192,8 @@ class X2goClient(object):
+             return self.session_registry(session_uuid).is_alive()
+         except x2go_exceptions.X2goControlSessionException:
+             profile_name = self.get_session_profile_name(session_uuid)
+-            self.HOOK_on_control_session_death(profile_name)
+-            self.disconnect_profile(profile_name)
++            if self.disconnect_profile(profile_name):
++                self.HOOK_on_control_session_death(profile_name)
+             return False
+     __server_is_alive = server_is_alive
+ 
+@@ -1494,10 +1494,12 @@ class X2goClient(object):
+         @param profile_name: the X2go session profile name
+         @type profile_name: C{str}
+         &quot;&quot;&quot;
++        _retval = False
+         for s in self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=True):
+-            s.disconnect()
++            _retval = s.disconnect() | _retval
+         if self.use_listsessions_cache:
+-            self.__update_cache_all_profiles()
++            self.listsessions_cache.delete(profile_name)
++        return _retval
+     __disconnect_profile = disconnect_profile
+ 
+     def update_sessionregistry_status_by_profile_name(self, profile_name, session_list=None):
+@@ -1515,9 +1517,8 @@ class X2goClient(object):
+             try:
+                 self.session_registry.update_status(profile_name=profile_name, session_list=session_list)
+             except x2go_exceptions.X2goControlSessionException:
+-                self.disconnect_profile(profile_name)
+-                self.HOOK_on_control_session_death(profile_name)
+-                return False
++                if self.disconnect_profile(profile_name):
++                    self.HOOK_on_control_session_death(profile_name)
+     __update_sessionregistry_status_by_profile_name = update_sessionregistry_status_by_profile_name
+ 
+ 
+@@ -1550,9 +1551,8 @@ class X2goClient(object):
+             try:
+                 self.listsessions_cache.update(profile_name)
+             except x2go_exceptions.X2goControlSessionException:
+-                self.disconnect_profile(profile_name)
+-                self.HOOK_on_control_session_death(profile_name)
+-                return False
++                if self.disconnect_profile(profile_name):
++                    self.HOOK_on_control_session_death(profile_name)
+     __update_cache_by_profile_name = update_cache_by_profile_name
+ 
+     def update_cache_by_session_uuid(self, session_uuid):
+@@ -1589,9 +1589,8 @@ class X2goClient(object):
+             try:
+                 self.session_registry.register_available_server_sessions(profile_name, session_list=session_list)
+             except x2go_exceptions.X2goControlSessionException:
+-                self.disconnect_profile(profile_name)
+-                self.HOOK_on_control_session_death(profile_name)
+-                return False
++                if self.disconnect_profile(profile_name):
++                    self.HOOK_on_control_session_death(profile_name)
+     __register_available_server_sessions_by_profile_name = register_available_server_sessions_by_profile_name
+ 
+     def register_available_server_sessions_by_session_uuid(self, session_uuid):
+diff --git a/x2go/registry.py b/x2go/registry.py
+index cb3a343..7a17017 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -179,23 +179,25 @@ class X2goSessionRegistry(object):
+ 
+             elif _last_status['running'] == False and _current_status['running'] == True:
+                 # session has started
+-                if self(_session_uuid).has_terminal_session():
+-                    if _last_status['suspended']:
+-                        # from a suspended state
+-                        self.client_instance.HOOK_on_session_has_resumed_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                if _last_status['connected']:
++                    if self(_session_uuid).has_terminal_session():
++                        if _last_status['suspended']:
++                            # from a suspended state
++                            self.client_instance.HOOK_on_session_has_resumed_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                        else:
++                            # as a new session
++                            self.client_instance.HOOK_on_session_has_started_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                     else:
+-                        # as a new session
+-                        self.client_instance.HOOK_on_session_has_started_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                        if _last_status['suspended']:
++                            # from a suspended state
++                            self.client_instance.HOOK_on_session_has_resumed_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                        else:
++                            # as a new session
++                            self.client_instance.HOOK_on_session_has_started_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                 else:
+-                    if not _last_status['connected']:
+-                        # from a suspended state
+-                        self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-                    elif _last_status['suspended']:
+-                        # from a suspended state
+-                        self.client_instance.HOOK_on_session_has_resumed_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-                    else:
+-                        # as a new session
+-                        self.client_instance.HOOK_on_session_has_started_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                    # from a suspended state
++                    self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++
+             elif _last_status['suspended'] == False and _current_status['suspended'] == True:
+                 # session has been suspended
+                 self(_session_uuid).session_cleanup()
+diff --git a/x2go/session.py b/x2go/session.py
+index 158fc6a..4978727 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -520,11 +520,11 @@ class X2goSession(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        self.control_session.disconnect()
+         self.connected = False
+         self.running = None
+         self.suspended = None
+         self.terminated = None
++        return self.control_session.disconnect()
+     __disconnect = disconnect
+ 
+     def set_print_action(self, print_action, **kwargs):
+@@ -564,9 +564,11 @@ class X2goSession(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        if not self.is_alive():
+-            self._X2goSession__disconnect()
+-        return self.control_session.list_sessions(raw=raw)
++        try:
++            return self.control_session.list_sessions(raw=raw)
++        except x2go_exceptions.X2goControlSessionException:
++            self._X2goSession_disconnect()
++            return None
+     __list_sessions = list_sessions
+ 
+     def update_status(self, session_list=None):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020564.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	6c87cc5cfc6864e49a435085fd2885fe356a841b
+</A></li>
+	<LI>Next message: <A HREF="020364.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	e1654ad4c743a4d3e3748dc4c105c727f984ba4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20339">[ date ]</a>
+              <a href="thread.html#20339">[ thread ]</a>
+              <a href="subject.html#20339">[ subject ]</a>
+              <a href="author.html#20339">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

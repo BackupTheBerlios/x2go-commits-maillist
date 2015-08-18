@@ -1,0 +1,197 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.20-16-g0946b43
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.20-16-g0946b43&In-Reply-To=%3C20130830142413.C2AAD5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011781.html">
+   <LINK REL="Next"  HREF="011780.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.20-16-g0946b43</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.20-16-g0946b43&In-Reply-To=%3C20130830142413.C2AAD5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.20-16-g0946b43">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:24:13 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011781.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21
+</A></li>
+        <LI>Next message: <A HREF="011780.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxproxy/3.5.0-1-80-g4076b41
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11785">[ date ]</a>
+              <a href="thread.html#11785">[ thread ]</a>
+              <a href="subject.html#11785">[ subject ]</a>
+              <a href="author.html#11785">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  0946b437570dea31365790d5cbf39c39f1b59c02 (commit)
+      from  e46b43443fd45fa3f3196df34ba7efe8bff423a3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                |    5 ++
+ debian/patches/602_nx-X11_initgroups.full.patch |   67 +++++++++++++++++++++++
+ debian/patches/series                           |    1 +
+ 3 files changed, 73 insertions(+)
+ create mode 100644 debian/patches/602_nx-X11_initgroups.full.patch
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2242a75..b523ee1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -19,6 +19,11 @@ nx-libs (2:3.5.0.21-0) UNRELEASED; urgency=low
+   * Change build options so that bundled libraries are not used anymore at
+     build time. Remove bundled libraries from rolled tarballs, as well. (Fixes:
+     #238).
++  * Add patch: 602_nx-X11_initgroups.full.patch. Fix calling setuid and setgid
++    without setgroups or initgroups. There is a high probability this means it
++    didn't relinquish all groups, and this would be a potential security issue
++    to be fixed. Seek POS36-C on the web for details about the problem. (Fixes:
++    #293).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 28 Mar 2013 21:07:42 +0100
+ 
+diff --git a/debian/patches/602_nx-X11_initgroups.full.patch b/debian/patches/602_nx-X11_initgroups.full.patch
+new file mode 100644
+index 0000000..182b378
+--- /dev/null
++++ b/debian/patches/602_nx-X11_initgroups.full.patch
+@@ -0,0 +1,67 @@
++Description: Be compliant with POS36-C: Observe correct revocation order while relinquishing privileges
++Author: Orion Poplawski &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">orion at cora.nwra.com</A>&gt;
++Abstract:
++ The Fedora review of NX (redistributed) caught the following rpmlint issue:
++ .
++ This executable is calling setuid and setgid without setgroups or initgroups.
++ There is a high probability this mean it didn't relinquish all groups, and this
++ would be a potential security issue to be fixed. Seek POS36-C on the web for
++ details about the problem.
++ .
++ Ref POS36-C:
++ <A HREF="https://www.securecoding.cert.org/confluence/display/seccode/POS36-C.+Observe+correct+revocation+order+while+relinquishing+privileges">https://www.securecoding.cert.org/confluence/display/seccode/POS36-C.+Observe+correct+revocation+order+while+relinquishing+privileges</A>
++ .
++ This patch adds initgroups() calls to the code to initialize the supplemental group list.
++diff --git a/nx-X11/programs/Xserver/os/utils.c b/nx-X11/programs/Xserver/os/utils.c
++index 7e62654..9b2431a 100644
++--- a/nx-X11/programs/Xserver/os/utils.c
+++++ b/nx-X11/programs/Xserver/os/utils.c
++@@ -112,6 +112,9 @@ OR PERFORMANCE OF THIS SOFTWARE.
++ #include &lt;sys/stat.h&gt;
++ #include &lt;ctype.h&gt;    /* for isspace */
++ #include &lt;stdarg.h&gt;
+++#include &lt;sys/types.h&gt;
+++#include &lt;grp.h&gt;
+++#include &lt;pwd.h&gt;
++ 
++ #if defined(DGUX)
++ #include &lt;sys/resource.h&gt;
++@@ -1770,6 +1773,7 @@ System(char *command)
++     void (*csig)(int);
++ #endif
++     int status;
+++    struct passwd *pwent;
++ 
++     if (!command)
++ 	return(1);
++@@ -1791,6 +1795,9 @@ System(char *command)
++     case -1:	/* error */
++ 	p = -1;
++     case 0:	/* child */
+++	pwent = getpwuid(getuid());
+++	if (initgroups(pwent-&gt;pw_name,getgid()) == -1)
+++	    _exit(127);
++ 	if (setgid(getgid()) == -1)
++ 	    _exit(127);
++ 	if (setuid(getuid()) == -1)
++diff --git a/nxcomp/Pipe.cpp b/nxcomp/Pipe.cpp
++index 7238d0c..aacbbae 100644
++--- a/nxcomp/Pipe.cpp
+++++ b/nxcomp/Pipe.cpp
++@@ -21,6 +21,7 @@
++ #include &lt;pwd.h&gt;
++ #include &lt;sys/types.h&gt;
++ #include &lt;sys/wait.h&gt;
+++#include &lt;grp.h&gt;
++ 
++ #include &quot;Pipe.h&quot;
++ #include &quot;Misc.h&quot;
++@@ -234,6 +235,8 @@ FILE *Popen(char * const parameters[], const char *type)
++       // Child.
++       //
++ 
+++      struct passwd *pwent = getpwuid(getuid());
+++      if (pwent) initgroups(pwent-&gt;pw_name,getgid());
++       setgid(getgid());
++       setuid(getuid());
++ 
+diff --git a/debian/patches/series b/debian/patches/series
+index 2d95bf5..8c5eebd 100644
+--- a/debian/patches/series
++++ b/debian/patches/series
+@@ -47,6 +47,7 @@
+ 302_nxagent_configurable-keystrokes.full.patch
+ 600_nx-X11+nxcompext+nxcompshad_unique-libnames.full.patch
+ 601_nx-X11_build-option-changes-to-not-use-bundled-libraries.full.patch
++602_nx-X11_initgroups.full.patch
+ 999_nxagent_unbrand-nxagent-brand-x2goagent.full.patch
+ 016_nx-X11_install-location.debian.patch
+ 102_xserver-xext_set-securitypolicy-path.debian.patch
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011781.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.21
+</A></li>
+	<LI>Next message: <A HREF="011780.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxproxy/3.5.0-1-80-g4076b41
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11785">[ date ]</a>
+              <a href="thread.html#11785">[ thread ]</a>
+              <a href="subject.html#11785">[ subject ]</a>
+              <a href="author.html#11785">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

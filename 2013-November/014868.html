@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-67-g2f417f4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-67-g2f417f4&In-Reply-To=%3C20131127085207.6039E5DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014867.html">
+   <LINK REL="Next"  HREF="014869.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-67-g2f417f4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.2.3-67-g2f417f4&In-Reply-To=%3C20131127085207.6039E5DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-67-g2f417f4">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Nov 27 09:52:07 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014867.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.8-4-g3a5777a
+</A></li>
+        <LI>Next message: <A HREF="014869.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-66-g36ba0ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14868">[ date ]</a>
+              <a href="thread.html#14868">[ thread ]</a>
+              <a href="subject.html#14868">[ subject ]</a>
+              <a href="author.html#14868">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  2f417f45d0a10f7467724d473601a90487b7160b (commit)
+      from  36ba0ef2fd1f7ad8d7deb27865b4cb3f0db56327 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 2f417f45d0a10f7467724d473601a90487b7160b
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Nov 27 09:51:15 2013 +0100
+
+    Fix check-credentials = false for UCCS web frontend.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2gobroker/basicauth.py           |   10 ++++++++++
+ x2gobroker/brokers/base_broker.py |    3 +++
+ 3 files changed, 14 insertions(+)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 34c496c..61c0dc3 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -57,6 +57,7 @@ x2gobroker (0.0.3.0-0~x2go1) UNRELEASED; urgency=low
+     - Ship python2.6 asyncore patch (Debian squeeze python2.6 version) in
+       python-x2gobroker's docs folder.
+     - Show correct environment variables in log file prelude when WSGI is used.
++    - Fix check-credentials = false for UCCS web frontend.
+   * /debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+     + Recommend apache2 and libapache2-mod-wsgi for x2gobroker-wsgi.
+diff --git a/x2gobroker/basicauth.py b/x2gobroker/basicauth.py
+index ed53f31..c621817 100644
+--- a/x2gobroker/basicauth.py
++++ b/x2gobroker/basicauth.py
+@@ -27,12 +27,19 @@ def require_basic_auth(realm, validate_callback):
+     def require_basic_auth_decorator(handler_class):
+         def wrap_execute(handler_execute):
+             def require_basic_auth(handler, kwargs):
++
+                 def create_auth_header():
+                     handler.set_status(401)
+                     handler.set_header('WWW-Authenticate', 'Basic realm=&quot;{realm}&quot;'.format(realm=realm))
+                     handler._transforms = []
+                     handler.finish()
+ 
++                dummy, access = validate_callback('check-credentials', 'FALSE')
++                if access:
++                    kwargs['basicauth_user'] = 'anonymous'
++                    kwargs['basicauth_pass'] = 'access granted'
++                    return True
++
+                 auth_header = handler.request.headers.get('Authorization')
+                 if auth_header is None or not auth_header.startswith('Basic '):
+                     create_auth_header()
+@@ -44,12 +51,15 @@ def require_basic_auth(realm, validate_callback):
+                         return True
+                     else:
+                         create_auth_header()
++
+             def _execute(self, transforms, *args, **kwargs):
+                 if not require_basic_auth(self, kwargs):
+                     return False
+                 return handler_execute(self, transforms, *args, **kwargs)
++
+             return _execute
+ 
+         handler_class._execute = wrap_execute(handler_class._execute)
+         return handler_class
++
+     return require_basic_auth_decorator
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 6db07ed..1a9664a 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -740,6 +740,9 @@ class X2GoBroker(object):
+         if not self.config.get_value('global', 'check-credentials'):
+             logger_broker.debug('base_broker.X2GoBroker.check_access(): access is granted without checking credentials, prevent this in {configfile}'.format(configfile=self.config_file))
+             return True
++        elif username == 'check-credentials' and password == 'FALSE':
++            # this catches a validation check from the UCCS web frontend...
++            return False
+ 
+         ### IMPLEMENT YOUR AUTHENTICATION LOGIC IN THE self._do_authenticate(**kwargs) METHOD
+         ### when inheriting from the base.X2GoBroker class.
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014867.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.8-4-g3a5777a
+</A></li>
+	<LI>Next message: <A HREF="014869.html">[X2Go-Commits] x2gobroker.git - master (branch) updated:	0.0.2.3-66-g36ba0ef
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14868">[ date ]</a>
+              <a href="thread.html#14868">[ thread ]</a>
+              <a href="subject.html#14868">[ subject ]</a>
+              <a href="author.html#14868">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

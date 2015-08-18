@@ -1,0 +1,229 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-61-g8e5f855
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.1-61-g8e5f855&In-Reply-To=%3C20130423190849.733735DB34%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005848.html">
+   <LINK REL="Next"  HREF="005852.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-61-g8e5f855</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.1-61-g8e5f855&In-Reply-To=%3C20130423190849.733735DB34%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-61-g8e5f855">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Apr 23 21:08:49 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005848.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-66-g2813264
+</A></li>
+        <LI>Next message: <A HREF="005852.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-65-g74acb0d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5851">[ date ]</a>
+              <a href="thread.html#5851">[ thread ]</a>
+              <a href="subject.html#5851">[ subject ]</a>
+              <a href="author.html#5851">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, tmp has been updated
+       via  8e5f855b236a1483ac6414d1a3782efcf124f2e0 (commit)
+      from  9217c85255f9737bfe37a61b4a8457764e190b37 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ sbin/x2gobroker-pubkeyauthorizer |  127 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 127 insertions(+)
+ create mode 100755 sbin/x2gobroker-pubkeyauthorizer
+
+The diff of changes is:
+diff --git a/sbin/x2gobroker-pubkeyauthorizer b/sbin/x2gobroker-pubkeyauthorizer
+new file mode 100755
+index 0000000..0365b96
+--- /dev/null
++++ b/sbin/x2gobroker-pubkeyauthorizer
+@@ -0,0 +1,127 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++# This file is part of the  X2Go Project - <A HREF="http://www.x2go.org">http://www.x2go.org</A>
++# Copyright (C) 2011-2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2011-2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import os
++import sys
++import setproctitle
++import argparse
++import logging
++import binascii
++import paramiko
++import urllib
++
++from pwd import getpwnam
++from grp import getgrnam
++
++try:
++    import x2gobroker.defaults
++except ImportError:
++    sys.path.insert(0, os.path.join(os.getcwd(), '..'))
++    import x2gobroker.defaults
++
++PROG_NAME = os.path.basename(sys.argv[0])
++PROG_OPTIONS = sys.argv[1:]
++setproctitle.setproctitle(&quot;%s %s&quot; % (PROG_NAME, &quot; &quot;.join(PROG_OPTIONS)))
++
++from x2gobroker import __VERSION__
++from x2gobroker import __AUTHOR__
++from x2gobroker.loggers import logger_broker, logger_error
++
++if os.geteuid() == 0:
++    # propagate msgs for  the broker logger to the root logger (i.e. to stderr)
++    logger_broker.propagate = 1
++    logger_error.propagate = 1
++
++# raise log level to DEBUG if requested...
++if x2gobroker.defaults.X2GOBROKER_DEBUG and not x2gobroker.defaults.X2GOBROKER_TESTSUITE:
++    logger_broker.setLevel(logging.DEBUG)
++
++logger_broker.info('X2Go Session Broker ({version}), written by {author}'.format(version=__VERSION__, author=__AUTHOR__))
++logger_broker.info('Setting up the &#187;PubKey Authorizer&#171;\'s environment...')
++logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEBUG))
++logger_broker.info('  X2GOBROKER_DAEMON_USER: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
++logger_broker.info('  X2GOBROKER_DAEMON_GROUP: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DAEMON_GROUP))
++
++# check effective UID the broker runs as and complain appropriately...
++if os.geteuid() != 0:
++    logger_error.error('X2Go Session Broker\'s &#187;PubKey Authorizer&#171; has to run with root privileges. Exiting...')
++    sys.exit(-1)
++
++if __name__ == '__main__':
++
++    common_options = [
++        {'args':['-t','--broker-url'], 'default': None, 'help': 'The URL of the X2Go Session Broker that we want to retrieve public keys from. The common pattern for this URL is http(s)://&lt;broker_hostname&gt;:&lt;port&gt;/pubkeys/.', },
++    ]
++    p = argparse.ArgumentParser(description='X2Go Session Broker (PubKey Installer)',\
++                                formatter_class=argparse.RawDescriptionHelpFormatter, \
++                                add_help=True, argument_default=None)
++    p_common = p.add_argument_group('common parameters')
++
++    for (p_group, opts) in ( (p_common, common_options), ):
++        for opt in opts:
++            args = opt['args']
++            del opt['args']
++            p_group.add_argument(*args, **opt)
++
++    print
++    cmdline_args = p.parse_args()
++
++    if cmdline_args.broker_url is None:
++        logger_error.error('Cannot proceed without having an URL specified. Use --broker-url as cmdline parameter. Exiting...')
++        sys.exit(-2)
++
++    logger_broker.info('Authorizing access to this X2Go server for X2Go Session Broker at URL {url}'.format(url=cmdline_args.broker_url))
++
++    # FIXME: this probably needs some sanity checks(?)
++    tmpfile_name, httpmsg = urllib.urlretrieve(cmdline_args.broker_url)
++
++    tmpfile = open(tmpfile_name, 'rb')
++    new_pubkeys = [ k for k in tmpfile.read().split('\n') if k ]
++    logger_broker.info('  Found {i} public keys at URL {url}'.format(i=len(new_pubkeys), url=cmdline_args.broker_url))
++    tmpfile.close()
++
++    try:
++        read_authorized_keys = open('{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME), 'rb')
++        already_authorized_keys = read_authorized_keys.read().split('\n')
++        read_authorized_keys.close()
++    except IOError:
++        already_authorized_keys = []
++
++    append_authorized_keys = open('{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME), 'ab')
++
++    i = 0
++    for new_pubkey in new_pubkeys:
++        i += 1
++        if new_pubkey not in already_authorized_keys:
++            append_authorized_keys.write('{k}\n'.format(k=new_pubkey))
++            logger_broker.info('  Adding new public key (counter={i}) to {authorized_keys}.'.format(i=i, authorized_keys='{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME)))
++        else:
++            logger_broker.warning('  Skipping new public key (counter={i}), already in {authorized_keys}.'.format(i=i, authorized_keys='{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME)))
++
++    append_authorized_keys.close()
++
++    # set proper file permissions
++    os.chown('{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME), getpwnam(x2gobroker.defaults.X2GOBROKER_DAEMON_USER).pw_uid, getgrnam(x2gobroker.defaults.X2GOBROKER_DAEMON_GROUP).gr_gid)
++    os.chmod('{home}/.ssh/authorized_keys'.format(home=x2gobroker.defaults.X2GOBROKER_HOME), 0644)
++
++    logger_broker.info('Completed successfully: X2Go Session Broker\'s PubKey Authorizer.'.format(url=cmdline_args.broker_url))
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005848.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-66-g2813264
+</A></li>
+	<LI>Next message: <A HREF="005852.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-65-g74acb0d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5851">[ date ]</a>
+              <a href="thread.html#5851">[ thread ]</a>
+              <a href="subject.html#5851">[ subject ]</a>
+              <a href="author.html#5851">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

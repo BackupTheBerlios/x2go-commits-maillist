@@ -1,0 +1,883 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient2.git - master (branch) updated:	48611f11e64cd0a26dbd92483c522b711068d0d1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%0948611f11e64cd0a26dbd92483c522b711068d0d1&In-Reply-To=%3C20130402155527.EF3AE5DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005342.html">
+   <LINK REL="Next"  HREF="005344.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient2.git - master (branch) updated:	48611f11e64cd0a26dbd92483c522b711068d0d1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%0948611f11e64cd0a26dbd92483c522b711068d0d1&In-Reply-To=%3C20130402155527.EF3AE5DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient2.git - master (branch) updated:	48611f11e64cd0a26dbd92483c522b711068d0d1">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Apr  2 17:55:27 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005342.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-99-ga78fd57
+</A></li>
+        <LI>Next message: <A HREF="005344.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-100-ge537c9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5343">[ date ]</a>
+              <a href="thread.html#5343">[ thread ]</a>
+              <a href="subject.html#5343">[ subject ]</a>
+              <a href="author.html#5343">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  48611f11e64cd0a26dbd92483c522b711068d0d1 (commit)
+      from  110bbeba16404474f940ea66658b818dcbea220a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 48611f11e64cd0a26dbd92483c522b711068d0d1
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Tue Apr 2 17:54:30 2013 +0200
+
+    x2goclient can start and resume x2go sessions now
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ sessionlistframe.ui          |    7 +-
+ sessionselecter.cpp          |    5 +-
+ sessionselecter.h            |    2 +-
+ sessionstatusframe.ui        |    2 +-
+ sessionstatusframestatus.cpp |   13 +-
+ sessionstatusframestatus.ui  |    4 +-
+ sshprocess.cpp               |    2 +-
+ x2goapplication.cpp          |    2 +-
+ x2gosession.cpp              |  449 ++++++++++++++++++++++++++++++++++++++++--
+ x2gosession.h                |   28 ++-
+ x2gosessiondata.cpp          |    2 +-
+ x2gosessiondata.h            |    3 +-
+ 12 files changed, 479 insertions(+), 40 deletions(-)
+
+The diff of changes is:
+diff --git a/sessionlistframe.ui b/sessionlistframe.ui
+index 0c38cee..1da36ff 100644
+--- a/sessionlistframe.ui
++++ b/sessionlistframe.ui
+@@ -82,7 +82,7 @@
+      &lt;/column&gt;
+      &lt;column&gt;
+       &lt;property name=&quot;text&quot;&gt;
+-       &lt;string&gt;Status&lt;/string&gt;
++       &lt;string&gt;State&lt;/string&gt;
+       &lt;/property&gt;
+      &lt;/column&gt;
+      &lt;column&gt;
+@@ -97,6 +97,11 @@
+      &lt;/column&gt;
+      &lt;column&gt;
+       &lt;property name=&quot;text&quot;&gt;
++       &lt;string&gt;Color depth&lt;/string&gt;
++      &lt;/property&gt;
++     &lt;/column&gt;
++     &lt;column&gt;
++      &lt;property name=&quot;text&quot;&gt;
+        &lt;string&gt;Client IP&lt;/string&gt;
+       &lt;/property&gt;
+      &lt;/column&gt;
+diff --git a/sessionselecter.cpp b/sessionselecter.cpp
+index d1d6851..b935ece 100644
+--- a/sessionselecter.cpp
++++ b/sessionselecter.cpp
+@@ -67,9 +67,8 @@ SessionSelecter::SessionSelecter(const QList&lt;X2GoSessionData&gt;&amp; sessions, Profile
+             item-&gt;setText(STATUS, tr(&quot;Running&quot;));
+         }
+         item-&gt;setText(DISPLAY, data.get_display());
+-
+-        QDateTime dt=QDateTime::fromString(data.get_creationTime(), Qt::ISODate);
+-        item-&gt;setText(CRTIME, dt.toString(Qt::SystemLocaleShortDate));
++        item-&gt;setText(DEPTH, QString::number(data.get_colorDepth()));
++        item-&gt;setText(CRTIME, data.get_creationTime().toString(Qt::SystemLocaleShortDate));
+         item-&gt;setText(CLIENT, data.get_clientIp());
+         item-&gt;setText(ID, data.get_sessionId());
+     }
+diff --git a/sessionselecter.h b/sessionselecter.h
+index dfb93fd..fcb8e9f 100644
+--- a/sessionselecter.h
++++ b/sessionselecter.h
+@@ -34,7 +34,7 @@ class SessionSelecter: public MessageBox
+ {
+     Q_OBJECT
+ public:
+-    enum {NAME, TYPE, STATUS, DISPLAY, CRTIME, CLIENT, ID};
++    enum {NAME, TYPE, STATUS, DISPLAY, CRTIME, DEPTH, CLIENT, ID};
+     SessionSelecter(const QList&lt; X2GoSessionData &gt;&amp; sessions, Profile* profile);
+     ~SessionSelecter();
+     virtual Buttons exec();
+diff --git a/sessionstatusframe.ui b/sessionstatusframe.ui
+index b748ad4..6c9db4c 100644
+--- a/sessionstatusframe.ui
++++ b/sessionstatusframe.ui
+@@ -43,7 +43,7 @@
+         &lt;string notr=&quot;true&quot;&gt;border-image:url(:svg/frame.svg);border-top:5px;border-left:5px;border-right:5px;border-bottom:5px&lt;/string&gt;
+        &lt;/property&gt;
+        &lt;property name=&quot;text&quot;&gt;
+-        &lt;string&gt;Status&lt;/string&gt;
++        &lt;string&gt;Session status&lt;/string&gt;
+        &lt;/property&gt;
+        &lt;property name=&quot;checkable&quot;&gt;
+         &lt;bool&gt;true&lt;/bool&gt;
+diff --git a/sessionstatusframestatus.cpp b/sessionstatusframestatus.cpp
+index 9178742..6ae8b4a 100644
+--- a/sessionstatusframestatus.cpp
++++ b/sessionstatusframestatus.cpp
+@@ -64,15 +64,18 @@ void SessionStatusFrameStatus::setSession(X2GoSession* session)
+             SLOT(slotSessionStatusChanged(X2GoSession::SessionStatus)));
+     this-&gt;session=session;
+     slotSessionStatusChanged(session-&gt;get_status());
+-    lServer-&gt;setText(session-&gt;get_profile()-&gt;get_server());
+-    lLogin-&gt;setText(session-&gt;get_profile()-&gt;get_user());
+-    lSID-&gt;setText(QString::null);
+-    lDisplay-&gt;setText(QString::null);
+-    lCrTime-&gt;setText(QString::null);
+ }
+ 
+ void SessionStatusFrameStatus::slotSessionStatusChanged(X2GoSession::SessionStatus status)
+ {
++    lServer-&gt;setText(session-&gt;get_profile()-&gt;get_server());
++    lLogin-&gt;setText(session-&gt;get_profile()-&gt;get_user());
++    lSID-&gt;setText(session-&gt;get_sessionData().get_sessionId());
++    lDisplay-&gt;setText(session-&gt;get_sessionData().get_display());
++    if(!session-&gt;get_sessionData().get_creationTime().isNull())
++        lCrTime-&gt;setText(session-&gt;get_sessionData().get_creationTime().toString(Qt::DefaultLocaleShortDate));
++    else
++        lCrTime-&gt;setText(QString::null);
+     switch(status)
+     {
+     case X2GoSession::NOTRUNNING:
+diff --git a/sessionstatusframestatus.ui b/sessionstatusframestatus.ui
+index 9a89d54..cab7ebb 100644
+--- a/sessionstatusframestatus.ui
++++ b/sessionstatusframestatus.ui
+@@ -7,7 +7,7 @@
+     &lt;x&gt;0&lt;/x&gt;
+     &lt;y&gt;0&lt;/y&gt;
+     &lt;width&gt;624&lt;/width&gt;
+-    &lt;height&gt;257&lt;/height&gt;
++    &lt;height&gt;258&lt;/height&gt;
+    &lt;/rect&gt;
+   &lt;/property&gt;
+   &lt;property name=&quot;windowTitle&quot;&gt;
+@@ -182,7 +182,7 @@
+         &lt;string notr=&quot;true&quot;&gt;border-top:0px;border-left:0px;border-right:0px;border-bottom:0px&lt;/string&gt;
+        &lt;/property&gt;
+        &lt;property name=&quot;text&quot;&gt;
+-        &lt;string&gt;Status:&lt;/string&gt;
++        &lt;string&gt;State:&lt;/string&gt;
+        &lt;/property&gt;
+       &lt;/widget&gt;
+      &lt;/item&gt;
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index f382f64..2d4ddb1 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -232,7 +232,7 @@ void SshProcess::tunnelLoop()
+     }
+     listen(serverSocket,5);
+     addrlen=sizeof(struct sockaddr_in);
+-    QTimer* timer=new QTimer();
++    QTimer* timer=new QTimer(this);
+     connect(timer,SIGNAL(timeout()),this,SLOT(slotCheckNewConnection()));
+     timer-&gt;start(100);
+     emit signalSshTunnelOk(pid);
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index fe67f1c..c42cbb3 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -153,7 +153,7 @@ void X2GoApplication::slotInitApplication()
+     clientConfig-&gt;loadConfigFiles();
+     if(!clientConfig-&gt;parseCommandLineArguments(arguments()))
+     {
+-        QMessageBox::critical(0,tr(&quot;Error&quot;), tr(&quot;Error parsing command line arguments&quot;));
++        QMessageBox::critical(0,tr(&quot;Error&quot;), tr(&quot;Error parsing command line arguments&quot;)+arguments().join(&quot;:&quot;));
+         exit(-1);
+         return;
+     }
+diff --git a/x2gosession.cpp b/x2gosession.cpp
+index e1df84b..fd29f14 100644
+--- a/x2gosession.cpp
++++ b/x2gosession.cpp
+@@ -28,16 +28,22 @@
+ #include &quot;x2gobroker.h&quot;
+ #include &quot;sessionselecter.h&quot;
+ 
++#include &lt;QDesktopWidget&gt;
++#include &lt;QFileInfo&gt;
++#include &lt;QDir&gt;
++#include &lt;QProcess&gt;
++
+ X2GoSession::X2GoSession(Profile* profile)
+ {
+     this-&gt;profile=profile;
+     status=NOTRUNNING;
+     sshConnection=0;
++    nxproxy=0;
+ }
+ 
+ X2GoSession::~X2GoSession()
+ {
+-
++    terminateConnections();
+ }
+ 
+ 
+@@ -53,8 +59,7 @@ void X2GoSession::slotStartSession()
+ }
+ void X2GoSession::startSession()
+ {
+-    if(sshConnection)
+-        delete sshConnection;
++    resetSession();
+     QString proxyPassword;
+     if(X2GoApplication::instance()-&gt;get_broker() &amp;&amp; profile-&gt;get_useBrokerPassForProxy())
+         proxyPassword=X2GoApplication::instance()-&gt;get_broker()-&gt;get_password();
+@@ -74,28 +79,68 @@ void X2GoSession::startSession()
+     sshConnection-&gt;start();
+ }
+ 
++void X2GoSession::slotSshConnectionOk(QString)
++{
++    qDebug()&lt;&lt;&quot;SSH Connection established&quot;;
++    if(profile-&gt;get_desktop()==&quot;SHADOW&quot;)
++    {
++        //get desktops
++        return;
++    }
++    if(profile-&gt;get_desktop()==&quot;RDP&quot; &amp;&amp; profile-&gt;get_directRDP())
++    {
++        //start rdp session
++        return;
++    }
++    if(X2GoApplication::instance()-&gt;get_broker())
++    {
++        //start broker session;
++        return;
++    }
++    sshConnection-&gt;executeCommand(&quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;, this,SLOT (slotListSessions(bool, QString, int)));
++}
++
+ 
+-void X2GoSession::setSessionNotRunning()
++void X2GoSession::resetSession()
+ {
++    terminateConnections();
+     status=NOTRUNNING;
+     emit signalStatusChanged(status);
++}
++
++void X2GoSession::terminateConnections()
++{
++    notCheckExitStatus=true;
+     if(sshConnection)
+     {
+         delete sshConnection;
+         sshConnection=0;
+     }
++    if(nxproxy)
++    {
++        if(nxproxy-&gt;state()==QProcess::Running)
++        {
++            qDebug()&lt;&lt;&quot;terminating nxproxy&quot;;
++            nxproxy-&gt;terminate();
++            nxproxy-&gt;waitForFinished(3000);
++        }
++        delete nxproxy;
++        nxproxy=0;
++    }
++
+ }
+ 
+ 
+ void X2GoSession::slotSshConnectionFailed(int, QString)
+ {
+-    setSessionNotRunning();
++    resetSession();
+ }
+ 
+ void X2GoSession::slotListSessions(bool success, QString answer, int id)
+ {
+     if(!success)
+     {
++        MessageBox::critical(tr(&quot;&lt;b&gt;Error:&lt;/b&gt;&lt;br&gt;&quot;)+answer, MessageBox::OK);
+         slotSshConnectionFailed(id, answer);
+         return;
+     }
+@@ -113,7 +158,7 @@ void X2GoSession::slotListSessions(bool success, QString answer, int id)
+     }
+     if(sessions.size()==1)
+     {
+-        if(sessions[0].get_status()==&quot;S&quot;)
++        if(sessions[0].get_status()==&quot;S&quot; &amp;&amp;isColorDepthOk(sessions[0].get_colorDepth()))
+         {
+             resumeSession(sessions[0]);
+             return;
+@@ -134,49 +179,411 @@ void X2GoSession::selectSession(const QList&lt;X2GoSessionData&gt;&amp; sessions)
+         if(!sel-&gt;getSelectedSession())
+         {
+             qDebug()&lt;&lt;&quot;selected session is NULL, aborting...&quot;;
+-            setSessionNotRunning();
++            resetSession();
+         }
+         else
+-        {
+             resumeSession(*(sel-&gt;getSelectedSession()));
+-        }
+         break;
+     default:
+         qDebug()&lt;&lt;&quot;canceling session&quot;;
+-        setSessionNotRunning();
++        resetSession();
+         break;
+     }
+     delete sel;
+ }
+ 
+ 
+-void X2GoSession::resumeSession(const X2GoSessionData&amp; sessionData)
++void X2GoSession::createNewSession()
++{
++    newSession=true;
++    sessionData.set_status(&quot;S&quot;);
++    sessionData.set_server(profile-&gt;get_server());
++    sessionData.set_creationTime(QDateTime::currentDateTime());
++    sessionData.set_clientIp(&quot;localhost&quot;);
++    sessionData.set_command(profile-&gt;get_desktop());
++    sessionData.set_sessionType(X2GoSessionData::DESKTOP);
++    if(profile-&gt;get_rootless())
++        sessionData.set_sessionType(X2GoSessionData::ROOTLESS);
++    /*implement shadow
++     sessionData.set_sessionType(X2GoSessionData::SHADOW);*/
++    sessionData.set_fullscreen(profile-&gt;get_fullscreen());
++    QDesktopWidget wd;
++    sessionData.set_colorDepth(wd.depth());
++    emit signalStatusChanged(status);
++    initX2GoSession();
++}
++
++
++void X2GoSession::initX2GoSession()
+ {
+ 
++    QString geometry;
++    if(profile-&gt;get_fullscreen())
++        geometry=&quot;fullscreen&quot;;
++    else
++        geometry=QString::number ( profile-&gt;get_displayWidth() ) +&quot;x&quot;+
++                 QString::number ( profile-&gt;get_displayHeight() );
++    QString link;
++    switch (profile-&gt;get_speed())
++    {
++    case Profile::MODEM:
++        link=&quot;modem&quot;;
++        break;
++    case Profile::ISDN:
++        link=&quot;isdn&quot;;
++        break;
++    case Profile::ADSL:
++        link=&quot;adsl&quot;;
++        break;
++    case Profile::WAN:
++        link=&quot;wan&quot;;
++        break;
++    case Profile::LAN:
++        link=&quot;lan&quot;;
++        break;
++    }
++    QString pack=profile-&gt;get_method()+&quot;-&quot;+QString::number(profile-&gt;get_quality());
++
++    QString cmd;
++
++    QString sessTypeStr;
++
++    if(newSession)
++    {
++
++        QDesktopWidget wd;
++        QString depth=QString::number ( wd.depth() );
++        sessTypeStr=&quot;D &quot;;
++        if ( profile-&gt;get_rootless() )
++            sessTypeStr=&quot;R &quot;;
++
++        /*implement shadow, published, DMCP, RDP session*/
++        QString xdmcpEnv;
++
++
++        QString dpiEnv;
++        if ( profile-&gt;get_changeDPI() )
++        {
++            dpiEnv=&quot;X2GODPI=&quot;+QString::number ( profile-&gt;get_dpi() ) +&quot; &quot;;
++        }
++        cmd=dpiEnv+xdmcpEnv+&quot;x2gostartagent &quot;+
++            geometry+&quot; &quot;+link+&quot; &quot;+pack+
++            &quot; unix-kde-depth_&quot;+depth+&quot; &quot;+profile-&gt;get_keyboardLayout()+&quot; &quot;+profile-&gt;get_keyboardModel()+&quot; &quot;;
++    }
++    else
++    {
++        cmd=&quot;x2goresume-session &quot;+sessionData.get_sessionId()+&quot; &quot;+geometry+
++            &quot; &quot;+link+&quot; &quot;+pack+&quot; &quot;+profile-&gt;get_keyboardLayout()+
++            &quot; &quot;+profile-&gt;get_keyboardModel()+&quot; &quot;;
++    }
++    if ( profile-&gt;get_changeKeyboard())
++        cmd += &quot;1 &quot;;
++    else
++        cmd += &quot;0 &quot;;
++
++    if(newSession)
++    {
++        QFileInfo f ( profile-&gt;get_desktop() );
++        cmd+=sessTypeStr+f.fileName();
++        sshConnection-&gt;executeCommand(cmd, this, SLOT(slotX2GoAgentStarted(bool, QString, int)));
++    }
++    else
++        sshConnection-&gt;executeCommand(cmd, this, SLOT(slotSessionResumed(bool, QString, int)));
++    qDebug()&lt;&lt;cmd;
+ }
+ 
+-void X2GoSession::createNewSession()
++
++void X2GoSession::slotX2GoAgentStarted(bool success, QString answer, int id)
+ {
++    qDebug()&lt;&lt;&quot;x2gostartagent:&quot;&lt;&lt;answer;
++    if(!success)
++    {
++        if(answer.indexOf(&quot;LIMIT&quot;)!=-1)
++            MessageBox::critical(tr(&quot;&lt;b&gt;Error:&lt;/b&gt;&lt;br&gt;&quot;)+tr(&quot;Sessions limit reached&quot;), MessageBox::OK);
++        else
++            MessageBox::critical(tr(&quot;&lt;b&gt;Error:&lt;/b&gt;&lt;br&gt;&quot;)+answer, MessageBox::OK);
++        slotSshConnectionFailed(id, answer);
++        return;
++    }
++
++    answer.replace ( &quot; &quot;,&quot;&quot; );
++    QStringList lst=answer.split ( '\n' );
+ 
++    sessionData.set_display(lst[0]);
++    sessionData.set_cookie(lst[1]);
++    sessionData.set_agentPid(lst[2]);
++    sessionData.set_sessionId(lst[3]);
++    sessionData.set_grPort(lst[4]);
++    sessionData.set_sndPort(lst[5]);
++    if ( lst.count() &gt;6 )
++        sessionData.set_fsPort(lst[6]);
++    emit signalStatusChanged(status);
++    connectSession();
+ }
+ 
+-void X2GoSession::slotSshConnectionOk(QString)
++bool X2GoSession::isColorDepthOk(int sessionDepth)
+ {
+-    qDebug()&lt;&lt;&quot;SSH Connection established&quot;;
+-    if(profile-&gt;get_desktop()==&quot;SHADOW&quot;)
++    QDesktopWidget wd;
++    if ( sessionDepth==0 )
++        return true;
++    if ( wd.depth()==sessionDepth )
++        return true;
++    if ( ( wd.depth() == 24 || wd.depth() == 32 ) &amp;&amp; ( sessionDepth == 24 || sessionDepth == 32 ) )
++        return true;
++    return false;
++}
++
++void X2GoSession::resumeSession(X2GoSessionData data)
++{
++
++    if(!isColorDepthOk(data.get_colorDepth()))
+     {
+-        //get desktops
++        if(MessageBox::warning(
++                    tr (&quot;&lt;b&gt;Warning&lt;/b&gt;&lt;br&gt;&quot;
++                        &quot;Your current color depth is &quot;
++                        &quot;different to the color depth of your &quot;
++                        &quot;x2go-session. This may cause problems &quot;
++                        &quot;reconnecting to this session and in most &quot;
++                        &quot;cases &lt;b&gt;you will loose the session&lt;/b&gt; &quot;
++                        &quot;and have to start a new one! It's highly &quot;
++                        &quot;recommended to change the color depth of &quot;
++                        &quot;your Display to &quot; ) +tr ( &quot;24 or 32&quot; ) +
++                    tr (
++                        &quot; bit and restart your X-server before you &quot;
++                        &quot;reconnect to this x2go-session.&lt;br&gt;Resume &quot;
++                        &quot;this session anyway?&quot; ),MessageBox::YES|MessageBox::NO)==MessageBox::NO)
++        {
++            resetSession();
++            return;
++        }
++    }
++    newSession=false;
++    sessionData=data;
++    status=RESUMING;
++    emit signalStatusChanged(status);
++    if(sessionData.get_status()==&quot;R&quot;)
++    {
++        suspendSession();
+         return;
+     }
+-    if(profile-&gt;get_desktop()==&quot;RDP&quot; &amp;&amp; profile-&gt;get_directRDP())
++    initX2GoSession();
++}
++
++void X2GoSession::slotSessionResumed(bool success, QString answer, int id)
++{
++    qDebug()&lt;&lt;&quot;x2goresume-session:&quot;&lt;&lt;answer;
++    if(!success)
+     {
+-        //start rdp session
++        MessageBox::critical(tr(&quot;&lt;b&gt;Error:&lt;/b&gt;&lt;br&gt;&quot;)+answer, MessageBox::OK);
++        slotSshConnectionFailed(id, answer);
+         return;
+     }
+-    if(X2GoApplication::instance()-&gt;get_broker())
++    answer.replace(&quot; &quot;,&quot;&quot;);
++    QStringList outputLines=answer.split(&quot;\n&quot;,QString::SkipEmptyParts);
++    foreach(QString line,outputLines)
+     {
+-        //start broker session;
++        if (line.indexOf(&quot;gr_port=&quot;)!=-1)
++        {
++            sessionData.set_grPort(line.replace(&quot;gr_port=&quot;,&quot;&quot;));
++        }
++        if (line.indexOf(&quot;sound_port=&quot;)!=-1)
++        {
++            sessionData.set_sndPort(line.replace(&quot;sound_port=&quot;,&quot;&quot;));;
++        }
++        if (line.indexOf(&quot;fs_port=&quot;)!=-1)
++        {
++            sessionData.set_fsPort(line.replace(&quot;fs_port=&quot;,&quot;&quot;));
++        }
++    }
++    connectSession();
++}
++
++void X2GoSession::connectSession()
++{
++    localGraphicPort=sessionData.get_grPort();
++    int iport=localGraphicPort.toInt() +1000;
++    while ( iport == sessionData.get_sndPort().toInt() ||
++            iport == sessionData.get_fsPort().toInt() ||
++            X2GoApplication::isPortBusy(iport) )
++        ++iport;
++    localGraphicPort=QString::number ( iport );
++    sshConnection-&gt;startTunnel(&quot;localhost&quot;,sessionData.get_grPort().toInt(),&quot;localhost&quot;,
++                               localGraphicPort.toInt(), false, this, SLOT(slotGrTunnelOk(int)),
++                               SLOT(slotGrTunnelFinished(bool, QString, int)));
++}
++
++void X2GoSession::slotGrTunnelFinished(bool success, QString answer, int )
++{
++    if (! success )
++    {
++        QString message=tr ( &quot;&lt;b&gt;Error&lt;/b&gt;&lt;br&gt;Unable to create SSH tunnel:&lt;br&gt;&quot; )
++                        +answer;
++        MessageBox::critical ( message, MessageBox::OK);
++        resetSession();
++    }
++}
++
++void X2GoSession::slotGrTunnelOk(int)
++{
++    qDebug()&lt;&lt;&quot;tunnel ready, starting nxproxy&quot;;
++    QString nxroot=QDir::homePath() +&quot;/.x2go&quot;;
++    QString dirpath=nxroot+&quot;/S-&quot;+sessionData.get_sessionId();
++    QDir d ( dirpath );
++    if ( !d.exists() )
++        if ( !d.mkpath ( dirpath ) )
++        {
++            QString message=tr ( &quot;Unable to create folder:&quot; ) +
++                            dirpath;
++            MessageBox::critical (message, MessageBox::OK);
++            resetSession();
++            return;
++        }
++    QFile file ( dirpath+&quot;/options&quot; );
++    if ( !file.open ( QIODevice::WriteOnly | QIODevice::Text ) )
++    {
++        QString message=tr ( &quot;Unable to write file:&quot; ) +
++                        dirpath+&quot;/options&quot;;
++        MessageBox::critical ( message, MessageBox::OK);
++        resetSession();
+         return;
+     }
+-    sshConnection-&gt;executeCommand(&quot;export HOSTNAME &amp;&amp; x2golistsessions&quot;, this,SLOT (slotListSessions(bool, QString, int)));
++
++    QTextStream out ( &amp;file );
++    out &lt;&lt; &quot;nx/nx,root=&quot;&lt;&lt;nxroot&lt;&lt;&quot;,connect=localhost,cookie=&quot;&lt;&lt;
++        sessionData.get_cookie()&lt;&lt;&quot;,port=&quot;
++        &lt;&lt;localGraphicPort&lt;&lt;&quot;,errors=&quot;&lt;&lt;dirpath&lt;&lt;&quot;/sessions:&quot;&lt;&lt;
++        sessionData.get_display();
++    file.close();
++
++    nxproxy=new QProcess;
++    notCheckExitStatus=false;
++    proxyErrString=&quot;&quot;;
++    QStringList env = QProcess::systemEnvironment();
++    QString x2golibpath=&quot;/usr/lib/x2go&quot;;
++    for ( int l=0; l&lt;env.size(); ++l )
++    {
++        if ( env[l].indexOf ( &quot;X2GO_LIB&quot; ) ==0 )
++        {
++            x2golibpath=env[l].split ( &quot;=&quot; ) [1];
++        }
++    }
++    env &lt;&lt; &quot;LD_LIBRARY_PATH=&quot;+x2golibpath;
++    env &lt;&lt; &quot;NX_CLIENT=&quot;+QCoreApplication::applicationFilePath ();
++
++    nxproxy-&gt;setEnvironment ( env );
++    connect ( nxproxy,SIGNAL ( error ( QProcess::ProcessError ) ),this,
++              SLOT ( slotProxyError ( QProcess::ProcessError ) ) );
++    connect ( nxproxy,SIGNAL ( finished ( int,QProcess::ExitStatus ) ),this,
++              SLOT ( slotProxyFinished ( int,QProcess::ExitStatus ) ) );
++    connect ( nxproxy,SIGNAL ( readyReadStandardError() ),this,
++              SLOT ( slotProxyStderr() ) );
++    connect ( nxproxy,SIGNAL ( readyReadStandardOutput() ),this,
++              SLOT ( slotProxyStdout() ) );
++
++    QString proxyCmd=&quot;nxproxy -S nx/nx,options=&quot;+dirpath+&quot;/options:&quot;+
++                     sessionData.get_display();
++    qDebug()&lt;&lt;&quot;starting nxproxy with: &quot;&lt;&lt;proxyCmd&lt;&lt;endl;
++    nxproxy-&gt;start ( proxyCmd );
++
++
++#warning check, that proxy connection is ok!!!
++    //QTimer::singleShot ( 30000,this,SLOT ( slotRestartProxy() ) );
++}
++
++void X2GoSession::suspendSession()
++{
++}
++
++void X2GoSession::slotProxyError(QProcess::ProcessError )
++{
++    slotProxyFinished ( -1,QProcess::CrashExit );
++}
++
++void X2GoSession::slotProxyFinished(int, QProcess::ExitStatus )
++{
++    if(!notCheckExitStatus)
++        checkExitStatus();
++}
++
++void X2GoSession::checkExitStatus()
++{
++    sshConnection-&gt;executeCommand ( &quot;x2gocmdexitmessage &quot;+
++                                    sessionData.get_sessionId() , this, SLOT(slotStatusReturned(bool, QString)));
++}
++
++
++void X2GoSession::slotStatusReturned(bool success, QString errorMessage)
++{
++    if ( !success )
++    {
++        MessageBox::critical (tr ( &quot;&lt;b&gt;Error&lt;/b&gt;&lt;br&gt;&quot; )+errorMessage, MessageBox::OK);
++        resetSession();
++        return;
++    }
++    if ( errorMessage.indexOf ( &quot;X2GORUNCOMMAND ERR NOEXEC:&quot; ) !=-1 )
++    {
++        QString cmd=errorMessage;
++        cmd.replace ( &quot;X2GORUNCOMMAND ERR NOEXEC:&quot;,&quot;&quot; );
++        MessageBox::critical ( tr ( &quot;&lt;b&gt;Error&lt;/b&gt;&lt;br&gt;&quot; )+tr ( &quot;Unable to execute: &quot; ) + cmd, MessageBox::OK);
++    }
++    resetSession();
++}
++
++void X2GoSession::slotProxyStderr()
++{
++    QString reserr;
++    if ( nxproxy )
++        reserr= nxproxy-&gt;readAllStandardError();
++    proxyErrString+=reserr;
++
++
++    if ( proxyErrString.indexOf (
++                &quot;Established X server connection&quot; ) !=-1 )
++    {
++        status=RUNNING;
++        emit(signalStatusChanged(status));
++        if ( newSession )
++        {
++            runCommand();
++            newSession=false;
++        }
++    }
++}
++
++void X2GoSession::slotProxyStdout()
++{
++
++}
++
++void X2GoSession::runCommand()
++{
++    QString command;
++    QString sessionType=&quot;D&quot;;
++    bool rootless=false;
++    command=profile-&gt;get_desktop();
++    rootless=profile-&gt;get_rootless();
++    if ( rootless )
++        sessionType=&quot;R&quot;;
++
++    QString cmd;
++
++    command.replace ( &quot; &quot;,&quot;X2GO_SPACE_CHAR&quot; );
++
++    cmd=&quot;setsid x2goruncommand &quot;+sessionData.get_display()+&quot; &quot;+
++        sessionData.get_agentPid() + &quot; &quot; +
++        sessionData.get_sessionId()+&quot; &quot;+
++        sessionData.get_sndPort()+ &quot; &quot;+ command+&quot; nosnd &quot;+
++        sessionType +&quot; 1&gt; /dev/null 2&gt;/dev/null &amp; exit&quot;;
++
++    sshConnection-&gt;executeCommand ( cmd, this, SLOT(slotRunCommandFinished(bool, QString)));
++}
++
++void X2GoSession::slotRunCommandFinished(bool success, QString errorMessage)
++{
++    qDebug()&lt;&lt;errorMessage&lt;&lt;success;
++    if(!success)
++    {
++        MessageBox::critical(tr(&quot;&lt;b&gt;Error:&lt;/b&gt;&lt;br&gt;&quot;)+errorMessage, MessageBox::OK);
++        resetSession();
++    }
+ }
+diff --git a/x2gosession.h b/x2gosession.h
+index 870073f..f5c37a2 100644
+--- a/x2gosession.h
++++ b/x2gosession.h
+@@ -22,6 +22,7 @@
+ #define X2GOSESSION_H
+ 
+ #include &lt;QObject&gt;
++#include &lt;QProcess&gt;
+ #include &quot;x2goapplication.h&quot;
+ #include &quot;sshconnection.h&quot;
+ #include &quot;x2gosessiondata.h&quot;
+@@ -39,19 +40,42 @@ public:
+     X2GoSession(Profile* profile);
+     virtual ~X2GoSession();
+     void startSession();
+-    void resumeSession(const X2GoSessionData&amp; sessionData);
++    void resumeSession(X2GoSessionData data);
++    void suspendSession();
+     void createNewSession();
+-    void setSessionNotRunning();
++    void initX2GoSession();
++    void resetSession();
++    void terminateConnections();
+ private:
+     void selectSession(const QList&lt;X2GoSessionData&gt; &amp; sessions);
++    bool isColorDepthOk(int sessionDepth);
++    void connectSession();
++    void runCommand();
+ public slots:
+     void slotStartSession();
+ private slots:
+     void slotSshConnectionOk(QString);
+     void slotSshConnectionFailed(int, QString errorMessage);
+     void slotListSessions(bool success, QString answer, int);
++    void slotX2GoAgentStarted(bool success, QString answer, int);
++    void slotSessionResumed(bool success, QString answer, int);
++    void slotGrTunnelFinished(bool success, QString answer, int);
++    void slotGrTunnelOk(int);
++    void slotProxyError ( QProcess::ProcessError err );
++    void slotProxyFinished ( int result,QProcess::ExitStatus st );
++    void slotRunCommandFinished(bool success, QString errorMessage);
++    void slotStatusReturned(bool success, QString errorMessage);
++    void slotProxyStderr();
++    void slotProxyStdout();
++    void checkExitStatus();
+ signals:
+     void signalStatusChanged(X2GoSession::SessionStatus status);
++private:
++    QString localGraphicPort;
++    QProcess* nxproxy;
++    QString proxyErrString;
++    bool newSession;
++    bool notCheckExitStatus;
+ };
+ 
+ #endif // X2GOSESSION_H
+diff --git a/x2gosessiondata.cpp b/x2gosessiondata.cpp
+index 2bc3840..a0e496d 100644
+--- a/x2gosessiondata.cpp
++++ b/x2gosessiondata.cpp
+@@ -58,7 +58,7 @@ X2GoSessionData X2GoSessionData::getSessionFromString(const QString&amp; string)
+     s.set_display(lst[2]);
+     s.set_server(lst[3]);
+     s.set_status(lst[4]);
+-    s.set_creationTime(lst[5]);
++    s.set_creationTime(QDateTime::fromString(lst[5],Qt::ISODate));
+     s.set_cookie(lst[6]);
+     s.set_clientIp(lst[7]);
+     s.set_grPort(lst[8]);
+diff --git a/x2gosessiondata.h b/x2gosessiondata.h
+index d96603d..d0e3759 100644
+--- a/x2gosessiondata.h
++++ b/x2gosessiondata.h
+@@ -23,6 +23,7 @@
+ #define X2GOSESSIONDATA_H
+ 
+ #include &quot;x2goapplication.h&quot;
++#include &lt;QDateTime&gt;
+ class X2GoSessionData
+ {
+ public:
+@@ -32,7 +33,7 @@ public:
+     X2GO_PROPERTY(QString, display);
+     X2GO_PROPERTY(QString, server);
+     X2GO_PROPERTY(QString, status);
+-    X2GO_PROPERTY(QString, creationTime);
++    X2GO_PROPERTY(QDateTime, creationTime);
+     X2GO_PROPERTY(QString, cookie);
+     X2GO_PROPERTY(QString, clientIp);
+     X2GO_PROPERTY(QString, grPort);
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005342.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-99-ga78fd57
+</A></li>
+	<LI>Next message: <A HREF="005344.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-100-ge537c9b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5343">[ date ]</a>
+              <a href="thread.html#5343">[ thread ]</a>
+              <a href="subject.html#5343">[ subject ]</a>
+              <a href="author.html#5343">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

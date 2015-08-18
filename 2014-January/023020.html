@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-41-gaaa397d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-41-gaaa397d&In-Reply-To=%3C20140108142633.7A1A95DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023004.html">
+   <LINK REL="Next"  HREF="023026.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-41-gaaa397d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-41-gaaa397d&In-Reply-To=%3C20140108142633.7A1A95DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-41-gaaa397d">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:26:33 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023004.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-46-g009a7d9
+</A></li>
+        <LI>Next message: <A HREF="023026.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-38-gccbabb8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23020">[ date ]</a>
+              <a href="thread.html#23020">[ thread ]</a>
+              <a href="subject.html#23020">[ subject ]</a>
+              <a href="author.html#23020">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  aaa397d3fb7760faef93327028199cc242fcb194 (commit)
+      from  ddce72c987c36e2adf9746c257d993d6dcd960cd (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/proxy/_nx3.py       |    2 +-
+ x2go/backends/proxy/base.py       |   12 +++++++++++-
+ x2go/backends/terminal/_stdout.py |    2 +-
+ 4 files changed, 14 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b50172e..7c04f4b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -25,6 +25,7 @@ python-x2go (0.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Skip session auto registration during startups of new sessions (avoids
+       duplicate sessions in the session registry.
+     - Do not start X2go service tunnels (audio, sshfs) if session startup failed.
++    - Fix NX proxy startup post-check.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 23 Jun 2011 08:34:14 +0200
+ 
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index 5f1f30f..2a5b8a0 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -172,7 +172,7 @@ options=%s&quot;&quot;&quot; % ( self.proxy_options['xkbrules'],
+ 
+         p = base.X2goProxyBASE.start_proxy(self)
+ 
+-        if p is not None:
++        if self.ok():
+             self.logger('NX3 proxy is up and running.', loglevel=log.loglevel_INFO)
+         else:
+             self.logger('Bringing up NX3 proxy failed.', loglevel=log.loglevel_ERROR)
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 5f92e57..0a3fc34 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -131,7 +131,7 @@ class X2goProxyBASE(threading.Thread):
+         if left open.
+ 
+         &quot;&quot;&quot;
+-        if self.proxy is not None and self.proxy.poll() is None:
++        if self.ok():
+             self.logger('Shutting down X2go proxy subprocess', loglevel=log.loglevel_DEBUG)
+             self.proxy.kill()
+         if self.fw_tunnel is not None:
+@@ -266,3 +266,13 @@ class X2goProxyBASE(threading.Thread):
+             gevent.sleep(.5)
+ 
+         return self.proxy
++
++    def ok(self):
++        &quot;&quot;&quot;\
++        Check if a proxy instance is up and running.
++
++        @return: Proxy state (C{True} or C{False})
++        @rtype C{bool}
++
++        &quot;&quot;&quot;
++        return self.proxy and self.proxy.poll is not None
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index c13c11e..0ecf4ee 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -765,7 +765,7 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: bool
+ 
+         &quot;&quot;&quot;
+-        return bool(self.session_info.name and (self.proxy_subprocess and self.proxy_subprocess.poll() is None))
++        return bool(self.session_info.name and (self.proxy.ok())
+ 
+     def is_running(self):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023004.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-46-g009a7d9
+</A></li>
+	<LI>Next message: <A HREF="023026.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-38-gccbabb8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23020">[ date ]</a>
+              <a href="thread.html#23020">[ thread ]</a>
+              <a href="subject.html#23020">[ subject ]</a>
+              <a href="author.html#23020">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

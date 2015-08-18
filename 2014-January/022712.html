@@ -1,0 +1,519 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	fff4c5d721f7bb447a5da8f108730bdfc1627a91
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09fff4c5d721f7bb447a5da8f108730bdfc1627a91&In-Reply-To=%3C20140108142532.37BA55DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022711.html">
+   <LINK REL="Next"  HREF="022713.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	fff4c5d721f7bb447a5da8f108730bdfc1627a91</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09fff4c5d721f7bb447a5da8f108730bdfc1627a91&In-Reply-To=%3C20140108142532.37BA55DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	fff4c5d721f7bb447a5da8f108730bdfc1627a91">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:25:32 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022711.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	2fff2472803efca1bafb8d37731cf588adf82cdf
+</A></li>
+        <LI>Next message: <A HREF="022713.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	41cd50d20fa5d23ea0d17bc8462f415fa07da35e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22712">[ date ]</a>
+              <a href="thread.html#22712">[ thread ]</a>
+              <a href="subject.html#22712">[ subject ]</a>
+              <a href="author.html#22712">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  fff4c5d721f7bb447a5da8f108730bdfc1627a91 (commit)
+      from  cb16e37cf3e96c52e5ab361945c8a9d1343e9df2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   66 +++++++++++++++++++++++++++++++-------
+ x2go/backends/proxy/base.py      |    1 -
+ x2go/client.py                   |    9 +++++-
+ x2go/forward.py                  |   44 ++++++++++++++++---------
+ x2go/session.py                  |   22 ++++++++++---
+ x2go/sshproxy.py                 |   51 +++++++++++++++++++++--------
+ x2go/x2go_exceptions.py          |    4 ++-
+ 7 files changed, 149 insertions(+), 48 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index fb18793..471b55e 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -223,8 +223,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self._session_auth_rsakey = paramiko.RSAKey.generate(defaults.RSAKEY_STRENGTH)
+         return self._session_auth_rsakey
+ 
+-    def connect(self, hostname, port=22, username=None, password=None, pkey=None,
+-                key_filename=None, timeout=None, allow_agent=False, look_for_keys=True,
++    def connect(self, hostname, port=22, username='', password='', pkey=None,
++                sshproxy_user='', sshproxy_password='',
++                key_filename=None, timeout=None, allow_agent=False, look_for_keys=False,
+                 add_to_known_hosts=False, force_password_auth=False):
+         &quot;&quot;&quot;\
+         Connect to an X2go server and authenticate to it. This method is directly
+@@ -288,11 +289,33 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         &quot;&quot;&quot;
+         if self.use_sshproxy and self.sshproxy_params:
+-            self.sshproxy_session = sshproxy.X2goSSHProxy(add_to_known_hosts=add_to_known_hosts, 
+-                                                          known_hosts=self.known_hosts,
+-                                                          logger=self.logger, **self.sshproxy_params
+-                                                         )
+-            self.sshproxy_session.start()
++            if sshproxy_user:
++                self.sshproxy_params['sshproxy_user'] = sshproxy_user
++            if sshproxy_password:
++                self.sshproxy_params['sshproxy_password'] = sshproxy_password
++
++            try:
++                self.sshproxy_session = sshproxy.X2goSSHProxy(add_to_known_hosts=add_to_known_hosts, 
++                                                              known_hosts=self.known_hosts,
++                                                              logger=self.logger, **self.sshproxy_params
++                                                             )
++                self.sshproxy_session.start()
++
++                # divert port to sshproxy_session's local forwarding port (it might have changed due to 
++                # SSH connection errors
++                port = self.sshproxy_session.get_local_proxy_port()
++
++                # forget sshproxy password immediately
++                try: del sshproxy_params['sshproxy_password']
++                except: KeyError
++
++            except x2go_exceptions.X2goSSHProxyAuthenticationException, e:
++                self.sshproxy_session = None
++                raise(e)
++
++            except x2go_exceptions.X2goSSHProxyException, e:
++                self.sshproxy_session = None
++                raise(e)
+ 
+         if add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+@@ -310,23 +333,42 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 paramiko.SSHClient.connect(self, hostname, port=port, username=username, pkey=pkey,
+                                            key_filename=key_filename, timeout=timeout, allow_agent=allow_agent, 
+                                            look_for_keys=look_for_keys)
++
+             except paramiko.AuthenticationException, e:
+                 if password:
+                     self.logger('next auth mechanism we\'ll try is keyboard-interactive authentication', loglevel=log.loglevel_DEBUG)
+-                    paramiko.SSHClient.connect(self, hostname, port=port, username=username, password=password,
+-                                               timeout=timeout, allow_agent=allow_agent, 
+-                                               look_for_keys=look_for_keys)
++                    try:
++                        paramiko.SSHClient.connect(self, hostname, port=port, username=username, password=password,
++                                                   timeout=timeout, allow_agent=allow_agent, 
++                                                   look_for_keys=look_for_keys)
++                    except paramiko.AuthenticationException, e:
++                        if self.sshproxy_session:
++                            self.sshproxy_session.stop_thread()
++                        self.close()
++                        raise(e)
+                 else:
++                    if self.sshproxy_session:
++                        self.sshproxy_session.stop_thread()
++                    self.close()
+                     raise(e)
+ 
+         # if there is not private key, we will use the given password
+         elif password:
+             self.logger('performing SSH keyboard-interactive authentication with server', loglevel=log.loglevel_DEBUG)
+-            paramiko.SSHClient.connect(self, hostname, port=port, username=username, password=password, 
+-                                       timeout=timeout, allow_agent=allow_agent, look_for_keys=look_for_keys)
++            try:
++                paramiko.SSHClient.connect(self, hostname, port=port, username=username, password=password, 
++                                           timeout=timeout, allow_agent=allow_agent, look_for_keys=look_for_keys)
++            except paramiko.AuthenticationException, e:
++                if self.sshproxy_session:
++                    self.sshproxy_session.stop_thread()
++                self.close()
++                raise(e)
+ 
+         # authentication failed
+         else:
++            if self.sshproxy_session:
++                self.sshproxy_session.stop_thread()
++            self.close()
+             raise paramiko.AuthenticationException()
+ 
+         self.hostname = hostname
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index c1b597b..6173571 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -163,7 +163,6 @@ class X2goProxyBASE(threading.Thread):
+             if self.fw_tunnel is None:
+                 self.logger('socket [localhost]:%s is in use, trying local TCP/IP socket port: [localhost]:%s' % (local_graphics_port, local_graphics_port+1), loglevel=log.loglevel_INFO)
+                 local_graphics_port += 1
+-                gevent.sleep(.1)
+ 
+         # update the proxy port in PROXY_ARGS
+         self._update_local_proxy_socket(local_graphics_port)
+diff --git a/x2go/client.py b/x2go/client.py
+index a959342..ef3e1e5 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -636,7 +636,13 @@ class X2goClient(object):
+         &quot;&quot;&quot;
+         return self.session_registry(session_uuid).set_username(username=username)
+ 
+-    def connect_session(self, session_uuid, username=None, password=None, add_to_known_hosts=None, force_password_auth=None):
++    def connect_session(self, session_uuid,
++                        username='',
++                        password='',
++                        sshproxy_user='',
++                        sshproxy_password='',
++                        add_to_known_hosts=None,
++                        force_password_auth=None):
+         &quot;&quot;&quot;\
+         Connect to a registered X2go session with registry hash C{&lt;session_uuid&gt;}. 
+         This method basically wraps around paramiko.SSHClient.connect() for the 
+@@ -660,6 +666,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         return self.session_registry(session_uuid).connect(username=username, password=password,
++                                                           sshproxy_user=sshproxy_user, sshproxy_password=sshproxy_password,
+                                                            add_to_known_hosts=add_to_known_hosts,
+                                                            force_password_auth=force_password_auth,
+                                                           )
+diff --git a/x2go/forward.py b/x2go/forward.py
+index a291924..4be7e37 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -21,7 +21,7 @@
+ Python Gevent based X2go port forwarding server (openssh -L option) for the X2go proxy.
+ 
+ &quot;&quot;&quot;
+-__NAME__ = &quot;x2goproxytunnel-pylib&quot;
++__NAME__ = &quot;x2gofwtunnel-pylib&quot;
+ 
+ # modules
+ import os, sys, copy
+@@ -66,6 +66,9 @@ class X2goFwServer(StreamServer):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
++        self.chan = None
++        self.is_active = False
++        self.keepalive = False
+         self.chain_host = remote_host
+         self.chain_port = remote_port
+         self.ssh_transport = ssh_transport
+@@ -83,17 +86,17 @@ class X2goFwServer(StreamServer):
+ 
+         &quot;&quot;&quot;
+         try:
+-            chan = self.ssh_transport.open_channel('direct-tcpip',
+-                                                   (self.chain_host, self.chain_port),
+-                                                   fw_socket.getpeername())
+-            chan_peername = chan.getpeername()
++            self.chan = self.ssh_transport.open_channel('direct-tcpip',
++                                                        (self.chain_host, self.chain_port),
++                                                        fw_socket.getpeername())
++            chan_peername = self.chan.getpeername()
+         except Exception, e:
+             self.logger('incoming request to %s:%d failed: %s' % (self.chain_host,
+                                                                   self.chain_port,
+                                                                   repr(e)), loglevel=log.loglevel_ERROR)
+             raise x2go_exceptions.X2goFwTunnelException('proxy tunnel setup failed')
+ 
+-        if chan is None:
++        if self.chan is None:
+             self.logger('incoming request to %s:%d was rejected by the SSH server.' %
+                         (self.chain_host, self.chain_port), loglevel=log.loglevel_ERROR)
+             return
+@@ -101,29 +104,37 @@ class X2goFwServer(StreamServer):
+                                                                 chan_peername, (self.chain_host, self.chain_port)),
+                                                                 loglevel=log.loglevel_INFO)
+         try:
+-            while True:
+-                r, w, x = select.select([fw_socket, chan], [], [])
++            self.is_active = True
++            self.keepalive = True
++            while self.keepalive:
++                r, w, x = select.select([fw_socket, self.chan], [], [])
+                 if fw_socket in r:
+                     data = fw_socket.recv(1024)
+                     if len(data) == 0:
+                         break
+-                    chan.send(data)
+-                if chan in r:
+-                    data = chan.recv(1024)
++                    self.chan.send(data)
++                if self.chan in r:
++                    data = self.chan.recv(1024)
+                     if len(data) == 0:
+                         break
+                     fw_socket.send(data)
+-            chan.close()
++            self.chan.close()
+             fw_socket.close()
+         except socket.error:
+             pass
+ 
++        self.is_active = False
+         self.logger('Tunnel closed from %r' % (chan_peername,),
+                     loglevel=log.loglevel_INFO)
+ 
++    def close_channel(self):
+ 
+-def start_forward_tunnel(local_host='localhost', local_port=22022, 
+-                         remote_host='localhost', remote_port=22, 
++        if self.chan is not None:
++            self.chan.close()
++
++
++def start_forward_tunnel(local_host='localhost', local_port=22022,
++                         remote_host='localhost', remote_port=22,
+                          ssh_transport=None, logger=None, ):
+     &quot;&quot;&quot;\
+     Setup up a Paramiko/SSH port forwarding tunnel (like openssh -L option).
+@@ -160,7 +171,10 @@ def stop_forward_tunnel(fw_server):
+     @type fw_server: C{instance}
+ 
+     &quot;&quot;&quot;
+-    fw_server.stop()
++    if fw_server is not None:
++        fw_server.keepalive = False
++        fw_server.close_channel()
++        fw_server.stop()
+ 
+ if __name__ == '__main__':
+     pass
+diff --git a/x2go/session.py b/x2go/session.py
+index 386a5db..8967ef4 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -158,8 +158,8 @@ class X2goSession(object):
+         for p in self.terminal_params:
+             self.logger('    %s: %s' % (p,self.terminal_params[p]), log.loglevel_DEBUG)
+ 
+-        self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+         if control_session is None:
++            self.logger('initializing X2goControlSession', loglevel=log.loglevel_DEBUG)
+             self.control_session = control_backend(profile_name=self.profile_name,
+                                                    known_hosts=known_hosts,
+                                                    terminal_backend=terminal_backend,
+@@ -176,7 +176,6 @@ class X2goSession(object):
+             self.control_session = control_session
+ 
+         self.terminal_session = None
+-        self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+ 
+     def __str__(self):
+         return self.__get_uuid()
+@@ -377,7 +376,8 @@ class X2goSession(object):
+         return self.terminal_session is not None
+     __has_terminal_session = has_terminal_session
+ 
+-    def connect(self, username='', password='', add_to_known_hosts=None, force_password_auth=None):
++    def connect(self, username='', password='', add_to_known_hosts=None, force_password_auth=None,
++                sshproxy_user='', sshproxy_password=''):
+         &quot;&quot;&quot;\
+         Connect to a registered X2go session with registry hash C{&lt;session_uuid&gt;}.
+         This method basically wraps around paramiko.SSHClient.connect() for the
+@@ -408,11 +408,25 @@ class X2goSession(object):
+                 self.control_params['add_to_known_hosts'] = add_to_known_hosts
+             if force_password_auth is not None:
+                 self.control_params['force_password_auth'] = force_password_auth
++            if sshproxy_user:
++                self.control_params['sshproxy_password'] = sshproxy_password
++            if sshproxy_user:
++                self.control_params['sshproxy_user'] = sshproxy_user
+             self.control_params['password'] = password
+-            print self.control_params
+             self.connected = self.control_session.connect(self.server,
+                                                           **self.control_params
+                                                          )
++            # remove credentials immediately
++            self.control_params['password'] = ''
++            try: del self.control_params['sshproxy_user']
++            except KeyError: pass
++            try: del self.control_params['sshproxy_password']
++            except KeyError: pass
++
++            if not self.connected:
++                # then tidy up...
++                self.disconnect()
++
+         return self.connected
+     __connect = connect
+ 
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index c775476..2bbcc55 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -33,6 +33,7 @@ import threading
+ # Python X2go modules
+ import x2go.forward as forward
+ import x2go.log as log
++from x2go.x2go_exceptions import *
+ 
+ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+@@ -71,14 +72,16 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
++        self.hostname, self.port, self.username = hostname, port, username
++
+         # translate between X2goSession options and paramiko.SSHCLient.connect() options
+         if sshproxy_host: 
+             if sshproxy_host.find(':'):
+-                hostname = sshproxy_host.split(':')[0]
+-                port = int(sshproxy_host.split(':')[1])
++                self.hostname = sshproxy_host.split(':')[0]
++                self.port = int(sshproxy_host.split(':')[1])
+             else:
+-                hostname = sshproxy_host
+-        if sshproxy_user: username = sshproxy_user
++                self.hostname = sshproxy_host
++        if sshproxy_user: self.username = sshproxy_user
+         if sshproxy_password: password = sshproxy_password
+         if sshproxy_key_filename: key_filename = sshproxy_key_filename
+         if sshproxy_tunnel:
+@@ -105,21 +108,33 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         if add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+-        self.connect(hostname, port=port, 
+-                     username=username, 
+-                     password=password, 
+-                     key_filename=key_filename,
+-                    )
+-
+-        self.hostname, self.port, self.username = hostname, port, username
++        if key_filename:
++            try:
++                self.connect(self.hostname, port=self.port, 
++                             username=self.username, 
++                             key_filename=key_filename,
++                             look_for_keys=False,
++                            )
++            except AuthenticationException, e:
++                raise X2goSSHProxyAuthenticationException('pubkey auth mechanisms both failed')
++
++        elif password:
++            try:
++                self.connect(self.hostname, port=self.port,
++                             username=self.username,
++                             password=password,
++                             look_for_keys=False,
++                            )
++            except AuthenticationException:
++                    raise X2goSSHProxyAuthenticationException('interactive auth mechanisms failed')
++        else:
++            raise X2goSSHProxyAuthenticationException('no auth mechanism available')
+ 
+         threading.Thread.__init__(self)
+         self.daemon = True
+ 
+-
+     def run(self):
+ 
+-        self.fw_tunnel = None
+         while self.fw_tunnel is None:
+             self.fw_tunnel = forward.start_forward_tunnel(local_host=self.local_host, 
+                                                           local_port=self.local_port, 
+@@ -127,10 +142,10 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                                           remote_port=self.remote_port, 
+                                                           ssh_transport=self.get_transport(), 
+                                                           logger=self.logger, )
++
+             if self.fw_tunnel is None:
+                 self.logger('socket [%s]:%s is in use, trying local TCP/IP socket port: [%s]:%s' % (self.local_host, self.local_port, self.local_host, self.local_port+1), loglevel=log.loglevel_INFO)
+                 self.local_port += 1
+-                #gevent.sleep(.1)
+ 
+         self.logger('SSH proxy tunnel via [%s]:%s has been set up' % (self.hostname, self.port), loglevel=log.loglevel_NOTICE)
+         self.logger('SSH proxy tunnel startpoint is [%s]:%s, endpoint is [%s]:%s' % (self.local_host, self.local_port, self.remote_host, self.remote_port), loglevel=log.loglevel_NOTICE)
+@@ -138,9 +153,17 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         while self._keepalive:
+             gevent.sleep(.1)
+ 
++    def get_local_proxy_port(self):
++        return self.local_port
++
+     def stop_thread(self):
++        if self.fw_tunnel is not None and self.fw_tunnel.is_active:
++            self.logger('taking down SSH proxy tunnel via [%s]:%s' % (self.hostname, self.port), loglevel=log.loglevel_NOTICE)
+         forward.stop_forward_tunnel(self.fw_tunnel)
++        self.fw_tunnel = None
+         self._keepalive = False
++        if self.get_transport() is not None:
++            self.logger('closing SSH proxy connection to [%s]:%s' % (self.hostname, self.port), loglevel=log.loglevel_NOTICE)
+         self.close()
+ 
+     def __del__(self):
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index e969875..9fa8dbd 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -51,4 +51,6 @@ class X2goFwTunnelException(_X2goException): pass
+ class X2goRevFwTunnelException(_X2goException): pass
+ class X2goPrintException(_X2goException): pass
+ class X2goPrintQueueException(_X2goException): pass
+-class X2goPrintActionException(_X2goException): pass
+\ No newline at end of file
++class X2goPrintActionException(_X2goException): pass
++class X2goSSHProxyException(_X2goException): pass
++class X2goSSHProxyAuthenticationException(_X2goException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022711.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	2fff2472803efca1bafb8d37731cf588adf82cdf
+</A></li>
+	<LI>Next message: <A HREF="022713.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	41cd50d20fa5d23ea0d17bc8462f415fa07da35e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22712">[ date ]</a>
+              <a href="thread.html#22712">[ thread ]</a>
+              <a href="subject.html#22712">[ subject ]</a>
+              <a href="author.html#22712">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

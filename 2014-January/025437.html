@@ -1,0 +1,200 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-17-ga737395
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-17-ga737395&In-Reply-To=%3C20140108142922.AB7445DC59%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025432.html">
+   <LINK REL="Next"  HREF="025444.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-17-ga737395</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-17-ga737395&In-Reply-To=%3C20140108142922.AB7445DC59%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-17-ga737395">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:22 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025432.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	829d095ecba176e184989299c0b221167b56f5ab
+</A></li>
+        <LI>Next message: <A HREF="025444.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	638391e5f2d77f219fbd76f57f0703a5ab0c6a8d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25437">[ date ]</a>
+              <a href="thread.html#25437">[ thread ]</a>
+              <a href="subject.html#25437">[ subject ]</a>
+              <a href="author.html#25437">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  a737395d986559888c214c894cce07d614bab78a (commit)
+      from  d71817b8ec2e482fa41d2bd5fb5a6e5c5c7f66f5 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 ++
+ x2go/backends/terminal/_stdout.py |   16 ++++++++++++++--
+ x2go/utils.py                     |   21 +++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2f8b04c..9940594 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -10,6 +10,8 @@ python-x2go (0.2.0.11-0~x2go1) UNRELEASED; urgency=low
+     - Add support for starting maximized session windows. Closes upstream
+       issue #12.
+     - Fix category ,,Utility'' when parsing .desktop files.
++    - For ,,maxdim'' session property fallback to _NET_DESKTOP_GEOMETRY if
++      _NET_WORKAREA is not available from the window manager.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+ 
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 8548cd0..4055f09 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -1375,7 +1375,13 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.rewrite_session_type()
+ 
+         if self.params.geometry == 'maximize':
+-            self.params.geometry = &quot;%sx%s&quot; % utils.get_workarea_geometry()
++            _geometry = utils.get_workarea_geometry()
++            if len(_geometry) != 2:
++                _geometry = utils.get_desktop_geometry()
++            if len(_geometry) == 2:
++                self.params.geometry = &quot;%sx%s&quot; % _geometry
++            else:
++                self.logger('failed to detect best maxmimized geometry of your client-side desktop', loglevel=log.loglevel_WARN)
+ 
+         cmd_line = [ &quot;x2gostartagent&quot;,
+                      str(self.params.geometry),
+@@ -1462,7 +1468,13 @@ class X2goTerminalSessionSTDOUT(object):
+             setkbd = &quot;1&quot;
+ 
+         if self.params.geometry == 'maximize':
+-            self.params.geometry = &quot;%sx%s&quot; % utils.get_workarea_geometry()
++            _geometry = utils.get_workarea_geometry()
++            if len(_geometry) != 2:
++                _geometry = utils.get_desktop_geometry()
++            if len(_geometry) == 2:
++                self.params.geometry = &quot;%sx%s&quot; % _geometry
++            else:
++                self.logger('failed to detect best maxmimized geometry of your client-side desktop', loglevel=log.loglevel_WARN)
+ 
+         cmd_line = [ &quot;x2goresume-session&quot;, self.session_info.name,
+                      self.params.geometry,
+diff --git a/x2go/utils.py b/x2go/utils.py
+index a6ee4e6..ff240dd 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -603,6 +603,27 @@ def find_session_window(session_name):
+         return window
+ 
+ 
++def get_desktop_geometry():
++    &quot;&quot;&quot;\
++    Get the geometry of the current screen's desktop by
++    wrapping around
++
++      xprop -root '_NET_DESKTOP_GEOMETRY'
++
++    @return: a (&lt;width&gt;, &lt;height&gt;) tuple will be returned
++    @rtype: C{tuple}
++
++    &quot;&quot;&quot;
++    if _X2GOCLIENT_OS != 'Windows':
++        p = subprocess.Popen(['xprop', '-root', '_NET_DESKTOP_GEOMETRY',], stdout=subprocess.PIPE, )
++        _paramval = p.stdout.read().split(&quot;=&quot;)
++        if len(_paramval) == 2:
++            _list = _paramval[1].rstrip('\n').split(',')
++            if len(_list) == 2:
++                return (_list[0].strip(), _list[1].strip())
++
++    return None
++
+ def get_workarea_geometry():
+     &quot;&quot;&quot;\
+     Get the geometry of the current screen's work area by
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025432.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	829d095ecba176e184989299c0b221167b56f5ab
+</A></li>
+	<LI>Next message: <A HREF="025444.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	638391e5f2d77f219fbd76f57f0703a5ab0c6a8d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25437">[ date ]</a>
+              <a href="thread.html#25437">[ thread ]</a>
+              <a href="subject.html#25437">[ subject ]</a>
+              <a href="author.html#25437">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

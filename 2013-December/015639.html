@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-8-ge8c4fc1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%093.1.1.4-8-ge8c4fc1&In-Reply-To=%3C20131204051824.EAABA5DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015638.html">
+   <LINK REL="Next"  HREF="015640.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-8-ge8c4fc1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-main%20%28branch%29%20updated%3A%0A%093.1.1.4-8-ge8c4fc1&In-Reply-To=%3C20131204051824.EAABA5DB1C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-8-ge8c4fc1">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:18:24 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015638.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-6-g3a9f412
+</A></li>
+        <LI>Next message: <A HREF="015640.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-9-gabf5ce6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15639">[ date ]</a>
+              <a href="thread.html#15639">[ thread ]</a>
+              <a href="subject.html#15639">[ subject ]</a>
+              <a href="author.html#15639">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  e8c4fc15d16b315d4471243f8dbb33d2eda2f900 (commit)
+      from  c7d7bc79b50bd7c5691793218f11ec7375f2dcc8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog             |    4 +++-
+ x2goserver/bin/x2gomountdirs |   33 ++++++++++++++++++++++++++++++++-
+ 2 files changed, 35 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 512a2f5..bfe149a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,7 +13,9 @@ x2goserver (3.1.1.5-0~x2go1) UNRELEASED; urgency=low
+     - Remove redundant setting of loglevel in x2gogetapps.
+     - Fix ,,Only extend LD_LIBRARY_PATH by Xrandr extension for KDE. Breaks
+       GNOME.'' from last release.
+-
++    - Detect i18n name of Desktop folder via XDG_DESKTOP_DIR environment
++      variable.
++ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Tue, 25 Sep 2012 15:03:32 +0200
+ 
+ x2goserver (3.1.1.4-0~x2go1) unstable; urgency=low
+diff --git a/x2goserver/bin/x2gomountdirs b/x2goserver/bin/x2gomountdirs
+index d4249ad..a25b0b7 100755
+--- a/x2goserver/bin/x2gomountdirs
++++ b/x2goserver/bin/x2gomountdirs
+@@ -33,6 +33,22 @@ setlogmask( LOG_UPTO(x2gologlevel()) );
+ 
+ syslog('info', &quot;x2gomountdirs has been called with options: @ARGV&quot;);
+ 
++sub source {
++    my $name = shift;
++
++    open my $fh, &quot;&lt;&quot;, $name
++        or die &quot;could not open $name: $!&quot;;
++
++    while (&lt;$fh&gt;) {
++        chomp;
++        my ($k, $v) = split /=/, $_, 2;
++        $v =~ s/^(['&quot;])(.*)\1/$2/; #' fix highlighter
++        $v =~ s/\$([a-zA-Z]\w*)/$ENV{$1}/g;
++        $v =~ s/`(.*?)`/`$1`/ge; #dangerous
++        $ENV{$k} = $v;
++    }
++}
++
+ my $tmp_dir = '/tmp';
+ 
+ my $type=shift;
+@@ -107,6 +123,15 @@ my $spooldir=&quot;$tmp_dir/.x2go-$ENV{'USER'}/spool&quot;;
+ my $mimeboxdir_lnk=&quot;$ENV{'HOME'}/.x2go/C-$session/mimebox&quot;;
+ my $mimeboxdir=&quot;$tmp_dir/.x2go-$ENV{'USER'}/mimebox&quot;;
+ 
++my $xdg_config;
++if ( $ENV{'XDG_CONFIG_HOME'} )
++{
++	$xdg_config = $ENV{'XDG_CONFIG_HOME'};
++} else {
++	$xdg_config = &quot;$ENV{'HOME'}/.config&quot;;
++}
++source &quot;$xdg_config/user-dirs.dirs&quot;;
++
+ if (! -e $mdir)
+ {
+ 	mkdir($mdir);
+@@ -268,7 +293,13 @@ for (my $i=0;$i&lt;@dirs;$i++)
+ 			if (! $printspool &amp;&amp; ! $mimeboxspool &amp;&amp; ! $useplasmoid )
+ 			{
+ 
+-				my $fname=&quot;$ENV{'HOME'}/Desktop&quot;;
++				my $fname;
++				if ( $ENV{'XDG_DESKTOP_DIR'} )
++				{
++					$fname=$ENV{'XDG_DESKTOP_DIR'};
++				} else {
++					$fname=&quot;$ENV{'HOME'}/Desktop&quot;;
++				}
+ 				my $current_desktop = &quot;NONE&quot;;
+ 				if (($session =~ m/_stDGNOME_dp/) &amp;&amp; system(&quot;x2gofeature X2GO_GNOMEBINDINGS &gt;/dev/null&quot;) == 0)
+ 				{
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015638.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-6-g3a9f412
+</A></li>
+	<LI>Next message: <A HREF="015640.html">[X2Go-Commits] x2goserver.git - build-main (branch) updated:	3.1.1.4-9-gabf5ce6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15639">[ date ]</a>
+              <a href="thread.html#15639">[ thread ]</a>
+              <a href="subject.html#15639">[ subject ]</a>
+              <a href="author.html#15639">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

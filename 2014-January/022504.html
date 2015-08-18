@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-20-g22e1546
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-20-g22e1546&In-Reply-To=%3C20140108141537.2EF135DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022503.html">
+   <LINK REL="Next"  HREF="022508.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-20-g22e1546</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-20-g22e1546&In-Reply-To=%3C20140108141537.2EF135DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-20-g22e1546">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:15:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022503.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-27-gaa287d9
+</A></li>
+        <LI>Next message: <A HREF="022508.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-22-g596f0cb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22504">[ date ]</a>
+              <a href="thread.html#22504">[ thread ]</a>
+              <a href="subject.html#22504">[ subject ]</a>
+              <a href="author.html#22504">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  22e15469440ef430a7fb2cc793db30ad99849bc1 (commit)
+      from  0bf478f7f33a0842cdf940c9d320d9dbae39a888 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 ++
+ x2go/backends/terminal/_stdout.py |    3 ++-
+ x2go/client.py                    |    7 +++++++
+ x2go/session.py                   |   22 ++++++++++++++++++++--
+ x2go/x2go_exceptions.py           |    3 ++-
+ 5 files changed, 33 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 538cff8..c0a3652 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -23,6 +23,8 @@ python-x2go (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+       data injections via ~/.*shrc files. (Fixes: #335).
+     - Properly handle (=expand) the &quot;~&quot; character in key filenames. (Brought to
+       attention by Eldamir on IRC. Thanks!).
++    - Differentiate between desktop sharing errors and desktop sharing access that gets
++      denied by the other/remote user.
+ 
+   [ Orion Poplawski ]
+   * debian/control:
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 4f28311..fafff4f 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -1379,6 +1379,7 @@ class X2GoTerminalSessionSTDOUT(object):
+         @rtype: C{bool}
+ 
+         @raise X2GoTerminalSessionException: if the session startup failed
++        @raise X2GoDesktopSharingDenied: if desktop sharing fails because of denial by the user running the desktop to be shared
+ 
+         &quot;&quot;&quot;
+         self.params.rewrite_session_type()
+@@ -1433,7 +1434,7 @@ class X2GoTerminalSessionSTDOUT(object):
+         # if the first line of stdout is a &quot;DEN(Y)&quot; string then we will presume that
+         # we tried to use X2Go desktop sharing and the sharing was rejected
+         if &quot;ACCESS DENIED&quot; in _stderr and &quot;XSHAD&quot; in _stderr:
+-            raise x2go_exceptions.X2GoDesktopSharingException('X2Go desktop sharing has been denied by the remote user')
++            raise x2go_exceptions.X2GoDesktopSharingDenied('X2Go desktop sharing has been denied by the remote user')
+ 
+         try:
+             self.session_info.initialize(_stdout,
+diff --git a/x2go/client.py b/x2go/client.py
+index 80bb160..210be04 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -385,6 +385,13 @@ class X2GoClient(object):
+         &quot;&quot;&quot;
+         self.logger('HOOK_session_startup_failed: session startup for session profile ,,%s'' failed.' % profile_name, loglevel=log.loglevel_WARN)
+ 
++    def HOOK_desktop_sharing_denied(self, profile_name='UNKNOWN'):
++        &quot;&quot;&quot;\
++        HOOK method: called if the startup of a shadow session was denied by the other user.
++
++        &quot;&quot;&quot;
++        self.logger('HOOK_desktop_sharing_failed: desktop sharing for profile ,,%s'' was denied by the other user.' % profile_name, loglevel=log.loglevel_WARN)
++
+     def HOOK_list_desktops_timeout(self, profile_name='UNKNOWN'):
+         &quot;&quot;&quot;\
+         HOOK method: called if the x2golistdesktops command generates a timeout due to long execution time.
+diff --git a/x2go/session.py b/x2go/session.py
+index 0febe0d..5a5396c 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -478,6 +478,16 @@ class X2GoSession(object):
+         else:
+             self.logger('HOOK_session_startup_failed: session startup for session profile ,,%s\'\' failed.' % self.profile_name, loglevel=log.loglevel_WARN)
+ 
++    def HOOK_desktop_sharing_denied(self):
++        &quot;&quot;&quot;\
++        HOOK method: called if the startup of a shadow session was denied by the other user.
++
++        &quot;&quot;&quot;
++        if self.client_instance:
++            self.client_instance.HOOK_desktop_sharing_denied(profile_name=self.profile_name)
++        else:
++            self.logger('HOOK_desktop_sharing_denied: desktop sharing for session profile ,,%s\'\' was denied by the other user.' % self.profile_name, loglevel=log.loglevel_WARN)
++
+     def HOOK_list_desktops_timeout(self):
+         &quot;&quot;&quot;\
+         HOOK method: called if the x2golistdesktops command generates a timeout due to long execution time.
+@@ -2036,7 +2046,7 @@ class X2GoSession(object):
+         @return: returns C{True} if starting the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
+-        @raise X2GoDesktopSharingException: if the given desktop ID is not an available desktop session on the remote server
++        @raise X2GoDesktopSharingException: if a given desktop ID does not specify an available desktop session
+         @raise X2GoSessionException: if the available desktop session appears to be dead, in fact
+ 
+         &quot;&quot;&quot;
+@@ -2074,7 +2084,7 @@ class X2GoSession(object):
+         @return: returns C{True} if starting the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
+-        @raise X2GoDesktopSharingException: if the given desktop ID is not an available desktop session on the remote server
++        @raise X2GoDesktopSharingException: if a given desktop ID does not specify an available desktop session
+         @raise X2GoSessionException: if the available desktop session appears to be dead, in fact
+ 
+         &quot;&quot;&quot;
+@@ -2131,6 +2141,14 @@ class X2GoSession(object):
+ 
+                 raise x2go_exceptions.X2GoSessionException('the session on desktop %s is seemingly dead' % _desktop)
+ 
++            except x2go_exceptions.X2GoDesktopSharingDenied:
++
++                self._progress_status = -1
++                progress_event.set()
++
++                self.HOOK_desktop_sharing_denied()
++                return False
++
+             self._progress_status = 90
+             progress_event.set()
+ 
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 30985b2..e4a1653 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -66,7 +66,8 @@ class X2GoMIMEboxQueueException(_X2GoException): pass
+ class X2GoSSHProxyException(_X2GoException): pass
+ class X2GoSSHProxyAuthenticationException(_X2GoException): pass
+ class X2GoNotImplementedYetException(_X2GoException): pass
+-class X2GoDesktopSharingException(_X2GoException): pass
++class X2GoDesktopSharingDenied(_X2GoException): pass
++class X2GoDesktopSharingDenied(_X2GoException): pass
+ class X2GoTimeOutException(_X2GoException): pass
+ if _X2GOCLIENT_OS != 'Windows':
+     # faking Windows errors on non-Windows systems...
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022503.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-27-gaa287d9
+</A></li>
+	<LI>Next message: <A HREF="022508.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.8-22-g596f0cb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22504">[ date ]</a>
+              <a href="thread.html#22504">[ thread ]</a>
+              <a href="subject.html#22504">[ subject ]</a>
+              <a href="author.html#22504">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

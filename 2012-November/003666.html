@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-89-gec4e5f5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.4-89-gec4e5f5&In-Reply-To=%3C20121116200048.3CC875DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003665.html">
+   <LINK REL="Next"  HREF="003667.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-89-gec4e5f5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.4-89-gec4e5f5&In-Reply-To=%3C20121116200048.3CC875DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-89-gec4e5f5">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Nov 16 21:00:48 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003665.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-88-g113a759
+</A></li>
+        <LI>Next message: <A HREF="003667.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-90-g4354726
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3666">[ date ]</a>
+              <a href="thread.html#3666">[ thread ]</a>
+              <a href="subject.html#3666">[ subject ]</a>
+              <a href="author.html#3666">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  ec4e5f5ddf1e7a35bdb310d99db2947aa9eb2ae9 (commit)
+      from  113a759d6a62ce7da966cb23eba9203dfd7341a9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit ec4e5f5ddf1e7a35bdb310d99db2947aa9eb2ae9
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 16 20:59:18 2012 +0100
+
+    Use threading.Lock() to prevent from simultaneous calls of the _init_pubapp_sessions() method.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    2 ++
+ pyhoca/wxgui/frontend.py |   11 +++++------
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 78c4adf..a17dd0c 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -43,6 +43,8 @@ pyhoca-gui (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+       buttons.
+     - Disable SSH agent forwarding for Windows. Code in Python Paramiko is no
+       executable on MS Windows, currently.
++    - Use threading.Lock() to prevent from simultaneous calls of the
++      _init_pubapp_sessions() method.
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers
+       &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index e5b9a95..d8c1e98 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -484,6 +484,9 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         if profile_name is None and session_uuid:
+             profile_name = self._X2goClient__get_session_profile_name(session_uuid)
+ 
++        if not self._temp_launching_pubapp_profiles.has_key(profile_name):
++            self._temp_launching_pubapp_profiles[profile_name] = threading.Lock()
++
+         if not self._X2goClient__client_connected_sessions_of_profile_name(profile_name):
+             return None
+ 
+@@ -496,10 +499,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             if len(self.client_pubapp_sessions_of_profile_name(profile_name=profile_name)):
+                 return False
+ 
+-            if profile_name not in self._temp_launching_pubapp_profiles:
+-                self._temp_launching_pubapp_profiles.append(profile_name)
+-            else:
+-                return None
++            self._temp_launching_pubapp_profiles[profile_name].acquire()
+ 
+             pubapp_session_started = False
+             pubapp_session_resumed = False
+@@ -553,8 +553,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+                                                                    )
+                 pubapp_session_started = pubapp_session.start()
+ 
+-            if profile_name in self._temp_launching_pubapp_profiles:
+-                self._temp_launching_pubapp_profiles.remove(profile_name)
++            self._temp_launching_pubapp_profiles.release()
+ 
+             return pubapp_session_started | pubapp_session_resumed
+ 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003665.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-88-g113a759
+</A></li>
+	<LI>Next message: <A HREF="003667.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-90-g4354726
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3666">[ date ]</a>
+              <a href="thread.html#3666">[ thread ]</a>
+              <a href="subject.html#3666">[ subject ]</a>
+              <a href="author.html#3666">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

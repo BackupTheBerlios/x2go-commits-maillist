@@ -1,0 +1,600 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.28.0-29-gb536858
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.28.0-29-gb536858&In-Reply-To=%3C20130914135446.2FDE85DB53%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012513.html">
+   <LINK REL="Next"  HREF="012521.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.28.0-29-gb536858</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.28.0-29-gb536858&In-Reply-To=%3C20130914135446.2FDE85DB53%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.28.0-29-gb536858">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012513.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0
+</A></li>
+        <LI>Next message: <A HREF="012521.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-36-gc37d4d7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12517">[ date ]</a>
+              <a href="thread.html#12517">[ thread ]</a>
+              <a href="subject.html#12517">[ subject ]</a>
+              <a href="author.html#12517">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+  discards  adad87f3508719eba76a1913238b26305c77622d (commit)
+       via  b53685815544792cb6627c6cbb95f164bc582ce3 (commit)
+
+This update added new revisions after undoing existing revisions.  That is
+to say, the old revision is not a strict subset of the new revision.  This
+situation occurs when you --force push a change and generate a repository
+containing something like this:
+
+ * -- * -- B -- O -- O -- O (adad87f3508719eba76a1913238b26305c77622d)
+            \
+             N -- N -- N (b53685815544792cb6627c6cbb95f164bc582ce3)
+
+When this happens we assume that you've already had alert emails for all
+of the O revisions, and so we here report only the revisions in the N
+branch from the common base, B.
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca-gui               |    4 +-
+ pyhoca/wxgui/frontend.py |  116 +++++++++++++++++++++++++++-------------------
+ pyhoca/wxgui/logon.py    |   45 +++++++++++++-----
+ pyhoca/wxgui/messages.py |   54 ++++++++++++---------
+ pyhoca/wxgui/notify.py   |   10 +++-
+ 5 files changed, 147 insertions(+), 82 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca-gui b/pyhoca-gui
+index e947a84..d1d8491 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -299,7 +299,9 @@ def main():
+         thisPyHocaGUI = PyHocaGUI(args, logger, liblogger)
+         thisPyHocaGUI.MainLoop()
+     except KeyboardInterrupt:
+-        _x2go_cleanup()
++        thisPyHocaGUI.ExitMainLoop()
++    except SystemExit:
++        thisPyHocaGUI.ExitMainLoop()
+ 
+ if __name__ == '__main__':
+     main()
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index f45ecbf..00bf25b 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -153,7 +153,12 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        gevent.sleep(.04)
++        try:
++            gevent.sleep(.04)
++        except KeyboardInterrupt:
++            self.ExitMainLoop()
++        except SystemExit:
++            self.ExitMainLoop()
+         evt.RequestMore()
+         return True
+ 
+@@ -186,11 +191,11 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self.notifier = notify.notificationmessage_NotifierPopup(self.about)
+ 
+         self._sub_windows = []
++        self._logon_windows = {}
+         self._hide_notifications_map = {}
+         self._eventid_profilenames_map = {}
+         self._eventid_sessionnames_map = {}
+         self._temp_disabled_profile_names = []
+-        self._added_known_hosts = []
+ 
+         # We register one session per available session profile.
+         # These registered sessions will be used to access the profile's 
+@@ -242,15 +247,15 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        x2go.x2go_cleanup()
+         # close open password dialogs (or other remaining windows)
+         for _win in self._sub_windows:
+             _win.Close()
+             _win.Destroy()
+         self.taskbar.Close()
+-        self.taskbar.Destroy()
+         self.about.Close()
+         self.about.Destroy()
++        x2go.x2go_cleanup()
++        self.Destroy()
+ 
+     # the taskbar's OnExit method...
+     def OnTaskbarExit(self, evt):
+@@ -307,48 +312,52 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+     def _do_authenticate(self, evt, session_uuid):
+         profile_name = self.current_profile_name
+-        host_ok = self._X2goClient__check_session_host(session_uuid)
+-        if host_ok:
+-            try:
+-                self._X2goClient__connect_session(session_uuid, add_to_known_hosts=host_ok)
+-                if not self._X2goClient__server_valid_x2gouser(session_uuid):
+-                    self.notifier.send(_(u'%s - connect failure') % profile_name, _(u'User is not allowed to start X2go sessions!'), icon='session_warning', timeout=10000)
+-                    self._X2goClient__disconnect_profile(profile_name)
+-                    self._temp_disabled_profile_names.remove(profile_name)
+-                else:
+-                    self.notifier.send(_(u'%s - connect') % profile_name, _(u'Public SSH key authentication has been successful.'), icon='auth_success', timeout=4000)
+-                    _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-                    self._post_authenticate(evt, session_uuid)
+-                    self._temp_disabled_profile_names.remove(profile_name)
+-            except x2go.AuthenticationException:
+-                self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, host_ok=host_ok, )
+-                self._sub_windows.append(_logon_window)
+-            except x2go.X2goSSHProxyAuthenticationException:
+-                self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, host_ok=host_ok, sshproxy_auth=True )
+-                self._sub_windows.append(_logon_window)
+-            except x2go.SSHException, e:
+-                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except gevent.dns.DNSError, e:
+-                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except gevent.socket.error, e:
+-                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except EOFError, e:
+-                self.notifier.send(_(u'%s - connect error') % profile_name, _(u'Authentication protocol communication incomplete! Try again...'), icon='auth_error', timeout=4000)
+-                self._temp_disabled_profile_names.remove(profile_name)
+-            except x2go.X2goSSHProxyException, e:
+-                self.notifier.send(_(u'%s - key error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++        try:
++            self._X2goClient__connect_session(session_uuid)
++            if not self._X2goClient__server_valid_x2gouser(session_uuid):
++                self.notifier.send(_(u'%s - connect failure') % profile_name, _(u'User is not allowed to start X2go sessions!'), icon='session_warning', timeout=10000)
++                self._X2goClient__disconnect_profile(profile_name)
+                 self._temp_disabled_profile_names.remove(profile_name)
+-            except:
+-                self.notifier.send('%s - connect error' % profile_name, 'An unknown error occurred during authentication!', icon='auth_error', timeout=4000)
++            else:
++                self.notifier.send(_(u'%s - connect') % profile_name, _(u'Public SSH key authentication has been successful.'), icon='auth_success', timeout=4000)
++                _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
++                self._post_authenticate(evt, session_uuid)
+                 self._temp_disabled_profile_names.remove(profile_name)
+-            self.taskbar.SetIconIdle()
+-        else:
++        except x2go.AuthenticationException:
++            self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
++            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, )
++            self._logon_windows[profile_name] = _logon_window
++            self._sub_windows.append(_logon_window)
++        except x2go.X2goSSHProxyAuthenticationException:
++            self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
++            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, sshproxy_auth=True )
++            self._logon_windows[profile_name] = _logon_window
++            self._sub_windows.append(_logon_window)
++        except x2go.SSHException, e:
++            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except x2go.X2goHostKeyException, e:
++            self.notifier.send(_(u'%s - host key error') % profile_name, '%s!' % _(u'The remote server\'s host key is invalid or has not been accepted by the user'), icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except x2go.X2goSSHProxyHostKeyException, e:
++            self.notifier.send(_(u'%s - host key error') % profile_name, '%s!' % _(u'The SSH proxy\'s host key is invalid or has not been accepted by the user'), icon='auth_error', timeout=4000)
+             self._temp_disabled_profile_names.remove(profile_name)
++        except gevent.dns.DNSError, e:
++            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except gevent.socket.error, e:
++            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except EOFError, e:
++            self.notifier.send(_(u'%s - connect error') % profile_name, _(u'Authentication protocol communication incomplete! Try again...'), icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except x2go.X2goSSHProxyException, e:
++            self.notifier.send(_(u'%s - auth key error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        except:
++            self.notifier.send('%s - connect error' % profile_name, 'An unknown error occurred during authentication!', icon='auth_error', timeout=4000)
++            self._temp_disabled_profile_names.remove(profile_name)
++        self.taskbar.SetIconIdle()
+ 
+     def OnSessionAuthenticate(self, evt):
+         &quot;&quot;&quot;\
+@@ -436,7 +445,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         # disconnect all profile sessions
+         if self._X2goClient__server_is_alive(session_uuid):
+             self._X2goClient__disconnect_profile(self.current_profile_name)
+-            gevent.sleep(2)
++            #gevent.sleep(2)
+             if not self._X2goClient__is_session_connected(session_uuid):
+                 self.notifier.send(_(u'%s - disconnect') % self.current_profile_name, _(u'X2go Profile is now disconnected.'), icon='auth_disconnect', timeout=4000)
+ 
+@@ -535,9 +544,22 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         &quot;&quot;&quot;
+         _message = _(u'The authenticity of host [%s]:%s can\'t be established.\n%s key fingerprint is ,,%s\'\'.\n\nAre you sure you want to continue connecting?') % (host, port, fingerprint_type, fingerprint)
+-        m = messages.PyHoca_MessageWindow(self, custom_message=_message, title=_(u'%s: Confirm Host Authorization') % profile_name, icon='profile_warning', buttontype='noyes')
+-        while m in self._sub_windows:
+-            gevent.sleep(0.5)
++
++        if self._logon_windows.has_key(profile_name):
++            _parent = self._logon_windows[profile_name]
++        else:
++            # use a dummy parent...
++            _parent = None
++
++        m = messages.PyHoca_MessageWindow_NoYes(self, parent=_parent, custom_message=_message, title=_(u'%s: Confirm Host Authorization') % profile_name, icon='profile_warning')
++
++        if _parent:
++            m.ShowModal()
++        else:
++            m.Show()
++            while m in self._sub_windows:
++                gevent.sleep(.04)
++
+         retval = m.Yes()
+         m.Destroy()
+         return retval
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index bfa5283..a9b1f7d 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -57,24 +57,23 @@ if os.environ.has_key('DESKTOP_SESSION'):
+ else:
+     WINDOW_MANAGER = 'generic'
+ 
+-class PyHocaGUI_DialogBoxPassword(wx.Dialog):
++class PyHocaGUI_DialogBoxPassword(wx.Frame):
+     &quot;&quot;&quot;\
+     STILL UNDOCUMENTED
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, profile_name, caller=None, host_ok=None, sshproxy_auth=False): 
++    def __init__(self, _PyHocaGUI, profile_name, caller=None, sshproxy_auth=False): 
+ 
+         self._PyHocaGUI = _PyHocaGUI
+         self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
+         self._pyhoca_logger('password dialog box started', loglevel=x2go.loglevel_INFO, )
+ 
+-        self.host_ok = host_ok or False
+         self.sshproxy_auth = sshproxy_auth
+ 
+         self.current_profile_name = profile_name
+         self.current_profile_config = self._PyHocaGUI.session_profiles.get_profile_config(profile_name)
+ 
+-        wx.Dialog.__init__(self, None, -1, profile_name)
++        wx.Frame.__init__(self, None, -1, profile_name)
+ 
+         if self.sshproxy_auth:
+             self.sshproxy_started = False
+@@ -207,6 +206,15 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                 return
+             if len(sshproxy_password) == 0:
+                 return
++            # in case of a host key validity check, we will disable all widgets in the window
++            self.sshProxyHeaderLbl.Enable(False)
++            self.sshProxyUserLbl.Enable(False)
++            self.sshProxyUserTxt.Enable(False)
++            self.sshProxyPasswordLbl.Enable(False)
++            self.sshProxyPasswordTxt.Enable(False)
++            self.sshProxyLoginBtn.Enable(False)
++            self.cancelBtn.Enable(False)
++
+         else:
+             sshproxy_user = sshproxy_password = None
+ 
+@@ -221,16 +229,17 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+         else:
+             force_password_auth=True
+ 
++        wx.BeginBusyCursor()
+         session_uuid = self._PyHocaGUI._X2goClient__client_registered_sessions_of_profile_name(self.current_profile_name)[0]
+         try:
+-            wx.BeginBusyCursor()
+             self._PyHocaGUI._X2goClient__connect_session(session_uuid, 
+                                                          username=username, 
+                                                          password=password, 
+                                                          force_password_auth=force_password_auth, 
+-                                                         add_to_known_hosts=self.host_ok,
++                                                         add_to_known_hosts=False,
+                                                          sshproxy_user=sshproxy_user, 
+-                                                         sshproxy_password=sshproxy_password)
++                                                         sshproxy_password=sshproxy_password
++                                                        )
+             if not self._PyHocaGUI._X2goClient__server_valid_x2gouser(session_uuid):
+                 self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
+                                                  title=_(u'%s - connect failure') % self.current_profile_name, 
+@@ -255,6 +264,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                 self.passwordTxt.SetFocus()
+                 self.loginBtn.Enable(True)
+                 self.loginBtn.SetDefault()
++                self.cancelBtn.Enable(True)
+                 self.sshProxyHeaderLbl.Enable(False)
+                 self.sshProxyUserLbl.Enable(False)
+                 self.sshProxyUserTxt.Enable(False)
+@@ -274,6 +284,13 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             self._PyHocaGUI.notifier.send(title=_(u'%s - ssh proxy') % self.current_profile_name, 
+                                           text=_(u'Authentication to the SSH proxy server failed!'),
+                                           icon='auth_failed')
++            self.sshProxyHeaderLbl.Enable(True)
++            self.sshProxyUserLbl.Enable(True)
++            self.sshProxyUserTxt.Enable(True)
++            self.sshProxyPasswordLbl.Enable(True)
++            self.sshProxyPasswordTxt.Enable(True)
++            self.sshProxyLoginBtn.Enable(True)
++            self.cancelBtn.Enable(True)
+             return
+ 
+         except gevent.dns.DNSError, e:
+@@ -288,6 +305,13 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                                              text='%s!' % e.strerror,
+                                              icon='auth_error')
+ 
++        except x2go.X2goHostKeyException, e:
++            self._PyHocaGUI.notifier.prepare('AUTH_%s' % self.current_profile_name, 
++                                             title=_(u'%s - host key error') % self.current_profile_name, 
++                                             text='%s!' % _(u'The remote server\'s host key is invalid or has not been accepted by the user'), 
++                                             icon='auth_error', 
++                                             timeout=4000)
++
+         except x2go.X2goSSHProxyException, e:
+             self._PyHocaGUI.notifier.prepare(_(u'%s - key error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+ 
+@@ -298,12 +322,14 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                                              icon='auth_error')
+ 
+         self._PyHocaGUI.notifier.send(self.current_profile_name, context='AUTH_%s' % self.current_profile_name, timeout=4000)
++        self.Close()
+         wx.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
+         wx.EndBusyCursor()
+         if self._PyHocaGUI._X2goClient__is_session_connected(session_uuid):
+             _dummy = self._PyHocaGUI.list_sessions(session_uuid, refresh_cache=True)
+             self._PyHocaGUI._post_authenticate(evt, session_uuid)
+         self.sshproxy_started = False
++        del self._PyHocaGUI._logon_windows[self.current_profile_name]
+         self.Destroy()
+ 
+     def OnCancel(self, evt):
+@@ -318,7 +344,4 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+             self._PyHocaGUI._temp_disabled_profile_names.remove(self.current_profile_name)
+         except ValueError:
+             pass
+-        wx.Dialog.Destroy(self)
+-
+-
+-
++        wx.Frame.Destroy(self)
+diff --git a/pyhoca/wxgui/messages.py b/pyhoca/wxgui/messages.py
+index 748d20d..7a66b7b 100644
+--- a/pyhoca/wxgui/messages.py
++++ b/pyhoca/wxgui/messages.py
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env python
+ # -*- coding: utf-8 -*-
+ 
++
+ # Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ #
+ # This program is free software; you can redistribute it and/or modify
+@@ -23,7 +24,7 @@
+ 
+ 
+ import wx
+-import os
++import gevent
+ 
+ # PyHoca-GUI modules
+ import basepath
+@@ -36,10 +37,12 @@ _icons_location = basepath.icons_basepath
+ 
+ class PyHoca_MessageWindow(wx.Dialog):
+ 
+-    def __init__(self, _PyHocaGUI, title=None, shortmsg=None, custom_message=None, icon=None, buttontype='ok'):
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon=None, buttontype='ok'):
+ 
+         self._PyHocaGUI = _PyHocaGUI
+ 
++        wx.EndBusyCursor()
++
+         if shortmsg is None:
+             show_message = custom_message
+         elif shortmsg in pyhoca_messages:
+@@ -50,12 +53,15 @@ class PyHoca_MessageWindow(wx.Dialog):
+         self.show_message = show_message
+         self.result = None
+ 
+-        wx.Dialog.__init__(self, _PyHocaGUI.about, )
++        if parent is None:
++            parent = self._PyHocaGUI.about
++
++        wx.Dialog.__init__(self, parent, wx.ID_ANY, )
+         self.SetTitle('%s' % title)
+ 
+         if icon:
+-            path_to_icon = os.path.normpath('%s/PyHoca/64x64/%s.png' % (_icons_location, icon))
+-	    self.icon = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY))
++            path_to_icon = '%s/PyHoca/64x64/%s.png' % (_icons_location, icon)
++            self.icon = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY))
+         self.message = wx.StaticText(self, wx.ID_ANY, self.show_message, size=(-1, -1), style=wx.ALIGN_LEFT) 
+ 
+         btnSizer = wx.BoxSizer(wx.HORIZONTAL)
+@@ -111,22 +117,21 @@ class PyHoca_MessageWindow(wx.Dialog):
+         maxX, maxY = wx.GetDisplaySize()
+ 
+         self.Move((maxX/2 - self.GetSize().GetWidth()/2, maxY/2 - self.GetSize().GetHeight()/2))
+-        self.Show()
+         self._PyHocaGUI._sub_windows.append(self)
+ 
+     def OnTrue(self, evt):
+         self.result = True
+-        self.Close()
++        self.Hide()
+ 
+     def OnFalse(self, evt):
+         self.result = False
+-        self.Close()
++        self.Hide()
+ 
+     def Ok(self):
+-        return self.result
++        return self.Yes()
+ 
+     def Cancel(self):
+-        return not self.Ok()
++        return not self.No()
+ 
+     def Yes(self):
+         return self.result
+@@ -134,32 +139,37 @@ class PyHoca_MessageWindow(wx.Dialog):
+     def No(self):
+         return not self.Yes()
+ 
+-    def Close(self):
++    def Hide(self):
+         self._PyHocaGUI._sub_windows.remove(self)
++        self.Show(False)
++
++    def Close(self):
+         wx.Dialog.Close(self)
+ 
+     def Destroy(self):
+         wx.Dialog.Destroy(self)
+ 
+ 
+-
+ class PyHoca_MessageWindow_Ok(PyHoca_MessageWindow):
+-    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
+-        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='ok')
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, parent=parent, title=title, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='ok')
++
+ 
+ class PyHoca_MessageWindow_OkCancel(PyHoca_MessageWindow):
+-    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
+-        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message,  icon=icon, buttontype='okcancel')
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, parent=parent, title=title, shortmsg=shortmsg, custom_message=custom_message,  icon=icon, buttontype='okcancel')
++
+ 
+ class PyHoca_MessageWindow_CancelOk(PyHoca_MessageWindow):
+-    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
+-        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='cancelok')
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, parent=parent, title=title, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='cancelok')
++
+ 
+ class PyHoca_MessageWindow_YesNo(PyHoca_MessageWindow):
+-    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
+-        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='yesno')
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, parent=parent, title=title, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='yesno')
+ 
+ class PyHoca_MessageWindow_NoYes(PyHoca_MessageWindow):
+-    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
+-        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='noyes')
++    def __init__(self, _PyHocaGUI, parent=None, title=None, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, parent=parent, title=title, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='noyes')
+ 
+diff --git a/pyhoca/wxgui/notify.py b/pyhoca/wxgui/notify.py
+index 5f17abc..7cc6239 100644
+--- a/pyhoca/wxgui/notify.py
++++ b/pyhoca/wxgui/notify.py
+@@ -37,6 +37,7 @@ class libnotify_NotifierPopup(object):
+     title = {}
+     text = {}
+     icon = {}
++    timeout = {}
+ 
+     def __init__(self, _PyHocaGUI):
+         self._PyHocaGUI = _PyHocaGUI
+@@ -45,13 +46,15 @@ class libnotify_NotifierPopup(object):
+         if not pynotify.init(&quot;PyHocaGUI&quot;):
+             raise NotSupportedException
+ 
+-    def prepare(self, context, title=None, text=None, icon=None):
++    def prepare(self, context, title=None, text=None, icon=None, timeout=None):
+         if title is not None:
+             self.title[context] = title
+         if text is not None:
+             self.text[context] = text
+         if icon is not None:
+             self.icon[context] = icon
++        if timeout is not None:
++            self.timeout[context] = timeout
+ 
+     def send(self, title=None, text=None, context=None, icon=None, timeout=8000):
+         if context is not None:
+@@ -70,6 +73,11 @@ class libnotify_NotifierPopup(object):
+                 del self.icon[context]
+             except KeyError:
+                 pass
++            try:
++                timeout = self.timeout[context]
++                del self.timeout[context]
++            except KeyError:
++                pass
+ 
+         icon = '<A HREF="file://%s/PyHoca/32x32/%s.png">file://%s/PyHoca/32x32/%s.png</A>' % (_icons_location, icon)
+ 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012513.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0
+</A></li>
+	<LI>Next message: <A HREF="012521.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.0.29.0-36-gc37d4d7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12517">[ date ]</a>
+              <a href="thread.html#12517">[ thread ]</a>
+              <a href="subject.html#12517">[ subject ]</a>
+              <a href="author.html#12517">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

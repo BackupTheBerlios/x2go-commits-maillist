@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-35-g6488c93
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.1.0.0-35-g6488c93&In-Reply-To=%3C20131122135436.93D0F5DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014757.html">
+   <LINK REL="Next"  HREF="014759.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-35-g6488c93</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.1.0.0-35-g6488c93&In-Reply-To=%3C20131122135436.93D0F5DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-35-g6488c93">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Nov 22 14:54:36 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014757.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-36-g0505ae8
+</A></li>
+        <LI>Next message: <A HREF="014759.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.6-20-g3607be1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14758">[ date ]</a>
+              <a href="thread.html#14758">[ thread ]</a>
+              <a href="subject.html#14758">[ subject ]</a>
+              <a href="author.html#14758">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  6488c9391b4b6b9e89fa6795f1d03a16d80a3dce (commit)
+      from  637f3bd26cd45a1b152fb2bfbeae99aab3326c4a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 6488c9391b4b6b9e89fa6795f1d03a16d80a3dce
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 22 14:53:36 2013 +0100
+
+    Add syslog support to x2gousbmount.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog          |    1 +
+ x2gousbmount/x2gousbmount |   10 ++++++++++
+ 2 files changed, 11 insertions(+)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 6294a30..5e39712 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -27,6 +27,7 @@ x2gothinclient (1.1.0.1-0~x2go1) UNRELEASED; urgency=low
+       deprecated location /var/run).
+     - Add TC_NONINTERACTIVE (commented out) to x2gothinclient_settings config
+       file.
++    - Add syslog support to x2gousbmount.
+   * debian/control:
+     + New bin:package x2gothinclient-chroot.
+     + Make sure x2gothinclient-chroot pulls in editing tools like
+diff --git a/x2gousbmount/x2gousbmount b/x2gousbmount/x2gousbmount
+index fcdb2e6..ccc1cfc 100755
+--- a/x2gousbmount/x2gousbmount
++++ b/x2gousbmount/x2gousbmount
+@@ -20,6 +20,10 @@
+ 
+ use strict;
+ use File::Path::Expand;
++use Sys::Syslog qw( :standard :macros );
++
++openlog($0,'cons,pid','user');
++setlogmask( LOG_UPTO(LOG_NOTICE) );
+ 
+ sub check_x2gothinclientd {
+ 	my $x=`ps ax | grep x2gothinclient`;
+@@ -68,6 +72,8 @@ if ( check_x2gothinclientd() )
+ 		### ACTION: mount device after it has been added to USB subsystem
+ 		###
+ 
++		syslog('notice', &quot;device add action called&quot;);
++
+ 		# prepare mount points
+ 		mkdir(&quot;/media&quot;);
+ 		mkdir(&quot;/media/$name&quot;);
+@@ -76,6 +82,7 @@ if ( check_x2gothinclientd() )
+ 		# mount the USB device
+ 		if(system(&quot;mount $dev /media/$name/$ldev -o uid=x2gothinclient,sync,uni_xlate&quot;)==0)
+ 		{
++			syslog('notice', &quot;USB device $name ($ldev) successfully mounted&quot;);
+ 			# if mounted, inform x2goclient about it...
+ 			system(&quot;touch $mntdir/$ldev.mounted&quot;);
+ 			open (D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev&quot;));
+@@ -120,6 +127,8 @@ if ( check_x2gothinclientd() )
+ 		### ACTION: unmount device after it has been removed from the USB subsystem
+ 		###
+ 
++		syslog('notice', &quot;device remove action called&quot;);
++
+ 		# we rely on our own mount logistics here...
+ 		if ( -e &quot;$mntdir/$ldev.mounted&quot; )
+ 		{
+@@ -129,6 +138,7 @@ if ( check_x2gothinclientd() )
+ 			open ( D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev.unexport&quot;));
+ 			print D &quot;unexport=/media/$name/$ldev\n&quot;;
+ 			close (D);
++			syslog('notice', &quot;USB device $name ($ldev) successfully unmounted&quot;);
+ 		}
+ 		elsif ( -e &quot;$mntdir/$ldev.encrypted&quot; )
+ 		{
+
+
+hooks/post-receive
+-- 
+x2gothinclient.git (X2Go Thin Client Environment)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gothinclient.git&quot; (X2Go Thin Client Environment).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014757.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.1.0.0-36-g0505ae8
+</A></li>
+	<LI>Next message: <A HREF="014759.html">[X2Go-Commits] x2goserver.git - release/4.0.1.x (branch) updated:	4.0.1.6-20-g3607be1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14758">[ date ]</a>
+              <a href="thread.html#14758">[ thread ]</a>
+              <a href="subject.html#14758">[ subject ]</a>
+              <a href="author.html#14758">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

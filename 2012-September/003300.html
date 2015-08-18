@@ -1,0 +1,1046 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-52-g52b42f8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-52-g52b42f8&In-Reply-To=%3C20120926054110.BED085DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003299.html">
+   <LINK REL="Next"  HREF="003301.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-52-g52b42f8</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.2-52-g52b42f8&In-Reply-To=%3C20120926054110.BED085DB19%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.2-52-g52b42f8">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 26 07:41:10 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003299.html">[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.2.0.4-4-g84999ab
+</A></li>
+        <LI>Next message: <A HREF="003301.html">[X2go-Commits] x2goserver.git - release/3.1.1.x (branch) updated:	3.1.1.4-2-g8da7d30
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3300">[ date ]</a>
+              <a href="thread.html#3300">[ thread ]</a>
+              <a href="subject.html#3300">[ subject ]</a>
+              <a href="author.html#3300">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  52b42f87ea27940300e1c3821d2919ef917d36a7 (commit)
+       via  33c6eeb64f212bc2ffbd43b6b6cd2d52276425ff (commit)
+      from  795c6a2a57077e7d09cc0bf9e8bdca9e6a4b9f95 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 52b42f87ea27940300e1c3821d2919ef917d36a7
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Wed Sep 26 07:40:59 2012 +0200
+
+    add support for SSH proxy in class SshMasterConnection
+
+commit 33c6eeb64f212bc2ffbd43b6b6cd2d52276425ff
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Tue Sep 25 12:53:46 2012 +0200
+
+    add support for HTTP proxy - developed by Heinrich Schuchardt (<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">xypron.glpk at gmx.de</A>)
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    2 +
+ onmainwindow.cpp        |   71 ++++++------
+ onmainwindow.h          |   13 +--
+ sshmasterconnection.cpp |  273 ++++++++++++++++++++++++++++++++++++++++++-----
+ sshmasterconnection.h   |   55 ++++++++--
+ sshprocess.cpp          |   15 +++
+ sshprocess.h            |    1 +
+ 7 files changed, 352 insertions(+), 78 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index f0e871c..8f9d35a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -55,6 +55,8 @@ x2goclient (3.99.3.0-0~x2go1) UNRELEASED; urgency=low
+     - Fixing kbd focus issue for all kinds of sessions in thinclient mode 
+     - Add command line parameter --ssh-key and --autologin 
+     - disable check box &quot;use default sound port&quot; if sound disabled
++    - add support for HTTP proxy - developed by Heinrich Schuchardt (<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">xypron.glpk at gmx.de</A>)
++    - add support for SSH proxy in class SshMasterConnection 
+ 
+   [ Ricardo Diaz ]
+   * New upstream version (3.99.3.0):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 6af31d4..8bf7a9e 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -96,7 +96,6 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     LDAPPrintSupport=false;
+     managedMode=false;
+     brokerMode=false;
+-    sshProxy.use=false;
+     startEmbedded=false;
+     sshConnection=0;
+     sessionStatusDlg=0;
+@@ -1269,6 +1268,7 @@ void ONMainWindow::closeClient()
+         x2goDebug&lt;&lt;&quot;waiting sshConnection to finish\n&quot;;
+         sshConnection-&gt;wait ( 10000 );
+         x2goDebug&lt;&lt;&quot;sshConnection is closed\n&quot;;
++        sshConnection=0;
+     }
+     if (useLdap)
+     {
+@@ -2769,14 +2769,17 @@ SshMasterConnection* ONMainWindow::startSshConnection ( QString host, QString po
+     {
+         autologin=true;
+     }
+-    con=new SshMasterConnection ( host, port.toInt(),acceptUnknownHosts,
+-                                  login, password,currentKey, autologin,krbLogin, this );
++
++
++    con=new SshMasterConnection (this, host, port.toInt(),acceptUnknownHosts,
++                                 login, password,currentKey, autologin, krbLogin);
+     if (!getSrv)
+         connect ( con, SIGNAL ( connectionOk(QString) ), this, SLOT ( slotSshConnectionOk() ) );
+     else
+         connect ( con, SIGNAL ( connectionOk(QString)), this, SLOT ( slotServSshConnectionOk(QString) ) );
+ 
+-    connect ( con, SIGNAL ( serverAuthError ( int,QString ) ),this,SLOT ( slotSshServerAuthError ( int,QString ) ) );
++    connect ( con, SIGNAL ( serverAuthError ( int,QString, SshMasterConnection* ) ),this,
++              SLOT ( slotSshServerAuthError ( int,QString, SshMasterConnection* ) ) );
+     connect ( con, SIGNAL ( userAuthError ( QString ) ),this,SLOT ( slotSshUserAuthError ( QString ) ) );
+     connect ( con, SIGNAL ( connectionError ( QString,QString ) ), this,
+               SLOT ( slotSshConnectionError ( QString,QString ) ) );
+@@ -2861,7 +2864,7 @@ void ONMainWindow::slotServSshConnectionOk(QString server)
+     lproc-&gt;startNormal ( &quot;export HOSTNAME &amp;&amp; x2golistsessions&quot; );
+ }
+ 
+-void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage )
++void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage, SshMasterConnection* connection )
+ {
+     if ( startHidden )
+     {
+@@ -2877,12 +2880,14 @@ void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage )
+     case SSH_SERVER_KNOWN_CHANGED:
+         errMsg=tr ( &quot;Host key for server changed.\nIt is now: &quot; ) +sshMessage+&quot;\n&quot;+
+                tr ( &quot;For security reasons, connection will be stopped&quot; );
+-        if ( sshConnection )
++        connection-&gt;writeKnownHosts(false);
++        connection-&gt;wait();
++        if(sshConnection &amp;&amp; sshConnection !=connection)
+         {
+             sshConnection-&gt;wait();
+             delete sshConnection;
+-            sshConnection=0l;
+         }
++        sshConnection=0;
+         slotSshUserAuthError ( errMsg );
+         return;
+ 
+@@ -2890,23 +2895,27 @@ void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage )
+         errMsg=tr ( &quot;The host key for this server was not found but an other&quot;
+                     &quot;type of key exists.An attacker might change the default server key to&quot;
+                     &quot;confuse your client into thinking the key does not exist&quot; );
+-        if ( sshConnection )
++        connection-&gt;writeKnownHosts(false);
++        connection-&gt;wait();
++        if(sshConnection &amp;&amp; sshConnection !=connection)
+         {
+             sshConnection-&gt;wait();
+             delete sshConnection;
+-            sshConnection=0l;
+         }
++        sshConnection=0;
+         slotSshUserAuthError ( errMsg );
+         return ;
+ 
+     case SSH_SERVER_ERROR:
+-        if ( sshConnection )
++        connection-&gt;writeKnownHosts(false);
++        connection-&gt;wait();
++        if(sshConnection &amp;&amp; sshConnection !=connection)
+         {
+             sshConnection-&gt;wait();
+             delete sshConnection;
+-            sshConnection=0l;
+         }
+-        slotSshUserAuthError ( errMsg );
++        sshConnection=0;
++        slotSshUserAuthError ( sshMessage );
+         return ;
+     case SSH_SERVER_FILE_NOT_FOUND:
+         errMsg=tr ( &quot;Could not find known host file.&quot;
+@@ -2920,17 +2929,20 @@ void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage )
+ 
+     if ( QMessageBox::warning ( this, tr ( &quot;Host key verification failed&quot; ),errMsg,tr ( &quot;Yes&quot; ), tr ( &quot;No&quot; ) ) !=0 )
+     {
+-        if ( sshConnection )
++        connection-&gt;writeKnownHosts(false);
++        connection-&gt;wait();
++        if(sshConnection &amp;&amp; sshConnection !=connection)
+         {
+             sshConnection-&gt;wait();
+             delete sshConnection;
+-            sshConnection=0l;
+         }
++        sshConnection=0;
+         slotSshUserAuthError ( tr ( &quot;Host key verification failed&quot; ) );
+         return;
+     }
+-    sshConnection-&gt;setAcceptUnknownServers ( true );
+-    sshConnection-&gt;start();
++    connection-&gt;writeKnownHosts(true);
++    connection-&gt;wait();
++    connection-&gt;start();
+ }
+ 
+ void ONMainWindow::slotSshUserAuthError ( QString error )
+@@ -5124,6 +5136,8 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+     }
+ #endif
+     x2goDebug&lt;&lt;&quot;proxy deleted&quot;&lt;&lt;endl;
++    sshConnection-&gt;disconnectSession();
++    sshConnection=0;
+     spoolTimer=0l;
+     tunnel=sndTunnel=fsTunnel=0l;
+     soundServer=0l;
+@@ -5143,7 +5157,10 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+             ( config.checkexitstatus==false ) ) )
+         check_cmd_status();
+     else
++    {
+         sshConnection-&gt;disconnectSession();
++        sshConnection=0;
++    }
+     if ( startHidden )
+         close();
+ 
+@@ -6599,7 +6616,10 @@ void ONMainWindow::slotGetServers ( bool result, QString output,
+     listedSessions.clear();
+     retSessions=0;
+     if (sshConnection)
++    {
+         sshConnection-&gt;disconnectSession();
++        sshConnection=0;
++    }
+     QString passwd;
+     QString user=getCurrentUname();
+     passwd=getCurrentPass();
+@@ -8128,6 +8148,7 @@ void ONMainWindow::slotCmdMessage ( bool result,QString output,
+         pass-&gt;setFocus();
+         pass-&gt;selectAll();
+         sshConnection-&gt;disconnectSession();
++        sshConnection=0;
+         return;
+     }
+     if ( output.indexOf ( &quot;X2GORUNCOMMAND ERR NOEXEC:&quot; ) !=-1 )
+@@ -8140,6 +8161,7 @@ void ONMainWindow::slotCmdMessage ( bool result,QString output,
+                                 QMessageBox::NoButton );
+     }
+     sshConnection-&gt;disconnectSession();
++    sshConnection=0;
+ }
+ 
+ 
+@@ -9568,7 +9590,6 @@ void ONMainWindow::slotEmbedIntoParentWindow()
+ 
+ void ONMainWindow::processSessionConfig()
+ {
+-    sshProxy.use=false;
+     bool haveKey=false;
+ 
+     config.command=&quot;KDE&quot;;
+@@ -9797,22 +9818,6 @@ void ONMainWindow::processCfgLine ( QString line )
+         managedMode=true;
+         acceptRsa=true;
+     }
+-    if ( lst[0]==&quot;proxy&quot; )
+-    {
+-        config.proxy=sshProxy.host=lst[1];
+-        sshProxy.use=true;
+-#ifdef Q_OS_WIN
+-        sshProxy.bin=cygwinPath ( wapiShortFileName ( appDir ) ) +&quot;/ssh&quot;;
+-#else
+-        sshProxy.bin=&quot;ssh&quot;;
+-#endif
+-        return;
+-    }
+-    if ( lst[0]==&quot;proxysshport&quot; )
+-    {
+-        config.proxyport=sshProxy.port=lst[1];
+-        return;
+-    }
+     if ( lst[0]==&quot;cookie&quot; )
+     {
+         config.cookie=lst[1];
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 528df0b..412c00f 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -205,14 +205,6 @@ struct ConfigFile
+     //
+ };
+ 
+-struct SshProxy
+-{
+-    bool use;
+-    QString host;
+-    QString port;
+-    QString bin;
+-};
+-
+ 
+ //wrapper to send mouse events under windows in embedded mode
+ #ifdef Q_OS_WIN
+@@ -302,6 +294,7 @@ public:
+     {
+         return &sessions;
+     }
++    static bool isServerRunning ( int port );
+     void startNewSession();
+     void suspendSession ( QString sessId );
+     bool termSession ( QString sessId,
+@@ -524,7 +517,6 @@ private:
+     bool cleanAllFiles;
+     bool PGPInited;
+     bool resumeAfterSuspending;
+-    struct SshProxy sshProxy;
+     QString sshPort;
+     QString clientSshPort;
+     QString defaultSshPort;
+@@ -887,7 +879,7 @@ private slots:
+     void displayToolBar ( bool );
+     void showSessionStatus();
+     void slotSshConnectionError ( QString message, QString lastSessionError );
+-    void slotSshServerAuthError ( int error, QString sshMessage );
++    void slotSshServerAuthError ( int error, QString sshMessage, SshMasterConnection* connection );
+     void slotSshUserAuthError ( QString error );
+     void slotSshConnectionOk();
+     void slotServSshConnectionOk(QString server);
+@@ -1038,7 +1030,6 @@ private:
+ #ifdef Q_OS_LINUX
+     void startDirectRDP();
+ #endif
+-    bool isServerRunning ( int port );
+     void filterDesktops ( const QString&amp; filter,
+                           bool strict=false );
+     void generateHostDsaKey();
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index bac6bf8..fc4d333 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -19,6 +19,7 @@
+  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+  ***************************************************************************/
+ 
++
+ #include &quot;x2goclientconfig.h&quot;
+ #include &quot;x2gologdebug.h&quot;
+ #include &quot;sshmasterconnection.h&quot;
+@@ -26,6 +27,9 @@
+ #include &lt;stdio.h&gt;
+ #include &quot;sshprocess.h&quot;
+ 
++#include &lt;sys/socket.h&gt; /* for socket(), connect(), send(), and recv() */
++#include &lt;arpa/inet.h&gt;  /* for sockaddr_in and inet_addr() */
++
+ #include &lt;QStringList&gt;
+ #include &lt;QFile&gt;
+ #include &lt;QDir&gt;
+@@ -38,11 +42,15 @@
+ #ifndef Q_OS_WIN
+ #include &lt;arpa/inet.h&gt;
+ #include &lt;netinet/tcp.h&gt;
++#include &lt;qt4/QtNetwork/qabstractsocket.h&gt;
+ #endif
+ 
+ 
+ #include &quot;onmainwindow.h&quot;
+ 
++
++#define PROXYTUNNELPORT 44444
++
+ #undef DEBUG
+ //#define DEBUG
+ 
+@@ -51,15 +59,23 @@
+ 
+ static bool isLibSshInited=false;
+ 
+-
+-SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUnknownServers, QString user,
+-        QString pass, QString key,bool autologin, bool krblogin, QObject* parent ) : QThread ( parent )
++SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int port, bool acceptUnknownServers, QString user,
++        QString pass, QString key, bool autologin, bool krblogin,
++        bool useproxy, ProxyType type, QString proxyserver, quint16 proxyport,
++        QString proxylogin, QString proxypassword, QString proxykey,
++        bool proxyautologin ) : QThread ( parent )
+ {
+ #if defined ( Q_OS_DARWIN )
+     // Mac OS X provides only 512KB stack space for secondary threads.
+     // As we put a 512KB buffer on the stack later on, we need a bigger stack space.
+     setStackSize (sizeof (char) * 1024 * 1024 * 2);
+ #endif
++    tcpProxySocket = NULL;
++    tcpNetworkProxy = NULL;
++    sshProxy= NULL;
++    sshProxyReady=false;
++
++    breakLoop=false;
+     this-&gt;host=host;
+     this-&gt;port=port;
+     this-&gt;user=user;
+@@ -67,6 +83,14 @@ SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUn
+     this-&gt;key=key;
+     this-&gt;autologin=autologin;
+     this-&gt;acceptUnknownServers=acceptUnknownServers;
++    this-&gt;useproxy=useproxy;
++    this-&gt;proxytype=type;
++    this-&gt;proxyautologin=proxyautologin;
++    this-&gt;proxykey=proxykey;
++    this-&gt;proxyserver=proxyserver;
++    this-&gt;proxyport=proxyport;
++    this-&gt;proxylogin=proxylogin;
++    this-&gt;proxypassword=proxypassword;
+     reverseTunnel=false;
+     mainWnd=(ONMainWindow*) parent;
+     kerberos=krblogin;
+@@ -77,16 +101,24 @@ SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUn
+         x2goDebug&lt;&lt;&quot;starting ssh connection without kerberos authentication&quot;&lt;&lt;endl;
+ #endif
+     kerberos=false;
++
+ }
+ 
+-SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUnknownServers, QString user,
+-        QString pass, QString key, bool autologin,
++SshMasterConnection::SshMasterConnection (QObject* parent, ONMainWindow* mwd, QString host, int port, bool acceptUnknownServers,
++        QString user, QString pass, QString key,bool autologin,
+         int remotePort, QString localHost, int localPort, SshProcess* creator,
+-        QObject* parent, ONMainWindow* mwd ) : QThread ( parent )
++        bool useproxy, ProxyType type, QString proxyserver, quint16 proxyport,
++        QString proxylogin, QString proxypassword, QString proxykey,
++        bool proxyautologin, int localProxyPort) : QThread ( parent )
+ {
+ #if defined ( Q_OS_DARWIN )
+     setStackSize (sizeof (char) * 1024 * 1024 * 2);
+ #endif
++    tcpProxySocket = NULL;
++    tcpNetworkProxy = NULL;
++    sshProxy= NULL;
++    sshProxyReady=false;
++    breakLoop=false;
+     this-&gt;host=host;
+     this-&gt;port=port;
+     this-&gt;user=user;
+@@ -94,6 +126,15 @@ SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUn
+     this-&gt;key=key;
+     this-&gt;autologin=autologin;
+     this-&gt;acceptUnknownServers=acceptUnknownServers;
++    this-&gt;useproxy=useproxy;
++    this-&gt;proxyserver=proxyserver;
++    this-&gt;proxyport=proxyport;
++    this-&gt;proxylogin=proxylogin;
++    this-&gt;proxypassword=proxypassword;
++    this-&gt;proxytype=type;
++    this-&gt;proxyautologin=proxyautologin;
++    this-&gt;proxykey=proxykey;
++    this-&gt;localProxyPort=localProxyPort;
+     reverseTunnelLocalHost=localHost;
+     reverseTunnelLocalPort=localPort;
+     reverseTunnelCreator=creator;
+@@ -102,12 +143,68 @@ SshMasterConnection::SshMasterConnection ( QString host, int port, bool acceptUn
+     mainWnd=mwd;
+ }
+ 
++void SshMasterConnection::slotSshProxyConnectionOk()
++{
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;sshproxy connected&quot;;
++#endif
++    SshProcess* tunnel=new SshProcess ( sshProxy, this );
++
++    connect ( tunnel,SIGNAL ( sshFinished ( bool,  QString, SshProcess* ) ),
++              this,SLOT ( slotSshProxyTunnelFailed(bool,QString,SshProcess*)));
++    connect ( tunnel,SIGNAL ( sshTunnelOk() ),
++              this,SLOT ( slotSshProxyTunnelOk()) );
++
++    localProxyPort=PROXYTUNNELPORT;
++    while ( ONMainWindow::isServerRunning ( localProxyPort ) )
++        ++localProxyPort;
++
++    tunnel-&gt;startTunnel ( host, port, &quot;localhost&quot;,localProxyPort);
++
++}
++
++
++void SshMasterConnection::slotSshProxyConnectionError(QString err1, QString err2)
++{
++    breakLoop=true;
++    emit connectionError(tr(&quot;SSH proxy connection error&quot;),err1+&quot; &quot;+err2);
++}
++
++void SshMasterConnection::slotSshProxyServerAuthError(int errCode, QString err, SshMasterConnection* con)
++{
++    emit serverAuthError(errCode, tr(&quot;SSH proxy connection error: &quot;)+err, con);
++}
++
++void SshMasterConnection::slotSshProxyUserAuthError(QString err)
++{
++    breakLoop=true;
++    emit userAuthError(tr(&quot;SSH proxy connection error: &quot;)+err);
++}
++
++
++void SshMasterConnection::slotSshProxyTunnelOk()
++{
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;Ssh proxy tunnel established&quot;;
++#endif
++    sshProxyReady=true;
++}
++
++void SshMasterConnection::slotSshProxyTunnelFailed(bool ,  QString output,
++        SshProcess*)
++{
++    breakLoop=true;
++    emit connectionError(tr(&quot;Failed to create SSH proxy tunnel&quot;), output);
++}
++
++
+ SshMasterConnection* SshMasterConnection::reverseTunnelConnection ( SshProcess* creator,
+         int remotePort, QString localHost, int localPort )
+ {
+-    SshMasterConnection* con=new SshMasterConnection ( host,port,acceptUnknownServers,user,pass,
++    SshMasterConnection* con=new SshMasterConnection (this, mainWnd, host,port,acceptUnknownServers,user,pass,
+             key,autologin, remotePort,localHost,
+-            localPort,creator,this, mainWnd);
++            localPort,creator, useproxy, proxytype, proxyserver, proxyport, proxylogin,
++            proxypassword, proxykey, proxyautologin, localProxyPort );
+     con-&gt;kerberos=kerberos;
+ 
+     connect ( con,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ),this,SIGNAL ( ioErr ( SshProcess*,QString,QString ) ) );
+@@ -120,8 +217,41 @@ SshMasterConnection* SshMasterConnection::reverseTunnelConnection ( SshProcess*
+     return con;
+ }
+ 
++void SshMasterConnection::slotSshProxyServerAuthAborted()
++{
++    breakLoop=true;
++}
++
+ void SshMasterConnection::run()
+ {
++    if(useproxy &amp;&amp; proxytype==PROXYSSH &amp;&amp; !reverseTunnel)
++    {
++
++        sshProxy=new SshMasterConnection (0, proxyserver, proxyport,acceptUnknownServers,
++                                          proxylogin, proxypassword, proxykey, proxyautologin, kerberos, false);
++        connect ( sshProxy, SIGNAL ( connectionOk(QString) ), this, SLOT ( slotSshProxyConnectionOk() ) );
++
++        connect ( sshProxy, SIGNAL ( serverAuthError ( int,QString,SshMasterConnection* ) ),this,
++                  SLOT ( slotSshProxyServerAuthError ( int,QString, SshMasterConnection* ) ) );
++        connect ( sshProxy, SIGNAL ( serverAuthAborted()),this,
++                  SLOT ( slotSshProxyServerAuthAborted()) );
++        connect ( sshProxy, SIGNAL ( userAuthError ( QString ) ),this,SLOT ( slotSshProxyUserAuthError ( QString ) ) );
++        connect ( sshProxy, SIGNAL ( connectionError ( QString,QString ) ), this,
++                  SLOT ( slotSshProxyConnectionError ( QString,QString ) ) );
++
++        sshProxyReady=false;
++        sshProxy-&gt;start();
++
++        while(! sshProxyReady)
++        {
++            if(breakLoop)
++            {
++                quit();
++                return;
++            }
++            this-&gt;usleep(200);
++        }
++    }
+     disconnectSessionFlag=false;
+     if ( !isLibSshInited )
+     {
+@@ -164,6 +294,7 @@ void SshMasterConnection::run()
+         quit();
+         return;
+     }
++
+ #ifdef Q_OS_WIN
+     ssh_options_set ( my_ssh_session, SSH_OPTIONS_SSH_DIR, (mainWnd-&gt;getHomeDirectory()+&quot;/ssh&quot;).toAscii());
+ #endif
+@@ -171,10 +302,40 @@ void SshMasterConnection::run()
+ 
+     ssh_options_set(my_ssh_session, SSH_OPTIONS_TIMEOUT, &amp;timeout);
+ 
++    if (useproxy &amp;&amp; proxytype == PROXYHTTP)
++    {
++        socket_t proxysocket = SSH_INVALID_SOCKET;
++
++        tcpNetworkProxy = new QNetworkProxy( QNetworkProxy::HttpProxy,
++                                             proxyserver, proxyport, proxylogin, proxypassword);
++        tcpProxySocket = new QTcpSocket();
++        tcpProxySocket-&gt;setProxy( *tcpNetworkProxy );
++        tcpProxySocket-&gt;connectToHost(host, port);
++        proxysocket = tcpProxySocket-&gt;socketDescriptor();
++        if (!tcpProxySocket-&gt;waitForConnected(30000))
++        {
++            QString message=tr ( &quot;Can not connect to proxy server&quot; );
++            x2goDebug&lt;&lt;message&lt;&lt;endl;
++            emit connectionError ( &quot;Proxy&quot;, message );
++            ssh_free ( my_ssh_session );
++            quit();
++            return;
++        }
++#ifdef DEBUG
++        x2goDebug &lt;&lt;  &quot;Created HTTP proxy socket &quot; &lt;&lt; proxysocket &lt;&lt; endl;
++#endif
++        ssh_options_set( my_ssh_session, SSH_OPTIONS_FD, &amp;proxysocket);
++        ssh_set_fd_toread( my_ssh_session);
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;Connected to HTTP proxy server &quot; &lt;&lt; proxyserver &lt;&lt; &quot;:&quot;
++                 &lt;&lt; proxyport &lt;&lt;endl;
++#endif
++    }
++
+     if ( !sshConnect() )
+     {
+         QString err=ssh_get_error ( my_ssh_session );
+-        QString message=tr ( &quot;Can not connect to &quot; ) +host+QString::number ( port );
++        QString message=tr ( &quot;Can not connect to &quot; ) +host+&quot;:&quot;+QString::number ( port );
+         x2goDebug&lt;&lt;message&lt;&lt;&quot; - &quot;&lt;&lt;err;
+         emit connectionError ( message, err );
+         if ( reverseTunnel )
+@@ -187,10 +348,23 @@ void SshMasterConnection::run()
+     int state=serverAuth ( errMsg );
+     if ( state != SSH_SERVER_KNOWN_OK )
+     {
+-        emit serverAuthError ( state,errMsg );
++        writeHostKey=writeHostKeyReady=false;
++        emit serverAuthError ( state,errMsg, this );
++        for(;;)
++        {
++            this-&gt;usleep(100);
++            writeHostKeyMutex.lock();
++            if(writeHostKeyReady)
++            {
++                if(writeHostKey)
++                    ssh_write_knownhost(my_ssh_session);
++                writeHostKeyMutex.unlock();
++                break;
++            }
++            writeHostKeyMutex.unlock();
++        }
+         ssh_disconnect ( my_ssh_session );
+         ssh_free ( my_ssh_session );
+-        quit();
+         return;
+     }
+ 
+@@ -261,8 +435,11 @@ void SshMasterConnection::run()
+ 
+ SshMasterConnection::~SshMasterConnection()
+ {
+-    /*    ssh_disconnect(my_ssh_session);
+-        ssh_free(my_ssh_session);*/
++
++    if (tcpProxySocket != NULL)
++        delete tcpProxySocket;
++    if (tcpNetworkProxy != NULL)
++        delete tcpNetworkProxy;
+ }
+ 
+ 
+@@ -286,16 +463,47 @@ bool SshMasterConnection::sshConnect()
+ {
+     int rc;
+     QByteArray tmpBA = host.toLocal8Bit();
+-    ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, tmpBA.data() );
+-    ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;port );
++    if(useproxy &amp;&amp; proxytype==PROXYSSH)
++    {
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, &quot;localhost&quot; );
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;localProxyPort );
++
++    }
++    else
++    {
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, tmpBA.data() );
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;port );
++    }
+     rc = ssh_connect ( my_ssh_session );
+     if ( rc != SSH_OK )
++    {
+         return false;
+-    return true;
++    }
++//set values for remote host for proper server authentication
++    if(useproxy &amp;&amp; proxytype==PROXYSSH)
++    {
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_HOST, tmpBA.data() );
++        ssh_options_set ( my_ssh_session, SSH_OPTIONS_PORT, &amp;port );
+ 
++    }
++    return true;
+ }
+ 
+ 
++void SshMasterConnection::writeKnownHosts(bool write)
++{
++    writeHostKeyMutex.lock();
++    writeHostKeyReady=true;
++    writeHostKey=write;
++    if(!write)
++    {
++        breakLoop=true;
++        emit serverAuthAborted();
++    }
++    writeHostKeyMutex.unlock();
++
++}
++
+ 
+ int SshMasterConnection::serverAuth ( QString&amp; errorMsg )
+ {
+@@ -326,7 +534,7 @@ int SshMasterConnection::serverAuth ( QString&amp; errorMsg )
+ 
+     case SSH_SERVER_KNOWN_CHANGED:
+         hexa = ssh_get_hexa ( hash, hlen );
+-        errorMsg=hexa;
++        errorMsg=host+&quot;:&quot;+QString::number(port)+&quot; - &quot;+hexa;
+         free ( hexa );
+         break;
+     case SSH_SERVER_FOUND_OTHER:
+@@ -336,7 +544,7 @@ int SshMasterConnection::serverAuth ( QString&amp; errorMsg )
+         if ( !acceptUnknownServers )
+         {
+             hexa = ssh_get_hexa ( hash, hlen );
+-            errorMsg=hexa;
++            errorMsg=host+&quot;:&quot;+QString::number(port)+&quot; - &quot;+hexa;
+             free ( hexa );
+             break;
+         }
+@@ -345,7 +553,7 @@ int SshMasterConnection::serverAuth ( QString&amp; errorMsg )
+         break;
+ 
+     case SSH_SERVER_ERROR:
+-        errorMsg=ssh_get_error ( my_ssh_session );
++        errorMsg=host+&quot;:&quot;+QString::number(port)+&quot; - &quot;+ssh_get_error ( my_ssh_session );
+         break;
+     }
+     free ( hash );
+@@ -524,15 +732,17 @@ void SshMasterConnection::addCopyRequest ( SshProcess* creator, QString src, QSt
+ 
+ void SshMasterConnection::disconnectSession()
+ {
++
+     disconnectFlagMutex.lock();
+     disconnectSessionFlag=true;
+     disconnectFlagMutex.unlock();
++
+ }
+ 
+ void SshMasterConnection::copy()
+ {
+ 
+-    for ( int i=copyRequests.size()-1;i&gt;=0;--i )
++    for ( int i=copyRequests.size()-1; i&gt;=0; --i )
+     {
+         QStringList lst=copyRequests[i].dst.split ( &quot;/&quot; );
+         QString dstFile=lst.last();
+@@ -634,13 +844,13 @@ void SshMasterConnection::channelLoop()
+                 inet_aton ( reverseTunnelLocalHost.toAscii(), &amp;address.sin_addr );
+ #else
+                 address.sin_addr.s_addr=inet_addr (
+-                                            reverseTunnelLocalHost.toAscii() );
++                    reverseTunnelLocalHost.toAscii() );
+ #endif
+ 
+                 if ( ::connect ( sock, ( struct sockaddr * ) &amp;address,sizeof ( address ) ) !=0 )
+                 {
+                     QString errMsg=tr ( &quot;can not connect to &quot; ) +
+-                                   reverseTunnelLocalHost+&quot;:&quot;+QString::number ( reverseTunnelLocalPort );
++                    reverseTunnelLocalHost+&quot;:&quot;+QString::number ( reverseTunnelLocalPort );
+                     x2goDebug&lt;&lt;errMsg&lt;&lt;endl;
+                     emit ioErr ( reverseTunnelCreator, errMsg, &quot;&quot; );
+                     continue;
+@@ -676,12 +886,20 @@ void SshMasterConnection::channelLoop()
+ 
+         if ( disconnect )
+         {
++
++            if (useproxy &amp;&amp; proxytype==PROXYSSH&amp;&amp;sshProxy)
++            {
++                sshProxy-&gt;disconnectSession();
++                sshProxy-&gt;wait ( 10000 );
++                sshProxy=0;
++            }
++
+ #ifdef DEBUG
+             if ( !reverseTunnel )
+                 x2goDebug&lt;&lt;&quot;Disconnecting...&quot;&lt;&lt;endl;
+ #endif
+             reverseTunnelConnectionsMutex.lock();
+-            for ( int i=0;i&lt;reverseTunnelConnections.size();++i )
++            for ( int i=0; i&lt;reverseTunnelConnections.size(); ++i )
+             {
+                 reverseTunnelConnections[i]-&gt;disconnectSession();
+                 reverseTunnelConnections[i]-&gt;wait ( 10000 );
+@@ -690,7 +908,7 @@ void SshMasterConnection::channelLoop()
+             reverseTunnelConnectionsMutex.unlock();
+ 
+             channelConnectionsMutex.lock();
+-            for ( int i=0;i&lt;channelConnections.size();++i )
++            for ( int i=0; i&lt;channelConnections.size(); ++i )
+             {
+                 finalize ( i );
+             }
+@@ -721,7 +939,7 @@ void SshMasterConnection::channelLoop()
+ 
+         FD_ZERO ( &amp;rfds );
+ 
+-        for ( int i=0;i&lt;channelConnections.size();++i )
++        for ( int i=0; i&lt;channelConnections.size(); ++i )
+         {
+             int tcpSocket=channelConnections.at ( i ).sock;
+             if ( tcpSocket&gt;0 )
+@@ -805,7 +1023,7 @@ void SshMasterConnection::channelLoop()
+ //         x2goDebug&lt;&lt;&quot;select exited&quot;&lt;&lt;endl;
+ 
+         channelConnectionsMutex.lock();
+-        for ( int i=channelConnections.size()-1;i&gt;=0;--i )
++        for ( int i=channelConnections.size()-1; i&gt;=0; --i )
+         {
+             int tcpSocket=channelConnections.at ( i ).sock;
+             ssh_channel channel=channelConnections.at ( i ).channel;
+@@ -937,9 +1155,12 @@ void SshMasterConnection::finalize ( int item )
+     }
+     if ( tcpSocket&gt;0 )
+     {
++        shutdown(tcpSocket, SHUT_RDWR);
+         close ( tcpSocket );
+     }
+     SshProcess* proc=channelConnections[item].creator;
++    proc-&gt;shutdownSocket();
+     channelConnections.removeAt ( item );
+     emit channelClosed ( proc );
+ }
++
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index 379b6b2..6a46d28 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -28,6 +28,8 @@
+ #include &lt;QMutex&gt;
+ #include &lt;QThread&gt;
+ #include &lt;QStringList&gt;
++#include &lt;QTcpSocket&gt;
++#include &lt;QNetworkProxy&gt;
+ 
+ class ONMainWindow;
+ class SshProcess;
+@@ -54,14 +56,17 @@ struct CopyRequest
+     QString dst;
+ };
+ 
+-
+ class SshMasterConnection: public QThread
+ {
+     Q_OBJECT
+ public:
++    enum ProxyType {PROXYSSH, PROXYHTTP};
+     void run();
+-    SshMasterConnection(QString host, int port, bool acceptUnknownServers, QString user,
+-                        QString pass, QString key, bool autologin, bool krblogin, QObject* parent = 0);
++    SshMasterConnection(QObject* parent, QString host, int port, bool acceptUnknownServers, QString user,
++                        QString pass, QString key, bool autologin, bool krblogin=false,
++                        bool useproxy=false, ProxyType type=PROXYSSH, QString proxyserver=QString::null, quint16 proxyport=0,
++                        QString proxylogin=QString::null, QString proxypassword=QString::null, QString proxyKey=QString::null,
++                        bool proxyAutologin=false);
+     ~SshMasterConnection();
+     static void finalizeLibSsh();
+     void addChannelConnection(SshProcess* creator, int sock, QString forwardHost,
+@@ -69,6 +74,7 @@ public:
+     void addChannelConnection(SshProcess* creator, QString cmd);
+     void addCopyRequest(SshProcess* creator, QString src, QString dst);
+     void disconnectSession();
++    void writeKnownHosts(bool);
+     void setAcceptUnknownServers(bool accept)
+     {
+         acceptUnknownServers=accept;
+@@ -92,12 +98,13 @@ public:
+         return kerberos;
+     };
+ 
+-
+ private:
+-    SshMasterConnection(QString host, int port, bool acceptUnknownServers, QString user, QString pass, QString key,
+-                        bool autologin,
++    SshMasterConnection(QObject* parent, ONMainWindow* parWnd, QString host, int port, bool acceptUnknownServers,
++                        QString user, QString pass, QString key,bool autologin,
+                         int remotePort, QString localHost, int localPort, SshProcess* creator,
+-                        QObject* parent, ONMainWindow* parWnd);
++                        bool useproxy=false, ProxyType type=PROXYSSH, QString proxyserver=QString::null, quint16 proxyport=0,
++                        QString proxylogin=QString::null, QString proxypassword=QString::null, QString proxyKey=QString::null,
++                        bool proxyAutologin=false, int localProxyPort=0);
+     bool sshConnect();
+     bool userAuthWithPass();
+     bool userAuthAuto();
+@@ -111,6 +118,19 @@ private:
+     void parseKnownHosts();
+ #endif
+ 
++private slots:
++
++    void slotSshProxyServerAuthError ( int,QString, SshMasterConnection* );
++    void slotSshProxyServerAuthAborted ();
++    void slotSshProxyUserAuthError ( QString );
++    void slotSshProxyConnectionError ( QString,QString );
++
++
++    void slotSshProxyConnectionOk();
++    void slotSshProxyTunnelOk();
++    void slotSshProxyTunnelFailed(bool result,  QString output,
++                                  SshProcess*);
++
+ private:
+     ssh_session my_ssh_session;
+     QList&lt;ChannelConnection&gt; channelConnections;
+@@ -120,16 +140,29 @@ private:
+     QMutex copyRequestMutex;
+     QMutex disconnectFlagMutex;
+     QMutex reverseTunnelConnectionsMutex;
++    QMutex writeHostKeyMutex;
++    bool writeHostKey;
++    bool writeHostKeyReady;
++
+     QString host;
+     int port;
+     QString user;
+     QString pass;
+     QString key;
++    bool useproxy;
++    QString proxyserver;
++    quint16 proxyport;
++    QString proxylogin;
++    QString proxypassword;
++    ProxyType proxytype;
++    bool proxyautologin;
++    QString proxykey;
+     QStringList authErrors;
+     bool autologin;
+     bool disconnectSessionFlag;
+     bool reverseTunnel;
+     int reverseTunnelRemotePort;
++    int localProxyPort;
+     int reverseTunnelLocalPort;
+     bool acceptUnknownServers;
+     QString reverseTunnelLocalHost;
+@@ -137,6 +170,11 @@ private:
+     ONMainWindow* mainWnd;
+     bool kerberos;
+     QString sshProcErrString;
++    QTcpSocket *tcpProxySocket;
++    QNetworkProxy *tcpNetworkProxy;
++    SshMasterConnection* sshProxy;
++    bool sshProxyReady;
++    bool breakLoop;
+ 
+ signals:
+     void stdErr(SshProcess* caller, QByteArray data);
+@@ -147,7 +185,8 @@ signals:
+     void channelClosed(SshProcess* caller);
+ 
+     void connectionError(QString message, QString lastSessionError);
+-    void serverAuthError(int errCode, QString lastSessionError);
++    void serverAuthError(int errCode, QString lastSessionError, SshMasterConnection*);
++    void serverAuthAborted();
+     void userAuthError(QString error);
+ 
+     void newReverceTunnelConnection(SshProcess* creator, void* newChannel);
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 5ee5a72..11f342c 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -60,6 +60,21 @@ SshProcess::~SshProcess()
+     }
+ }
+ 
++void SshProcess::shutdownSocket()
++{
++    if (serverSocket&gt;0)
++    {
++#ifdef Q_OS_WIN
++        closesocket(serverSocket);
++        WSACleanup();
++
++#else
++        close(serverSocket);
++#endif
++        serverSocket=0;
++
++    }
++}
+ 
+ void SshProcess::slotCheckNewConnection()
+ {
+diff --git a/sshprocess.h b/sshprocess.h
+index 54e94b5..5b9dad4 100644
+--- a/sshprocess.h
++++ b/sshprocess.h
+@@ -45,6 +45,7 @@ public:
+     void startTunnel(const QString&amp; forwardHost, uint forwardPort, const QString&amp; localHost,
+                      uint localPort, bool reverse=false);
+     void start_cp(QString src, QString dst);
++    void shutdownSocket();
+     QString getSource() 
+     {
+         return scpSource;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003299.html">[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.2.0.4-4-g84999ab
+</A></li>
+	<LI>Next message: <A HREF="003301.html">[X2go-Commits] x2goserver.git - release/3.1.1.x (branch) updated:	3.1.1.4-2-g8da7d30
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3300">[ date ]</a>
+              <a href="thread.html#3300">[ thread ]</a>
+              <a href="subject.html#3300">[ subject ]</a>
+              <a href="author.html#3300">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

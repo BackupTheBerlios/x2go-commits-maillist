@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-12-gc121b7e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-12-gc121b7e&In-Reply-To=%3C20131217144330.480825DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016937.html">
+   <LINK REL="Next"  HREF="016936.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-12-gc121b7e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-12-gc121b7e&In-Reply-To=%3C20131217144330.480825DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-12-gc121b7e">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:30 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016937.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-8-gf376e1c
+</A></li>
+        <LI>Next message: <A HREF="016936.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-15-gec8bb38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16935">[ date ]</a>
+              <a href="thread.html#16935">[ thread ]</a>
+              <a href="subject.html#16935">[ subject ]</a>
+              <a href="author.html#16935">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  c121b7e2d3d83abdc2d7a29637bc3294e38b2ec3 (commit)
+      from  cf33d551c21c86c7ea654914930550b0fd0b2c79 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    3 +++
+ sshmasterconnection.cpp |    6 ++++--
+ sshmasterconnection.h   |    5 +++--
+ sshprocess.cpp          |   23 ++++++++++++++++-------
+ sshprocess.h            |    2 +-
+ 5 files changed, 27 insertions(+), 12 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e484ba5..e069591 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,9 @@ x2goclient (4.0.1.2-0~x2go2) UNRELEASED; urgency=low
+     + Store broker HTTPS certificate exceptions in
+       $HOME/.x2go/ssl/exceptions (before: $HOME/ssl/exceptions).
+       (Fixes: #328).
++    + Perform sanity checks on data that comes in from X2Go Servers.
++      Prohibit the execution of arbitrary code via the ~/.bashrc file.
++      (Fixes: #333).
+   * Pull-in packaging changes from Debian.
+ 
+   [ Ricardo D&#237;az Mart&#237;n ]
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index d71ce84..0672eb0 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -903,7 +903,7 @@ void SshMasterConnection::addChannelConnection ( SshProcess* creator, int sock,
+ }
+ 
+ 
+-void SshMasterConnection::addChannelConnection ( SshProcess* creator, QString cmd )
++void SshMasterConnection::addChannelConnection ( SshProcess* creator, QString uuid, QString cmd )
+ {
+ 
+     ChannelConnection con;
+@@ -911,6 +911,7 @@ void SshMasterConnection::addChannelConnection ( SshProcess* creator, QString cm
+     con.sock=-1;
+     con.creator=creator;
+     con.command=cmd;
++    con.uuid=uuid;
+ 
+     channelConnectionsMutex.lock();
+     channelConnections&lt;&lt;con;
+@@ -1407,7 +1408,8 @@ void SshMasterConnection::finalize ( int item )
+         close ( tcpSocket );
+     }
+     SshProcess* proc=channelConnections[item].creator;
++    QString uuid=channelConnections[item].uuid;
+     channelConnections.removeAt ( item );
+-    emit channelClosed ( proc );
++    emit channelClosed ( proc, uuid );
+ }
+ 
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index bbefe0f..43ad7f6 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -39,6 +39,7 @@ struct ChannelConnection
+     QString forwardHost;
+     QString localHost;
+     QString command;
++    QString uuid;
+     bool operator==(ChannelConnection&amp; t)
+     {
+         return (channel==t.channel);
+@@ -67,7 +68,7 @@ public:
+     static void finalizeLibSsh();
+     void addChannelConnection(SshProcess* creator, int sock, QString forwardHost,
+                               int forwardPort, QString localHost, int localPort, void* channel=0l);
+-    void addChannelConnection(SshProcess* creator, QString cmd);
++    void addChannelConnection(SshProcess* creator, QString uuid, QString cmd);
+     void addCopyRequest(SshProcess* creator, QString src, QString dst);
+     void writeKnownHosts(bool);
+     void setKeyPhrase(QString);
+@@ -191,7 +192,7 @@ signals:
+     void ioErr(SshProcess* caller, QString error, QString lastSessionError);
+     void copyErr(SshProcess* caller, QString error, QString lastSessionError);
+     void copyOk(SshProcess* caller);
+-    void channelClosed(SshProcess* caller);
++    void channelClosed(SshProcess* caller, QString uuid);
+ 
+     void connectionError(QString message, QString lastSessionError);
+     void serverAuthError(int errCode, QString lastSessionError, SshMasterConnection*);
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 1347e21..3068ca0 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -20,6 +20,7 @@
+ #include &quot;sshmasterconnection.h&quot;
+ #include &quot;sshprocess.h&quot;
+ #include &lt;QTimer&gt;
++#include &lt;QUuid&gt;
+ 
+ #ifndef Q_OS_WIN
+ #include &lt;arpa/inet.h&gt;
+@@ -128,14 +129,17 @@ void SshProcess::tunnelLoop()
+ 
+ void SshProcess::startNormal(const QString&amp; cmd)
+ {
+-    QString shcmd = &quot;sh -c \&quot;&quot;+cmd+&quot;\&quot;&quot;;
+-// #ifdef DEBUG
++    QUuid uuid = QUuid::createUuid();
++    QString uuidStr = uuid.toString().mid(1, 36).toLower();
++
++    QString shcmd = &quot;sh -c \&quot;echo X2GODATABEGIN:&quot; + uuidStr + &quot; &amp;&amp; &quot;+cmd+&quot; &amp;&amp; echo X2GODATAEND:&quot; + uuidStr +&quot;\&quot;;&quot;;
++//#ifdef DEBUG
+ // ONLY UNCOMMENT FOR TESTING, MIGHT REVEAL PASSWORD WHEN command=RDP
+ //    x2goDebug&lt;&lt;&quot;executing remote command: &quot;&lt;&lt;shcmd&lt;&lt;endl;
+ // #endif
+-    masterCon-&gt;addChannelConnection(this, shcmd);
++    masterCon-&gt;addChannelConnection(this, uuidStr, shcmd);
+     connect(masterCon,SIGNAL(stdOut(SshProcess*,QByteArray)),this,SLOT(slotStdOut(SshProcess*,QByteArray)));
+-    connect(masterCon,SIGNAL(channelClosed(SshProcess*)), this,SLOT(slotChannelClosed(SshProcess*)));
++    connect(masterCon,SIGNAL(channelClosed(SshProcess*,QString)), this,SLOT(slotChannelClosed(SshProcess*,QString)));
+ }
+ 
+ void SshProcess::start_cp(QString src, QString dst)
+@@ -216,7 +220,7 @@ void SshProcess::slotReverseTunnelOk(SshProcess* creator)
+ }
+ 
+ 
+-void SshProcess::slotChannelClosed(SshProcess* creator)
++void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+ {
+     if (creator!=this)
+         return;
+@@ -235,8 +239,13 @@ void SshProcess::slotChannelClosed(SshProcess* creator)
+             x2goDebug&lt;&lt;&quot;have only stderr, something must be wrong&quot;&lt;&lt;endl;
+ #endif
+         }
+-        else
+-            output=stdOutString;
++        else {
++            QString begin_marker = &quot;X2GODATABEGIN:&quot;+uuid+&quot;\n&quot;;
++            QString end_marker = &quot;X2GODATAEND:&quot;+uuid+&quot;\n&quot;;
++            int output_begin=stdOutString.indexOf(begin_marker) + begin_marker.length();
++            int output_end=stdOutString.indexOf(end_marker);
++            output = stdOutString.mid(output_begin, output_end-output_begin);
++        }
+     }
+ #ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;ssh finished:&quot;&lt;&lt;normalExited&lt;&lt;&quot; - &quot;&lt;&lt;output&lt;&lt;endl;
+diff --git a/sshprocess.h b/sshprocess.h
+index d446e22..caddb3f 100644
+--- a/sshprocess.h
++++ b/sshprocess.h
+@@ -77,7 +77,7 @@ private slots:
+     void slotStdErr(SshProcess* creator, QByteArray data);
+     void slotStdOut(SshProcess* creator, QByteArray data);
+     void slotIOerr(SshProcess* creator,QString message, QString sshSessionErr);
+-    void slotChannelClosed(SshProcess* creator);
++    void slotChannelClosed(SshProcess* creator, QString uuid);
+     void slotReverseTunnelOk(SshProcess* creator);
+     void slotCopyOk(SshProcess* creator);
+     void slotCopyErr(SshProcess* creator,QString message, QString sshSessionErr);
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016937.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-8-gf376e1c
+</A></li>
+	<LI>Next message: <A HREF="016936.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-15-gec8bb38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16935">[ date ]</a>
+              <a href="thread.html#16935">[ thread ]</a>
+              <a href="subject.html#16935">[ subject ]</a>
+              <a href="author.html#16935">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,929 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	30d74cbdcbcf4a1166e32381d27323c0e9dc9c50
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%0930d74cbdcbcf4a1166e32381d27323c0e9dc9c50&In-Reply-To=%3C20130519110437.BB2C95DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007418.html">
+   <LINK REL="Next"  HREF="007414.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	30d74cbdcbcf4a1166e32381d27323c0e9dc9c50</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%0930d74cbdcbcf4a1166e32381d27323c0e9dc9c50&In-Reply-To=%3C20130519110437.BB2C95DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	30d74cbdcbcf4a1166e32381d27323c0e9dc9c50">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:37 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007418.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	23dabd44c78fe66a0c4fbcc64c1212e98b0e76a1
+</A></li>
+        <LI>Next message: <A HREF="007414.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	6a6166dd7717a5b608b05445b2cf210bedccc90a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7424">[ date ]</a>
+              <a href="thread.html#7424">[ thread ]</a>
+              <a href="subject.html#7424">[ subject ]</a>
+              <a href="author.html#7424">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  30d74cbdcbcf4a1166e32381d27323c0e9dc9c50 (commit)
+      from  a984e166c981722f034ccfbe41291aa8d16f1236 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/{authmechs =&gt; brokers}/__init__.py      |    0
+ x2gobroker/brokers/base.py                         |  605 ++++++++++++++++++++
+ x2gobroker/brokers/inifile.py                      |   90 +++
+ .../{authmechs/htpasswd.py =&gt; brokers/ldap.py}     |   14 +-
+ .../zeroconf.py}                                   |   50 +-
+ 5 files changed, 726 insertions(+), 33 deletions(-)
+ copy x2gobroker/{authmechs =&gt; brokers}/__init__.py (100%)
+ create mode 100644 x2gobroker/brokers/base.py
+ create mode 100644 x2gobroker/brokers/inifile.py
+ copy x2gobroker/{authmechs/htpasswd.py =&gt; brokers/ldap.py} (79%)
+ copy x2gobroker/{tests/test_broker_zeroconf.py =&gt; brokers/zeroconf.py} (66%)
+
+The diff of changes is:
+diff --git a/x2gobroker/authmechs/__init__.py b/x2gobroker/brokers/__init__.py
+similarity index 100%
+copy from x2gobroker/authmechs/__init__.py
+copy to x2gobroker/brokers/__init__.py
+diff --git a/x2gobroker/brokers/base.py b/x2gobroker/brokers/base.py
+new file mode 100644
+index 0000000..788e1b7
+--- /dev/null
++++ b/x2gobroker/brokers/base.py
+@@ -0,0 +1,605 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++L{base.X2GoBroker} class - base skeleton for X2GoBroker implementations
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gobroker-pylib'
++
++# modules
++import types
++import copy
++import uuid
++
++# X2Go Broker modules
++import x2gobroker.config
++import x2gobroker.defaults
++
++class X2GoBroker(object):
++    &quot;&quot;&quot;\
++    L{base.X2GoBroker} is an abstract class for X2Go broker implementations.
++
++    This class needs to be inherited from a concrete broker class.
++
++    Currently available broker classes are::
++        L{zeroconf.X2GoBroker} (working)
++        L{inifile.X2GoBroker} (in prep)
++        L{ldap.X2GoBroker} (in prep)
++
++    &quot;&quot;&quot;
++
++    backend_name = 'base'
++    nameservice_module = None
++    authmech_module = None
++
++    def __init__(self, config_file=None, config_defaults=None):
++        &quot;&quot;&quot;\
++        Initialize a new X2GoBroker instance to control X2Go session through an
++        X2Go Client with an intermediate session broker.
++
++        &quot;&quot;&quot;
++        if config_file is None: config_file = x2gobroker.defaults.X2GOBROKER_CONFIG
++        if config_defaults is None: config_defaults = x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS
++        self.config = x2gobroker.config.X2GoBrokerConfigFile(config_files=config_file, defaults=config_defaults)
++
++        self._dynamic_authid_map = {}
++
++    def __del__(self):
++        &quot;&quot;&quot;\
++        Cleanup on destruction of an L{X2GoBroker} instance.
++
++        &quot;&quot;&quot;
++        pass
++
++    def is_enabled(self):
++        &quot;&quot;&quot;\
++        Check if this backend has been enabled in the configuration file.
++
++        &quot;&quot;&quot;
++        return self.config.get_value(self.backend_name, 'enable')
++
++    def get_global_config(self):
++        &quot;&quot;&quot;\
++        Get the global section of the configuration file.
++
++        @return: all global configuration parameters
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return self.config.get_section('global')
++
++    def get_backend_config(self):
++        &quot;&quot;&quot;\
++        Get the configuration section of a specific backend.
++
++        @return: all backend configuration parameters
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return self.config.get_section(self.backend_name)
++
++    def get_backend_value(self, backend='zeroconf', option='enabled'):
++        &quot;&quot;&quot;\
++        Get the configuration setting for backend C{backend} and option
++        C{option}.
++
++        @param backend: the name of the backend
++        @type backend: C{str}
++        @param option: option name of the backend's configuration section
++        @type option: C{str}
++
++        @return: the value for the given C{backend} C{option}
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return self.config.get_value(backend, option)
++
++    def get_profile_ids(self):
++        &quot;&quot;&quot;\
++        Retrieve the complete list of session profile IDs.
++
++        @return: list of profile IDs
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return []
++
++    def get_profile_defaults(self):
++        &quot;&quot;&quot;\
++        Get the session profile defaults, i.e. profile options that all
++        configured session profiles have in common.
++
++        The defaults are hard-coded in L{x2gobroker.defaults} for class
++        L{x2gobroker.base.X2GoBroker}.
++
++        @return: a dictionary containing the session profile defaults
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        profile_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS['DEFAULT'])
++        for key in copy.deepcopy(profile_defaults):
++            if key.startswith('acl-'):
++                del profile_defaults[key]
++        return profile_defaults
++
++    def get_acl_defaults(self):
++        &quot;&quot;&quot;\
++        Get the ACL defaults for session profiles. The defaults are hard-coded
++        in L{x2gobroker.defaults} for class L{x2gobroker.base.X2GoBroker}.
++
++        @return: a dictionary containing the ACL defaults for all session profiles
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        acl_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS['DEFAULT'])
++        for key in copy.deepcopy(acl_defaults):
++            if not key.startswith('acl-'):
++                del acl_defaults[key]
++        return acl_defaults
++
++    def get_profile(self, profile_id):
++        &quot;&quot;&quot;\
++        Get the session profile for profile ID &lt;profile_id&gt;.
++
++        @param profile_id: the ID of a profile, in other words the section name in the configuration file
++        @type profile_id: C{unicode}
++
++        @return: a dictionary representing the session profile for ID &lt;profile_id&gt;
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
++    def get_profile_acls(self, profile_id):
++        &quot;&quot;&quot;\
++        Get the ACLs for session profile with profile ID &lt;profile_id&gt;.
++
++        @param profile_id: the ID of a profile, in other words the section name in the configuration file
++        @type profile_id: C{unicode}
++
++        @return: a dictionary representing the ACLs for session profile with ID &lt;profile_id&gt;
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
++    def check_profile_acls(self, username, acls):
++        &quot;&quot;&quot;\
++        Test if a given user can get through an ACL check using &lt;acls&gt; as a list
++        of allow and deny rules.
++
++        @param username: the username of interest
++        @type username: C{unicode}
++        @param acls: a dictionary data structure containing ACL information (see L{defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS})
++        @type acls: C{dict}
++
++        &quot;&quot;&quot;
++        ### extract ACLs evaluation orders
++
++        _acls = self.get_acl_defaults()
++        _acls.update(acls)
++
++        _order = {}
++        _order['users'] = _order['groups'] = _order['clients'] = _acls['acl-any-order']
++
++        try: _order['users'] = _acls['acl-users-order']
++        except KeyError: pass
++        try: _order['groups'] = _acls['acl-groups-order']
++        except KeyError: pass
++        try: _order['clients'] = _acls['acl-clients-order']
++        except KeyError: pass
++
++        # to pass an ACL test, all three keys in the dict below have to be set to True
++        # if one stays False, the related session profile will not be returned to the querying
++        # X2Go client...
++        _grant_availability = {
++            'by_user': False,
++            # FIXME: leaving the group access to False for now, we need methods that give us a generic
++            # acces to the list of groups a user belongs to. One generic access is asking libnss, but:
++            # are there others?
++            'by_group': False,
++            # FIXME: set the client access to True for now as we have not a way to check that available...
++            'by_client': True,
++        }
++
++        ### CHECKING on a per-client basis...
++
++        ### clients access is granted first, if that fails then we return False here...
++
++        # FIXME: provide code for client based access control
++        if not _grant_availability['by_client']:
++            return False
++
++        ### no user/group ACLs are in use, allow access then...
++
++        if len(_acls['acl-users-allow'] + _acls['acl-users-deny'] + _acls['acl-groups-allow'] + _acls['acl-groups-deny']) == 0:
++            return True
++
++        ### CHECKING on a per-user basis...
++
++        _allow_user_override = False
++        _explicitly_deny_user = False
++        if len( _acls['acl-users-allow'] + _acls['acl-users-deny'] ) &gt; 0:
++
++            _allow_user = False
++            _deny_user = False
++
++            if username in _acls['acl-users-allow'] or 'ALL' in _acls['acl-users-allow']:
++                _allow_user_override = True
++                _allow_user = True
++
++            if username in _acls['acl-users-deny']:
++                _explicitly_deny_user = True
++            if _explicitly_deny_user or ('ALL' in _acls['acl-users-deny']):
++                _deny_user = True
++
++            if _order['users'] == 'allow-deny':
++                _grant_availability['by_user'] = (_allow_user or _deny_user) and (_allow_user and (not _deny_user))
++            else:
++                _grant_availability['by_user'] = (_allow_user or _deny_user) and ((not _deny_user) or _allow_user)
++
++            # if a user has been granted access directly, then the corresponding session profile(s)
++            # will be provided to him/her, it does not matter what the group acl will have to say to this...
++            if _grant_availability['by_user']:
++                return True
++
++        ### CHECKING on a per-group basis...
++
++        if len(_acls['acl-groups-allow'] + _acls['acl-groups-deny']) &gt; 0:
++            _allow_group = False
++            _deny_group = False
++
++            _user_groups = ['ALL'] + self.get_user_groups(username, primary_groups=True)
++
++            _allow_group = bool(len(set(_user_groups).intersection( set(_acls['acl-groups-allow']) )))
++            _deny_group = bool(len(set(_user_groups).intersection( set(_acls['acl-groups-deny']) )))
++
++            if _order['groups'] == 'allow-deny':
++                _grant_availability['by_group'] = (_allow_group or _deny_group) and (_allow_group and (not _deny_group))
++            else:
++                _grant_availability['by_group'] = (_allow_group or _deny_group) and (not _deny_group) or _allow_group
++
++            # if a group has been granted access, with one exception: if the thread model for users is
++            # allow-deny, then we presume that the acl-users-deny entry has precendence over
++            # acl-groups-allow/acl-groups-deny.
++            if (_grant_availability['by_group'] and not _explicitly_deny_user) or _allow_user_override:
++                return True
++
++        return False
++
++    def test_connection(self):
++        #if($cgi-&gt;param('task') eq 'testcon')
++        #{
++        #   for ( my $i=0;$i&lt;2*1024*1024;$i++ )
++        #   {
++        #           print int(rand(9));
++        #   }
++        #   print $cgi-&gt;end_html();
++        #   exit (0);
++        #}
++        return 'OK'
++
++    def _import_authmech_module(self, mech='pam'):
++        try:
++            if self.authmech_module is None:
++                exec(&quot;import x2gobroker.authmechs.{mech} as _authmech_module&quot;.format(mech=mech))
++                self.authmech_module = _authmech_module
++            return True
++        except ImportError:
++            return False
++
++    def _do_authenticate(self, username='', password=''):
++
++        if self._import_authmech_module(mech=self.get_authentication_mechanism()):
++            return self.authmech_module.X2GoBrokerAuthMech().authenticate(username, password)
++        else:
++            return False
++
++    def get_authentication_mechanism(self):
++        &quot;&quot;&quot;\
++        Get the name of the authentication mechanism that is configured for this
++        X2Go Session Broker instance.
++
++        @return: auth-mech name
++        @rtype: C{unicode}
++
++        &quot;&quot;&quot;
++        _default_auth_mech = &quot;pam&quot;
++        _auth_mech = &quot;&quot;
++        if self.config.has_value('global', 'default-auth-mech'):
++            _default_auth_mech = self.config.get_value('global', 'default-auth-mech').lower()
++
++        if self.config.has_value(self.backend_name, 'auth-mech'):
++            _auth_mech = self.config.get_value(self.backend_name, 'auth-mech').lower()
++
++        return unicode(_auth_mech) or unicode(_default_auth_mech)
++
++    def get_userdb_service(self):
++        &quot;&quot;&quot;\
++        Get the name of the backend being used for retrieving user information from the
++        system.
++
++        @return: user service name
++        @rtype: C{unicode}
++
++        &quot;&quot;&quot;
++        _user_db = &quot;libnss&quot;
++        if self.config.has_value('global', 'default-user-db'):
++            _user_db = self.config.get_value('global', 'default-user-db').lower()
++
++        if self.config.has_value(self.backend_name, 'user-db'):
++            _user_db = self.config.get_value(self.backend_name, 'user-db').lower()
++
++        return unicode(_user_db)
++
++    def get_groupdb_service(self):
++        &quot;&quot;&quot;\
++        Get the name of the backend being used for retrieving group information from the
++        system.
++
++        @return: group service name
++        @rtype: C{unicode}
++
++        &quot;&quot;&quot;
++        _group_db = &quot;libnss&quot;
++        if self.config.has_value('global', 'default-group-db'):
++            _group_db = self.config.get_value('global', 'default-group-db').lower()
++
++        if self.config.has_value(self.backend_name, 'group-db'):
++            _group_db = self.config.get_value(self.backend_name, 'group-db').lower()
++
++        return unicode(_group_db)
++
++    def _import_nameservice_module(self, service='libnss'):
++        try:
++            if self.nameservice_module is None:
++                exec(&quot;import x2gobroker.nameservices.{service} as _nameservice_module&quot;.format(service=service))
++                self.nameservice_module = _nameservice_module
++            return True
++        except ImportError:
++            return False
++
++    def has_user(self, username):
++        &quot;&quot;&quot;\
++        Test if the broker knows user C{&lt;username&gt;}.
++
++        @param username: test for existence of this user
++        @type username: C{unicode}
++
++        @return: returns C{True} if a user exists
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_userdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().has_user(username=username)
++        else:
++            return False
++
++    def get_users(self):
++        &quot;&quot;&quot;\
++        Get list of known users.
++
++        @return: returns list of known users
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_userdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().get_users()
++        else:
++            return False
++
++    def has_group(self, group):
++        &quot;&quot;&quot;\
++        Test if the broker knows group C{&lt;group&gt;}.
++
++        @param group: test for existence of this group
++        @type group: C{unicode}
++
++        @return: returns C{True} if a group exists
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_groupdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().has_group(group=group)
++        else:
++            return False
++
++    def get_groups(self):
++        &quot;&quot;&quot;\
++        Get list of known groups.
++
++        @return: returns list of known groups
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_groupdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().get_groups()
++        else:
++            return False
++
++    def is_group_member(self, username, group, primary_groups=False):
++        &quot;&quot;&quot;\
++        Check if a user is member of a given group.
++
++        @param username: check group membership of this user
++        @type username: C{unicode}
++        @param group: test if user is member of this group
++        @type group: C{unicode}
++        @param primary_groups:  if C{True}, test for primary group membership, as well
++        @type primary_groups: C{bool}
++
++        @return: returns C{True} if the user is member of the given group
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_groupdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().is_group_member(username=username, group=group, primary_groups=primary_groups)
++        else:
++            return []
++
++    def get_group_members(self, group, primary_groups=False):
++        &quot;&quot;&quot;\
++        Get the list of members in group C{&lt;group&gt;}.
++
++        @param group: valid group name
++        @type group: C{unicode}
++        @param primary_groups: include primary groups found with the user db service
++        @type primary_groups: C{bool}
++
++        @return: list of users belonging to the given group
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_groupdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().get_group_members(group=group, primary_groups=primary_groups)
++        else:
++            return []
++
++    def get_user_groups(self, username, primary_groups=False):
++        &quot;&quot;&quot;\
++        Get all groups a given user is member of.
++
++        @param username: get groups for this user
++        @type username: C{unicode}
++        @param primary_groups:  if C{True}, include the user's primary group in the group list
++        @type primary_groups: C{bool}
++
++        @return: list of groups the given user is member of
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_nameservice_module(service=self.get_groupdb_service()):
++            return self.nameservice_module.X2GoBrokerNameService().get_user_groups(username=username, primary_groups=primary_groups)
++        else:
++            return []
++
++    def check_access(self, username='', password='', authid=None, ):
++        &quot;&quot;&quot;\
++        Check if a given user with a given password may gain access to the
++        X2Go session broker.
++
++        @param username: a username known to the session broker
++        @type username: C{unicode}
++        @param password: a password that authenticates the user against the X2Go session broker
++        @type password: C{unicode}
++
++        @return: returns C{True} if the authentication has been successful
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        ### FOR INTRANET LOAD BALANCER WE MAY JUST ALLOW ACCESS TO EVERYONE
++        ### This is handled through the config file, normally /etc/x2go/x2gobroker.conf
++
++        if not self.config.get_value('global', 'check-credentials'):
++            return True
++
++        ### IMPLEMENT YOUR AUTHENTICATION LOGIC IN THE self._do_authenticate(**kwargs) METHOD
++        ### when inheriting from the base.X2GoBroker class.
++
++        access = False
++        access = self._do_authenticate(username=username, password=password)
++
++        ### HANDLING OF DYNAMIC AUTHENTICATION ID HASHES
++
++        # using authid as extra security?
++        if self.config.get_value('global', 'use-authid'):
++
++            if type(authid) is types.StringType:
++                authid = unicode(authid)
++
++            if self.config.get_value('global', 'use-static-authid'):
++
++                # evaluate access based on static authentication ID feature
++                access = access and ( authid == self.config.get_value('global', 'authid') )
++
++            else:
++
++                # evaluate access based on dynamic authentication ID feature
++                if self._dynamic_authid_map.has_key(username):
++                    access = access and ( authid == self._dynamic_authid_map[username] )
++                    if access:
++                        self._dynamic_authid_map[username] = uuid.uuid5(namespace=authid, name=username)
++
++                else:
++                    access = access and ( authid == self.config.get_value('global', 'authid') )
++                    if access:
++                        # generate a first uuid, initialize the dynamic authencation ID security feature
++                        self._dynamic_authid_map[username] = uuid.uuid4()
++
++        return access
++
++    def get_next_authid(self, username):
++        &quot;&quot;&quot;\
++        Get the next expected authentication ID for the given user name.
++
++        @param username: query next auth ID for this user
++        @type username: C{unicode}
++
++        @return: returns next authentication ID for the given username, None if no auth ID has been generated, yet.
++        @rtype: C{unicode} or C{None}
++
++        &quot;&quot;&quot;
++        try:
++            return self._dynamic_authid_map[username]
++        except KeyError:
++            return None
++
++    def list_profiles(self, username):
++        &quot;&quot;&quot;\
++        Retrieve a list of available session profiles for the authenticated user.
++
++        @param username: query session list for this user
++        @type username: C{unicode}
++
++        return: list of profile dictionaries
++        rtype: C{dict}
++
++        &quot;&quot;&quot;
++        list_of_profiles = {}
++        for profile_id in self.get_profile_ids():
++            profile = self.get_profile(profile_id)
++            acls = self.get_profile_acls(profile_id)
++
++            if self.check_acls(username, acls):
++                list_of_profiles.update(profile)
++
++        return list_of_profiles
++
++    def select_profile(self, profile_name='DEFAULT'):
++        &quot;&quot;&quot;\
++        Start/resume a session by selecting a profile name offered by the X2Go client.
++
++        The X2Go server that the session is launched on is selected automatically by the X2Go session
++        broker.
++
++        @param profile_name: a dictionary object containing information on a selected session profile
++        @type profile_name: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
++    def change_password(self, new='', old=''):
++        &quot;&quot;&quot;\
++        Modify the authenticated user's password on the X2Go infrastructure (normally, one user
++        in one X2Go site setup should have the same password on all machines).
++
++        &quot;&quot;&quot;
++        return False
+diff --git a/x2gobroker/brokers/inifile.py b/x2gobroker/brokers/inifile.py
+new file mode 100644
+index 0000000..969c433
+--- /dev/null
++++ b/x2gobroker/brokers/inifile.py
+@@ -0,0 +1,90 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++L{inifile.X2GoBroker} class - a simple X2GoBroker implementations that uses text-based config files only
++and does not support load balancing.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gobroker-pylib'
++
++# modules
++
++# Python X2GoBroker modules
++import base
++import x2gobroker.config
++import x2gobroker.defaults
++
++class X2GoBroker(base.X2GoBroker):
++    &quot;&quot;&quot;\
++
++    &quot;&quot;&quot;
++class X2GoBroker(base.X2GoBroker):
++
++    backend_name = 'inifile'
++
++    def __init__(self, profile_config_file=None, profile_config_defaults=None, **kwargs):
++        &quot;&quot;&quot;\
++        @param config_file: path to the X2Go Session Broker configuration file (x2gobroker.conf)
++        @type config_file: C{unicode}
++        @param profile_config_file: path to the backend's session profile configuration (x2gobroker-sessionprofiles.conf)
++        @type profile_config_file: C{unicode} 
++
++        &quot;&quot;&quot;
++        base.X2GoBroker.__init__(self, **kwargs)
++
++        if profile_config_file is None: profile_config_file = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILES
++        if profile_config_defaults is None: profile_config_defaults = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS
++        self.session_profiles = x2gobroker.config.X2GoBrokerConfigFile(config_files=profile_config_file, defaults=profile_config_defaults)
++
++    def get_profile_ids(self):
++
++        return self.session_profiles.list_sections()
++
++    def get_profile_defaults(self):
++
++        profile_defaults = self.session_profiles.get_defaults()
++        for key in profile_defaults.keys():
++            if key.startswith('acl-'):
++                del profile_defaults[key]
++        return profile_defaults
++
++    def get_profile(self, profile_id):
++
++        profile = self.session_profiles.get_section(profile_id)
++        for key in profile.keys():
++            if key.startswith('acl-'):
++                del profile[key]
++        return profile
++
++    def get_profile_acls(self, profile_id):
++
++        profile = self.session_profiles.get_section(profile_id)
++        for key in profile.keys():
++            if not key.startswith('acl-'):
++                del profile[key]
++        return profile
++
++    def select_profile(self, profile_name):
++
++        selectprofile_output = {
++            'server': 'localhost:22',
++        }
++        return selectprofile_output
+diff --git a/x2gobroker/authmechs/htpasswd.py b/x2gobroker/brokers/ldap.py
+similarity index 79%
+copy from x2gobroker/authmechs/htpasswd.py
+copy to x2gobroker/brokers/ldap.py
+index 0778ca0..8f631ab 100644
+--- a/x2gobroker/authmechs/htpasswd.py
++++ b/x2gobroker/brokers/ldap.py
+@@ -18,10 +18,16 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-class X2GoBrokerAuthMech(object):
++&quot;&quot;&quot;\
++L{ldap.X2GoBroker} class - a production X2GoBroker implementations that uses LDAP as configuration backend
+ 
+-    def authenticate(self, username, password):
++&quot;&quot;&quot;
++__NAME__ = 'x2gobroker-pylib'
+ 
+-        ### TODO: implement an authentication mechanism that can use htpasswd files
+-        return False
++# modules
++import x2gobroker.base
+ 
++class X2GoBroker(x2gobroker.base.X2GoBroker):
++    &quot;&quot;&quot;\
++
++    &quot;&quot;&quot;
+diff --git a/x2gobroker/tests/test_broker_zeroconf.py b/x2gobroker/brokers/zeroconf.py
+similarity index 66%
+copy from x2gobroker/tests/test_broker_zeroconf.py
+copy to x2gobroker/brokers/zeroconf.py
+index 859cd40..cdd3b0c 100644
+--- a/x2gobroker/tests/test_broker_zeroconf.py
++++ b/x2gobroker/brokers/zeroconf.py
+@@ -1,7 +1,8 @@
+ # -*- coding: utf-8 -*-
+ 
+ # Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+-# 
++# Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++#
+ # X2Go Session Broker is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU Affero General Public License as published by
+ # the Free Software Foundation; either version 3 of the License, or
+@@ -17,18 +18,26 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-import unittest
++&quot;&quot;&quot;\
++L{zeroconf.X2GoBroker} class - a demo X2GoBroker implementations that needs not configuration at all
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gobroker-pylib'
++
++# modules
++import uuid
+ 
+ # Python X2GoBroker modules
+-import x2gobroker.brokers.zeroconf
++import base
++
++class X2GoBroker(base.X2GoBroker):
+ 
+-class TestX2GoBrokerBackendZeroconf(unittest.TestCase):
++    backend_name = 'zeroconf'
+ 
+-    ### TEST: list_profiles() method
++    def list_profiles(self, username):
+ 
+-    def test_profilelist(self):
+         list_of_profiles = {
+-            'unittest': {
++            uuid.uuid4(): {
+                 'user': u'',
+                 'defsndport': True,
+                 'useiconv': False,
+@@ -58,35 +67,18 @@ class TestX2GoBrokerBackendZeroconf(unittest.TestCase):
+                 'name': u'LOCALHOST',
+                 'iconvto': u'UTF-8',
+                 'soundtunnel': True,
+-                'command': 'KDE',
++                'command': self.get_backend_value(self.backend_name, u'desktop-shell'),
+                 'dpi': 96,
+                 'sshport': 22,
+                 'setdpi': 0,
+                 'pack': u'16m-jpeg',
+             },
+         }
+-        zeroconf_backend = x2gobroker.brokers.zeroconf.X2GoBroker()
+-        _profiles = zeroconf_backend.list_profiles('user_foo')
+-        self.assertEqual(len(_profiles.keys()), 1)
+-        _key = _profiles.keys()[0]
+-        # replace profile ID ,,unittest'' with the returned random profile ID (uuid hash)
+-        _test_profiles = {
+-            _key: list_of_profiles['unittest']
+-        }
+-        self.assertEqual(_profiles, _test_profiles)
++        return list_of_profiles
+ 
+-    ### TEST: select_profile() method
++    def select_profile(self, profile_name):
+ 
+-    def test_profileselection(self):
+-        _output = {
++        selectprofile_output = {
+             'server': 'localhost:22',
+         }
+-        zeroconf_backend = x2gobroker.brokers.zeroconf.X2GoBroker()
+-        self.assertEqual(zeroconf_backend.select_profile('profile_bar'), _output)
+-
+-
+-def test_suite():
+-    from unittest import TestSuite, makeSuite
+-    suite = TestSuite()
+-    suite.addTest(makeSuite(TestX2GoBrokerBackendZeroconf))
+-    return suite
++        return selectprofile_output
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007418.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	23dabd44c78fe66a0c4fbcc64c1212e98b0e76a1
+</A></li>
+	<LI>Next message: <A HREF="007414.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	6a6166dd7717a5b608b05445b2cf210bedccc90a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7424">[ date ]</a>
+              <a href="thread.html#7424">[ thread ]</a>
+              <a href="subject.html#7424">[ subject ]</a>
+              <a href="author.html#7424">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

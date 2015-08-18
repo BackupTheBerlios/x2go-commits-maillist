@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-120-g01200ab
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.10-120-g01200ab&In-Reply-To=%3C20130914135546.AB4295DBC2%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013023.html">
+   <LINK REL="Next"  HREF="013034.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-120-g01200ab</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.10-120-g01200ab&In-Reply-To=%3C20130914135546.AB4295DBC2%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-120-g01200ab">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013023.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fa36a46adeb8516579f9e38c6d0d5aa00d1415
+</A></li>
+        <LI>Next message: <A HREF="013034.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-119-g5476397
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13024">[ date ]</a>
+              <a href="thread.html#13024">[ thread ]</a>
+              <a href="subject.html#13024">[ subject ]</a>
+              <a href="author.html#13024">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  01200ab66a4cd89f3c03f2441c5a913d07e747a0 (commit)
+      from  5476397b96ccec74885fd91b50b2bf4c05db1016 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    2 ++
+ pyhoca/wxgui/frontend.py |   68 ++++++++++------------------------------------
+ 2 files changed, 16 insertions(+), 54 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a2da9ad..67b0701 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -76,6 +76,8 @@ pyhoca-gui (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Fix for CUPS printer recognition if no default printer was defined.
+     - Add widget to configure autologin and autostart session profile
+       parameters.
++    - Auto-resuming and auto-starting of sessions, as well as auto-connecting
++      to session profiles has been moved into Python X2Go.
+   * Depend on Python X2Go 0.1.2.0.
+   * Install GNOME icons via dh_links.
+   * Install X2Go icons with explicit install paths.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index e08c85f..02fb033 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -277,16 +277,21 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             self._X2goClient__register_all_session_profiles()
+         else:
+             self._X2goClient__register_session(profile_name=self.args.session_profile)
+-        for session_uuid in self._X2goClient__client_registered_sessions(return_objects=False):
+-            if self._X2goClient__session_can_auto_connect(session_uuid) or self.args.single_session_profile:
+-                self._pyhoca_logger('auto-connecting to %s session profile' % self.get_session_profile_name(session_uuid), loglevel=x2go.log.loglevel_NOTICE)
+ 
+-                # create a dummy event and call OnAuthenticate
+-                _dummy_id = wx.NewId()
+-                self._eventid_profilenames_map[_dummy_id] = self.get_session_profile_name(session_uuid)
+-                evt = wx.CommandEvent()
+-                evt.SetId(_dummy_id)
+-                self.OnSessionAuthenticate(evt)
++    def session_auto_connect(self, session_uuid):
++
++        # override X2goClient method
++        if (self.args.auto_connect and self._X2goClient__session_can_auto_connect(session_uuid)) or self.args.single_session_profile:
++            self._X2goClient__session_auto_connect(session_uuid)
++
++    def session_auto_start_or_resume(self, session_uuid, newest=True, oldest=False, all_suspended=False):
++
++        if self.resume_newest_on_connect:
++            self._X2goClient__session_auto_start_or_resume(session_uuid, newest=True, start=self.start_on_connect)
++        elif self.resume_oldest_on_connect:
++            self._X2goClient__session_auto_start_or_resume(session_uuid, oldest=True, start=self.start_on_connect)
++        elif self.resume_all_on_connect:
++            self._X2goClient__session_auto_start_or_resume(session_uuid, all_suspended=True, start=self.start_on_connect)
+ 
+     # wx.App's OnExit method
+     def OnExit(self):
+@@ -329,40 +334,6 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         self.WakeUpIdle()
+         self.ExitMainLoop()
+ 
+-    def _start_on_connect(self, evt, session_uuid):
+-        if not self._X2goClient__list_sessions(session_uuid):
+-            self._eventid_profilenames_map[evt.GetId()] = self._X2goClient__get_session_profile_name(session_uuid)
+-            self.OnSessionStart(evt)
+-
+-    def _resume_newest_on_connect(self, evt, session_uuid):
+-        session_infos = self._X2goClient__list_sessions(session_uuid)
+-        if session_infos: 
+-            newest_session_name = x2go.utils.session_names_by_timestamp(session_infos)[-1]
+-            self._resume_on_connect(evt, session_uuid, newest_session_name)
+-            return True
+-        return False
+-
+-    def _resume_oldest_on_connect(self, evt, session_uuid):
+-        session_infos = self._X2goClient__list_sessions(session_uuid)
+-        if session_infos:
+-            newest_session_name = x2go.utils.session_names_by_timestamp(session_infos)[0]
+-            self._resume_on_connect(evt, session_uuid, newest_session_name)
+-            return True
+-        return False
+-
+-    def _resume_all_on_connect(self, evt, session_uuid):
+-        session_infos = self._X2goClient__list_sessions(session_uuid)
+-        if session_infos:
+-            for session_name in session_infos.keys():
+-                self._resume_on_connect(evt, session_uuid, session_name)
+-            return True
+-        return False
+-
+-    def _resume_on_connect(self, evt, session_uuid, session_name):
+-        self._eventid_sessionnames_map[evt.GetId()] = session_name
+-        self._eventid_profilenames_map[evt.GetId()] = self._X2goClient__get_session_profile_name(session_uuid)
+-        self.OnSessionResume(evt)
+-
+     def _init_pubapp_session(self, session_uuid=None, profile_name=None):
+ 
+         session_list = self._X2goClient__list_sessions(session_uuid=session_uuid, profile_name=profile_name, refresh_cache=True, update_sessionregistry=True)
+@@ -434,17 +405,6 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+                 else:
+                     gevent.spawn(self._init_pubapp_session, session_uuid=session_uuid)
+ 
+-            _resumed = False
+-
+-            if self.resume_newest_on_connect:
+-                _resumed = self._resume_newest_on_connect(evt, session_uuid)
+-            elif self.resume_oldest_on_connect:
+-                _resumed = self._resume_oldest_on_connect(evt, session_uuid)
+-            elif self.resume_all_on_connect:
+-                _resumed = self._resume_all_on_connect(evt, session_uuid)
+-            if not _resumed and self.start_on_connect:
+-                self._start_on_connect(evt, session_uuid)
+-
+         except x2go.X2goSessionRegistryException:
+             # there might have been a disconnect event inbetween...
+             pass
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013023.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fa36a46adeb8516579f9e38c6d0d5aa00d1415
+</A></li>
+	<LI>Next message: <A HREF="013034.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-119-g5476397
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13024">[ date ]</a>
+              <a href="thread.html#13024">[ thread ]</a>
+              <a href="subject.html#13024">[ subject ]</a>
+              <a href="author.html#13024">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

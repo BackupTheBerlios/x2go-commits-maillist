@@ -1,0 +1,269 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.5-5-ga919329
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.5-5-ga919329&In-Reply-To=%3C20140108142737.B22F35DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023675.html">
+   <LINK REL="Next"  HREF="023682.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.5-5-ga919329</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.5-5-ga919329&In-Reply-To=%3C20140108142737.B22F35DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.5-5-ga919329">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023675.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.5-4-g07a1fd1
+</A></li>
+        <LI>Next message: <A HREF="023682.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.6-1-gb141dfb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23679">[ date ]</a>
+              <a href="thread.html#23679">[ thread ]</a>
+              <a href="subject.html#23679">[ subject ]</a>
+              <a href="author.html#23679">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  a919329fc9b918fa4e28f1350c17beffa25d57fd (commit)
+      from  07a1fd1954cd03dcf36b7fad83a730bb87cb4e8f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   84 +++++++++++++++++++-------------------
+ 2 files changed, 44 insertions(+), 41 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index d5131cc..726086e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -3,6 +3,7 @@ python-x2go (0.4.0.6-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (0.4.0.6):
+     - Use XFCE as desktop environment in example scripts.
+     - Make Python X2Go aware of the MATE desktop environment.
++    - When resuming session be tolerant towards disrupted connections.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwertkeam.de</A>&gt;  Fri, 19 Jul 2013 17:45:24 +0200
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 4a9fbb8..480dcdc 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -1305,51 +1305,53 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         @raise X2GoUserException: if the remote user is not allowed to launch/resume X2Go sessions.
+ 
+         &quot;&quot;&quot;
+-        if not self.is_x2gouser(self.get_transport().get_username()):
+-            raise x2go_exceptions.X2GoUserException('remote user %s is not allowed to run X2Go commands' % self.get_transport().get_username())
++        if self.get_transport() is not None:
+ 
+-        session_info = None
+-        try:
+-            if session_name is not None:
+-                if session_list:
+-                    session_info = session_list[session_name]
+-                else:
+-                    session_info = self.list_sessions()[session_name]
+-        except KeyError:
+-            _success = False
+-
+-        _terminal = self._terminal_backend(self,
+-                                           profile_name=self.profile_name,
+-                                           session_info=session_info,
+-                                           info_backend=self._info_backend,
+-                                           list_backend=self._list_backend,
+-                                           proxy_backend=self._proxy_backend,
+-                                           client_rootdir=self.client_rootdir,
+-                                           session_instance=session_instance,
+-                                           sessions_rootdir=self.sessions_rootdir,
+-                                           **kwargs)
+-
+-        _success = False
+-        try:
+-            if session_name is not None:
+-                _success = _terminal.resume()
+-            else:
+-                _success = _terminal.start()
+-        except x2go_exceptions.X2GoTerminalSessionException:
+-            _success = False
++            if not self.is_x2gouser(self.get_transport().get_username()):
++                raise x2go_exceptions.X2GoUserException('remote user %s is not allowed to run X2Go commands' % self.get_transport().get_username())
+ 
+-        if _success:
+-            while not _terminal.ok():
+-                gevent.sleep(.2)
++            session_info = None
++            try:
++                if session_name is not None:
++                    if session_list:
++                        session_info = session_list[session_name]
++                    else:
++                        session_info = self.list_sessions()[session_name]
++            except KeyError:
++                _success = False
++
++            _terminal = self._terminal_backend(self,
++                                               profile_name=self.profile_name,
++                                               session_info=session_info,
++                                               info_backend=self._info_backend,
++                                               list_backend=self._list_backend,
++                                               proxy_backend=self._proxy_backend,
++                                               client_rootdir=self.client_rootdir,
++                                               session_instance=session_instance,
++                                               sessions_rootdir=self.sessions_rootdir,
++                                               **kwargs)
+ 
+-            if _terminal.ok():
+-                self.associated_terminals[_terminal.get_session_name()] = _terminal
+-                self.get_transport().reverse_tunnels[_terminal.get_session_name()] = {
+-                    'sshfs': (0, None),
+-                    'snd': (0, None),
+-                }
++            _success = False
++            try:
++                if session_name is not None:
++                    _success = _terminal.resume()
++                else:
++                    _success = _terminal.start()
++            except x2go_exceptions.X2GoTerminalSessionException:
++                _success = False
++
++            if _success:
++                while not _terminal.ok():
++                    gevent.sleep(.2)
++
++                if _terminal.ok():
++                    self.associated_terminals[_terminal.get_session_name()] = _terminal
++                    self.get_transport().reverse_tunnels[_terminal.get_session_name()] = {
++                        'sshfs': (0, None),
++                        'snd': (0, None),
++                    }
+ 
+-                return _terminal or None
++                    return _terminal or None
+ 
+         return None
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023675.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.5-4-g07a1fd1
+</A></li>
+	<LI>Next message: <A HREF="023682.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.4.0.6-1-gb141dfb
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23679">[ date ]</a>
+              <a href="thread.html#23679">[ thread ]</a>
+              <a href="subject.html#23679">[ subject ]</a>
+              <a href="author.html#23679">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

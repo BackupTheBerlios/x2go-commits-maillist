@@ -1,0 +1,358 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-86-gd9659bd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.0.1.8-86-gd9659bd&In-Reply-To=%3C20130401161934.76D595DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005328.html">
+   <LINK REL="Next"  HREF="005330.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-86-gd9659bd</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.0.1.8-86-gd9659bd&In-Reply-To=%3C20130401161934.76D595DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-86-gd9659bd">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Apr  1 18:19:34 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005328.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-85-gf51ce71
+</A></li>
+        <LI>Next message: <A HREF="005330.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-87-ge9332a0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5329">[ date ]</a>
+              <a href="thread.html#5329">[ thread ]</a>
+              <a href="subject.html#5329">[ subject ]</a>
+              <a href="author.html#5329">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d9659bd14977762adfe00d0808ec9c9776f38067 (commit)
+      from  f51ce717c9443124c5829a64afd0226d8236ae35 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d9659bd14977762adfe00d0808ec9c9776f38067
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Apr 1 18:19:10 2013 +0200
+
+    Only make x2gousbmount and x2gognupgccid scripts functional if x2gothinclientd is running.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    2 +
+ x2gosmartcardrules/x2gognupgccid |   24 ++---
+ x2gousbmount/x2gousbmount        |  178 ++++++++++++++++++++------------------
+ 3 files changed, 111 insertions(+), 93 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 66e4b70..f14fff2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -55,6 +55,8 @@ x2gothinclient (1.0.99.1-0~x2go1) UNRELEASED; urgency=low
+     - x2gothinclient_create: syntax fix, spotted by Thomas G&#252;ttler (Fixes: #95).
+     - Export $LANG and $LANGUAGE to TCE daemon.
+     - Use qx instead of open3 to launch x2goclient. (Fixes: #66).
++    - Only make x2gousbmount and x2gognupgccid scripts functional if
++      x2gothinclientd is running.
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+     + Priority: optional.
+diff --git a/x2gosmartcardrules/x2gognupgccid b/x2gosmartcardrules/x2gognupgccid
+index 508f96c..df3b229 100755
+--- a/x2gosmartcardrules/x2gognupgccid
++++ b/x2gosmartcardrules/x2gognupgccid
+@@ -3,12 +3,11 @@
+ # taken from libgphoto2
+ #
+ # Sets up newly plugged in card reader so that only members of the
+-# group can access it
++# group can access it from user space. (Replace scard with the name
++# of the group you want to have access to the card reader.)
++
+ GROUP=scard
+ 
+-# can access it from user space. (Replace scard with the name of the
+-# group you want to have access to the card reader.)
+-#
+ # Note that for this script to work, you'll need all of the following:
+ # a) a line in the file /etc/hotplug/gnupg-ccid.usermap that corresponds
+ #    to the card reader you are using.
+@@ -23,12 +22,17 @@ GROUP=scard
+ 
+ set -e
+ 
+-DEV=`echo ${DEVICE} | sed 's/proc/dev/'`
++# only do this if x2gothinclientd is default display manager, otherwise this makes no sense
++if ps ax | grep x2gothinclient | x2gothinclientd 1&gt;/dev/null; then
++
++	DEV=`echo ${DEVICE} | sed 's/proc/dev/'`
++
++	if [ &quot;${ACTION}&quot; = &quot;add&quot; ]; then
++		sleep 2
++		chown :${GROUP} &quot;${DEV}&quot;
++		chmod g+rw,o-rwx &quot;${DEV}&quot;
++	fi
+ 
+-if [ &quot;${ACTION}&quot; = &quot;add&quot; ]; then
+-	sleep 2
+-	chown :${GROUP} &quot;${DEV}&quot;
+-	chmod g+rw,o-rwx &quot;${DEV}&quot;
+ fi
+ 
+-exit 0
+\ No newline at end of file
++exit 0
+diff --git a/x2gousbmount/x2gousbmount b/x2gousbmount/x2gousbmount
+index 0c9c756..ca2efa9 100755
+--- a/x2gousbmount/x2gousbmount
++++ b/x2gousbmount/x2gousbmount
+@@ -21,105 +21,117 @@
+ use strict;
+ use File::Path::Expand;
+ 
+-open (F,&quot;&gt;&gt;/var/log/usb&quot;);
+-
+-my $dev=$ENV{'DEVNAME'};
+-my $model=$ENV{'ID_MODEL'};
+-my $vendor=$ENV{'ID_VENDOR'};
+-my $action=$ENV{'ACTION'};
+-my @ldev=split(&quot;/&quot;,&quot;$dev&quot;);
+-my $ldev=@ldev[@ldev-1];
+-
+-my $name=&quot;${vendor}_${model}&quot;;
+-$name=~s/ //g;
+-$name=~s/\\//g;
+-$name=~s/\///g;
+-print F &quot;action: $action,  device: $dev, model: $model ($ldev), total: $name\n&quot;;
+-mkdir(&quot;/media&quot;);
+-mkdir(&quot;/media/$name&quot;);
+-print F &quot;$name\n&quot;;       
+-
+-if ( $action eq &quot;add&quot;)
++check_x2gothinclientd() {
++	my $x=`ps ax | grep x2gothinclient`;
++	if ( $x=~m/x2gothinclientd/ )
++	{
++		return 1;
++	}
++	return 0;
++}
++
++if ( check_x2gothinclientd() )
+ {
+ 
+-	###
+-	### ACTION: mount device after it has been added to USB subsystem
+-	###
++	open (F,&quot;&gt;&gt;/var/log/usb&quot;);
+ 
+-	# prepare mount points
++	my $dev=$ENV{'DEVNAME'};
++	my $model=$ENV{'ID_MODEL'};
++	my $vendor=$ENV{'ID_VENDOR'};
++	my $action=$ENV{'ACTION'};
++	my @ldev=split(&quot;/&quot;,&quot;$dev&quot;);
++	my $ldev=@ldev[@ldev-1];
++
++	my $name=&quot;${vendor}_${model}&quot;;
++	$name=~s/ //g;
++	$name=~s/\\//g;
++	$name=~s/\///g;
++	print F &quot;action: $action,  device: $dev, model: $model ($ldev), total: $name\n&quot;;
+ 	mkdir(&quot;/media&quot;);
+ 	mkdir(&quot;/media/$name&quot;);
+-	mkdir(&quot;/media/$name/$ldev&quot;);
++	print F &quot;$name\n&quot;;       
+ 
+-	# mount the USB device
+-	if(system(&quot;mount $dev /media/$name/$ldev -o uid=x2gothinclient,sync,uni_xlate&quot;)==0)
+-	{
+-		# if mounted, inform x2goclient about it...
+-		system(&quot;touch /var/run/$ldev.mounted&quot;);
+-		open (D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev&quot;));
+-		print D &quot;export=/media/$name/$ldev\n&quot;;
+-		close (D);
+-	}
+-	else
++	if ( $action eq &quot;add&quot;)
+ 	{
+-		# the mount failed, let's assume that the device is encrypted...
+-		my $enc=`ls -1 /var/run | grep .encrypted`;
+-		if(  $enc eq &quot;&quot; )
+-		{
+-			# use cryptsetup to decrypt the device...
+-			system(&quot;/sbin/cryptsetup --key-file /etc/keys/keystick.key luksOpen $dev keystick&quot;);
+-			
+ 
+-			# mount the ,,decrypted'' USB device via devmapper...
+-			if(system(&quot;mount /dev/mapper/keystick  /media/$name/$ldev &quot;)==0)
++		###
++		### ACTION: mount device after it has been added to USB subsystem
++		###
++
++		# prepare mount points
++		mkdir(&quot;/media&quot;);
++		mkdir(&quot;/media/$name&quot;);
++		mkdir(&quot;/media/$name/$ldev&quot;);
++
++		# mount the USB device
++		if(system(&quot;mount $dev /media/$name/$ldev -o uid=x2gothinclient,sync,uni_xlate&quot;)==0)
++		{
++			# if mounted, inform x2goclient about it...
++			system(&quot;touch /var/run/$ldev.mounted&quot;);
++			open (D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev&quot;));
++			print D &quot;export=/media/$name/$ldev\n&quot;;
++			close (D);
++		}
++		else
++		{
++			# the mount failed, let's assume that the device is encrypted...
++			my $enc=`ls -1 /var/run | grep .encrypted`;
++			if(  $enc eq &quot;&quot; )
+ 			{
+-				# inform x2goclient about this...
+-				system(&quot;touch /var/run/$ldev.encrypted&quot;);
+-				system(&quot;chown -R x2gothinclient /media/$name/$ldev/dsa.key&quot;);
+-				open (D,&quot;&gt;&quot;,expand_filename(&quot;~/x2gothinclient/logins/$name.$ldev&quot;));
+-				print D &quot;login=/media/$name/$ldev\n&quot;;
+-				close (D);
++				# use cryptsetup to decrypt the device...
++				system(&quot;/sbin/cryptsetup --key-file /etc/keys/keystick.key luksOpen $dev keystick&quot;);
++
++				# mount the ,,decrypted'' USB device via devmapper...
++				if(system(&quot;mount /dev/mapper/keystick  /media/$name/$ldev &quot;)==0)
++				{
++					# inform x2goclient about this...
++					system(&quot;touch /var/run/$ldev.encrypted&quot;);
++					system(&quot;chown -R x2gothinclient /media/$name/$ldev/dsa.key&quot;);
++					open (D,&quot;&gt;&quot;,expand_filename(&quot;~/x2gothinclient/logins/$name.$ldev&quot;));
++					print D &quot;login=/media/$name/$ldev\n&quot;;
++					close (D);
++				}
++				else
++				{
++					# on mount failures release the decrypted device again
++					system(&quot;/sbin/cryptsetup luksClose keystick&quot;);
++				}
+ 			}
+ 			else
+ 			{
+-				# on mount failures release the decrypted device again
+-				system(&quot;/sbin/cryptsetup luksClose keystick&quot;);
++				print F &quot;cryptodisk already present\n&quot;;
+ 			}
+ 		}
+-		else
+-		{
+-			print F &quot;cryptodisk already present\n&quot;;       
+-		}
+ 	}
+-}
+-elsif ( $action eq &quot;remove&quot; )
+-{
++	elsif ( $action eq &quot;remove&quot; )
++	{
+ 
+-	###
+-	### ACTION: unmount device after it has been removed from the USB subsystem
+-	###
++		###
++		### ACTION: unmount device after it has been removed from the USB subsystem
++		###
+ 
+-	# we rely on our own mount logistics here...
+-	if ( -e &quot;/var/run/$ldev.mounted&quot; )
+-	{
+-		# inform x2goclient that the device has been removed
+-		system (&quot;umount -ff /media/$name/$ldev&quot;);
+-		unlink (&quot;/var/run/$ldev.mounted&quot;);
+-		open ( D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev.unexport&quot;));
+-		print D &quot;unexport=/media/$name/$ldev\n&quot;;
+-		close (D);
+-	}
+-	elsif ( -e &quot;/var/run/$ldev.encrypted&quot; )
+-	{
+-		# inform x2goclient that the device has been removed
+-		# release the encrypted device mapping
+-		unlink (&quot;/var/run/$ldev.encrypted&quot;);
+-		open ( D,&quot;&gt;&quot;,expand_filename(&quot;~/x2gothinclient/logins/$name.$ldev.unexport&quot;));
+-		print D &quot;logout=/media/$name/$ldev\n&quot;;
+-		system(&quot;umount /media/$name/$ldev&quot;);
+-		system(&quot;/sbin/cryptsetup luksClose keystick&quot;);		
+-		close (D);
++		# we rely on our own mount logistics here...
++		if ( -e &quot;/var/run/$ldev.mounted&quot; )
++		{
++			# inform x2goclient that the device has been removed
++			system (&quot;umount -ff /media/$name/$ldev&quot;);
++			unlink (&quot;/var/run/$ldev.mounted&quot;);
++			open ( D,&quot;&gt;&quot;,expand_filename(&quot;~x2gothinclient/export/$name.$ldev.unexport&quot;));
++			print D &quot;unexport=/media/$name/$ldev\n&quot;;
++			close (D);
++		}
++		elsif ( -e &quot;/var/run/$ldev.encrypted&quot; )
++		{
++			# inform x2goclient that the device has been removed
++			# release the encrypted device mapping
++			unlink (&quot;/var/run/$ldev.encrypted&quot;);
++			open ( D,&quot;&gt;&quot;,expand_filename(&quot;~/x2gothinclient/logins/$name.$ldev.unexport&quot;));
++			print D &quot;logout=/media/$name/$ldev\n&quot;;
++			system(&quot;umount /media/$name/$ldev&quot;);
++			system(&quot;/sbin/cryptsetup luksClose keystick&quot;);
++			close (D);
++		}
+ 	}
+-}
+ 
+-close (F);
++	close (F);
++}
+
+
+hooks/post-receive
+-- 
+x2gothinclient.git (X2Go Thin Client Environment)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gothinclient.git&quot; (X2Go Thin Client Environment).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005328.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-85-gf51ce71
+</A></li>
+	<LI>Next message: <A HREF="005330.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-87-ge9332a0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5329">[ date ]</a>
+              <a href="thread.html#5329">[ thread ]</a>
+              <a href="subject.html#5329">[ subject ]</a>
+              <a href="author.html#5329">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

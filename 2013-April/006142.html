@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	69d299e459312a18dc599269ac014c4d68edc844
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%0969d299e459312a18dc599269ac014c4d68edc844&In-Reply-To=%3C20130424164726.0D3B75DB2D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006147.html">
+   <LINK REL="Next"  HREF="006145.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	69d299e459312a18dc599269ac014c4d68edc844</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%0969d299e459312a18dc599269ac014c4d68edc844&In-Reply-To=%3C20130424164726.0D3B75DB2D%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	69d299e459312a18dc599269ac014c4d68edc844">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Apr 24 18:47:26 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006147.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	85ef6a7db86d8e8f34c24126dd6bf0609d37968e
+</A></li>
+        <LI>Next message: <A HREF="006145.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	5cabdb8b73427e5a95122d261f7d4243637d8e4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6142">[ date ]</a>
+              <a href="thread.html#6142">[ thread ]</a>
+              <a href="subject.html#6142">[ subject ]</a>
+              <a href="author.html#6142">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, x2gosession has been updated
+       via  69d299e459312a18dc599269ac014c4d68edc844 (commit)
+      from  5c90b12afe82afce6c09624e684da3dca687028e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   43 ++++++++++++++++---------------------------
+ 1 file changed, 16 insertions(+), 27 deletions(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index 1aab5dd..a090f02 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -250,15 +250,28 @@ done:
+ }
+ 
+ static int
+-session_socket_handler (const char * buffer, int buffer_len, struct passwd * pwdent)
++session_socket_handler (struct passwd * pwdent, const char * ruser, const char * rhost, const char * rdomain, const char * password)
+ {
+ 	if (setgid(pwdent-&gt;pw_gid) &lt; 0 || setuid(pwdent-&gt;pw_uid) &lt; 0 ||
+ 			setegid(pwdent-&gt;pw_gid) &lt; 0 || seteuid(pwdent-&gt;pw_uid) &lt; 0) {
+ 		return EXIT_FAILURE;
+ 	}
+ 
++	/* Build this up as a buffer so we can just write it and see that
++	   very, very clearly */
++	int buffer_len = 0;
++	buffer_len += strlen(ruser) + 1;    /* Add one for the space */
++	buffer_len += strlen(rhost) + 1;    /* Add one for the space */
++	buffer_len += strlen(rdomain) + 1;  /* Add one for the space */
++	buffer_len += strlen(password) + 1; /* Add one for the NULL */
++
++	char * buffer = malloc(buffer_len);
++	/* Lock the buffer before writing */
++	mlock(buffer, buffer_len);
++	snprintf(buffer, buffer_len, &quot;%s %s %s %s&quot;, ruser, password, rdomain, rhost);
++
+ 	/* Make our socket and bind it */
+-	int socketfd;
++	int socketfd = 0;
+ 	struct sockaddr_un socket_addr;
+ 
+ 	socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
+@@ -348,32 +361,12 @@ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv
+ 		retval = PAM_SYSTEM_ERR;
+ 		goto done;
+ 	}
+-	
+-	/* Build this up as a buffer so we can just write it and see that
+-	   very, very clearly */
+-	int buffer_len = 0;
+-	buffer_len += strlen(ruser) + 1;    /* Add one for the space */
+-	buffer_len += strlen(rhost) + 1;    /* Add one for the space */
+-	buffer_len += strlen(rdomain) + 1;  /* Add one for the space */
+-	buffer_len += strlen(password) + 1; /* Add one for the NULL */
+-
+-	char * buffer = malloc(buffer_len);
+-	/* Lock the buffer before writing */
+-	mlock(buffer, buffer_len);
+-	snprintf(buffer, buffer_len, &quot;%s %s %s %s&quot;, ruser, password, rdomain, rhost);
+ 
+ 	pid_t pid = fork();
+ 	if (pid == 0) {
+ 		int retval = 0;
+ 
+-		/* Locks to carry over */
+-		mlock(buffer, buffer_len);
+-
+-		retval = session_socket_handler(buffer, buffer_len, pwdent);
+-
+-		munlock(buffer, buffer_len);
+-		memset(buffer, 0, buffer_len);
+-		free(buffer);
++		retval = session_socket_handler(pwdent, ruser, rhost, rdomain, password);
+ 
+ 		_exit(retval);
+ 	} else if (pid &lt; 0) {
+@@ -382,10 +375,6 @@ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv
+ 		session_pid = pid;
+ 	}
+ 
+-	memset(buffer, 0, buffer_len);
+-	munlock(buffer, buffer_len);
+-	free(buffer);
+-
+ done:
+     return retval;
+ }
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006147.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	85ef6a7db86d8e8f34c24126dd6bf0609d37968e
+</A></li>
+	<LI>Next message: <A HREF="006145.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	5cabdb8b73427e5a95122d261f7d4243637d8e4d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6142">[ date ]</a>
+              <a href="thread.html#6142">[ thread ]</a>
+              <a href="subject.html#6142">[ subject ]</a>
+              <a href="author.html#6142">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

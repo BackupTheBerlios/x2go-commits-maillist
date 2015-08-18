@@ -1,0 +1,503 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-10-g8060237
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.44.2-10-g8060237&In-Reply-To=%3C20140107152033.CBF8E5E019%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021571.html">
+   <LINK REL="Next"  HREF="022145.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-10-g8060237</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.44.2-10-g8060237&In-Reply-To=%3C20140107152033.CBF8E5E019%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-10-g8060237">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:20:33 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021571.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-8-gf1d83c2
+</A></li>
+        <LI>Next message: <A HREF="022145.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-9-g565d53c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21605">[ date ]</a>
+              <a href="thread.html#21605">[ thread ]</a>
+              <a href="subject.html#21605">[ subject ]</a>
+              <a href="author.html#21605">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  80602371c96597c33b1699903532beebff716e2a (commit)
+      from  565d53c772448646f065bca08f3ab0b96cab1a30 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/utils.py |  220 +++++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 142 insertions(+), 78 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/utils.py b/x2go/utils.py
+index f60c0ee..8de5cc6 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -52,8 +52,8 @@ def is_in_nx3packmethods(method):
+ 
+ def find_session_line_in_x2golistsessions(session_name, x2go_stdout):
+     &quot;&quot;&quot;\
+-    Return the X2go session meta info as output by x2golistsessions command
+-    for session C{session_name}.
++    Return the X2go session meta information as returned by the 
++    C{x2golistsessions} server command for session C{session_name}.
+ 
+     &quot;&quot;&quot;
+     sessions = stdout.read().split(&quot;\n&quot;)
+@@ -69,7 +69,7 @@ def find_session_line_in_x2golistsessions(session_name, x2go_stdout):
+ def slugify(value):
+     &quot;&quot;&quot;\
+     Normalizes string, converts to lowercase, removes non-alpha characters,
+-    and converts spaces to hyphens.
++    converts spaces to hyphens and replaces round brackets by pointed brackets.
+ 
+     &quot;&quot;&quot;
+     import unicodedata
+@@ -82,6 +82,7 @@ def slugify(value):
+ def _genSessionProfileId():
+     &quot;&quot;&quot;\
+     Generate a session profile ID as used in x2goclient's sessions config file.
++
+     &quot;&quot;&quot;
+     import datetime
+     return datetime.datetime.utcnow().strftime('%Y%m%d%H%m%S%f')
+@@ -115,16 +116,21 @@ def _checkSessionProfileDefaults(defaults):
+ 
+ 
+ def _convert_SessionProfileOptions_2_SessionParams(_options):
++    &quot;&quot;&quot;\
++    Convert session profile options as used in x2goclient's sessions file to
++    Python X2go session parameters.
+ 
+-        _params = copy.deepcopy(_options)
++    &quot;&quot;&quot;
+ 
+-        # get rid of unknown session profile options
+-        _known_options = _X2GO_SESSIONPROFILE_DEFAULTS.keys()
+-        for p in _params.keys():
+-            if p not in _known_options:
+-                del _params[p]
++    _params = copy.deepcopy(_options)
+ 
+-        _rename_dict = {
++    # get rid of unknown session profile options
++    _known_options = _X2GO_SESSIONPROFILE_DEFAULTS.keys()
++    for p in _params.keys():
++        if p not in _known_options:
++            del _params[p]
++
++    _rename_dict = {
+             'host': 'server',
+             'user': 'username',
+             'soundsystem': 'snd_system',
+@@ -153,73 +159,72 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sshproxyuser': 'sshproxy_user',
+             'sshproxykeyfile': 'sshproxy_key_filename',
+             'sshproxytunnel': 'sshproxy_tunnel',
+-
+-        }
+-        _speed_dict = {
++    }
++    _speed_dict = {
+             '0': 'modem',
+             '1': 'isdn',
+             '2': 'adsl',
+             '3': 'wan',
+             '4': 'lan',
+-        }
+-
+-        for opt, val in _options.iteritems():
+-
+-            # rename options if necessary
+-            if opt in _rename_dict.keys():
+-                del _params[opt]
+-                opt = _rename_dict[opt]
+-                _params[opt] = val
+-
+-            # translate integer values for connection speed to readable strings
+-            if opt == 'link':
+-                val = str(val).lower()
+-                if val in _speed_dict.keys():
+-                    val = _speed_dict[val]
+-                val = val.lower()
+-                _params['link'] = val
+-
+-            # share_local_folders is a list
+-            if opt in ('share_local_folders', 'mimebox_extensions'):
+-                if type(val) is types.StringType:
+-                    if val:
+-                        _params[opt] = val.split(',')
+-                    else:
+-                        _params[opt] = []
+-
+-        # append value for quality to value for pack method
+-        if _params['quality']:
+-            _params['pack'] = '%s-%s' % (_params['pack'], _params['quality'])
+-            del _params['quality']
+-
+-        del _params['fstunnel']
+-
+-        if _params.has_key('share_local_folders'):
+-            _params['share_local_folders'] = [ f for f in _params['share_local_folders'].split(',') if f ]
+-
+-        if not _options['fullscreen']:
+-            _params['geometry'] = '%sx%s' % (_options['width'], _options['height'])
+-        else:
+-            _params['geometry'] = 'fullscreen'
+-        del _params['width']
+-        del _params['height']
+-        del _params['fullscreen']
+-
+-        if not _options['sound']:
+-            snd_system = 'none'
+-        del _params['sound']
+-
+-        if _options['rootless']:
+-            _params['session_type'] = 'application'
+-        else:
+-            _params['session_type'] = 'desktop'
+-        del _params['rootless']
+-
+-        if _params['mimebox_action'] not in _X2GO_MIMEBOX_ACTIONS.keys():
+-            _params['mimebox_action'] = 'OPEN'
+-
+-        # currently known but ignored in Python X2go
+-        _ignored_options = [
++    }
++
++    for opt, val in _options.iteritems():
++
++        # rename options if necessary
++        if opt in _rename_dict.keys():
++            del _params[opt]
++            opt = _rename_dict[opt]
++            _params[opt] = val
++
++        # translate integer values for connection speed to readable strings
++        if opt == 'link':
++            val = str(val).lower()
++            if val in _speed_dict.keys():
++                val = _speed_dict[val]
++            val = val.lower()
++            _params['link'] = val
++
++        # share_local_folders is a list
++        if opt in ('share_local_folders', 'mimebox_extensions'):
++            if type(val) is types.StringType:
++                if val:
++                    _params[opt] = val.split(',')
++                else:
++                    _params[opt] = []
++
++    # append value for quality to value for pack method
++    if _params['quality']:
++        _params['pack'] = '%s-%s' % (_params['pack'], _params['quality'])
++        del _params['quality']
++
++    del _params['fstunnel']
++
++    if _params.has_key('share_local_folders'):
++        _params['share_local_folders'] = [ f for f in _params['share_local_folders'].split(',') if f ]
++
++    if not _options['fullscreen']:
++        _params['geometry'] = '%sx%s' % (_options['width'], _options['height'])
++    else:
++        _params['geometry'] = 'fullscreen'
++    del _params['width']
++    del _params['height']
++    del _params['fullscreen']
++
++    if not _options['sound']:
++        snd_system = 'none'
++    del _params['sound']
++
++    if _options['rootless']:
++        _params['session_type'] = 'application'
++    else:
++        _params['session_type'] = 'desktop'
++    del _params['rootless']
++
++    if _params['mimebox_action'] not in _X2GO_MIMEBOX_ACTIONS.keys():
++        _params['mimebox_action'] = 'OPEN'
++
++    # currently known but ignored in Python X2go
++    _ignored_options = [
+             'dpi',
+             'setdpi',
+             'usekbd',
+@@ -228,14 +233,18 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'defsndport',
+             'icon',
+             'applications',
+-        ]
+-        for i in _ignored_options:
+-            del _params[i]
++    ]
++    for i in _ignored_options:
++        del _params[i]
++
++    return _params
+ 
+-        return _params
+ 
+ def session_names_by_timestamp(session_infos):
++    &quot;&quot;&quot;\
++    Sorts session profile names by their timestamp (as used in the file format's section name).
+ 
++    &quot;&quot;&quot;
+     session_names = session_infos.keys()
+     sortable_session_names = [ '%s|%s' % (session_name.split('-')[2].split('_')[0], session_name) for session_name in session_names ]
+     sortable_session_names.sort()
+@@ -243,7 +252,14 @@ def session_names_by_timestamp(session_infos):
+ 
+ 
+ def touch_file(filename, mode='a'):
++    &quot;&quot;&quot;\
++    Imitates the behaviour of the GNU/touch command.
+ 
++    @param filename: name of the file to touch
++    @type filename: C{str}
++    @param mode: the file mode (as used for Python file objects)
++    @type mode: C{str}
++    &quot;&quot;&quot;
+     if not os.path.isdir(os.path.dirname(filename)):
+         os.makedirs(os.path.dirname(filename), mode=00700)
+     f = open(filename, mode=mode)
+@@ -251,6 +267,15 @@ def touch_file(filename, mode='a'):
+ 
+ 
+ def unique(seq):
++    &quot;&quot;&quot;\
++    Imitates the behaviour of the GNU/uniq command.
++
++    @param seq: a list/sequence containing consecutive duplicates.
++    @type seq: C{list}
++
++    @return: list that has been clean up from the consecutive duplicates
++    @rtype: C{list}
++    &quot;&quot;&quot;
+     # order preserving
+     noDupes = []
+     [noDupes.append(i) for i in seq if not noDupes.count(i)]
+@@ -258,6 +283,11 @@ def unique(seq):
+ 
+ 
+ def known_encodings():
++    &quot;&quot;&quot;\
++    Render a list of all-known-to-Python character encodings (including 
++    all known aliases)
++
++    &quot;&quot;&quot;
+     from encodings.aliases import aliases
+     _raw_encname_list = []
+     _raw_encname_list.extend(aliases.keys())
+@@ -273,17 +303,36 @@ def known_encodings():
+     return _encname_list
+ 
+ 
+-def patiently_remove_file(_dir, _file):
++def patiently_remove_file(dirname, filename):
++    &quot;&quot;&quot;\
++    Try to remove a file, wait for unlocking, remove it once removing is possible...
++
++    @param dirname: directory name the file is in
++    @type dirname: C{str}
++    @param filename: name of the file to be removed
++    @type filename: C{str}
++    &quot;&quot;&quot;
+     _not_removed = True
+     while _not_removed:
+         try:
+-            os.remove(os.path.join(_dir, _file))
++            os.remove(os.path.join(dirname, filename))
+             _not_removed = False
+         except:
+             # file is probably locked
+             gevent.sleep(5)
+ 
+ def detect_unused_port(bind_address='', preferred_port=None):
++    &quot;&quot;&quot;\
++    Detect an unused IP socket.
++
++    @param bind_address: IP address to bind to
++    @type bind_address: C{str}
++    @param preferred_port: IP socket port that shall be tried first for availability
++    @type preferred_port: C{str}
++
++    @return: free local IP socket port that can be used for binding
++    @rtype: C{str}
++    &quot;&quot;&quot;
+ 
+     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+     try:
+@@ -298,6 +347,12 @@ def detect_unused_port(bind_address='', preferred_port=None):
+     return port
+ 
+ def get_encoding():
++    &quot;&quot;&quot;\
++    Detect systems default character encoding.
++
++    @return: The system's local character encoding.
++    @rtype: C{str}
++    &quot;&quot;&quot;
+     try:
+         encoding = locale.getdefaultlocale()[1]
+     except:
+@@ -305,4 +360,13 @@ def get_encoding():
+     return encoding
+ 
+ def is_abs_path(path):
++    &quot;&quot;&quot;\
++    Test if a given path is an absolute path name.
++
++    @param path: test this path for absolutism...
++    @type path: C{str}
++
++    @return: Returns C{true} if path is an absolute path name
++    @rtype: C{bool}
++    &quot;&quot;&quot;
+     return bool((path.startswith('/') or re.match('^[%s]\:\\\\' % string.ascii_letters, path)))
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021571.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-8-gf1d83c2
+</A></li>
+	<LI>Next message: <A HREF="022145.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.44.2-9-g565d53c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21605">[ date ]</a>
+              <a href="thread.html#21605">[ thread ]</a>
+              <a href="subject.html#21605">[ subject ]</a>
+              <a href="author.html#21605">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

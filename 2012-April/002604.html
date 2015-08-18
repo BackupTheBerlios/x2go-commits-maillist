@@ -1,0 +1,293 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-154-g8fb7bb5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.10-154-g8fb7bb5&In-Reply-To=%3C20120402143606.267BE5DB35%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002603.html">
+   <LINK REL="Next"  HREF="002605.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-154-g8fb7bb5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.10-154-g8fb7bb5&In-Reply-To=%3C20120402143606.267BE5DB35%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-154-g8fb7bb5">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Apr  2 16:36:06 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002603.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-166-g9787315
+</A></li>
+        <LI>Next message: <A HREF="002605.html">[X2go-Commits] pyhoca-contrib.git - master (branch) created:	b85487ba29f9c4d8b1e6bf25bf0495895919a710
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2604">[ date ]</a>
+              <a href="thread.html#2604">[ thread ]</a>
+              <a href="subject.html#2604">[ subject ]</a>
+              <a href="author.html#2604">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  8fb7bb58ac12e283ad978b93500e58d2fd8d9467 (commit)
+      from  2af9814fdec18b6fedf41c043bbd81e6d41efb7b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8fb7bb58ac12e283ad978b93500e58d2fd8d9467
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Apr 2 16:35:58 2012 +0200
+
+    get Windows packaging with py2exe/NSIS working
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca-gui               |   38 +++++++++++++++++++++++++++++++----
+ pyhoca/wxgui/frontend.py |    2 +-
+ setup.py                 |   49 ++++++++++++++++++++++++++-------------------
+ 3 files changed, 62 insertions(+), 27 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca-gui b/pyhoca-gui
+index 007ffae..852ade5 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -21,6 +21,38 @@
+ 
+ modules ={}
+ 
++import sys
++import os
++PROG_NAME = os.path.basename(sys.argv[0]).replace('.exe', '')
++PROG_PID  = os.getpid()
++
++if hasattr(sys, 'frozen') and sys.frozen in (&quot;windows_exe&quot;, &quot;console_exe&quot;):
++    class Win32_Logging(object):
++        softspace = 0
++        _fname = os.path.join(os.environ['AppData'], PROG_NAME, '%s.log' % PROG_NAME)
++        _file = None
++        def write(self, text, **kwargs):
++            if self._file is None:
++                try:
++                    try:
++                        os.mkdir(os.path.dirname(self._fname))
++                    except:
++                        pass
++                    self._file = open(self._fname, 'w+')
++                except:
++                    pass
++            else:
++                self._file.write(text)
++                self._file.flush()
++
++        def flush(self):
++            if self._file is not None:
++                self._file.flush()
++
++    sys.stdout = Win32_Logging()
++    sys.stderr = Win32_Logging()
++    del Win32_Logging
++
+ import gevent
+ import gevent.monkey
+ gevent.monkey.patch_all()
+@@ -38,15 +70,11 @@ except: pass
+ 
+ import argparse
+ import os
+-import sys
+ import exceptions
+ import locale
+ import gettext
+ import wx
+ 
+-PROG_NAME = os.path.basename(sys.argv[0])
+-PROG_PID  = os.getpid()
+-
+ from x2go import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ 
+ if _X2GOCLIENT_OS in ('Linux', 'Mac'):
+@@ -141,7 +169,6 @@ if _X2GOCLIENT_OS == 'Windows':
+     _known_xservers = _x.known_xservers
+     _installed_xservers = _x.installed_xservers
+ 
+-
+ if _X2GOCLIENT_OS == 'Windows':
+     _config_backends = ('FILE', 'WINREG')
+ elif _X2GOCLIENT_OS == 'Linux':
+@@ -338,3 +365,4 @@ def main():
+ 
+ if __name__ == '__main__':
+     main()
++
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index fb8e32c..e771827 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -67,7 +67,7 @@ import splash
+ import sessiontitle
+ 
+ wx.SetDefaultPyEncoding(&quot;utf-8&quot;)
+-wx.InitAllImageHandlers()
++#wx.InitAllImageHandlers()
+ 
+ def SetExitHandler(func):
+ 
+diff --git a/setup.py b/setup.py
+index 1ca1150..98ce9b4 100755
+--- a/setup.py
++++ b/setup.py
+@@ -18,6 +18,21 @@
+ # Free Software Foundation, Inc.,
+ # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ 
++# import the PyHoca-GUI
++import sys
++import os
++import pyhoca.wxgui
++
++PROGRAM_NAME = 'PyHoca-GUI'
++PROGRAM_DESC = '%s is a cross-platform (Windows, MacOS X, Linux) graphical X2Go client.' % PROGRAM_NAME
++PROGRAM_VERSION = pyhoca.wxgui.__VERSION__
++PROGRAM_ICON = &quot;pixmaps/pyhoca_x2go-logo-ubuntu.ico&quot;
++LICENSE = 'GPLv3+'
++AUTHOR = 'Mike Gabriel, Dick Kniep'
++URL = '<A HREF="http://www.x2go.org">http://www.x2go.org</A>'
++LIBRARY_ZIP = r&quot;lib\shardlib.zip&quot;
++NSIS_COMPILE = os.path.join(os.environ['ProgramFiles'], 'NSIS', 'makensis.exe')
++
+ import platform
+ from setuptools import setup, find_packages
+ from distutils.core import setup
+@@ -25,29 +40,16 @@ if platform.system() == 'Windows':
+     from py2exe.build_exe import py2exe
+     import os, os.path
+     import subprocess
++    sys.path.append(os.path.normpath('../pyhoca-contrib/mswin/ms-vc-runtime'))
+ 
+ elif platform.system() == 'Linux':
+     from DistUtilsExtra.command import *
+     py2exe = object
+ 
+ from glob import glob
+-import os
+-
+-# import the PyHoca-GUI
+-import pyhoca.wxgui
+ 
+ from nsis_template import NSIS_SCRIPT_TEMPLATE
+ 
+-PROGRAM_NAME = 'PyHoca-GUI'
+-PROGRAM_DESC = '%s is a cross-platform (Windows, MacOS X, Linux) graphical X2Go client.' % PROGRAM_NAME
+-PROGRAM_VERSION = pyhoca.wxgui.__VERSION__
+-PROGRAM_ICON = &quot;pixmaps/pyhoca_x2go-logo-ubuntu.ico&quot;
+-LICENSE = 'GPLv3+'
+-AUTHOR = 'Mike Gabriel, Dick Kniep'
+-URL = '<A HREF="http://www.x2go.org">http://www.x2go.org</A>'
+-
+-NSIS_COMPILE = os.path.join(os.environ['ProgramFiles'], 'NSIS', 'makensis.exe')
+-
+ #
+ # to build .exe file, run on Windows:
+ # ,,python setup.py py2exe''
+@@ -106,12 +108,16 @@ class build_installer(py2exe):
+ 
+     # This class first builds the exe file(s), then creates an NSIS installer
+     # that runs your program from a temporary directory.
++
+     def run(self):
++
+         # First, let py2exe do it's work.
+         py2exe.run(self)
+ 
++
+         lib_dir = self.lib_dir
+         dist_dir = self.dist_dir
++
+         # Create the installer, using the files py2exe has created.
+         script = NSISScript(
+                             PROGRAM_NAME,
+@@ -125,9 +131,6 @@ class build_installer(py2exe):
+         print &quot;*** compiling the NSIS setup script***&quot;
+         script.compile()
+ 
+-
+-zipfile = r&quot;lib\shardlib&quot;
+-
+ if platform.system() == 'Windows':
+ 
+     dll_data_files = [(&quot;Microsoft.VC90.CRT&quot;, glob(r'..\\pyhoca-contrib\\mswin\\ms-vc-runtime\\*.*'))]
+@@ -137,9 +140,9 @@ if platform.system() == 'Windows':
+ 
+     icon_files = datafilelist('icons\\PyHoca', r'icons\\PyHoca')
+     img_files = [(&quot;img&quot;, glob(r'img\\*.*'))]
+-    i18n_files = datafilelist('mo', r'build\\mo\\en\\LC_MESSAGES')
++    i18n_files = datafilelist('mo', r'build\\mo')
+ 
+-    data_files.extend([ &quot;pixmaps\\pyhoca-gui.ico&quot;, ] +
++    data_files.extend([ ('icons', [&quot;pixmaps\\pyhoca-gui.ico&quot;]), ] +
+                       dll_data_files +
+                       icon_files +
+                       img_files +
+@@ -183,10 +186,14 @@ setup(
+         },
+     ],
+     data_files=data_files,
+-    zipfile = zipfile,
++    zipfile = LIBRARY_ZIP,
+     options={
+         'py2exe': {
+-            'dll_excludes': ['MSVCP90.DLL'],
++            'includes': ['greenlet'],
++            'compressed': 1,
++            'optimize': 2,
++        },
++        'build_exe': {
+             'includes': ['greenlet'],
+             'compressed': 1,
+             'optimize': 2,
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002603.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-166-g9787315
+</A></li>
+	<LI>Next message: <A HREF="002605.html">[X2go-Commits] pyhoca-contrib.git - master (branch) created:	b85487ba29f9c4d8b1e6bf25bf0495895919a710
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2604">[ date ]</a>
+              <a href="thread.html#2604">[ thread ]</a>
+              <a href="subject.html#2604">[ subject ]</a>
+              <a href="author.html#2604">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

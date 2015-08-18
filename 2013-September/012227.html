@@ -1,0 +1,202 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-29-ge3b8739
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.0-29-ge3b8739&In-Reply-To=%3C20130911100803.45DAC5DB39%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012244.html">
+   <LINK REL="Next"  HREF="012228.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-29-ge3b8739</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.0-29-ge3b8739&In-Reply-To=%3C20130911100803.45DAC5DB39%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-29-ge3b8739">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 11 12:08:03 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012244.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-24-g130088a
+</A></li>
+        <LI>Next message: <A HREF="012228.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-30-g736ec9e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12227">[ date ]</a>
+              <a href="thread.html#12227">[ thread ]</a>
+              <a href="subject.html#12227">[ subject ]</a>
+              <a href="author.html#12227">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  e3b87397d75a7e246d29c4f94b1368e092f27207 (commit)
+      from  512b85b24ca11d37c422d009fb3190c35d30d03e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog      |    3 +++
+ man/man1/x2goclient.1 |    3 +++
+ onmainwindow.cpp      |   35 +++++++++++++++++++++++------------
+ onmainwindow.h        |    1 +
+ 4 files changed, 30 insertions(+), 12 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 84daa74..c2dcc38 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -20,6 +20,9 @@ x2goclient (4.0.1.1-0~x2go1) UNRELEASED; urgency=low
+       patch was applied. Segfault only occurred if the tray icon was not used.
+     - Show session name in notification bubbles.
+     - Update German translation.
++    - Add cmdline option --broker-autologoff: Enforce re-authentication against
++      X2Go Session Broker after a session has been suspended or terminated.
++      (Fixes: #179).
+ 
+   [ Ezra B&#252;hler ]
+   * New upstream version (4.0.1.1):
+diff --git a/man/man1/x2goclient.1 b/man/man1/x2goclient.1
+index 4bbe926..9eb69ae 100644
+--- a/man/man1/x2goclient.1
++++ b/man/man1/x2goclient.1
+@@ -117,6 +117,9 @@ with \fI--broker-autologin\fR or \fI--broker-ssh-key\fR.
+ For SSH based X2Go Session Brokers. If an SSH agent is available or default key files exist then
+ try those for authentication against the X2Go Session Broker.
+ .TP
++\*(T&lt;\fB\-\-broker-autologoff\fR\*(T&gt;
++Enforce re-authentication against X2Go Session Broker after a session has been suspended or terminated.
++.TP
+ \*(T&lt;\fB\-\-broker-ssh-key=&lt;SSHPRIVKEY&gt;\fR\*(T&gt;
+ For SSH based X2Go Session Brokers. Full path to a valid SSH private key file.
+ .TP
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index c2fdeea..c2ee334 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -104,6 +104,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     appSeparator=0;
+     config.brokerNoAuth=false;
+     config.brokerAutologin=false;
++    config.brokerAutologoff=false;
+     cmdAutologin=false;
+ 
+ 
+@@ -5473,18 +5474,22 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+         cleanPrintSpool();
+     if ( !restartResume )
+     {
+-        if ( !embedMode )
++        if ( brokerMode &amp;&amp; (!config.brokerAutologoff) )
+         {
+-            if (!brokerMode)
+-            {
+-                pass-&gt;setText ( &quot;&quot; );
+-                QTimer::singleShot ( 2000,this,
+-                                     SLOT ( slotShowPassForm() ) );
+-            }
+-            else
+-                QTimer::singleShot ( 2000,broker,
+-                                     SLOT ( getUserSessions() ) );
+-
++            x2goDebug&lt;&lt;&quot;Re-reading user's session profiles from broker.&quot;;
++            QTimer::singleShot ( 2000,broker,
++                                 SLOT ( getUserSessions() ) );
++        }
++        else if ( brokerMode &amp;&amp; config.brokerAutologoff )
++        {
++            x2goDebug&lt;&lt;&quot;Logging off from broker as requested via cmdline.&quot;;
++            QTimer::singleShot(1, this,SLOT(slotGetBrokerAuth()));
++        }
++        else if ( !embedMode )
++        {
++            pass-&gt;setText ( &quot;&quot; );
++            QTimer::singleShot ( 2000,this,
++                                 SLOT ( slotShowPassForm() ) );
+         }
+     }
+     else
+@@ -6375,6 +6380,12 @@ bool ONMainWindow::parseParameter ( QString param )
+         return true;
+     }
+ 
++    if ( param == &quot;--broker-autologoff&quot;)
++    {
++        config.brokerAutologoff=true;
++        return true;
++    }
++
+     if ( param == &quot;--broker-noauth&quot;)
+     {
+         config.brokerNoAuth=true;
+@@ -8172,7 +8183,7 @@ void ONMainWindow::slotGpgAgentFinished ( int , QProcess::ExitStatus )
+ 
+         x2goDebug&lt;&lt;&quot;SSH-ADD out: &quot;&lt;&lt;sshout;
+ 
+-        if(brokerMode)
++        if(brokerMode &amp;&amp; (!config.brokerAutologoff))
+         {
+             broker-&gt;getUserSessions();
+         }
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 86f04ec..61e730f 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -166,6 +166,7 @@ struct ConfigFile
+     bool brokerAuthenticated;
+     bool brokerNoAuth;
+     bool brokerAutologin;
++    bool brokerAutologoff;
+     QString brokerSshKey;
+     QString iniFile;
+     QString server;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012244.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-24-g130088a
+</A></li>
+	<LI>Next message: <A HREF="012228.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.0-30-g736ec9e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12227">[ date ]</a>
+              <a href="thread.html#12227">[ thread ]</a>
+              <a href="subject.html#12227">[ subject ]</a>
+              <a href="author.html#12227">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

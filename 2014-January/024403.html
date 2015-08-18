@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	58ece9e00def0c33b67b591eb075b025f59f79d7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0958ece9e00def0c33b67b591eb075b025f59f79d7&In-Reply-To=%3C20140108142745.5B5745DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024401.html">
+   <LINK REL="Next"  HREF="023750.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	58ece9e00def0c33b67b591eb075b025f59f79d7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0958ece9e00def0c33b67b591eb075b025f59f79d7&In-Reply-To=%3C20140108142745.5B5745DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	58ece9e00def0c33b67b591eb075b025f59f79d7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:45 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024401.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	3f31de122ce70499ee4e3cce1b2945a6b2e8cebf
+</A></li>
+        <LI>Next message: <A HREF="023750.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	7394717c2c27e0d0d667cddc9e27de4035083c54
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24403">[ date ]</a>
+              <a href="thread.html#24403">[ thread ]</a>
+              <a href="subject.html#24403">[ subject ]</a>
+              <a href="author.html#24403">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  58ece9e00def0c33b67b591eb075b025f59f79d7 (commit)
+      from  84aaee3290745b91dc3629e905c3076c792d2a64 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/profiles/_file.py |    3 +-
+ x2go/inifiles.py                |   60 +++++++++++++--------------------------
+ x2go/log.py                     |    7 ++++-
+ x2go/utils.py                   |    8 +++++-
+ x2go/xserver.py                 |    2 +-
+ 5 files changed, 34 insertions(+), 46 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/_file.py
+index 37e94a4..4c4ea2c 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/_file.py
+@@ -72,8 +72,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+             for key, default_value in self.defaultSessionProfile.iteritems():
+                 if not self.iniConfig.has_option(session_profile, key):
+                     self._storeValue(session_profile, key, default_value)
+-        self._updateDataObject()
+-
++        
+     def __call__(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+index 2e1fbac..b20b9fc 100644
+--- a/x2go/inifiles.py
++++ b/x2go/inifiles.py
+@@ -92,6 +92,12 @@ class X2goIniFile(object):
+         self.iniConfig = ConfigParser.SafeConfigParser()
+         self.iniConfig.optionxform = str
+ 
++        for file_name in config_files:
++            if file_name.startswith(_current_home):
++                if not os.path.exists(file_name):
++                    utils.touch_file(file_name)
++                break
++
+         self.logger('proposed config files are %s' % config_files, log.loglevel_INFO, )
+         _found_config_files = self.iniConfig.read(config_files)
+         self.logger('config files found: %s' % _found_config_files or 'none', log.loglevel_INFO, )
+@@ -104,8 +110,7 @@ class X2goIniFile(object):
+ 
+         self.config_files = _found_config_files
+         self._fill_defaults()
+-        self._updateDataObject()
+-
++        
+     def __repr__(self):
+         result = 'X2goIniFile('
+         for p in dir(self):
+@@ -129,14 +134,13 @@ class X2goIniFile(object):
+         @type value: C{str}, C{list}, C{bool}, ...
+ 
+         &quot;&quot;&quot;
+-        if type(value) is types.UnicodeType:
+-            self.iniConfig.set(section,key,value)
+-        elif type(value) is types.StringType:
+-            self.iniConfig.set(section,key,unicode(value))
+-        elif type(value) is types.BooleanType:
+-            self.iniConfig.set(section,key,unicode(int(value)))
++        if type(value) == type(u''):
++            value = value.encode(utils.get_encoding())
++            
++        if type(value) is types.BooleanType:
++            self.iniConfig.set(section, key, str(int(value)))
+         else:
+-            self.iniConfig.set(section,key,unicode(value))
++            self.iniConfig.set(section, key, str(value))
+ 
+     def _fill_defaults(self):
+         &quot;&quot;&quot;\
+@@ -152,8 +156,7 @@ class X2goIniFile(object):
+                 if not self.iniConfig.has_section(section):
+                     self.iniConfig.add_section(section)
+                 self._storeValue(section, key, value)
+-        self._updateDataObject
+-
++        
+     def update_value(self, section, key, value):
+         &quot;&quot;&quot;\
+         Change a value for a given section and key. This method
+@@ -171,8 +174,7 @@ class X2goIniFile(object):
+             self.iniConfig.add_section(section)
+         self._storeValue(section, key, value)
+         self.write_config = True
+-        self._updateDataObject()
+-
++        
+     def write(self):
+         &quot;&quot;&quot;\
+         Write the ini file modifications (SafeConfigParser object) from RAM to disk.
+@@ -216,6 +218,8 @@ class X2goIniFile(object):
+         @rtype: class
+ 
+         &quot;&quot;&quot;
++        if key_type is None:
++            key_type = self.get_type(section, key)
+         if self.iniConfig.has_option(section, key):
+             if key_type is types.BooleanType:
+                 return self.iniConfig.getboolean(section, key)
+@@ -228,37 +232,11 @@ class X2goIniFile(object):
+                 else:
+                     raise TypeError
+             else:
+-                return self.iniConfig.get(section, key)
++                _val = self.iniConfig.get(section, key)
++                return _val.decode(utils.get_encoding())
+     get = get_value
+     __call__ = get_value
+ 
+-    def _updateDataObject(self):
+-        &quot;&quot;&quot;\
+-        This routine transfers the ini file's config items into simple
+-        object data properties of the form::
+-
+-           &lt;X2goIniFile instance&gt;.&lt;section_name&gt;.&lt;option_name&gt; = value
+-
+-        &quot;&quot;&quot;
+-        class ini_section(object):
+-            def __str__(self):
+-                return self.name
+-            def __repr__(self):
+-                return &quot;&lt;%s instance: %s&gt;&quot; % (self.__class__, self.name)
+-            def __init__(self, name):
+-                self.name = name
+-            def set_option(self, option_name, value):
+-                setattr(self, option_name.lower(), value)
+-
+-        for section_name in self.iniConfig.sections():
+-            section = ini_section(section_name)
+-            for option_name in self.iniConfig.options(section.name):
+-                if section.name in self.defaultValues and option_name in self.defaultValues[section.name]:
+-                    section.set_option(option_name, self.get(section.name, option_name, self.get_type(section.name, option_name)))
+-                else:
+-                    section.set_option(option_name, self.get(section.name, option_name))
+-            setattr(self, section.name.lower(), section)
+-
+     @property
+     def printable_config_file(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/log.py b/x2go/log.py
+index 17ef354..7fecb99 100644
+--- a/x2go/log.py
++++ b/x2go/log.py
+@@ -23,7 +23,8 @@ X2goLogger class - flexible handling of log and debug output.
+ __NAME__ = 'x2gologger-pylib'
+ 
+ # modules
+-import os, sys
++import os
++import sys
+ 
+ loglevel_NONE = 0
+ loglevel_ERROR = 8
+@@ -38,6 +39,9 @@ loglevel_DEFAULT = loglevel_ERROR | loglevel_WARN | loglevel_NOTICE
+ Default loglevel of X2goLogger objects is: NOTICE &amp; WARN &amp; ERROR
+ &quot;&quot;&quot;
+ 
++# Python X2go modules
++import utils
++
+ class X2goLogger(object):
+     &quot;&quot;&quot;\
+     A simple logger class, that is used by all Python X2go classes.
+@@ -89,6 +93,7 @@ class X2goLogger(object):
+         if loglevel &amp; self.loglevel:
+ 
+             msg = msg.replace('\n', ' ')
++            msg = msg.encode(utils.get_encoding())
+ 
+             if self.tag is not None:
+                 self.destination.write('%s[%s] (%s) %s: %s\n' % (self.name, self.progpid, tag, self._loglevel_NAMES[loglevel].upper(), msg))
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 5624928..b45da47 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -25,6 +25,7 @@ __NAME__ = 'x2goutils-pylib'
+ 
+ import sys
+ import os
++import locale
+ import re
+ import types
+ import copy
+@@ -290,4 +291,9 @@ def detect_unused_port(bind_address='', preferred_port=None):
+         ipaddr, port = sock.getsockname()
+     return port
+ 
+-
++def get_encoding():
++    try:
++        encoding = locale.getdefaultlocale()[1]
++    except:
++        encoding = sys.getdefaultencoding()
++    return encoding
+diff --git a/x2go/xserver.py b/x2go/xserver.py
+index 850dcd7..bd31aa3 100644
+--- a/x2go/xserver.py
++++ b/x2go/xserver.py
+@@ -87,7 +87,7 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self.xservers.known_xservers
++        return self.get_value('XServers', 'known_xservers')
+ 
+     @property
+     def installed_xservers(self):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024401.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	3f31de122ce70499ee4e3cce1b2945a6b2e8cebf
+</A></li>
+	<LI>Next message: <A HREF="023750.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	7394717c2c27e0d0d667cddc9e27de4035083c54
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24403">[ date ]</a>
+              <a href="thread.html#24403">[ thread ]</a>
+              <a href="subject.html#24403">[ subject ]</a>
+              <a href="author.html#24403">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

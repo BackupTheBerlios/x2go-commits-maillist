@@ -1,0 +1,736 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	18385858e6fef356682e81f668faddfac864c395
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%0918385858e6fef356682e81f668faddfac864c395&In-Reply-To=%3C20140107151548.CE1855DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020157.html">
+   <LINK REL="Next"  HREF="020161.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	18385858e6fef356682e81f668faddfac864c395</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%0918385858e6fef356682e81f668faddfac864c395&In-Reply-To=%3C20140107151548.CE1855DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	18385858e6fef356682e81f668faddfac864c395">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:15:48 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020157.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	3734cd9ddc229a85f699835de6d358294916fe8f
+</A></li>
+        <LI>Next message: <A HREF="020161.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	eff06124e17bf39b855097080cc6a851ba8fff46
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20158">[ date ]</a>
+              <a href="thread.html#20158">[ thread ]</a>
+              <a href="subject.html#20158">[ subject ]</a>
+              <a href="author.html#20158">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  18385858e6fef356682e81f668faddfac864c395 (commit)
+      from  ce981684654d333b61219c0b76e625d7c38561f2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/inifiles.py |  213 +++++++++++++++++++++++++++
+ x2go/registry.py |  420 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 633 insertions(+)
+ create mode 100644 x2go/inifiles.py
+ create mode 100644 x2go/registry.py
+
+The diff of changes is:
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+new file mode 100644
+index 0000000..e0a8c2a
+--- /dev/null
++++ b/x2go/inifiles.py
+@@ -0,0 +1,213 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++#
++# This code was initially written by:
++#       2010 Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++#
++# Other contributors:
++#       none so far
++
++&quot;&quot;&quot;\
++X2goProcessIniFile - helper class for parsing .ini files
++&quot;&quot;&quot;
++__NAME__ = 'x2goinifiles-pylib'
++
++
++# modules
++import os
++import ConfigParser
++import types
++import cStringIO
++
++# Python X2go modules
++from defaults import LOCAL_HOME as _current_home
++import log
++import utils
++
++class X2goIniFile(object):
++    &quot;&quot;&quot;
++    Base class to process the different ini files used by X2o
++    clients. Primarily used to standardize the content of the
++    ini file.
++    If entries are omitted in the file, they are filled with
++    default values, so the resulting objects always contain
++    the same fields
++
++    @param logger: you can pass an L{X2goLogger} object to the
++        L{X2goFwServer} constructor
++    @type logger: L{X2goLogger} instance
++    @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++        constructed with the given loglevel
++    @type loglevel: int
++    &quot;&quot;&quot;
++    defaultValues = {
++        'none': {
++            'none': 'empty', 
++            },
++        }
++    write_user_config = False
++    user_config_file = None
++
++    def __init__(self, config_files, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        if utils._checkIniFileDefaults(defaults):
++            self.defaultValues = defaults
++
++        # we purposefully do not inherit the SafeConfigParser class
++        # here as we do not want to run into name conflicts between 
++        # X2go ini file options and method / property names in 
++        # SafeConfigParser... This is a pre-cautious approach...
++        self.iniConfig = ConfigParser.SafeConfigParser()
++        self.iniConfig.optionxform = str
++
++        self.logger('proposed config files are %s' % config_files, log.loglevel_INFO, )
++        _found_config_files = self.iniConfig.read(config_files)
++        self.logger('config files found: %s' % _found_config_files or 'none', log.loglevel_INFO, )
++
++        for file_name in _found_config_files:
++            if file_name.startswith(_current_home):
++                # we will use the first file found in the user's home dir for writing modifications
++                self.user_config_file = file_name
++                break
++
++        self._fill_defaults()
++        self._updateDataObject()
++
++    def __repr__(self):
++        result = 'X2goIniFile('
++        for p in dir(self):
++            if '__' in p or not p in self.__dict__ or type(p) is InstanceType: continue
++            result += p + '=' + str(self.__dict__[p])
++        return result + ')'
++
++    def _storeValue(self, section, key, value):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if type(value) is types.StringType:
++            self.iniConfig.set(section,key,value)
++        elif type(value) is types.BooleanType:
++            self.iniConfig.set(section,key,str(int(value)))
++        else:
++            self.iniConfig.set(section,key,str(value))
++
++    def _fill_defaults(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        for section, sectionvalue in self.defaultValues.items():
++            for key, value in sectionvalue.items():
++                if self.iniConfig.has_option(section, key): continue
++                if not self.iniConfig.has_section(section):
++                    self.iniConfig.add_section(section)
++                self._storeValue(section, key, value)
++        self._updateDataObject
++
++    def update(self, section, key, value):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if not self.iniConfig.has_section(section):
++            self.iniConfig.add_section(section)
++        self._storeValue(section, key, value)
++        self.write_config = True
++        self._updateDataObject()
++
++    def write(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if self.user_config_file and self.write_user_config:
++            fd = open(self.user_config_file, 'wb')
++            self.iniConfig.write(fd)
++            fd.close()
++            self.write_config = False
++
++    def get_type(self, section, option):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return type(self.defaultValues[section][option])
++
++    def get(self, section, key, key_type=None):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if self.iniConfig.has_option(section, key):
++            if key_type is types.BooleanType:
++                return self.iniConfig.getboolean(section, key)
++            elif key_type is types.IntType:
++                return self.iniConfig.getint(section, key)
++            else:
++                return self.iniConfig.get(section, key)
++    __call__ = get
++
++    def _updateDataObject(self):
++        &quot;&quot;&quot;\
++        This routine transfers the ini file's config items into simple
++        object data properties of the form::
++
++           &lt;X2goIniFile instance&gt;.&lt;section_name&gt;.&lt;option_name&gt; = value
++
++        &quot;&quot;&quot;
++        class ini_section(object):
++            def __str__(self):
++                return self.name
++            def __repr__(self):
++                return &quot;&lt;%s instance: %s&gt;&quot; % (self.__class__, self.name)
++            def __init__(self, name):
++                self.name = name
++            def set_option(self, option_name, value):
++                setattr(self, option_name, value)
++
++        for section_name in self.iniConfig.sections():
++            section = ini_section(section_name)
++            for option_name in self.iniConfig.options(section.name):
++                if section.name in self.defaultValues and option_name in self.defaultValues[section.name]:
++                    section.set_option(option_name, self.get(section.name, option_name, self.get_type(section.name, option_name)))
++                else:
++                    section.set_option(option_name, self.get(section.name, option_name))
++            setattr(self, section.name, section)
++
++    @property
++    def printable_config_file(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        stdout = cStringIO.StringIO()
++        self.iniConfig.write(stdout)
++        _ret_val = stdout.getvalue()
++        stdout.close()
++        return _ret_val
+diff --git a/x2go/registry.py b/x2go/registry.py
+new file mode 100644
+index 0000000..feaee77
+--- /dev/null
++++ b/x2go/registry.py
+@@ -0,0 +1,420 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++X2goSessionRegistry class - managing x2goclient session profiles.
++&quot;&quot;&quot;
++__NAME__ = 'x2gosessregistry-pylib'
++
++import copy
++import types
++import uuid
++
++# Python X2go modules
++import profiles
++import log
++import utils
++import session
++from x2go_exceptions import *
++
++
++class X2goRegistryProfile(object):
++    def __init__(self):
++        self.uuid = uuid.uuid1()
++    def __str__(self):
++        return '%s - %s (%s)' % (self.uuid, self.profile_name, self.profile_id, )
++    def __repr__(self):
++        result = 'X2goRegistryProfile('
++        for p in dir(self):
++            if '__' in p or not p in self.__dict__ or type(p) is types.InstanceType: continue
++            result += p + '=' + str(self.__dict__[p]) + ', '
++        return result + ')'
++
++
++class X2goSessionRegistry(object):
++    &quot;&quot;&quot;\
++    STILL UNDOCUMENTED
++
++    &quot;&quot;&quot;
++    def __init__(self, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = logger
++        self.logger.tag = __NAME__
++
++        self.registry = {}
++        self.profiles = profiles.X2goClientSessions(logger=logger)
++
++    def __repr__(self):
++        result = 'X2goSessionRegistry('
++        for p in dir(self):
++            if '__' in p or not p in self.__dict__ or type(p) is InstanceType: continue
++            result += p + '=' + str(self.__dict__[p])
++        return result + ')'
++
++    def read_session_profiles(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        # import sessions file into registry
++        for profile_id in self.profiles.profile_ids:
++            profile_name = self.profiles.get_profile_name(profile_id)
++            profile_config = self.profiles.get_profile_config(profile_id)
++            self.register_by_profile_config(profile_name, profile_id=profile_id, **profile_config)
++
++    def __call__(self, session_uuid):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.registry[session_uuid]
++
++    def get_profile_id(self, session_uuid):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _profile_ids = [ p for p in self.profile_ids if self.get_profile_name(p) == profile_name ]
++        if len(_profile_ids) == 1:
++            return _profile_ids[0]
++        elif len(_profile_ids) == 0:
++            return None
++        else:
++            raise X2goProfileException('The session registry contains multiple session profiles with name: %s.' % profile_name)
++
++    def get_profile_name(self, session_uuid):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.registry[profile_id].profile_name
++
++    @property
++    def profile_names(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return [ self.registry[profile_id].profile_name for profile_id in self.registry.keys() ]
++
++    @property
++    def profile_ids(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.registry.keys()
++
++    def has_profile_name(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return profile_name in self.profile_names
++
++    def has_profile_id(self, profile_id):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return profile_id in self.registry.keys()
++
++    def _check_profile_id_or_name(self, profile_id_or_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _profile_id = None
++        if self.has_profile_id(profile_id_or_name):
++            # we were given a session profile id...
++            _profile_id = profile_id_or_name
++        elif self.has_profile_name(profile_id_or_name):
++            # we were given a sesion profile name...
++            _profile_id = self.get_profile_id(profile_id_or_name)
++        if not _profile_id:
++            raise X2goProfileException('No session profile with id or name %s exists.' % profile_id_or_name)
++        return _profile_id
++
++    def get_profile_config(self, profile_id_or_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _profile_id = self._check_profile_id_or_name(profile_id_or_name)
++        return self.registry[_profile_id].config
++
++    def get_session_params(self, profile_id_or_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _profile_id = self._check_profile_id_or_name(profile_id_or_name)
++        return self.registry[_profile_id].session_params
++
++    def has_default_profile(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.get_default() and True or False
++
++    def get_default_profile(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return '...'
++
++    def register_by_profile_config(self, profile_name, profile_id=None, **config):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if self.has_profile_name(profile_name):
++            raise X2goProfileException('X2go session profile %s already exists.' % profile_name)
++        else:
++            if not profile_id:
++                profile_id = utils._genSessionProfileId()
++            self.profiles.add_profile(profile_id, **config)
++            _config = self.profiles.get_profile_config(profile_id)
++            self.registry[profile_id] = X2goRegistryProfile()
++            self.registry[profile_id].profile_id = profile_id
++            self.registry[profile_id].profile_name = profile_name
++            self.registry[profile_id].profile_config = _config
++            _params = utils._convert_config2params(config)
++            self.registry[profile_id].server = _params['server']
++            del _params['server']
++            self.registry[profile_id].printing = _params['printing']
++            del _params['printing']
++            self.registry[profile_id].share_local_folders = _params['share_local_folders']
++            del _params['share_local_folders']
++            self.registry[profile_id].session_params = _params
++            # differentiate SSH options from X2go options
++            _session_options = copy.deepcopy(_params)
++            _connect_options = copy.deepcopy(_params)
++
++            for k in _params.keys():
++                if k in session._X2GO_SESSION_OPTIONS:
++                    del _connect_options[k]
++                else:
++                    del _session_options[k]
++
++            self.logger('loading X2go profile %s...' % profile_name, log.loglevel_NOTICE)
++
++            self.logger('X2go session options for profile %s:' % profile_name, log.loglevel_DEBUG)
++            for k in _session_options:
++                self.logger('    %s: %s' % (k, _session_options[k]), log.loglevel_DEBUG)
++
++            self.logger('Paramiko connect options for profile %s are:' % profile_name, log.loglevel_DEBUG)
++            for k in _connect_options:
++                self.logger('    %s: %s' % (k,_connect_options[k]), log.loglevel_DEBUG)
++
++            self.registry[profile_id].session_object = session.X2goSession(**_session_options)
++            self.registry[profile_id].connected = False
++            self.registry[profile_id].running = False
++            self.registry[profile_id].suspended = False
++            self.registry[profile_id].terminated = False
++            self.registry[profile_id].connect_options = _connect_options
++            self.registry[profile_id].session_options = _session_options
++
++            return self.registry[profile_id].uuid
++
++    def register_by_session_params(self, profile_name, profile_id=None, **params):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if self.has_profile_name(profile_name):
++            raise X2goProfileException('X2go session profile %s already exists.' % profile_name)
++        else:
++            if not profile_id:
++                profile_id = utils._genSessionProfileId()
++            ### TODO
++            #_config = utils._convert_params2config(params)
++            #self.profiles.add_profile(profile_id, **_config)
++            _config = None
++            self.registry[profile_id] = X2goRegistryProfile()
++            self.registry[profile_id].profile_id = profile_id
++            self.registry[profile_id].profile_name = profile_name
++            self.registry[profile_id].profile_config = _config
++            self.registry[profile_id].server = params['server']
++            del params['server']
++            self.registry[profile_id].printing = params['printing']
++            del params['printing']
++            self.registry[profile_id].share_local_folders = params['share_local_folders']
++            del params['share_local_folders']
++            self.registry[profile_id].session_params = params
++            # differentiate SSH options from X2go options
++            _session_options = copy.deepcopy(params)
++            _connect_options = copy.deepcopy(params)
++
++            for k in params.keys():
++                if k in session._X2GO_SESSION_OPTIONS:
++                    del _connect_options[k]
++                else:
++                    del _session_options[k]
++
++            self.logger('initializing X2go profile %s...' % profile_name, log.loglevel_NOTICE)
++
++            self.logger('X2go session options for profile %s:' % profile_name, log.loglevel_DEBUG)
++            for k in _session_options:
++                self.logger('    %s: %s' % (k, _session_options[k]), log.loglevel_DEBUG)
++
++            self.logger('Paramiko connect options for profile %s are:' % profile_name, log.loglevel_DEBUG)
++            for k in _connect_options:
++                self.logger('    %s: %s' % (k,_connect_options[k]), log.loglevel_DEBUG)
++
++            self.registry[profile_id].session_object = session.X2goSession(**_session_options)
++            self.registry[profile_id].connected = False
++            self.registry[profile_id].running = False
++            self.registry[profile_id].suspended = False
++            self.registry[profile_id].terminated = False
++            self.registry[profile_id].connect_options = _connect_options
++            self.registry[profile_id].session_options = _session_options
++
++            return self.registry[profile_id].uuid
++
++    def del_profile(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if not self.has_profile_name(profile_name):
++            raise X2goProfileException('X2go session profile %s does not exist.' % profile_name)
++        else:
++            if self.registry[profile_id].connected:
++                raise X2goProfileException('Cannot delete, X2go session profile is connected.' % profile_name)
++            elif self.registry[profile_id].running:
++                raise X2goProfileException('Cannot delete, X2go session profile is running.' % profile_name)
++            else:
++                del self.registry[profile_id]
++
++    def _sessionsWithState(self, state):
++        _x2go_single_profiles = []
++        for p in self.registry.items():
++            if getattr(p, state, False):
++                _x2go_single_profiles.append(p)
++        return _x2go_single_profiles 
++
++    @property
++    def connected_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._sessionsWithState(self, 'connected')
++
++    @property
++    def running_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._sessionsWithState(self, 'running')
++
++    @property
++    def suspended_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._sessionsWithState(self, 'suspended')
++
++    @property
++    def terminated_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        self._sessionsWithState(self, 'terminated')
++
++    @property
++    def has_running_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return len(self.running_sessions) &gt; 0
++
++    @property
++    def list_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _available_sessions_profiles = []
++        for p in self.registry.items():
++            _available_session_profiles.append([p.name, p.running, p.isAlive ])
++        return _available_session_profiles
++
++    @property
++    def non_running_sessions(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _non_running = []
++        _running = self.runningSessions
++        for p in self.registry.items():
++            if p not in _running:
++                _non_running.append(p)
++        return _non_running
++
++    @property
++    def list_non_running_sessions_by_profile_id(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return [ p.name for p in self.non_running_sessions ]
++
++    def getX2goSessionByName(self, profile_name):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.registry[self._profileName2ProfileIds(profile_name)].session
++
++    def getX2goSessionById(self, profile_id):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.registry[profile_id].session
++
++    #def updProfileByNumber(self, profile):
++    #    &quot;&quot;&quot;\
++    #    STILL UNDOCUMENTED
++    #
++    #    &quot;&quot;&quot;
++    #    counter = 0
++    #    for nameKeys in self.x2gonames.keys():
++    #        if counter == self.current_selected_profile_nr:
++    #            oldName = nameKeys
++    #            break
++    #        counter += 1
++    #    del self.x2gonames[oldName]
++    #    self.x2goprofs[self.current_selected_profile_nr] = profile
++    #    self.x2gonames[profile.name] = self.current_selected_profile_nr
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020157.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	3734cd9ddc229a85f699835de6d358294916fe8f
+</A></li>
+	<LI>Next message: <A HREF="020161.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	eff06124e17bf39b855097080cc6a851ba8fff46
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20158">[ date ]</a>
+              <a href="thread.html#20158">[ thread ]</a>
+              <a href="subject.html#20158">[ subject ]</a>
+              <a href="author.html#20158">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

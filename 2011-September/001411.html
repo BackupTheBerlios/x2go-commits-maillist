@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-19-g3d504f3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-19-g3d504f3&In-Reply-To=%3C20110908153612.812D15DB1B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001410.html">
+   <LINK REL="Next"  HREF="001412.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-19-g3d504f3</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-19-g3d504f3&In-Reply-To=%3C20110908153612.812D15DB1B%40ymir%3E"
+       TITLE="[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-19-g3d504f3">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Sep  8 17:36:12 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001410.html">[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.4-22-g20a8605
+</A></li>
+        <LI>Next message: <A HREF="001412.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-219-g7f7ec2c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1411">[ date ]</a>
+              <a href="thread.html#1411">[ thread ]</a>
+              <a href="subject.html#1411">[ subject ]</a>
+              <a href="author.html#1411">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  3d504f393caf5d3942e22578695f8fcc73ef1409 (commit)
+      from  2a54f6694a95b24c915dfafc04b7a1e9123b94d4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3d504f393caf5d3942e22578695f8fcc73ef1409
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Sep 8 17:36:30 2011 +0200
+
+    Major change of code, add comments, syslogging, fix ghostscript call.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ cups-x2go        |   66 ++++++++++++++++++++++++++++++++++++++---------------
+ cups-x2go.conf   |    2 +-
+ debian/changelog |    1 +
+ 3 files changed, 49 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/cups-x2go b/cups-x2go
+index ab0d1ef..a57cbea 100755
+--- a/cups-x2go
++++ b/cups-x2go
+@@ -1,4 +1,4 @@
+-!/usr/bin/perl
++#!/usr/bin/perl
+ 
+ # X2go CUPS backend 
+ # Copyright 2009-2011 Obviously Nice
+@@ -104,19 +104,38 @@ sub printfile
+ 	if($phost eq $host)
+ 	{
+ 		my ($tm,$tm,$uid,$gid,$tm,$tm,$tm,$spooldir)=getpwnam(&quot;x2goprint&quot;);
+-		my $spfile=&quot;$spooldir/$sess$bname&quot;;
++		my $spfile=&quot;$spooldir/${sess}_$bname&quot;;
+ 		copy($pfile, $spfile);
+ 		copy($tfile, &quot;$spfile.title&quot;);
+ 		chown $uid,$gid,&quot;$spfile&quot;;
+ 		chown $uid,$gid,&quot;$spfile.title&quot;;
+-		system( &quot;x2goprint $userName $sess $sess$bname $sess$bname.title&quot; );
+-		# log that we processed a print job
+-		syslog('debug', &quot;x2goprint $userName $sess $bname $bname.title&quot;);
++		syslog('debug', `ls /var/spool/x2goprint`);
++		# log that we are about to process a print job
++		syslog('debug', &quot;x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title&quot;);
++
++                # process print job
++		system( &quot;x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title&quot; );
+ 	}
+ 	else
+ 	{
+-		system (&quot;scp -i $printdsa $pfile $tfile x2goprint\@$x2goserver:~x2goprint/&quot;);
+-		system( &quot;ssh -i $printdsa  x2goprint\@$x2goserver \&quot;sudo x2goprint $userName $sess $bname $bname.title\&quot;&quot; );
++		# push spool job to remote X2go server... and launch x2goprint there (with sudo!!!)
++
++		# FIXME: probably the $phost contains the value for the remote x2goserver...
++                #        $x2goserver is read from config, it doesn't make sense here that the
++                #        X2go server is statically taken from the config file, it should be 
++                #        taken from the session information hash (i.e. = $phost).
++                #        If that is so, then $phost is not an appropriate var name...
++
++		# PDF file
++		syslog('debug', &quot;scp -i $printdsa $pfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname&quot;);
++		system (&quot;scp -i $printdsa $pfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname&quot;);
++		# title file
++		syslog('debug', &quot;scp -i $printdsa $tfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname.title&quot;);
++		system (&quot;scp -i $printdsa $tfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname.title&quot;);
++		# run x2goprint on remote X2go server
++		syslog('debug', &quot;ssh -i $printdsa  x2goprint\@$x2goserver \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
++		system( &quot;ssh -i $printdsa  x2goprint\@$x2goserver \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
++
+ 	}
+ }
+ 
+@@ -140,13 +159,13 @@ my $jobID;
+ my $jobTitle;
+ my $copies;
+ my $printOptions;
+-my $printFile;
++my $psFile;
+ 
+-($jobID, $userName, $jobTitle, $copies, $printOptions, $printFile) =  @ARGV;
+-syslog('info', &quot;Print job received from cups -&gt; $jobID $userName $jobTitle $copies $printOptions $printFile&quot;);
++($jobID, $userName, $jobTitle, $copies, $printOptions, $psFile) =  @ARGV;
++syslog('info', &quot;Print job received from cups -&gt; $jobID $userName $jobTitle $copies $printOptions $psFile&quot;);
+ 
+ my $tempFile;
+-if (!$printFile)
++if (!$psFile)
+ {
+ 	my $jid = $jobID;
+ 	my $uid = $userName;
+@@ -161,15 +180,24 @@ if (!$printFile)
+ 	}
+ 	close OUT;
+ 
+-	$printFile = $tempFile;
++	$psFile = $tempFile;
+ }
+ 
+ readconfig();
+ 
+-$ps2pdf=~s/%s/$printFile/g;
+-system($ps2pdf);
+-$printFile=&quot;$printFile.pdf&quot;;
+-my $titleFile=&quot;$printFile.title&quot;;
++# converting PS file that we retrieved from CUPS into PDF format
++$ps2pdf=~s/%s/$psFile/g;
++syslog('info', &quot;Converting printjob with command: $ps2pdf\n&quot;);
++
++# the TMPDIR env var is needed for ghostscript...
++$ENV{TMPDIR}=&quot;/tmp&quot;;
++system(&quot;$ps2pdf&quot;);
++
++# after we have created the PDF from CUPS's PS file, we can drop the PS file
++unlink ($psFile);
++
++my $pdfFile=&quot;$psFile.pdf&quot;;
++my $titleFile=&quot;$pdfFile.title&quot;;
+ open (TITLE,&quot;&gt;$titleFile&quot;);
+ print TITLE $jobTitle;
+ close (TITLE);
+@@ -180,12 +208,12 @@ for(my $i=0; $i&lt;scalar(@sessions);$i++ )
+ 	my @sinfo=split(&quot;\\|&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">, at sessions</A>[$i]);
+ 	if(@sinfo[4] eq &quot;R&quot;)
+ 	{
+-		printfile( $printFile, $titleFile, @sinfo[3], @sinfo[1]);
+-		syslog('debug', &quot;Call to printfile function with: $printFile $titleFile @sinfo[3] @sinfo[1]\n&quot;);
++		syslog('debug', &quot;Call to printfile function with: $pdfFile $titleFile @sinfo[3] @sinfo[1]\n&quot;);
++		printfile( $pdfFile, $titleFile, @sinfo[3], @sinfo[1]);
+ 	}
+ }
+ 
+-unlink ($printFile);
++unlink ($pdfFile);
+ unlink ($titleFile);
+ 
+ # closing syslog 
+diff --git a/cups-x2go.conf b/cups-x2go.conf
+index 0480381..1b11d56 100644
+--- a/cups-x2go.conf
++++ b/cups-x2go.conf
+@@ -12,4 +12,4 @@
+ #printdsa = /root/.ssh/id_dsa-x2goprint
+ 
+ ## command to generate pdf files
+-#ps2pdf = /usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=&quot;%s.pdf&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f &quot;%s&quot;
++#ps2pdf = /usr/bin/gs -q -dCompatibilityLevel=1.4 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile=\&quot;%s.pdf\&quot; -dAutoRotatePages=/PageByPage -dAutoFilterColorImages=false -dColorImageFilter=/FlateEncode -dPDFSETTINGS=/prepress -c .setpdfwrite -f \&quot;%s\&quot;
+diff --git a/debian/changelog b/debian/changelog
+index 8d94388..b4a668a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -7,6 +7,7 @@ cups-x2go (3.0.0.2-0~x2go2) UNRELEASED; urgency=low
+   * Call x2goprint directly with root privileges if x2goserver and CUPS
+     server share the same machine.
+   * Add a proper dpkg-statoverride check in postinst script.
++  * Major change of code, add comments, syslogging, fix ghostscript call.
+ 
+   [ Mario Oroz ]
+   * Add syslog support for cups-x2go.
+
+
+hooks/post-receive
+-- 
+cups-x2go.git (CUPS Backend for X2go Printing)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;cups-x2go.git&quot; (CUPS Backend for X2go Printing).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001410.html">[X2go-Commits] python-x2go.git - release/0.1.1.x (branch) updated:	0.1.1.4-22-g20a8605
+</A></li>
+	<LI>Next message: <A HREF="001412.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-219-g7f7ec2c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1411">[ date ]</a>
+              <a href="thread.html#1411">[ thread ]</a>
+              <a href="subject.html#1411">[ subject ]</a>
+              <a href="author.html#1411">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

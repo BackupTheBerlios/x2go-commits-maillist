@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [x2goclient] 01/01: Fix authentication on SSH Broker with key + passphrase.
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2001/01%3A%20Fix%20authentication%20on%20SSH%20Broker%0A%20with%20key%20%2B%20passphrase.&In-Reply-To=%3C20140124121543.29B805DB17%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026146.html">
+   <LINK REL="Next"  HREF="026148.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [x2goclient] 01/01: Fix authentication on SSH Broker with key + passphrase.</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2001/01%3A%20Fix%20authentication%20on%20SSH%20Broker%0A%20with%20key%20%2B%20passphrase.&In-Reply-To=%3C20140124121543.29B805DB17%40ymir%3E"
+       TITLE="[X2Go-Commits] [x2goclient] 01/01: Fix authentication on SSH Broker with key + passphrase.">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan 24 13:15:43 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026146.html">[X2Go-Commits] [x2goclient] branch master updated (d5ce144 -&gt;	9b14b3a)
+</A></li>
+        <LI>Next message: <A HREF="026148.html">[X2Go-Commits] page changed:	wiki:development:build-howto-mswin:x2goclient
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26147">[ date ]</a>
+              <a href="thread.html#26147">[ thread ]</a>
+              <a href="subject.html#26147">[ subject ]</a>
+              <a href="author.html#26147">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch master
+in repository x2goclient.
+
+commit 9b14b3ad8d8fe3bea57906933b725991843744c0
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Fri Jan 24 13:15:37 2014 +0100
+
+    Fix authentication on SSH Broker with key + passphrase.
+---
+ debian/changelog     |    1 +
+ httpbrokerclient.cpp |   22 +++++++++++++++++-----
+ httpbrokerclient.h   |    2 +-
+ 3 files changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/debian/changelog b/debian/changelog
+index 6912f5e..4534fd4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,7 @@ x2goclient (4.0.2.0-0x2go1) UNRELEASED; urgency=low
+   * New upstream version (4.0.2.0):
+     - Revrite SSH Classes to support libssh fix.
+     - Add Class HelpDialog to show options in scroll area. 
++    - Fix authentication on SSH Broker with key + passphrase.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 22 Jan 2014 09:20:08 +0100
+ 
+diff --git a/httpbrokerclient.cpp b/httpbrokerclient.cpp
+index d238d82..4ca8e5d 100644
+--- a/httpbrokerclient.cpp
++++ b/httpbrokerclient.cpp
+@@ -93,13 +93,13 @@ void HttpBrokerClient::createSshConnection()
+     QUrl lurl ( config-&gt;brokerurl );
+     sshConnection=new SshMasterConnection (this, lurl.host(), lurl.port(22),false,
+                                            config-&gt;brokerUser, config-&gt;brokerPass,config-&gt;brokerSshKey,config-&gt;brokerAutologin,
+-					   config-&gt;brokerKrbLogin, false);
++                                           config-&gt;brokerKrbLogin, false);
+ 
+     connect ( sshConnection, SIGNAL ( connectionOk(QString)), this, SLOT ( slotSshConnectionOk() ) );
+     connect ( sshConnection, SIGNAL ( serverAuthError ( int,QString, SshMasterConnection* ) ),this,
+               SLOT ( slotSshServerAuthError ( int,QString, SshMasterConnection* ) ) );
+-    connect ( sshConnection, SIGNAL ( needPassPhrase(SshMasterConnection*)),this,
+-              SLOT ( slotSshServerAuthPassphrase(SshMasterConnection*)) );
++    connect ( sshConnection, SIGNAL ( needPassPhrase(SshMasterConnection*, bool)),this,
++              SLOT ( slotSshServerAuthPassphrase(SshMasterConnection*, bool)) );
+     connect ( sshConnection, SIGNAL ( userAuthError ( QString ) ),this,SLOT ( slotSshUserAuthError ( QString ) ) );
+     connect ( sshConnection, SIGNAL ( connectionError(QString,QString)), this,
+               SLOT ( slotSshConnectionError ( QString,QString ) ) );
+@@ -199,11 +199,23 @@ void HttpBrokerClient::slotSshServerAuthError(int error, QString sshMessage, Ssh
+ 
+ }
+ 
+-void HttpBrokerClient::slotSshServerAuthPassphrase(SshMasterConnection* connection)
++void HttpBrokerClient::slotSshServerAuthPassphrase(SshMasterConnection* connection, bool verificationCode)
+ {
+     bool ok;
++    QString message;
++
++    if(verificationCode)
++    {
++        message=tr(&quot;Verification code:&quot;);
++    }
++    else
++    {
++        message=tr(&quot;Enter passphrase to decrypt a key&quot;);
++    }
++
++
+     QString phrase=QInputDialog::getText(0,connection-&gt;getUser()+&quot;@&quot;+connection-&gt;getHost()+&quot;:&quot;+QString::number(connection-&gt;getPort()),
+-                                         tr(&quot;Enter passphrase to decrypt a key&quot;),QLineEdit::Password,QString::null, &amp;ok);
++                                         message, QLineEdit::Password,QString::null, &amp;ok);
+     if(!ok)
+     {
+         phrase=QString::null;
+diff --git a/httpbrokerclient.h b/httpbrokerclient.h
+index f821fb0..4ea4a3d 100644
+--- a/httpbrokerclient.h
++++ b/httpbrokerclient.h
+@@ -67,7 +67,7 @@ private slots:
+     QString getHexVal ( const QByteArray&amp; ba );
+     void slotSshConnectionError ( QString message, QString lastSessionError );
+     void slotSshServerAuthError ( int error, QString sshMessage, SshMasterConnection* connection );
+-    void slotSshServerAuthPassphrase ( SshMasterConnection* connection );
++    void slotSshServerAuthPassphrase ( SshMasterConnection* connection, bool verificationCode=false );
+     void slotSshUserAuthError ( QString error );
+     void slotSshConnectionOk();
+     void slotListSessions ( bool success, QString answer, int pid);
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/x2goclient.git
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026146.html">[X2Go-Commits] [x2goclient] branch master updated (d5ce144 -&gt;	9b14b3a)
+</A></li>
+	<LI>Next message: <A HREF="026148.html">[X2Go-Commits] page changed:	wiki:development:build-howto-mswin:x2goclient
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26147">[ date ]</a>
+              <a href="thread.html#26147">[ thread ]</a>
+              <a href="subject.html#26147">[ subject ]</a>
+              <a href="author.html#26147">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

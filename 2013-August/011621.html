@@ -1,0 +1,1326 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-9&In-Reply-To=%3C20130830142344.87BD95DB42%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011617.html">
+   <LINK REL="Next"  HREF="011630.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-9&In-Reply-To=%3C20130830142344.87BD95DB42%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-9">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:23:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011617.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-13
+</A></li>
+        <LI>Next message: <A HREF="011630.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11621">[ date ]</a>
+              <a href="thread.html#11621">[ thread ]</a>
+              <a href="subject.html#11621">[ subject ]</a>
+              <a href="author.html#11621">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  6f5e20bc49695159bd3b313333591c4eb27ad422 (commit)
+      from  45b970f25634519dac302a5691a7a2d45f8db49f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG       |   21 +
+ nx-X11/programs/Xserver/hw/nxagent/Events.c        |   40 +-
+ nx-X11/programs/Xserver/hw/nxagent/Font.c          |   41 +-
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.c      |  460 +++++++++++++++-----
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.h      |    4 +
+ nx-X11/programs/Xserver/hw/nxagent/Reconnect.c     |   31 +-
+ nx-X11/programs/Xserver/hw/nxagent/Render.c        |    9 +-
+ nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c    |  119 ++++-
+ .../Xserver/hw/nxagent/X/NXevents.c.NX.original    |  119 ++++-
+ 9 files changed, 693 insertions(+), 151 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index 17b69c3..1f7f0df 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,26 @@
+ ChangeLog:
+ 
++nxagent-3.3.0-9
++
++- Added /usr/NX/share/base to alternate font paths. This would fix
++  TR11F02130 if fonts fixed and cursor are installed there.
++
++- Changed Keyboard initialization and reset. This change should fix
++  TR11F02129, TR11F02131, TR11F02132.
++
++nxagent-3.3.0-8
++
++- Fixed TR12F02144. Image bits of render glyphs are copied before they
++  are cleaned. This will avoid a memory corruption.
++
++- Fixed TR12F02145. When dispatching a MotionNotify event, check if a
++  top-level window has been entered before trying to show the pulldown
++  dialog.
++
++nxagent-3.3.0-7
++
++- Added debug code for pointer input.
++
+ nxagent-3.3.0-6
+ 
+ - Fixed compile warnings.
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Events.c b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+index ab8c13c..3c1458c 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Events.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+@@ -63,7 +63,13 @@
+ #include &quot;NXproto.h&quot;
+ 
+ #include &quot;xfixesproto.h&quot;
++#define Window     XlibWindow
++#define Atom   XlibAtom
++#define Time XlibXID
+ #include &lt;X11/extensions/Xfixes.h&gt;
++#undef Window
++#undef Atom
++#undef Time
+ 
+ #ifdef NXAGENT_FIXKEYS
+ #include &quot;inputstr.h&quot;
+@@ -789,8 +795,9 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+         }
+ 
+         x.u.u.type = KeyRelease;
+-        x.u.u.detail = X.xkey.keycode;
+-        x.u.keyButtonPointer.time = nxagentLastKeyPressTime + (X.xkey.time - nxagentLastServerTime);
++        x.u.u.detail = nxagentConvertKeycode(X.xkey.keycode);
++        x.u.keyButtonPointer.time = nxagentLastKeyPressTime +
++            (X.xkey.time - nxagentLastServerTime);
+ 
+         nxagentLastServerTime = X.xkey.time;
+ 
+@@ -918,7 +925,7 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+         #ifdef NX_DEBUG_INPUT
+         if (nxagentDebugInput == 1)
+         {
+-          fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonPress event.\n&quot;);
++          fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonRelease event.\n&quot;);
+         }
+         #endif
+ 
+@@ -1016,18 +1023,17 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+             nxagentLastEnteredWindow = pWin;
+           }
+ 
+-          if (nxagentPulldownDialogPid == 0 &amp;&amp; (X.xmotion.y_root &lt;
+-                  nxagentLastEnteredTopLevelWindow -&gt; drawable.y + 4))
++          if (nxagentPulldownDialogPid == 0 &amp;&amp; nxagentLastEnteredTopLevelWindow &amp;&amp;
++                  (X.xmotion.y_root &lt; nxagentLastEnteredTopLevelWindow -&gt; drawable.y + 4))
+           {
+-            if (pWin &amp;&amp; nxagentLastEnteredTopLevelWindow &amp;&amp;
+-                    nxagentClientIsDialog(wClient(pWin)) == 0 &amp;&amp;
+-                        nxagentLastEnteredTopLevelWindow -&gt; parent == WindowTable[0] &amp;&amp;
+-                            nxagentLastEnteredTopLevelWindow -&gt; overrideRedirect == False &amp;&amp;
+-                                X.xmotion.x_root &gt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
+-                                    (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) - 50) &amp;&amp;
+-                                        X.xmotion.x_root &lt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
+-                                            (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) + 50) &amp;&amp;
+-                                                nxagentOption(Menu) == 1)
++            if (pWin &amp;&amp; nxagentClientIsDialog(wClient(pWin)) == 0 &amp;&amp;
++                    nxagentLastEnteredTopLevelWindow -&gt; parent == WindowTable[0] &amp;&amp;
++                        nxagentLastEnteredTopLevelWindow -&gt; overrideRedirect == False &amp;&amp;
++                            X.xmotion.x_root &gt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
++                                (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) - 50) &amp;&amp;
++                                    X.xmotion.x_root &lt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
++                                        (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) + 50) &amp;&amp;
++                                            nxagentOption(Menu) == 1)
+             {
+               nxagentPulldownDialog(nxagentLastEnteredTopLevelWindow -&gt; drawable.id);
+             }
+@@ -1052,7 +1058,8 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+           #ifdef NX_DEBUG_INPUT
+           if (nxagentDebugInput == 1)
+           {
+-            fprintf(stderr, &quot;nxagentDispatchEvents: Adding motion event [%d, %d] to the queue.\n&quot;, x.u.keyButtonPointer.rootX, x.u.keyButtonPointer.rootY);
++            fprintf(stderr, &quot;nxagentDispatchEvents: Adding motion event [%d, %d] to the queue.\n&quot;,
++                        x.u.keyButtonPointer.rootX, x.u.keyButtonPointer.rootY);
+           }
+           #endif
+ 
+@@ -1911,8 +1918,9 @@ int nxagentHandleKeyPress(XEvent *X, enum HandleEventResult *result)
+ 
+   nxagentLastEventTime = nxagentLastKeyPressTime = GetTimeInMillis();
+ 
++  
+   x.u.u.type = KeyPress;
+-  x.u.u.detail = X -&gt; xkey.keycode;
++  x.u.u.detail = nxagentConvertKeycode(X -&gt; xkey.keycode);
+   x.u.keyButtonPointer.time = nxagentLastKeyPressTime;
+ 
+   nxagentLastServerTime = X -&gt; xkey.time;
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Font.c b/nx-X11/programs/Xserver/hw/nxagent/Font.c
+index 3f1fd0b..87f9f02 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Font.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Font.c
+@@ -65,26 +65,34 @@ is&quot; without express or implied warranty.
+ #define NXAGENT_ALTERNATE_FONT_DIR    &quot;/usr/share/X11/fonts&quot;
+ #define NXAGENT_ALTERNATE_FONT_DIR_2  &quot;/usr/share/fonts/X11&quot;
+ #define NXAGENT_ALTERNATE_FONT_DIR_3  &quot;/usr/share/fonts&quot;
++#define NXAGENT_ALTERNATE_FONT_DIR_4  &quot;/usr/NX/share/fonts&quot;
+ 
+ #define NXAGENT_DEFAULT_FONT_PATH  \
+ &quot;/usr/X11R6/lib/X11/fonts/misc/,/usr/X11R6/lib/X11/fonts/Speedo/,\
+ /usr/X11R6/lib/X11/fonts/Type1/,/usr/X11R6/lib/X11/fonts/75dpi/,\
+-/usr/X11R6/lib/X11/fonts/100dpi/,/usr/X11R6/lib/X11/fonts/TTF/&quot;
++/usr/X11R6/lib/X11/fonts/100dpi/,/usr/X11R6/lib/X11/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH  \
+ &quot;/usr/share/X11/fonts/misc/,/usr/share/X11/fonts/Speedo/,\
+ /usr/share/X11/fonts/Type1/,/usr/share/X11/fonts/75dpi/,\
+-/usr/share/X11/fonts/100dpi/,/usr/share/X11/fonts/TTF/&quot;
++/usr/share/X11/fonts/100dpi/,/usr/share/X11/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH_2  \
+ &quot;/usr/share/fonts/X11/misc/,/usr/share/fonts/X11/Speedo/,\
+ /usr/share/fonts/X11/Type1/,/usr/share/fonts/X11/75dpi/,\
+-/usr/share/fonts/X11/100dpi/,/usr/share/fonts/X11/TTF/&quot;
++/usr/share/fonts/X11/100dpi/,/usr/share/fonts/X11/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH_3  \
+ &quot;/usr/share/fonts/misc/,/usr/share/fonts/Speedo/,\
+ /usr/share/fonts/Type1/,/usr/share/fonts/75dpi/,\
+-/usr/share/fonts/100dpi/,/usr/share/fonts/TTF/&quot;
++/usr/share/fonts/100dpi/,/usr/share/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
++
++#define NXAGENT_ALTERNATE_FONT_PATH_4  \
++&quot;/usr/NX/share/fonts/base&quot;
+ 
+ #undef NXAGENT_FONTCACHE_DEBUG
+ #undef NXAGENT_RECONNECT_FONT_DEBUG
+@@ -1553,6 +1561,31 @@ void nxagentVerifyDefaultFontPath(void)
+     strcat(fontPath, NXAGENT_ALTERNATE_FONT_PATH_3);
+   }
+ 
++  if (stat(NXAGENT_ALTERNATE_FONT_DIR_4, &amp;dirStat) == 0 &amp;&amp;
++          S_ISDIR(dirStat.st_mode) != 0)
++  {
++    /*
++     * Let's use the &quot;/usr/NX/share/fonts&quot; path.
++     */
++
++    #ifdef TEST
++    fprintf(stderr, &quot;nxagentVerifyDefaultFontPath: Assuming fonts in directory [%s].\n&quot;,
++                validateString(NXAGENT_ALTERNATE_FONT_DIR_4));
++    #endif
++
++    if (*fontPath != '\0')
++    {
++      fontPath = realloc(fontPath, strlen(fontPath) + strlen(NXAGENT_ALTERNATE_FONT_PATH_4) + 2);
++      strcat(fontPath, &quot;,&quot;);
++    }
++    else
++    {
++      fontPath = realloc(fontPath, strlen(fontPath) + strlen(NXAGENT_ALTERNATE_FONT_PATH_4) + 1);
++    }
++
++    strcat(fontPath, NXAGENT_ALTERNATE_FONT_PATH_4);
++  }
++
+   if (*fontPath == '\0') 
+   {
+     #ifdef WARNING
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+index 37e49ea..73b4c70 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+@@ -75,6 +75,8 @@ is&quot; without express or implied warranty.
+ static int nxagentXkbGetNames(char **rules, char **model, char **layout,
+                                   char **variant, char **options);
+ 
++static void nxagentKeycodeConversionSetup(void);
++
+ #endif /* XKB */
+ 
+ /*
+@@ -189,6 +191,281 @@ unsigned int nxagentAltMetaMask;
+ 
+ void nxagentCheckAltMetaKeys(CARD8, int);
+ 
++static CARD8 nxagentConvertedKeycodes[] =
++{
++  /* evdev  pc105*/
++  /*   0 */   0,
++  /*   1 */   1,
++  /*   2 */   2,
++  /*   3 */   3,
++  /*   4 */   4,
++  /*   5 */   5,
++  /*   6 */   6,
++  /*   7 */   7,
++  /*   8 */   8,
++  /*   9 */   9,
++  /*  10 */   10,
++  /*  11 */   11,
++  /*  12 */   12,
++  /*  13 */   13,
++  /*  14 */   14,
++  /*  15 */   15,
++  /*  16 */   16,
++  /*  17 */   17,
++  /*  18 */   18,
++  /*  19 */   19,
++  /*  20 */   20,
++  /*  21 */   21,
++  /*  22 */   22,
++  /*  23 */   23,
++  /*  24 */   24,
++  /*  25 */   25,
++  /*  26 */   26,
++  /*  27 */   27,
++  /*  28 */   28,
++  /*  29 */   29,
++  /*  30 */   30,
++  /*  31 */   31,
++  /*  32 */   32,
++  /*  33 */   33,
++  /*  34 */   34,
++  /*  35 */   35,
++  /*  36 */   36,
++  /*  37 */   37,
++  /*  38 */   38,
++  /*  39 */   39,
++  /*  40 */   40,
++  /*  41 */   41,
++  /*  42 */   42,
++  /*  43 */   43,
++  /*  44 */   44,
++  /*  45 */   45,
++  /*  46 */   46,
++  /*  47 */   47,
++  /*  48 */   48,
++  /*  49 */   49,
++  /*  50 */   50,
++  /*  51 */   51,
++  /*  52 */   52,
++  /*  53 */   53,
++  /*  54 */   54,
++  /*  55 */   55,
++  /*  56 */   56,
++  /*  57 */   57,
++  /*  58 */   58,
++  /*  59 */   59,
++  /*  60 */   60,
++  /*  61 */   61,
++  /*  62 */   62,
++  /*  63 */   63,
++  /*  64 */   64,
++  /*  65 */   65,
++  /*  66 */   66,
++  /*  67 */   67,
++  /*  68 */   68,
++  /*  69 */   69,
++  /*  70 */   70,
++  /*  71 */   71,
++  /*  72 */   72,
++  /*  73 */   73,
++  /*  74 */   74,
++  /*  75 */   75,
++  /*  76 */   76,
++  /*  77 */   77,
++  /*  78 */   78,
++  /*  79 */   79,
++  /*  80 */   80,
++  /*  81 */   81,
++  /*  82 */   82,
++  /*  83 */   83,
++  /*  84 */   84,
++  /*  85 */   85,
++  /*  86 */   86,
++  /*  87 */   87,
++  /*  88 */   88,
++  /*  89 */   89,
++  /*  90 */   90,
++  /*  91 */   91,
++  /*  92 */  124,
++  /*  93 */   93,
++  /*  94 */   94,
++  /*  95 */   95,
++  /*  96 */   96,
++  /*  97 */  211,
++  /*  98 */   98,
++  /*  99 */   99,
++  /* 100 */  100,
++  /* 101 */  208,
++  /* 102 */  102,
++  /* 103 */  103,
++  /* 104 */  108,
++  /* 105 */  109,
++  /* 106 */  112,
++  /* 107 */  111,
++  /* 108 */  113,
++  /* 109 */  109,
++  /* 110 */   97,
++  /* 111 */   98,
++  /* 112 */   99,
++  /* 113 */  100,
++  /* 114 */  102,
++  /* 115 */  103,
++  /* 116 */  104,
++  /* 117 */  105,
++  /* 118 */  106,
++  /* 119 */  107,
++  /* 120 */  120,
++  /* 121 */  121,
++  /* 122 */  122,
++  /* 123 */  123,
++  /* 124 */  124,
++  /* 125 */  126,
++  /* 126 */  126,
++  /* 127 */  110,
++  /* 128 */  128,
++  /* 129 */  129,
++  /* 130 */  130,
++  /* 131 */  131,
++  /* 132 */  133,
++  /* 133 */  115,
++  /* 134 */  116,
++  /* 135 */  117,
++  /* 136 */  136,
++  /* 137 */  137,
++  /* 138 */  138,
++  /* 139 */  139,
++  /* 140 */  140,
++  /* 141 */  141,
++  /* 142 */  142,
++  /* 143 */  143,
++  /* 144 */  144,
++  /* 145 */  145,
++  /* 146 */  146,
++  /* 147 */  147,
++  /* 148 */  148,
++  /* 149 */  149,
++  /* 150 */  150,
++  /* 151 */  151,
++  /* 152 */  152,
++  /* 153 */  153,
++  /* 154 */  154,
++  /* 155 */  155,
++  /* 156 */  156,
++  /* 157 */  157,
++  /* 158 */  158,
++  /* 159 */  159,
++  /* 160 */  160,
++  /* 161 */  161,
++  /* 162 */  162,
++  /* 163 */  163,
++  /* 164 */  164,
++  /* 165 */  165,
++  /* 166 */  166,
++  /* 167 */  167,
++  /* 168 */  168,
++  /* 169 */  169,
++  /* 170 */  170,
++  /* 171 */  171,
++  /* 172 */  172,
++  /* 173 */  173,
++  /* 174 */  174,
++  /* 175 */  175,
++  /* 176 */  176,
++  /* 177 */  177,
++  /* 178 */  178,
++  /* 179 */  179,
++  /* 180 */  180,
++  /* 181 */  181,
++  /* 182 */  182,
++  /* 183 */  183,
++  /* 184 */  184,
++  /* 185 */  185,
++  /* 186 */  186,
++  /* 187 */  187,
++  /* 188 */  188,
++  /* 189 */  189,
++  /* 190 */  190,
++  /* 191 */  118,
++  /* 192 */  119,
++  /* 193 */  120,
++  /* 194 */  121,
++  /* 195 */  122,
++  /* 196 */  196,
++  /* 197 */  197,
++  /* 198 */  198,
++  /* 199 */  199,
++  /* 200 */  200,
++  /* 201 */  201,
++  /* 202 */  202,
++  /* 203 */   93,
++  /* 204 */  125,
++  /* 205 */  156,
++  /* 206 */  127,
++  /* 207 */  128,
++  /* 208 */  208,
++  /* 209 */  209,
++  /* 210 */  210,
++  /* 211 */  211,
++  /* 212 */  212,
++  /* 213 */  213,
++  /* 214 */  214,
++  /* 215 */  215,
++  /* 216 */  216,
++  /* 217 */  217,
++  /* 218 */  218,
++  /* 219 */  219,
++  /* 220 */  220,
++  /* 221 */  221,
++  /* 222 */  222,
++  /* 223 */  223,
++  /* 224 */  224,
++  /* 225 */  225,
++  /* 226 */  226,
++  /* 227 */  227,
++  /* 228 */  228,
++  /* 229 */  229,
++  /* 230 */  230,
++  /* 231 */  231,
++  /* 232 */  232,
++  /* 233 */  233,
++  /* 234 */  234,
++  /* 235 */  235,
++  /* 236 */  236,
++  /* 237 */  237,
++  /* 238 */  238,
++  /* 239 */  239,
++  /* 240 */  240,
++  /* 241 */  241,
++  /* 242 */  242,
++  /* 243 */  243,
++  /* 244 */  244,
++  /* 245 */  245,
++  /* 246 */  246,
++  /* 247 */  247,
++  /* 248 */  248,
++  /* 249 */  249,
++  /* 250 */  250,
++  /* 251 */  251,
++  /* 252 */  252,
++  /* 253 */  253,
++  /* 254 */  254,
++  /* 255 */  255
++};
++
++static int nxagentKeycodeConversion = 0;
++
++CARD8 nxagentConvertKeycode(CARD8 k)
++{
++ if (nxagentKeycodeConversion != 0)
++ {
++   return nxagentConvertedKeycodes[k];
++ }
++ else
++ {
++   return k;
++ }
++}
++
+ static int nxagentSaveKeyboardDeviceData(DeviceIntPtr dev, DeviceIntPtr devBackup);
+ 
+ static int nxagentRestoreKeyboardDeviceData(DeviceIntPtr devBackup, DeviceIntPtr dev);
+@@ -398,13 +675,6 @@ int nxagentKeyboardProc(DeviceIntPtr pDev, int onoff)
+ 
+   int ret;
+ 
+-  char *remoteRules = NULL;
+-  char *remoteModel = NULL;
+-
+-  unsigned int remoteRulesLen;
+-
+-  XkbRF_VarDefsRec remoteDefs;
+-
+   switch (onoff)
+   {
+     case DEVICE_INIT:
+@@ -676,14 +946,21 @@ XkbError:
+ 
+         xkb = XkbGetKeyboard(nxagentDisplay, XkbGBN_AllComponentsMask, XkbUseCoreKbd);
+ 
++        nxagentKeycodeConversionSetup();
++
+         if (xkb == NULL || xkb-&gt;geom == NULL)
+         {
+           #ifdef TEST
+           fprintf(stderr, &quot;nxagentKeyboardProc: No current keyboard.\n&quot;);
+-          #endif
+-
+-          #ifdef TEST
+-          fprintf(stderr, &quot;nxagentKeyboardProc: No keyboard, going to set rules and init device.\n&quot;);
++          if (xkb == NULL)
++          {
++            fprintf(stderr, &quot;nxagentKeyboardProc: xkb is null.\n&quot;);
++          }
++          else
++          {
++            fprintf(stderr, &quot;nxagentKeyboardProc: xkb-&gt;geom is null.\n&quot;);
++          }
++          fprintf(stderr, &quot;nxagentKeyboardProc: Going to set rules and init device.\n&quot;);
+           #endif
+ 
+           XkbSetRulesDflts(rules, model, layout, variants, options);
+@@ -699,40 +976,6 @@ XkbError:
+           goto XkbEnd;
+         }
+ 
+-        if (xkb != NULL)
+-        {
+-          char *drules = 0;
+-          char *dmodel = 0;
+-          char *dlayout = 0;
+-          char *dvariant = 0;
+-          char *doptions = 0;
+-
+-          remoteRulesLen = nxagentXkbGetNames(&amp;drules, &amp;dmodel, &amp;dlayout,
+-                                                  &amp;dvariant, &amp;doptions);
+-
+-          if (remoteRulesLen != 0 &amp;&amp; drules != NULL &amp;&amp; dmodel != NULL)
+-          {
+-            #ifdef DEBUG
+-            fprintf(stderr, &quot;nxagentKeyboardProc: Remote: [%s,%s,%s,%s,%s].\n&quot;,
+-                        drules, dmodel, dlayout, dvariant, doptions);
+-            #endif
+-
+-            remoteRules = drules;
+-            remoteModel = dmodel;
+-            remoteDefs.model = dmodel;
+-            remoteDefs.layout = dlayout;
+-            remoteDefs.variant = dvariant;
+-            remoteDefs.options = doptions;
+-          }
+-          #ifdef DEBUG
+-          else
+-          {
+-            fprintf(stderr, &quot;nxagentKeyboardProc: Failed to retrieve remote &quot;
+-                        &quot;rules&quot;);
+-          }
+-          #endif
+-        }
+-
+         XkbGetControls(nxagentDisplay, XkbAllControlsMask, xkb);
+ 
+         nxagentXkbConfigFilePathSize = strlen(XkbBaseDirectory) +
+@@ -813,66 +1056,6 @@ XkbError:
+ 
+           free(nxagentXkbConfigFilePath);
+ 
+-          if (xkb != NULL &amp;&amp; nxagentOption(ClientOs) == ClientOsLinux &amp;&amp;
+-                  remoteRules != NULL &amp;&amp; remoteModel != NULL &amp;&amp;
+-                      (strcmp(remoteRules, &quot;evdev&quot;) == 0 ||
+-                          strcmp(remoteModel, &quot;evdev&quot;) == 0) &amp;&amp;
+-                              pDev-&gt;key-&gt;xkbInfo != NULL &amp;&amp;
+-                                  pDev-&gt;key-&gt;xkbInfo-&gt;desc != NULL)
+-          {
+-            XkbDescPtr xkbt;
+-            void *tmp;
+-            #ifdef _XSERVER64
+-            int i;
+-            #endif
+-
+-            xkbt = pDev-&gt;key-&gt;xkbInfo-&gt;desc;
+-
+-            xkbt-&gt;min_key_code = xkb-&gt;min_key_code;
+-            xkbt-&gt;max_key_code = xkb-&gt;max_key_code;
+-
+-            if (xkbt-&gt;map != NULL &amp;&amp; xkb-&gt;map != NULL)
+-            {
+-              tmp = (void *)xkbt-&gt;map;
+-              xkbt-&gt;map = xkb-&gt;map;
+-              xkb-&gt;map = (XkbClientMapPtr)tmp;
+-
+-              #ifdef _XSERVER64
+-
+-              tmp = (void *) xkbt-&gt;map-&gt;syms;
+-              xkbt-&gt;map-&gt;syms = xalloc(xkbt-&gt;map-&gt;size_syms * sizeof(KeySym));
+-
+-              for (i = 0; i &lt; xkbt-&gt;map-&gt;size_syms; i++)
+-              {
+-                xkbt-&gt;map-&gt;syms[i] = ((KeySym64 *)tmp)[i];
+-              }
+-
+-              #endif
+-            }
+-
+-            if (xkbt-&gt;server != NULL &amp;&amp; xkb-&gt;server != NULL)
+-            {
+-              tmp = (void *)xkbt-&gt;server;
+-              xkbt-&gt;server = xkb-&gt;server;
+-              xkb-&gt;server = (XkbServerMapPtr)tmp;
+-            }
+-
+-            if (xkbt-&gt;compat != NULL &amp;&amp; xkb-&gt;compat != NULL)
+-            {
+-              tmp = (void *)xkbt-&gt;compat;
+-              xkbt-&gt;compat = xkb-&gt;compat;
+-              xkb-&gt;compat = (XkbCompatMapPtr)tmp;
+-            }
+-
+-            XkbSetRulesDflts(remoteRules, remoteDefs.model, remoteDefs.layout,
+-                                 remoteDefs.variant, remoteDefs.options);
+-            XkbSetRulesUsed(&amp;remoteDefs);
+-
+-            free(remoteRules);
+-
+-            goto XkbEnd;
+-          }
+-
+           if (!nxagentKeyboard ||
+                  (nxagentKeyboard &amp;&amp; (strcmp(nxagentKeyboard, &quot;query&quot;) == 0)))
+           {
+@@ -1562,4 +1745,71 @@ static int nxagentXkbGetNames(char **rules, char **model, char **layout,
+   return n;
+ }
+ 
++void nxagentKeycodeConversionSetup(void)
++{
++  char *drules = 0;
++  char *dmodel = 0;
++  char *dlayout = 0;
++  char *dvariant = 0;
++  char *doptions = 0;
++  unsigned int drulesLen;
++
++  nxagentKeycodeConversion = 0;
++
++  drulesLen = nxagentXkbGetNames(&amp;drules, &amp;dmodel, &amp;dlayout,
++                                     &amp;dvariant, &amp;doptions);
++
++  #ifdef DEBUG
++  if (drulesLen != 0 &amp;&amp; drules != NULL &amp;&amp; dmodel != NULL)
++  {
++    fprintf(stderr, &quot;nxagentKeycodeConversionSetup: &quot;
++                &quot;Remote: [%s,%s,%s,%s,%s].\n&quot;, drules, dmodel, dlayout,
++                    dvariant, doptions);
++  }
++  else
++  {
++    fprintf(stderr, &quot;nxagentKeycodeConversionSetup: &quot;
++                &quot;Failed to retrieve remote rules.\n&quot;);
++  }
++  #endif
++
++  if (nxagentOption(ClientOs) == ClientOsLinux &amp;&amp;
++            drules != NULL &amp;&amp; dmodel != NULL &amp;&amp;
++                (strcmp(drules, &quot;evdev&quot;) == 0 ||
++                    strcmp(dmodel, &quot;evdev&quot;) == 0))
++  {
++    nxagentKeycodeConversion = 1;
++  }
++
++  if (drules != NULL)
++  {
++    XFree(drules);
++  }
++}
++
++void nxagentResetKeycodeConversion(void)
++{
++  int result;
++  XkbAgentInfoRec info;
++  XkbDescPtr xkb;
++
++  result = XkbQueryExtension(nxagentDisplay, &amp;info.Opcode, &amp;info.EventBase,
++                                 &amp;info.ErrorBase, &amp;info.MajorVersion,
++                                     &amp;info.MinorVersion);
++
++  if (result != 0)
++  {
++    nxagentKeycodeConversionSetup();
++  }
++  else
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentResetKeycodeConversion: &quot;
++                &quot;WARNING! Failed to query XKB extension.\n&quot;);
++    #endif
++
++    nxagentKeycodeConversion = 0;
++  }
++}
++
+ #endif
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+index f292402..50dd2be 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+@@ -109,6 +109,10 @@ void nxagentEnableXkbExtension(void);
+ 
+ void nxagentTuneXkbWrapper(void);
+ 
++void nxagentResetKeycodeConversion(void);
++
+ #endif
+ 
++CARD8 nxagentConvertKeycode(CARD8 k);
++
+ #endif /* __Keyboard_H__ */
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c b/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
+index ce3e6ee..69b73a9 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
+@@ -547,28 +547,29 @@ Bool nxagentReconnectSession(void)
+     goto nxagentReconnectError;
+   }
+ 
+-  if (nxagentOption(ResetKeyboardAtResume))
++  if (nxagentOption(ResetKeyboardAtResume) == 1 &amp;&amp;
++         (nxagentKeyboard  == NULL || nxagentOldKeyboard == NULL ||
++             strcmp(nxagentKeyboard, nxagentOldKeyboard) != 0 ||
++                 strcmp(nxagentKeyboard, &quot;query&quot;) == 0))
+   {
+-    if (nxagentKeyboard  == NULL || nxagentOldKeyboard == NULL ||
+-           strcmp(nxagentKeyboard, nxagentOldKeyboard) != 0 ||
+-               strcmp(nxagentKeyboard, &quot;query&quot;) == 0)
++    if (nxagentResetKeyboard() == 0)
+     {
+-
+-      if (nxagentResetKeyboard() == 0)
++      #ifdef WARNING
++      if (nxagentVerbose == 1)
+       {
+-        #ifdef WARNING
+-        if (nxagentVerbose == 1)
+-        {
+-          fprintf(stderr, &quot;nxagentReconnect: Failed to reset keyboard device.\n&quot;);
+-        }
+-        #endif
++        fprintf(stderr, &quot;nxagentReconnect: Failed to reset keyboard device.\n&quot;);
++      }
++      #endif
+ 
+-        failedStep = WINDOW_STEP;
++      failedStep = WINDOW_STEP;
+ 
+-        goto nxagentReconnectError;
+-      }
++      goto nxagentReconnectError;
+     }
+   }
++  else
++  {
++    nxagentResetKeycodeConversion();
++  }
+ 
+   nxagentXkbState.Initialized = 0;
+ 
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Render.c b/nx-X11/programs/Xserver/hw/nxagent/Render.c
+index b1ff219..f2d7b15 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Render.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Render.c
+@@ -2270,8 +2270,7 @@ void nxagentAddGlyphs(GlyphSetPtr glyphSet, Glyph *gids, xGlyphInfo *gi,
+ 
+   normalizedImages = NULL;
+ 
+-  if (glyphDepths[glyphSet -&gt; fdepth] == 1 &amp;&amp;
+-          nxagentServerOrder() != BitmapBitOrder(nxagentDisplay))
++  if (sizeImages &gt; 0)
+   {
+     normalizedImages = xalloc(sizeImages);
+ 
+@@ -2279,7 +2278,11 @@ void nxagentAddGlyphs(GlyphSetPtr glyphSet, Glyph *gids, xGlyphInfo *gi,
+     {
+       memcpy(normalizedImages, images, sizeImages);
+ 
+-      BitOrderInvert ((unsigned char *) normalizedImages, sizeImages);
++      if (glyphDepths[glyphSet -&gt; fdepth] == 1 &amp;&amp;
++              nxagentServerOrder() != BitmapBitOrder(nxagentDisplay))
++      {
++        BitOrderInvert ((unsigned char *) normalizedImages, sizeImages);
++      }
+     }
+     else
+     {
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
+index 91e2909..a8a2a68 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
+@@ -189,6 +189,10 @@ xEvent *xeviexE;
+ #include &quot;Windows.h&quot;
+ #include &quot;Args.h&quot;
+ 
++#ifdef NX_DEBUG_INPUT
++extern int nxagentDebugInput;
++#endif
++ 
+ extern Display *nxagentDisplay;
+ 
+ extern WindowPtr nxagentLastEnteredWindow;
+@@ -1682,11 +1686,28 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+     int i;
+     int type;
+ 
+-#ifdef DEBUG
++#ifdef NX_DEBUG_INPUT
++    if (grab &amp;&amp; nxagentDebugInput &amp;&amp; grab-&gt;window)
++    {
++	fprintf(stderr, &quot;TryClientEvents: Grab window is [0x%x].\n&quot;,
++		(unsigned int)grab-&gt;window-&gt;drawable.id);
++	if (!SameClient(grab, client))
++		fprintf(stderr, &quot;TryClientEvents: Events are going to be &quot;
++			    &quot;discarded.\n&quot;);
++    }
++#endif
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
++	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, (unsigned int)mask,
++	client-&gt;index);
++#else
+     if (debug_events) ErrorF(
+ 	&quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
+ 	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, mask, client-&gt;index);
+ #endif
++#endif
+     if ((client) &amp;&amp; (client != serverClient) &amp;&amp; (!client-&gt;clientGone) &amp;&amp;
+ 	((filter == CantBeFiltered) || (mask &amp; filter)))
+     {
+@@ -1700,10 +1721,17 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 		if (WID(inputInfo.pointer-&gt;valuator-&gt;motionHintWindow) ==
+ 		    pEvents-&gt;u.keyButtonPointer.event)
+ 		{
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++    {
++	fprintf(stderr,&quot;\nmotionHintWindow == keyButtonPointer.event\n&quot;);
++    }
++#else
+ 		    if (debug_events) ErrorF(&quot;\n&quot;);
+ 	    fprintf(stderr,&quot;motionHintWindow == keyButtonPointer.event\n&quot;);
+ #endif
++#endif
+ 		    return 1; /* don't send, but pretend we did */
+ 		}
+ 		pEvents-&gt;u.u.detail = NotifyHint;
+@@ -1740,16 +1768,26 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 	}
+ 
+ 	WriteEventsToClient(client, count, pEvents);
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot; delivered\n&quot;);
++#else
+ 	if (debug_events) ErrorF(  &quot; delivered\n&quot;);
+ #endif
++#endif
+ 	return 1;
+     }
+     else
+     {
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;\n&quot;);
++#else
+ 	if (debug_events) ErrorF(&quot;\n&quot;);
+ #endif
++#endif
+ 	return 0;
+     }
+ }
+@@ -3116,6 +3154,12 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+         xevieEventSent = 0;
+       else {
+         xeviemouse = mouse;
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;ProcessPointerEvent: Going to send XEVIE event.\n&quot;);
++        }
++        #endif
+         WriteToClient(clients[xevieClientIndex], sizeof(xEvent), (char *)xE);
+         return;
+       }
+@@ -3170,14 +3214,38 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
++	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonPress.\n&quot;);
++		}
++		return;
++	    }
++	    #else
+ 	    if (xE-&gt;u.u.detail == 0)
+ 		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state |= (Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail;
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+ 	    if (!grab)
++	    #ifdef NX_DEBUG_INPUT
++		if (CheckDeviceGrabs(mouse, xE, 0, count))
++		{
++		    if (nxagentDebugInput == 1)
++		    {
++			fprintf(stderr, &quot;ProcessPointerEvent: CheckDeviceGrabs&quot;
++				&quot; returned True for ButtonPress.\n&quot;);
++		    }
++		    return;
++		}
++	    #else
+ 		if (CheckDeviceGrabs(mouse, xE, 0, count))
+ 		    return;
++	    #endif
+ 	    break;
+ 	case ButtonRelease: 
+ 	    mouse-&gt;valuator-&gt;motionHintWindow = NullWindow;
+@@ -3189,8 +3257,20 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
+ 	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonRelease.\n&quot;);
++		}
+ 		return;
++	    }
++	    #else
++	    if (xE-&gt;u.u.detail == 0)
++		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state &amp;= ~((Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail);
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+@@ -3201,6 +3281,36 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ 	    FatalError(&quot;bogus pointer event from ddx&quot;);
+ 	}
+     }
++    #ifdef NX_DEBUG_INPUT
++    else if (!CheckMotion(xE))
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: CheckMotion returned False&quot;
++		    &quot; for MotionNotify.\n&quot;);
++	}
++	return;
++    }
++    if (grab)
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver grabbed &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverGrabbedEvent(xE, mouse, deactivateGrab, count);
++    }
++    else
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver device &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
++			    mouse, count);
++    }
++    #else
+     else if (!CheckMotion(xE))
+ 	return;
+     if (grab)
+@@ -3208,6 +3318,7 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+     else
+ 	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
+ 			    mouse, count);
++    #endif
+     if (deactivateGrab)
+         (*mouse-&gt;DeactivateGrab)(mouse);
+ }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
+index 91e2909..a8a2a68 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
+@@ -189,6 +189,10 @@ xEvent *xeviexE;
+ #include &quot;Windows.h&quot;
+ #include &quot;Args.h&quot;
+ 
++#ifdef NX_DEBUG_INPUT
++extern int nxagentDebugInput;
++#endif
++ 
+ extern Display *nxagentDisplay;
+ 
+ extern WindowPtr nxagentLastEnteredWindow;
+@@ -1682,11 +1686,28 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+     int i;
+     int type;
+ 
+-#ifdef DEBUG
++#ifdef NX_DEBUG_INPUT
++    if (grab &amp;&amp; nxagentDebugInput &amp;&amp; grab-&gt;window)
++    {
++	fprintf(stderr, &quot;TryClientEvents: Grab window is [0x%x].\n&quot;,
++		(unsigned int)grab-&gt;window-&gt;drawable.id);
++	if (!SameClient(grab, client))
++		fprintf(stderr, &quot;TryClientEvents: Events are going to be &quot;
++			    &quot;discarded.\n&quot;);
++    }
++#endif
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
++	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, (unsigned int)mask,
++	client-&gt;index);
++#else
+     if (debug_events) ErrorF(
+ 	&quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
+ 	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, mask, client-&gt;index);
+ #endif
++#endif
+     if ((client) &amp;&amp; (client != serverClient) &amp;&amp; (!client-&gt;clientGone) &amp;&amp;
+ 	((filter == CantBeFiltered) || (mask &amp; filter)))
+     {
+@@ -1700,10 +1721,17 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 		if (WID(inputInfo.pointer-&gt;valuator-&gt;motionHintWindow) ==
+ 		    pEvents-&gt;u.keyButtonPointer.event)
+ 		{
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++    {
++	fprintf(stderr,&quot;\nmotionHintWindow == keyButtonPointer.event\n&quot;);
++    }
++#else
+ 		    if (debug_events) ErrorF(&quot;\n&quot;);
+ 	    fprintf(stderr,&quot;motionHintWindow == keyButtonPointer.event\n&quot;);
+ #endif
++#endif
+ 		    return 1; /* don't send, but pretend we did */
+ 		}
+ 		pEvents-&gt;u.u.detail = NotifyHint;
+@@ -1740,16 +1768,26 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 	}
+ 
+ 	WriteEventsToClient(client, count, pEvents);
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot; delivered\n&quot;);
++#else
+ 	if (debug_events) ErrorF(  &quot; delivered\n&quot;);
+ #endif
++#endif
+ 	return 1;
+     }
+     else
+     {
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;\n&quot;);
++#else
+ 	if (debug_events) ErrorF(&quot;\n&quot;);
+ #endif
++#endif
+ 	return 0;
+     }
+ }
+@@ -3116,6 +3154,12 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+         xevieEventSent = 0;
+       else {
+         xeviemouse = mouse;
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;ProcessPointerEvent: Going to send XEVIE event.\n&quot;);
++        }
++        #endif
+         WriteToClient(clients[xevieClientIndex], sizeof(xEvent), (char *)xE);
+         return;
+       }
+@@ -3170,14 +3214,38 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
++	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonPress.\n&quot;);
++		}
++		return;
++	    }
++	    #else
+ 	    if (xE-&gt;u.u.detail == 0)
+ 		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state |= (Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail;
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+ 	    if (!grab)
++	    #ifdef NX_DEBUG_INPUT
++		if (CheckDeviceGrabs(mouse, xE, 0, count))
++		{
++		    if (nxagentDebugInput == 1)
++		    {
++			fprintf(stderr, &quot;ProcessPointerEvent: CheckDeviceGrabs&quot;
++				&quot; returned True for ButtonPress.\n&quot;);
++		    }
++		    return;
++		}
++	    #else
+ 		if (CheckDeviceGrabs(mouse, xE, 0, count))
+ 		    return;
++	    #endif
+ 	    break;
+ 	case ButtonRelease: 
+ 	    mouse-&gt;valuator-&gt;motionHintWindow = NullWindow;
+@@ -3189,8 +3257,20 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
+ 	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonRelease.\n&quot;);
++		}
+ 		return;
++	    }
++	    #else
++	    if (xE-&gt;u.u.detail == 0)
++		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state &amp;= ~((Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail);
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+@@ -3201,6 +3281,36 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ 	    FatalError(&quot;bogus pointer event from ddx&quot;);
+ 	}
+     }
++    #ifdef NX_DEBUG_INPUT
++    else if (!CheckMotion(xE))
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: CheckMotion returned False&quot;
++		    &quot; for MotionNotify.\n&quot;);
++	}
++	return;
++    }
++    if (grab)
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver grabbed &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverGrabbedEvent(xE, mouse, deactivateGrab, count);
++    }
++    else
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver device &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
++			    mouse, count);
++    }
++    #else
+     else if (!CheckMotion(xE))
+ 	return;
+     if (grab)
+@@ -3208,6 +3318,7 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+     else
+ 	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
+ 			    mouse, count);
++    #endif
+     if (deactivateGrab)
+         (*mouse-&gt;DeactivateGrab)(mouse);
+ }
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011617.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-13
+</A></li>
+	<LI>Next message: <A HREF="011630.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11621">[ date ]</a>
+              <a href="thread.html#11621">[ thread ]</a>
+              <a href="subject.html#11621">[ subject ]</a>
+              <a href="author.html#11621">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

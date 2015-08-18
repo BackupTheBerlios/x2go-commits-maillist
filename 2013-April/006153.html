@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	71d3d4aca6c9f2024f4ba84ba285705b4d74600d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%0971d3d4aca6c9f2024f4ba84ba285705b4d74600d&In-Reply-To=%3C20130424164726.6FEF05DB28%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006152.html">
+   <LINK REL="Next"  HREF="006154.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	71d3d4aca6c9f2024f4ba84ba285705b4d74600d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20x2gosession%20%28branch%29%20updated%3A%0A%0971d3d4aca6c9f2024f4ba84ba285705b4d74600d&In-Reply-To=%3C20130424164726.6FEF05DB28%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	71d3d4aca6c9f2024f4ba84ba285705b4d74600d">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Apr 24 18:47:26 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006152.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	d009da6cd677f106448a6692687a4d123b170dee
+</A></li>
+        <LI>Next message: <A HREF="006154.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	c3ab8f90c5f29e9a5e011372211296a54e45c927
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6153">[ date ]</a>
+              <a href="thread.html#6153">[ thread ]</a>
+              <a href="subject.html#6153">[ subject ]</a>
+              <a href="author.html#6153">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, x2gosession has been updated
+       via  71d3d4aca6c9f2024f4ba84ba285705b4d74600d (commit)
+      from  c3ab8f90c5f29e9a5e011372211296a54e45c927 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index 9007a52..89c5d5d 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -33,6 +33,7 @@
+ #include &lt;security/pam_appl.h&gt;
+ 
+ #define PAM_TYPE_DOMAIN  1234
++#define ALL_GOOD_SIGNAL  &quot;Ar, ready to authenticate cap'n&quot;
+ 
+ static char * global_domain = NULL;
+ /* FIXME? This is a work around to the fact that PAM seems to be clearing
+@@ -269,6 +270,9 @@ session_socket_handler (struct passwd * pwdent, int readypipe, const char * ruse
+ 	/* Track write out */
+ 	int writedata = 0;
+ 
++	/* Track ready writing */
++	int readywrite = 0;
++
+ 	if (setgid(pwdent-&gt;pw_gid) &lt; 0 || setuid(pwdent-&gt;pw_uid) &lt; 0 ||
+ 			setegid(pwdent-&gt;pw_gid) &lt; 0 || seteuid(pwdent-&gt;pw_uid) &lt; 0) {
+ 		/* Don't need to clean up yet */
+@@ -337,6 +341,11 @@ session_socket_handler (struct passwd * pwdent, int readypipe, const char * ruse
+ 		goto cleanup;
+ 	}
+ 
++	readywrite = write(readypipe, ALL_GOOD_SIGNAL, strlen(ALL_GOOD_SIGNAL) + 1);
++	if (readywrite != strlen(ALL_GOOD_SIGNAL) + 1) {
++		goto cleanup;
++	}
++
+ 	connected_addr_size = sizeof(struct sockaddr_un);
+ 	connectfd = accept(socketfd, (struct sockaddr *)&amp;connected_addr, &amp;connected_addr_size);
+ 	if (connectfd &lt; 0) {
+@@ -422,8 +431,18 @@ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv
+ 
+ 		retval = PAM_SYSTEM_ERR;
+ 	} else {
++		char readbuffer[strlen(ALL_GOOD_SIGNAL) + 1];
++		int readlen = 0;
++
++		readlen = read(sessionready[0], readbuffer, strlen(ALL_GOOD_SIGNAL) + 1);
++
+ 		close(sessionready[0]);
+-		session_pid = pid;
++
++		if (readlen == strlen(ALL_GOOD_SIGNAL) + 1) {
++			session_pid = pid;
++		} else {
++			retval = PAM_SYSTEM_ERR;
++		}
+ 	}
+ 
+ done:
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006152.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	d009da6cd677f106448a6692687a4d123b170dee
+</A></li>
+	<LI>Next message: <A HREF="006154.html">[X2Go-Commits] libpam-x2go.git - x2gosession (branch) updated:	c3ab8f90c5f29e9a5e011372211296a54e45c927
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6153">[ date ]</a>
+              <a href="thread.html#6153">[ thread ]</a>
+              <a href="subject.html#6153">[ subject ]</a>
+              <a href="author.html#6153">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,1659 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-254-g034f7d6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.1.4-254-g034f7d6&In-Reply-To=%3C20130914135732.9C0F45DD03%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014123.html">
+   <LINK REL="Next"  HREF="014118.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-254-g034f7d6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.1.4-254-g034f7d6&In-Reply-To=%3C20130914135732.9C0F45DD03%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-254-g034f7d6">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014123.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-257-g0042fba
+</A></li>
+        <LI>Next message: <A HREF="014118.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-263-g086c072
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14134">[ date ]</a>
+              <a href="thread.html#14134">[ thread ]</a>
+              <a href="subject.html#14134">[ subject ]</a>
+              <a href="author.html#14134">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  034f7d6d4d050db00991668df7a1fb7c935ec649 (commit)
+      from  469afde919074790f53328b0f2fc3fd8f2971ea8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/info/_stdout.py |    3 +-
+ x2go/cache.py                 |   19 ++++++--
+ x2go/checkhosts.py            |    7 +++
+ x2go/client.py                |   64 ++++++++++++++++++++++---
+ x2go/defaults.py              |    3 ++
+ x2go/guardian.py              |    1 -
+ x2go/mimeboxactions.py        |    2 +
+ x2go/printactions.py          |    4 ++
+ x2go/pulseaudio.py            |    8 +++-
+ x2go/registry.py              |   37 +++++++++++++++
+ x2go/session.py               |   82 +++++++++++++++++++++++++++-----
+ x2go/sftpserver.py            |   31 +++++++++++--
+ x2go/sshproxy.py              |    6 ++-
+ x2go/utils.py                 |  103 +++++++++++++++++++++++++++++++++--------
+ x2go/xserver.py               |   12 +++--
+ 15 files changed, 328 insertions(+), 54 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/info/_stdout.py b/x2go/backends/info/_stdout.py
+index 4e1c3e8..9f34976 100644
+--- a/x2go/backends/info/_stdout.py
++++ b/x2go/backends/info/_stdout.py
+@@ -187,7 +187,7 @@ class X2goServerSessionInfoSTDOUT(object):
+ 
+     def update(self, session_info):
+         &quot;&quot;&quot;\
+-        Clear all properties of a L{X2goServerSessionInfo} object.
++        Update all properties of a L{X2goServerSessionInfo} object.
+ 
+         &quot;&quot;&quot;
+         if type(session_info) == type(self):
+@@ -199,6 +199,7 @@ class X2goServerSessionInfoSTDOUT(object):
+                         setattr(self, prop, _new)
+ 
+     __init__ = clear
++    &quot;&quot;&quot; Class constructor, identical to L{clear()} method. &quot;&quot;&quot;
+ 
+ 
+ class X2goServerSessionListSTDOUT(object):
+diff --git a/x2go/cache.py b/x2go/cache.py
+index 1e8c38f..1f34945 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -146,6 +146,7 @@ class X2goListSessionsCache(object):
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
+ 
++        @raise X2goControlSessionException: if the control session's C{list_mounts} method fails
+         &quot;&quot;&quot;
+         try:
+             if self.x2go_listsessions_cache[profile_name]['sessions']:
+@@ -162,7 +163,10 @@ class X2goListSessionsCache(object):
+ 
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
++        @param control_session: X2Go control session instance
++        @type control_session: C{obj}
+ 
++        @raise X2goControlSessionException: if the control session's C{list_desktop} method fails
+         &quot;&quot;&quot;
+         try:
+             self.x2go_listsessions_cache[profile_name]['desktops'] = control_session.list_desktops()
+@@ -178,6 +182,7 @@ class X2goListSessionsCache(object):
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
+ 
++        @raise X2goControlSessionException: if the control session's C{list_sessions} method fails
+         &quot;&quot;&quot;
+         try:
+             if control_session is not None:
+@@ -194,8 +199,9 @@ class X2goListSessionsCache(object):
+ 
+         @param session_uuid: unique identifier of session to query cache for
+         @type session_uuid: C{str}
++
+         @return: a data object containing available session information
+-        @rtype: C{X2goServerSessionList*} instance
++        @rtype: C{X2goServerSessionList*} instance (or C{None})
+ 
+         &quot;&quot;&quot;
+         profile_name = self.client_instance.get_session_profile_name(session_uuid)
+@@ -212,8 +218,9 @@ class X2goListSessionsCache(object):
+ 
+         @param session_uuid: unique identifier of session to query cache for
+         @type session_uuid: C{str}
++
+         @return: a list of strings representing X2Go desktop sessions available for sharing
+-        @rtype: C{list}
++        @rtype: C{list} (or C{None})
+ 
+         &quot;&quot;&quot;
+         profile_name = self.client_instance.get_session_profile_name(session_uuid)
+@@ -230,8 +237,9 @@ class X2goListSessionsCache(object):
+ 
+         @param session_uuid: unique identifier of session to query cache for
+         @type session_uuid: C{str}
++
+         @return: a list of strings representing mounted client shares
+-        @rtype: C{list}
++        @rtype: C{list} (or C{None})
+ 
+         &quot;&quot;&quot;
+         profile_name = self.client_instance.get_session_profile_name(session_uuid)
+@@ -242,13 +250,16 @@ class X2goListSessionsCache(object):
+ 
+     def is_cached(self, profile_name=None, session_uuid=None, cache_type=None):
+         &quot;&quot;&quot;\
+-        Check if session list is cached.
++        Check if session information is cached.
+ 
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
+         @param session_uuid: unique identifier of session to query cache for
+         @type session_uuid: C{str}
+ 
++        @return: C{True} if session information is cached
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
+         if profile_name is None and session_uuid and self.client_instance:
+             try:
+diff --git a/x2go/checkhosts.py b/x2go/checkhosts.py
+index b278116..3e10307 100644
+--- a/x2go/checkhosts.py
++++ b/x2go/checkhosts.py
+@@ -81,6 +81,10 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+         @param key: host key to validate
+         @type key: Paramiko/SSH key instance
+ 
++        @raise X2goHostKeyException: if the X2Go server host key is not in the C{known_hosts} file
++        @raise X2goSSHProxyHostKeyException: if the SSH proxy host key is not in the C{known_hosts} file
++        @raise SSHException: if this instance does not know its {self.session_instance}
++
+         &quot;&quot;&quot;
+         self.client = client
+         self.hostname = hostname
+@@ -209,9 +213,12 @@ def check_ssh_host_key(x2go_sshclient_instance, hostname, port=22):
+     @type hostname: C{str}
+     @param port: port of server to validate
+     @type port: C{int}
++
+     @return: returns a tuple with the following components (&lt;host_ok&gt;, &lt;hostname&gt;, &lt;port&gt;, &lt;fingerprint&gt;, &lt;fingerprint_type&gt;)
+     @rtype: C{tuple}
+ 
++    @raise: SSHException: if an SSH exception occurred, that we did not provocate in L{X2goInteractiveAddPolicy.missing_host_key()}
++
+     &quot;&quot;&quot;
+     _hostname = hostname
+     _port = port
+diff --git a/x2go/client.py b/x2go/client.py
+index 2f50823..6a820bc 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -678,6 +678,12 @@ class X2goClient(object):
+         self.logger('HOOK_sshfs_not_available: the remote X2Go server (%s) denies SSHFS access for session %s. This will result in client-side folder sharing, printing and the MIME box feature being unavailable' % (session_name, profile_name), loglevel=log.loglevel_WARN)
+ 
+     def _detect_backend_classes(self):
++        &quot;&quot;&quot;\
++        Detect backend classes from the command line
++
++        @raise X2goBackendException: if a given backend name is unknown.&quot;
++
++        &quot;&quot;&quot;
+         # CONTROL session backend
+         if type(self.control_backend) is types.StringType:
+             try:
+@@ -1439,6 +1445,8 @@ class X2goClient(object):
+         @return: True if the session could be successfully shared.
+         @rtype: C{bool}
+ 
++        @raise X2goDesktopSharingException: if a given desktop ID does not specify an available desktop session
++
+         &quot;&quot;&quot;
+ 
+         # X2goClient.list_desktops() uses caching (if enabled, so we prefer lookups here...
+@@ -1472,6 +1480,8 @@ class X2goClient(object):
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+ 
++        @raise X2goClientException: if the method does not know what session to resume
++
+         &quot;&quot;&quot;
+         try:
+             if session_uuid is None and session_name is None:
+@@ -2068,8 +2078,9 @@ class X2goClient(object):
+ 
+         @param profile_name: profile name
+         @type profile_name: C{str}
++
+         @return: control session instance
+-        @rtype: C{X2goControlSession*} instance
++        @rtype: C{X2goControlSession} instance
+ 
+         &quot;&quot;&quot;
+         return self.session_registry.control_session_of_profile_name(profile_name)
+@@ -2081,7 +2092,8 @@ class X2goClient(object):
+ 
+         @param session_name: session name
+         @type session_name: C{str}
+-        @return: control session instance
++
++        @return: session instance of the given name
+         @rtype: C{X2goSession} or C{str}
+ 
+         &quot;&quot;&quot;
+@@ -2095,6 +2107,9 @@ class X2goClient(object):
+         @param session_name: session name
+         @type session_name: C{str}
+ 
++        @return: C{True} if the given session is registered
++        @rtype: C{bool}
++
+         &quot;&quot;&quot;
+         return self.client_registered_session_of_name(session_name) is not None
+     __client_has_registered_session_of_name = client_registered_session_of_name
+@@ -2109,8 +2124,10 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of registered sessions of profile name
+         @rtype: C{list}
++
+         &quot;&quot;&quot;
+         return self.session_registry.registered_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_registered_sessions_of_profile_name = client_registered_sessions_of_profile_name
+@@ -2125,8 +2142,10 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of connected sessions of profile name
+         @rtype: C{list}
++
+         &quot;&quot;&quot;
+         return self.session_registry.connected_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_connected_sessions_of_profile_name = client_connected_sessions_of_profile_name
+@@ -2141,6 +2160,7 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of associated sessions of profile name
+         @rtype: C{list}
+ 
+@@ -2150,7 +2170,7 @@ class X2goClient(object):
+ 
+     def client_pubapp_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
+         &quot;&quot;&quot;\
+-        Retrieve X2Go sessions of profile name &lt;profile_name&gt; that provide published applications .
++        Retrieve X2Go sessions of profile name &lt;profile_name&gt; that provide published applications.
+ 
+         @param profile_name: profile name
+         @type profile_name: C{str}
+@@ -2158,8 +2178,10 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of application publishing sessions of profile name
+         @rtype: C{list}
++
+         &quot;&quot;&quot;
+         return self.session_registry.pubapp_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_pubapp_sessions_of_profile_name = client_pubapp_sessions_of_profile_name
+@@ -2175,8 +2197,10 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of running sessions of profile name
+         @rtype: C{list}
++
+         &quot;&quot;&quot;
+         return self.session_registry.running_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_running_sessions_of_profile_name = client_running_sessions_of_profile_name
+@@ -2191,8 +2215,10 @@ class X2goClient(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of session names
+         @type return_session_names: C{bool}
++
+         @return: list of suspended sessions of profile name
+         @rtype: C{list}
++
+         &quot;&quot;&quot;
+         return self.session_registry.suspended_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_suspended_sessions_of_profile_name = client_suspended_sessions_of_profile_name
+@@ -2205,11 +2231,16 @@ class X2goClient(object):
+         &quot;&quot;&quot;\
+         Test if server that corresponds to the terminal session C{session_uuid} is alive.
+ 
++        If the session is not connected anymore the L{X2goClient.HOOK_on_control_session_death()} gets called.
++
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: C{True} if X2Go server connection for L{X2goSession} instance with &lt;session_uuid&gt; is alive.
+         @rtype: C{bool}
+ 
++        @raise X2goControlSessionException: if the session is not connected anymore; in that case the L{HOOK_on_control_session_death} gets called.
++
+         &quot;&quot;&quot;
+         try:
+             return self.session_registry(session_uuid).is_alive()
+@@ -2241,6 +2272,7 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         @param username: user name to test validity for
+         @type username: C{str}
++
+         @return: Is remote user allowed to start an X2Go session?
+         @rtype: C{str}
+ 
+@@ -2255,9 +2287,12 @@ class X2goClient(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: list of session names
+         @rtype: C{list}
+ 
++        @raise X2goClientException: if the session with UUID C{session_uuid} is not connected
++
+         &quot;&quot;&quot;
+         if self._X2goClient__is_session_connected(session_uuid):
+             session_list = self._X2goClient__list_sessions(session_uuid)
+@@ -2298,9 +2333,12 @@ class X2goClient(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: list of session names
+         @rtype: C{list}
+ 
++        @raise X2goClientException: if the session with UUID C{session_uuid} is not connected
++
+         &quot;&quot;&quot;
+         if self._X2goClient__is_session_connected(session_uuid):
+             session_list = self._X2goClient__list_sessions(session_uuid)
+@@ -2395,6 +2433,9 @@ class X2goClient(object):
+         @param raw: output the session list in X2go's raw C{x2golistsessions} format
+         @type raw: C{bool}
+ 
++        @raise X2goClientException: if the session profile specified by C{session_uuid}, C{profile_name} or C{profile_id} is not connected
++            or if none of the named parameters has been specified
++
+         &quot;&quot;&quot;
+         if profile_id is not None:
+             profile_name = self.to_profile_name(profile_id)
+@@ -2464,6 +2505,12 @@ class X2goClient(object):
+         @param raw: output the session list in X2go's raw C{x2golistdesktops} format
+         @type raw: C{bool}
+ 
++        @return: a list of available desktops to be shared
++        @rtype: C{list}
++
++        @raise X2goClientException: if the session profile specified by C{session_uuid}, C{profile_name} or C{profile_id} is not connected
++            or if none of the named parameters has been specified
++
+         &quot;&quot;&quot;
+         if profile_id is not None:
+             profile_name = self.to_profile_name(profile_id)
+@@ -2510,6 +2557,9 @@ class X2goClient(object):
+         @param raw: output the session list in X2go's raw C{x2golistmounts} format
+         @type raw: C{bool}
+ 
++        @return: list of server-side mounted shares for a given profile name
++        @rtype: C{list}
++
+         &quot;&quot;&quot;
+         sessions = [ s for s in self.client_running_sessions(return_objects=True) if s.get_profile_name() == profile_name ]
+ 
+@@ -2523,7 +2573,7 @@ class X2goClient(object):
+                 _list_mounts.update(self.__list_mounts(session_uuid=session(), no_cache=no_cache, refresh_cache=refresh_cache, raw=False))
+         return _list_mounts
+ 
+-    def list_mounts(self, session_uuid=None, 
++    def list_mounts(self, session_uuid,
+                     no_cache=False, refresh_cache=False,
+                     raw=False):
+         &quot;&quot;&quot;\
+@@ -2537,10 +2587,10 @@ class X2goClient(object):
+         @param raw: output the session list in X2go's raw C{x2golistmounts} format
+         @type raw: C{bool}
+ 
+-        &quot;&quot;&quot;
+-        if session_uuid is None:
+-            raise x2go_exceptions.X2goClientException('must specify session UUID')
++        @return: list of server-side mounted shares for a given session UUID
++        @rtype: C{list}
+ 
++        &quot;&quot;&quot;
+         if raw:
+             return self.session_registry(session_uuid).list_mounts(raw=raw)
+ 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index a1da523..5372a6e 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -424,6 +424,9 @@ X2GO_MIMEBOX_EXTENSIONS_BLACKLIST = [
+ 
+ # X2Go desktop sharing
+ X2GO_SHARE_VIEWONLY=0
++&quot;&quot;&quot;Constant representing read-only access to shared desktops.&quot;&quot;&quot;
+ X2GO_SHARE_FULLACCESS=1
++&quot;&quot;&quot;Constant representing read-write (full) access to shared desktops.&quot;&quot;&quot;
+ 
+ PUBAPP_MAX_NO_SUBMENUS=10
++&quot;&quot;&quot;Less than ten applications will not get rendered into submenus.&quot;&quot;&quot;
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 807b104..897cce1 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -44,7 +44,6 @@ class X2goSessionGuardian(threading.Thread):
+     setups there should be _one_ L{X2goClient} and _one_ L{X2goSessionGuardian} in use).
+ 
+     &quot;&quot;&quot;
+-
+     def __init__(self, client_instance, 
+                  auto_update_listsessions_cache=False, 
+                  auto_update_listdesktops_cache=False, 
+diff --git a/x2go/mimeboxactions.py b/x2go/mimeboxactions.py
+index bf87b69..217146b 100644
+--- a/x2go/mimeboxactions.py
++++ b/x2go/mimeboxactions.py
+@@ -260,6 +260,8 @@ class X2goMIMEboxActionSAVEAS(X2goMIMEboxAction):
+             constructed with the given loglevel
+         @type loglevel: C{int}
+ 
++        @raise X2goMIMEboxActionException: if the client_instance has not been passed to the SAVEAS MIME box action
++
+         &quot;&quot;&quot;
+         if client_instance is None:
+             raise x2go_exceptions.X2goMIMEboxActionException('the SAVEAS MIME box action needs to know the X2goClient instance (client=&lt;instance&gt;)')
+diff --git a/x2go/printactions.py b/x2go/printactions.py
+index 175100d..91faa81 100644
+--- a/x2go/printactions.py
++++ b/x2go/printactions.py
+@@ -199,6 +199,8 @@ class X2goPrintActionPDFVIEW(X2goPrintAction):
+         @param spool_dir: location of the X2Go client's spool directory
+         @type spool_dir: C{str}
+ 
++        @raise OSError: pass through all C{OSError}s except no. 2
++
+         &quot;&quot;&quot;
+         pdf_file = os.path.normpath(pdf_file)
+         spool_dir = os.path.normpath(spool_dir)
+@@ -502,6 +504,8 @@ class X2goPrintActionDIALOG(X2goPrintAction):
+             constructed with the given loglevel
+         @type loglevel: C{int}
+ 
++        @raise X2goPrintActionException: if the client_instance has not been passed to the DIALOG print action
++
+         &quot;&quot;&quot;
+         if client_instance is None:
+             raise x2go_exceptions.X2goPrintActionException('the DIALOG print action needs to know the X2goClient instance (client=&lt;instance&gt;)')
+diff --git a/x2go/pulseaudio.py b/x2go/pulseaudio.py
+index f079cfe..6930bec 100644
+--- a/x2go/pulseaudio.py
++++ b/x2go/pulseaudio.py
+@@ -45,6 +45,10 @@ from defaults import LOCAL_HOME as _LOCAL_HOME
+ # Python X2Go modules
+ import log
+ 
++import exceptions
++class OSNotSupportedException(exceptions.StandardError): pass
++&quot;&quot;&quot; Exception denoting that this operating system is not supported. &quot;&quot;&quot;
++
+ class X2goPulseAudio(threading.Thread):
+     &quot;&quot;&quot;
+     This class controls the Pulse Audio daemon.
+@@ -64,10 +68,10 @@ class X2goPulseAudio(threading.Thread):
+             constructed with the given loglevel
+         @type loglevel: C{int}
+ 
++        @raise OSNotSupportedException: on non-Windows platforms Python X2Go presumes that pulseaudio is already launched
++
+         &quot;&quot;&quot;
+         if _X2GOCLIENT_OS not in (&quot;Windows&quot;):
+-            import exceptions
+-            class OSNotSupportedException(exceptions.StandardError): pass
+             raise OSNotSupportedException('classes of x2go.pulseaudio module are for Windows only')
+ 
+         if logger is None:
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 324e2c4..1bcc86d 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -103,9 +103,12 @@ class X2goSessionRegistry(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: the corresponding L{X2goSession} instance
+         @rtype: L{X2goSession} instance
+ 
++        @raise X2goSessionRegistryException: if the given session UUID could not be found
++
+         &quot;&quot;&quot;
+         try:
+             return self.registry[session_uuid]
+@@ -150,6 +153,7 @@ class X2goSessionRegistry(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: profile ID
+         @rtype: C{str}
+ 
+@@ -162,6 +166,7 @@ class X2goSessionRegistry(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: profile name
+         @rtype: C{str}
+ 
+@@ -174,6 +179,7 @@ class X2goSessionRegistry(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++
+         @return: session summary dictionary
+         @rtype: C{dict}
+ 
+@@ -234,6 +240,12 @@ class X2goSessionRegistry(object):
+         @param force_update: make sure the session status gets really updated
+         @type force_update: C{bool}
+ 
++        @return: C{True} if this method has been successful
++        @rtype: C{bool}
++
++        @raise X2goSessionRegistryException: if the combination of C{session_uuid}, C{profile_name} and C{profile_id} does not match the requirement: 
++            only one of them
++
+         &quot;&quot;&quot;
+         if session_uuid and profile_name or session_uuid and profile_id or profile_name and profile_id:
+             raise x2go_exceptions.X2goSessionRegistryException('only one of the possible method parameters is allowed (session_uuid, profile_name or profile_id)')
+@@ -489,6 +501,9 @@ class X2goSessionRegistry(object):
+         @param kwargs: all other options will be passed on to the constructor of the to-be-instantiated L{X2goSession} instance
+         @type C{dict}
+ 
++        @return: the session UUID of the newly registered (or re-registered) session
++        @rtype: C{str}
++
+         &quot;&quot;&quot;
+         control_session = None
+         if profile_id in self.control_sessions.keys():
+@@ -563,6 +578,7 @@ class X2goSessionRegistry(object):
+ 
+         @param session_name: name of session to be searched for
+         @type session_name: C{str}
++
+         @return: C{True} if a session of C{&lt;session_name&gt;} has been found
+         @rtype: C{bool}
+ 
+@@ -577,9 +593,13 @@ class X2goSessionRegistry(object):
+         @type session_name: C{str}
+         @param return_object: if C{False} the session UUID hash will be returned, if C{True} the L{X2goSession} instance will be returned
+         @type return_object: C{bool}
++
+         @return: L{X2goSession} object or its representing session UUID hash
+         @rtype: L{X2goSession} instance or C{str}
+ 
++        @raise X2goSessionRegistryException: if there is more than one L{X2goSession} registered for C{&lt;session_name&gt;} within
++            the same L{X2goClient} instance. This should never happen!
++
+         &quot;&quot;&quot;
+         found_sessions = [ s for s in self.registered_sessions() if s.session_name == session_name and s.session_name is not None ]
+         if len(found_sessions) == 1:
+@@ -636,6 +656,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -655,6 +676,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -674,6 +696,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -693,6 +716,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -712,6 +736,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -731,6 +756,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -766,6 +792,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -785,6 +812,7 @@ class X2goSessionRegistry(object):
+         @type return_profile_ids: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+@@ -802,6 +830,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -824,6 +853,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -846,6 +876,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -868,6 +899,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -892,6 +924,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -914,6 +947,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -936,6 +970,7 @@ class X2goSessionRegistry(object):
+         @type return_objects: C{bool}
+         @param return_session_names: return as list of X2Go session names
+         @type return_session_names: C{bool}
++
+         @return: a session list (as UUID hashes, objects or session names)
+         @rtype: C{list}
+ 
+@@ -953,6 +988,7 @@ class X2goSessionRegistry(object):
+ 
+         @param profile_name: session profile name
+         @type profile_name: C{str}
++
+         @return: contol session instance
+         @rtype: C{X2goControlSession*} instance
+ 
+@@ -977,6 +1013,7 @@ class X2goSessionRegistry(object):
+ 
+         @param use_paramiko: send query directly to the Paramiko/SSH layer
+         @type use_paramiko: C{bool}
++
+         @return: list of connected session profiles
+         @rtype: C{list}
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 17b3aed..64322e5 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -476,6 +476,9 @@ class X2goSession(object):
+         The master session is the session has been launched first for a specific connection,
+         it also is _the_ session that controls the client-side shared folders.
+ 
++        If this L{X2goSession} instance is a standalone instance (without parent L{X2goCLient})
++        this method will always return C{True}.
++
+         @return: returns C{True} if this session is a master session
+         @rtype: C{bool}
+ 
+@@ -484,19 +487,35 @@ class X2goSession(object):
+             return True
+         return self.master_session
+ 
+-    def set_master_session(self, wait=0):
++    def set_master_session(self, wait=0, max_wait=20):
+         &quot;&quot;&quot;\
+         Declare this as a master session of a connection channel.
+ 
++        This method gets called by the L{X2goSessionRegistry} while sessions are starting or resuming and it relies on
++        an already set-up terminal session.
++
++        @param wait: wait for &lt;wait&gt; seconds before sharing local folders via the new master session
++            of the corresponding session profile.
++        @type wait: C{int}
++        @param max_wait: wait for &lt;max_wait&gt; seconds for the terminal session to appear
++        @type max_wait: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('Using session %s as master session for profile %s.' % (self.get_session_name(), self.get_profile_name()), loglevel=log.loglevel_NOTICE)
+         self.master_session = True
++
++        i = 0
++        while i &lt; max_wait:
++            i += 1
++            if self.has_terminal_session():
++                break
++            gevent.sleep(1)
++
+         if wait:
+             gevent.spawn_later(wait, self.share_all_local_folders)
+         else:
+             gevent.spawn(self.share_all_local_folders)
+ 
+-
+     def unset_master_session(self):
+         &quot;&quot;&quot;\
+         Declare this as a non-master session of a connection channel.
+@@ -534,9 +553,12 @@ class X2goSession(object):
+ 
+         @param option: name of a specific profile option to be queried.
+         @type option: C{str}
++
+         @return: value for profile option C{&lt;option&gt;}
+         @rtype: C{bool,str,int}
+ 
++        @raise X2goProfileException: if the session profile option is unknown
++
+         &quot;&quot;&quot;
+         if option in _X2GO_SESSION_PARAMS + _X2GO_TERMINAL_PARAMS + _X2GO_SSHPROXY_PARAMS and hasattr(self, option):
+             return eval(&quot;self.%s&quot; % option)
+@@ -670,6 +692,9 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Retrieve session UUID hash for this L{X2goSession}.
+ 
++        @return: the session's UUID hash
++        @rtype: C{str}
++
+         &quot;&quot;&quot;
+         return str(self.uuid)
+     __get_uuid = get_uuid
+@@ -696,7 +721,8 @@ class X2goSession(object):
+ 
+         @param username: username to check validity for
+         @type username: C{str}
+-        @return: return C{True} if the username is allowed to launch X2Go sessions
++
++        @return: C{True} if the username is allowed to launch X2Go sessions
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -838,6 +864,7 @@ class X2goSession(object):
+ 
+         @return: the L{X2goSession}'s control session
+         @rtype: C{X2goControlSession*} instance
++
+         &quot;&quot;&quot;
+         return self.control_session
+     __get_control_session = get_control_session
+@@ -1007,6 +1034,10 @@ class X2goSession(object):
+         @return: returns C{True} is the connection to the X2Go server has been successful
+         @rtype C{bool}
+ 
++        @raise X2goSessionException: on control session exceptions
++        @raise X2goRemoteHomeException: if the remote home directory does not exist
++        @raise Exception: any other exception during connecting is passed through
++
+         &quot;&quot;&quot;
+         if self.control_session and self.control_session.is_connected():
+             self.logger('control session is already connected, skipping authentication', loglevel=log.loglevel_DEBUG)
+@@ -1098,7 +1129,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Return a list of X2Go server-sides features (supported functionalities).
+ 
+-        @return: a C{list} of X2Go feature names.
++        @return: a C{list} of X2Go feature names
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+@@ -1110,7 +1141,8 @@ class X2goSession(object):
+ 
+         @param feature: an X2Go server feature as found in C{$SHAREDIR/x2go/feature.d/*}
+         @type feature: C{str}
+-        @return: C{True} if the feature is presend
++
++        @return: returns C{True} if the feature is present
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1177,6 +1209,11 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Clean all running sessions for the authenticated user on the remote X2Go server.
+ 
++        @param destroy_terminals: destroy associated terminal sessions
++        @type destroy_terminals: C{bool}
++        @param published_applications: clean sessions that are published applications providers, too
++        @type published_applications: C{bool}
++
+         &quot;&quot;&quot;
+         if self.is_alive():
+ 
+@@ -1266,6 +1303,9 @@ class X2goSession(object):
+         @param force_update: force a session status update, if if the last update is less then 1 second ago
+         @type force_update: C{bool}
+ 
++        @raise Exception: any exception is passed through in case the session disconnected surprisingly
++            or has been marked as faulty
++
+         &quot;&quot;&quot;
+         if not force_update and self._last_status is not None:
+             _status_update_timedelta = time.time() - self._last_status['timestamp']
+@@ -1326,7 +1366,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Returns true if this session runs in published applications mode.
+ 
+-        @return: Returns C{True} is this session is a provider session for published applications.
++        @return: returns C{True} if this session is a provider session for published applications.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1338,7 +1378,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Returns true if this session is configured as desktop session.
+ 
+-        @return: Returns C{True} is this session is a desktop session.
++        @return: returns C{True} if this session is a desktop session.
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1399,8 +1439,10 @@ class X2goSession(object):
+         @type all_suspended: C{bool}
+         @param start: is no session is to be resumed, start a new session
+         @type start: C{bool}
++        @param redirect_to_client: redirect this call to the L{X2goClient} instance (if available) to allow frontend interaction
++        @type redirect_to_client: C{bool}
+ 
+-        @return: Return success (or failure) of starting/resuming this sessions
++        @return: returns success (or failure) of starting/resuming this sessions
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1436,10 +1478,14 @@ class X2goSession(object):
+ 
+         @param session_name: the server-side name of an X2Go session
+         @type session_name: C{str}
++        @param session_list: a session list to avoid a server-side session list query
++        @type session_list: C{dict}
+ 
+         @return: returns C{True} if resuming the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
++        @raise Exception: any exception that occurs during published application menu retrieval is passed through
++
+         &quot;&quot;&quot;
+         self.terminal_session = 'PENDING'
+         _new_session = False
+@@ -1587,6 +1633,9 @@ class X2goSession(object):
+         @return: returns C{True} if starting the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
++        @raise X2goDesktopSharingException: if the given desktop ID is not an available desktop session on the remote server
++        @raise X2goSessionException: if the available desktop session appears to be dead, in fact
++
+         &quot;&quot;&quot;
+         self.terminal_session = 'PENDING'
+ 
+@@ -1645,6 +1694,8 @@ class X2goSession(object):
+         @return: returns C{True} if suspending the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
++        @raise X2goSessionException: if the session could not be suspended
++
+         &quot;&quot;&quot;
+         if self.is_alive():
+             if self.has_terminal_session():
+@@ -1690,6 +1741,8 @@ class X2goSession(object):
+         @return: returns C{True} if terminating the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+ 
++        @raise X2goSessionException: if the session could not be terminated
++
+         &quot;&quot;&quot;
+         if self.is_alive():
+             if self.has_terminal_session():
+@@ -1757,7 +1810,7 @@ class X2goSession(object):
+         Test if this C{X2goSession} is
+         in a healthy state.
+ 
+-        @return: C{BTrue} if session is ok, C{False} otherwise
++        @return: C{True} if session is ok, C{False} otherwise
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1781,7 +1834,8 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Check if this session will display properly with the local screen's color depth.
+ 
+-        @return: C{True} if the session will display on this client screen, False otherwise. If no terminal session is yet registered with this session, C{None} is returned.
++        @return: C{True} if the session will display on this client screen, 
++            C{False} otherwise. If no terminal session is yet registered with this session, C{None} is returned.
+         @rtype C{bool}
+ 
+         &quot;&quot;&quot;
+@@ -1903,6 +1957,8 @@ class X2goSession(object):
+             this X2Go session
+         @rtype: C{bool}
+ 
++        @raise X2goSessionException: if this L{X2goSession} does not have an associated terminal session
++
+         &quot;&quot;&quot;
+         # compat for Python-X2Go (&lt;=0.1.1.6)
+         if folder_name: local_path=folder_name
+@@ -1952,6 +2008,8 @@ class X2goSession(object):
+             inside this X2Go session
+         @rtype: C{bool}
+ 
++        @raise X2goSessionException: if this L{X2goSession} does not have an associated terminal session
++
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session():
+@@ -1981,6 +2039,8 @@ class X2goSession(object):
+             inside this X2Go session
+         @rtype: C{bool}
+ 
++        @raise X2goSessionException: if this L{X2goSession} does not have an associated terminal session
++
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session() and local_path in self.shared_folders:
+@@ -2048,7 +2108,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;\
+         Query session if it is locked by some command being processed.
+ 
+-        @return: return C{True} is the session is locked, C{False} if not; returns None, if there is no
++        @return: returns C{True} is the session is locked, C{False} if not; returns C{None}, if there is no
+             control session yet.
+         @rtype: C{bool}
+ 
+diff --git a/x2go/sftpserver.py b/x2go/sftpserver.py
+index 08243f7..1ddf617 100644
+--- a/x2go/sftpserver.py
++++ b/x2go/sftpserver.py
+@@ -84,6 +84,7 @@ class _SSHServer(paramiko.ServerInterface):
+         @type kind: C{str}
+         @param chanid: channel id (unused)
+         @type chanid: C{any}
++
+         @return: returns a Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -101,8 +102,10 @@ class _SSHServer(paramiko.ServerInterface):
+         @type username: C{str}
+         @param key: incoming SSH key to be used for authentication
+         @type key: C{paramiko.RSAKey} instance
++
+         @return: returns a Paramiko/SSH return code
+         @rtype: C{int}
++
+         &quot;&quot;&quot;
+         if username == self.current_local_user:
+             self.logger('sFTP server %s: username is %s' % (self, self.current_local_user), loglevel=log.loglevel_DEBUG)
+@@ -118,6 +121,7 @@ class _SSHServer(paramiko.ServerInterface):
+ 
+         @param username: username of incoming authentication request
+         @type username: C{str}
++
+         @return: statically returns C{publickey} as auth mechanism
+         @rtype: C{str}
+ 
+@@ -132,6 +136,13 @@ class _SFTPHandle(paramiko.SFTPHandle):
+ 
+     &quot;&quot;&quot;
+     def stat(self):
++        &quot;&quot;&quot;\
++        Create an SFTPAttributes object from an existing stat object (an object returned by os.stat).
++
++        return: new C{SFTPAttributes} object with the same attribute fields.
++        rtype: C{obj}
++
++        &quot;&quot;&quot;
+         try:
+             return paramiko.SFTPAttributes.from_stat(os.fstat(self.readfile.fileno()))
+         except OSError, e:
+@@ -177,8 +188,10 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: path name within chroot
+         @type path: C{str}
++
+         @return: real path name (including drive letter on Windows systems)
+         @rtype: C{str}
++
+         &quot;&quot;&quot;
+         if defaults.X2GOCLIENT_OS == 'Windows' and path.startswith('/windrive'):
+             _path_components = path.split('/')
+@@ -230,6 +243,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: path to file/folder
+         @type path: C{str}
++
+         @return: returns the file's stat output, on failure: returns a Paramiko/SSH return code
+         @rtype: C{class} or C{int}
+ 
+@@ -248,6 +262,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: path to folder
+         @type path: C{str}
++
+         @return: returns the file's lstat output, on failure: returns a Paramiko/SSH return code
+         @rtype: C{class} or C{int}
+ 
+@@ -270,6 +285,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         @type flags: C{str}
+         @param attr: file attributes
+         @type attr: C{class}
++
+         @return: file handle/object for remote file, on failure: returns a Paramiko/SSH return code
+         @rtype: L{_SFTPHandle} instance or C{int}
+ 
+@@ -322,8 +338,10 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: path to file
+         @type path: C{str}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         os.remove(path)
+@@ -332,12 +350,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+     def rename(self, oldpath, newpath):
+         &quot;&quot;&quot;\
+-        Rename/Move a file.
++        Rename/move a file.
+ 
+         @param oldpath: old path/location/file name
+         @type oldpath: C{str}
+         @param newpath: new path/location/file name
+         @type newpath: C{str}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -360,6 +379,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         @type path: C{str}
+         @param attr: file attributes
+         @type attr: C{class}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -379,6 +399,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: folder to be removed
+         @type path: C{str}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -400,6 +421,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         @type path: C{str}
+         @param attr: new file attributes
+         @type attr: C{class}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -424,6 +446,7 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         @type target_path: C{str}
+         @param path: link location
+         @type path: C{str}
++
+         @return: returns Paramiko/SSH return code
+         @rtype: C{int}
+ 
+@@ -445,8 +468,10 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+         @param path: path of symbolic link
+         @type path: C{str}
++
+         @return: target location of the symbolic link, on failure: returns a Paramiko/SSH return code
+         @rtype: C{str} or C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         try:
+@@ -479,7 +504,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+ 
+         @param server_port: the TCP/IP port on the X2Go server (starting point of the tunnel), 
+             normally some number above 30000
+-        @type server_port: int
++        @type server_port: C{int}
+         @param ssh_transport: the L{X2goSession}'s Paramiko/SSH transport instance
+         @type ssh_transport: C{paramiko.Transport} instance
+         @param auth_key: Paramiko/SSH RSAkey object that has to be authenticated against by
+@@ -490,7 +515,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+         @type logger: L{X2goLogger} instance
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+-        @type loglevel: int
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         self.ready = False
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 7f28234..9025eb5 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -120,6 +120,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+             constructed with the given loglevel
+         @type loglevel: int
+ 
++        @raise X2goSSHProxyAuthenticationException: if the SSH proxy caused a C{paramiko.AuthenticationException}
++        @raise X2goSSHProxyException: if the SSH proxy caused a C{paramiko.SSHException}
+         &quot;&quot;&quot;
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+@@ -248,7 +250,6 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
+-
+         # hostname rewrite for localhost, force to IPv4
+         _hostname = self.hostname
+ 
+@@ -266,6 +267,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         &quot;&quot;&quot;\
+         Start the SSH proxying tunnel...
+ 
++        @raise X2goSSHProxyException: if the SSH proxy could not retrieve an SSH transport for proxying a X2Go server-client connection
++
+         &quot;&quot;&quot;
+         if self.get_transport() is not None and self.get_transport().is_authenticated():
+             self.local_port = utils.detect_unused_port(bind_address=self.local_host, preferred_port=self.local_port)
+@@ -299,6 +302,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+ 
+         @return: local IP socket port
+         @rtype: C{int}
++
+         &quot;&quot;&quot;
+         return self.local_port
+ 
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 06b6727..029b94e 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -53,6 +53,9 @@ def is_in_nx3packmethods(method):
+     &quot;&quot;&quot;\
+     Test if a given compression method is valid for NX3 Proxy.
+ 
++    @return: C{True} if C{method} is in the hard-coded list of NX3 compression methods.
++    @rtype: C{bool}
++
+     &quot;&quot;&quot;
+     return method in pack_methods_nx3
+ 
+@@ -62,6 +65,14 @@ def find_session_line_in_x2golistsessions(session_name, stdout):
+     Return the X2Go session meta information as returned by the 
+     C{x2golistsessions} server command for session C{session_name}.
+ 
++    @param session_name: name of a session
++    @type session_name: C{str}
++    @param stdout: raw output from the ,,x2golistsessions'' command, as list of strings
++    @type stdout: C{list}
++
++    @return: the output line that contains C{&lt;session_name&gt;}
++    @rtype: C{str} or C{None}
++
+     &quot;&quot;&quot;
+     sessions = stdout.read().split(&quot;\n&quot;)
+     for line in sessions:
+@@ -78,6 +89,12 @@ def slugify(value):
+     Normalizes string, converts to lowercase, removes non-alpha characters,
+     converts spaces to hyphens and replaces round brackets by pointed brackets.
+ 
++    @param value: a string that shall be sluggified
++    @type value: C{str}
++
++    @return: the sluggified string
++    @rtype: C{str}
++
+     &quot;&quot;&quot;
+     import unicodedata
+     value = unicodedata.normalize('NFKD', unicode(value)).encode('ascii', 'ignore')
+@@ -90,46 +107,66 @@ def _genSessionProfileId():
+     &quot;&quot;&quot;\
+     Generate a session profile ID as used in x2goclient's sessions config file.
+ 
++    @return: profile ID
++    @rtype: C{str}
++
+     &quot;&quot;&quot;
+     import datetime
+     return datetime.datetime.utcnow().strftime('%Y%m%d%H%m%S%f')
+ 
+ 
+-def _checkIniFileDefaults(defaults):
++def _checkIniFileDefaults(data_structure):
+     &quot;&quot;&quot;\
+     Check an ini file data structure passed on by a user app or class.
+ 
++    @param data_structure: an ini file date structure
++    @type data_structure: C{dict} of C{dict}s
++
++    @return: C{True} if C{data_structure} matches that of an ini file data structure
++    @rtype: C{bool}
++
+     &quot;&quot;&quot;
+-    if defaults is None:
++    if data_structure is None:
+         return False
+-    if type(defaults) is not types.DictType:
++    if type(data_structure) is not types.DictType:
+         return False
+-    for sub_dict in defaults.values():
++    for sub_dict in data_structure.values():
+         if type(sub_dict) is not types.DictType:
+             return False
+     return True
+ 
+ 
+-def _checkSessionProfileDefaults(defaults):
++def _checkSessionProfileDefaults(data_structure):
+     &quot;&quot;&quot;\
+     Check the data structure of a default session profile passed by a user app.
+ 
++    @param data_structure: an ini file date structure
++    @type data_structure: C{dict} of C{dict}s
++
++    @return: C{True} if C{data_structure} matches that of an ini file data structure
++    @rtype: C{bool}
++
+     &quot;&quot;&quot;
+-    if defaults is None:
++    if data_structure is None:
+         return False
+-    if type(defaults) is not types.DictType:
++    if type(data_structure) is not types.DictType:
+         return False
+     return True
+ 
+ 
+-def _convert_SessionProfileOptions_2_SessionParams(_options):
++def _convert_SessionProfileOptions_2_SessionParams(options):
+     &quot;&quot;&quot;\
+     Convert session profile options as used in x2goclient's sessions file to
+     Python X2Go session parameters.
+ 
+-    &quot;&quot;&quot;
++    @param options: a dictionary of options, parameter names as in the X2Go ,,sessions'' file
++    @type options: C{dict}
+ 
+-    _params = copy.deepcopy(_options)
++    @return: session options as used in C{X2goSession} instances
++    @rtype: C{dict}
++
++    &quot;&quot;&quot;
++    _params = copy.deepcopy(options)
+ 
+     # get rid of unknown session profile options
+     _known_options = _X2GO_SESSIONPROFILE_DEFAULTS.keys()
+@@ -181,7 +218,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             '4': 'lan',
+     }
+ 
+-    for opt, val in _options.iteritems():
++    for opt, val in options.iteritems():
+ 
+         # rename options if necessary
+         if opt in _rename_dict.keys():
+@@ -234,19 +271,19 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             if _shared_folder.split(&quot;:&quot;)[-1] == &quot;1&quot;:
+                 _params['share_local_folders'].append(&quot;:&quot;.join(_shared_folder.split(&quot;:&quot;)[:-1]))
+ 
+-    if not _options['fullscreen']:
+-        _params['geometry'] = '%sx%s' % (_options['width'], _options['height'])
++    if not options['fullscreen']:
++        _params['geometry'] = '%sx%s' % (options['width'], options['height'])
+     else:
+         _params['geometry'] = 'fullscreen'
+     del _params['width']
+     del _params['height']
+     del _params['fullscreen']
+ 
+-    if not _options['sound']:
++    if not options['sound']:
+         _params['snd_system'] = 'none'
+     del _params['sound']
+ 
+-    if not _options['rootless']:
++    if not options['rootless']:
+         _params['session_type'] = 'desktop'
+     else:
+         _params['session_type'] = 'application'
+@@ -255,7 +292,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+     if _params['mimebox_action'] not in _X2GO_MIMEBOX_ACTIONS.keys():
+         _params['mimebox_action'] = 'OPEN'
+ 
+-    if not _options['usekbd']:
++    if not options['usekbd']:
+         _params['kbtype'] = 'null/null'
+         _params['kblayout'] = 'null'
+         _params['kbvariant'] = 'null'
+@@ -265,7 +302,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+     if not _params['kblayout'].strip(): _params['kblayout'] = 'null'
+     if not _params['kbvariant'].strip(): _params['kbvariant'] = 'null'
+ 
+-    if not _options['setdpi']:
++    if not options['setdpi']:
+         del _params['dpi']
+     del _params['setdpi']
+ 
+@@ -289,6 +326,12 @@ def session_names_by_timestamp(session_infos):
+     &quot;&quot;&quot;\
+     Sorts session profile names by their timestamp (as used in the file format's section name).
+ 
++    @param session_infos: a dictionary of session infos as reported by L{X2goClient.list_sessions()}
++    @type session_infos: C{dict}
++
++    @return: a timestamp-sorted list of session names found in C{session_infos}
++    @rtype: C{list}
++
+     &quot;&quot;&quot;
+     session_names = session_infos.keys()
+     sortable_session_names = [ '%s|%s' % (session_name.split('-')[-1].split('_')[0], session_name) for session_name in session_names ]
+@@ -304,6 +347,7 @@ def touch_file(filename, mode='a'):
+     @type filename: C{str}
+     @param mode: the file mode (as used for Python file objects)
+     @type mode: C{str}
++
+     &quot;&quot;&quot;
+     if not os.path.isdir(os.path.dirname(filename)):
+         os.makedirs(os.path.dirname(filename), mode=00700)
+@@ -320,6 +364,7 @@ def unique(seq):
+ 
+     @return: list that has been clean up from the consecutive duplicates
+     @rtype: C{list}
++
+     &quot;&quot;&quot;
+     # order preserving
+     noDupes = []
+@@ -356,6 +401,7 @@ def patiently_remove_file(dirname, filename):
+     @type dirname: C{str}
+     @param filename: name of the file to be removed
+     @type filename: C{str}
++
+     &quot;&quot;&quot;
+     _not_removed = True
+     while _not_removed:
+@@ -366,6 +412,7 @@ def patiently_remove_file(dirname, filename):
+             # file is probably locked
+             gevent.sleep(5)
+ 
++
+ def detect_unused_port(bind_address='127.0.0.1', preferred_port=None):
+     &quot;&quot;&quot;\
+     Detect an unused IP socket.
+@@ -377,8 +424,8 @@ def detect_unused_port(bind_address='127.0.0.1', preferred_port=None):
+ 
+     @return: free local IP socket port that can be used for binding
+     @rtype: C{str}
+-    &quot;&quot;&quot;
+ 
++    &quot;&quot;&quot;
+     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+     try:
+         if preferred_port:
+@@ -391,12 +438,14 @@ def detect_unused_port(bind_address='127.0.0.1', preferred_port=None):
+         ipaddr, port = sock.getsockname()
+     return port
+ 
++
+ def get_encoding():
+     &quot;&quot;&quot;\
+     Detect systems default character encoding.
+ 
+     @return: The system's local character encoding.
+     @rtype: C{str}
++
+     &quot;&quot;&quot;
+     try:
+         encoding = locale.getdefaultlocale()[1]
+@@ -409,6 +458,7 @@ def get_encoding():
+             encoding = 'ascii'
+     return encoding
+ 
++
+ def is_abs_path(path):
+     &quot;&quot;&quot;\
+     Test if a given path is an absolute path name.
+@@ -418,9 +468,11 @@ def is_abs_path(path):
+ 
+     @return: Returns C{True} if path is an absolute path name
+     @rtype: C{bool}
++
+     &quot;&quot;&quot;
+     return bool((path.startswith('/') or re.match('^[%s]\:\\\\' % string.ascii_letters, path)))
+ 
++
+ def xkb_rules_names():
+     &quot;&quot;&quot;\
+     Wrapper for: xprop -root _XKB_RULES_NAMES
+@@ -440,10 +492,14 @@ def xkb_rules_names():
+     }
+     return _rn_dict
+ 
++
+ def local_color_depth():
+     &quot;&quot;&quot;\
+     Detect the current local screen's color depth.
+ 
++    @return: the local color depth in bits
++    @rtype: C{int}
++
+     &quot;&quot;&quot;
+     if _X2GOCLIENT_OS != 'Windows':
+         try:
+@@ -461,6 +517,7 @@ def local_color_depth():
+     else:
+         return win32api.GetSystemMetrics(2)
+ 
++
+ def is_color_depth_ok(depth_session, depth_local):
+     &quot;&quot;&quot;\
+     Test if color depth of this session is compatible with the
+@@ -483,6 +540,7 @@ def is_color_depth_ok(depth_session, depth_local):
+         return True;
+     return False
+ 
++
+ def find_session_window(session_name):
+     &quot;&quot;&quot;\
+     Find a session window by its X2GO session ID.
+@@ -490,6 +548,9 @@ def find_session_window(session_name):
+     @param session_name: session name/ID of an X2Go session window
+     @type session_name: C{str}
+ 
++    @return: the window object (or ID) of the searched for session window
++    @rtype: C{obj} on Unix, C{int} on Windows
++
+     &quot;&quot;&quot;
+     if _X2GOCLIENT_OS != 'Windows':
+         # establish connection to the win API in use...
+@@ -542,13 +603,12 @@ def set_session_window_title(session_window, session_title):
+             pass
+ 
+     else:
+-
+         win32gui.SetWindowText(session_window, session_title)
+ 
+ 
+ def raise_session_window(session_window):
+     &quot;&quot;&quot;\
+-    Raise session window.
++    Raise session window. Not functional for Unix-like operating systems.
+ 
+     @param session_window: session window instance
+     @type session_window: C{obj}
+@@ -570,6 +630,9 @@ def merge_ordered_lists(l1, l2):
+     @param l2: second sorted list
+     @type l2: C{list}
+ 
++    @return: the merge result of both sorted lists
++    @rtype: C{list}
++
+     &quot;&quot;&quot;
+     ordered_list = []
+ 
+diff --git a/x2go/xserver.py b/x2go/xserver.py
+index e5d9330..de0c1cb 100644
+--- a/x2go/xserver.py
++++ b/x2go/xserver.py
+@@ -195,7 +195,8 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+ 
+     def detect_unused_xdisplay_port(self, xserver_name):
+         &quot;&quot;&quot;\
+-        Get an unused TCP/IP port for the to-be-launched X server.
++        Get an unused TCP/IP port for the to-be-launched X server and write it
++        to the user's X configuration file.
+ 
+         @param xserver_name: name of the XServer application
+         @type xserver_name: C{str}
+@@ -246,7 +247,6 @@ class X2goXServer(threading.Thread):
+     manage/handle the XServer while your X2Go application is running.
+ 
+     &quot;&quot;&quot;
+-
+     def __init__(self, xserver_name, xserver_config, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         Initialize an XServer thread.
+@@ -288,7 +288,10 @@ class X2goXServer(threading.Thread):
+         self.start()
+ 
+     def __del__(self):
++        &quot;&quot;&quot;\
++        Class destructor. Terminate XServer process.
+ 
++        &quot;&quot;&quot;
+         self._terminate_xserver()
+ 
+     def run(self):
+@@ -318,11 +321,13 @@ class X2goXServer(threading.Thread):
+         while self._keepalive:
+             gevent.sleep(1)
+ 
+-
+         self._terminate_xserver()
+ 
+     def _terminate_xserver(self):
++        &quot;&quot;&quot;\
++        Terminate the runnint XServer process.
+ 
++        &quot;&quot;&quot;
+         self.logger('terminating running XServer ,,%s\'\'' % self.xserver_name, loglevel=log.loglevel_DEBUG)
+ 
+         if _X2GOCLIENT_OS == 'Windows' and self.hProcess is not None:
+@@ -331,7 +336,6 @@ class X2goXServer(threading.Thread):
+             except win32process.error:
+                 self.logger('XServer ,,%s\'\' could not be terminated.' % self.xserver_name, loglevel=log.loglevel_DEBUG)
+ 
+-
+     def stop_thread(self):
+         &quot;&quot;&quot;\
+         A call to this method will stop the XServer application and do a cleanup afterwards.
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014123.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-257-g0042fba
+</A></li>
+	<LI>Next message: <A HREF="014118.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.1.1.4-263-g086c072
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14134">[ date ]</a>
+              <a href="thread.html#14134">[ thread ]</a>
+              <a href="subject.html#14134">[ subject ]</a>
+              <a href="author.html#14134">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

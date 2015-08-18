@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-19-g9394bb3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.4.0.8-19-g9394bb3&In-Reply-To=%3C20140108142204.D95345DB1E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022533.html">
+   <LINK REL="Next"  HREF="022538.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-19-g9394bb3</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.4.0.8-19-g9394bb3&In-Reply-To=%3C20140108142204.D95345DB1E%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-19-g9394bb3">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:22:04 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022533.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-16-g573ccd6
+</A></li>
+        <LI>Next message: <A HREF="022538.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-18-gb9235e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22536">[ date ]</a>
+              <a href="thread.html#22536">[ thread ]</a>
+              <a href="subject.html#22536">[ subject ]</a>
+              <a href="author.html#22536">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  9394bb354a9dafb685a3f0caef642e011f463726 (commit)
+      from  b9235e33ca5e7429607fe0b66ad395a444940147 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ pyhoca-gui       |   62 ++++++++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 47 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9a35bd8..3727545 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -18,6 +18,7 @@ pyhoca-gui (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Allow for full path taskbar icon names, resolve tilde char in icon file
+       path.
+     - Resolve tilde char in file path of the about image.
++    - Allow multiple PyHoca-GUI instances for the same user, one per $DISPLAY.
+   * /debian/copyright:
+     + Update file. Add entry for file icon2exe.py.
+   * /debian/control:
+diff --git a/pyhoca-gui b/pyhoca-gui
+index 34f08b4..1697f86 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -24,6 +24,7 @@ modules ={}
+ import sys
+ import os
+ import re
++import shutil
+ PROG_NAME = os.path.basename(sys.argv[0]).replace('.exe', '')
+ PROG_PID  = os.getpid()
+ 
+@@ -138,25 +139,40 @@ VERSION: %s
+ 
+ def check_running():
+     if _X2GOCLIENT_OS  in ('Linux', 'Mac'):
++
+         p = subprocess.Popen(['ps', '-U', _CURRENT_LOCAL_USER, '-u', _CURRENT_LOCAL_USER], stdout=subprocess.PIPE)
+         psA_out = p.communicate()
+         if psA_out[0].count(PROG_NAME) &lt;= 1:
+-            return False
+-        else:
+-            processes = psA_out[0].strip().strip('\n').strip().split('\n')
+-            sep = re.compile('[\s]+')
+-            processes_of_myself = [ sep.split(row) for row in processes if PROG_NAME in row and not str(PROG_PID) in row ]
+-            print
+-            print 'FIXME: We found at least one other PyHoca-GUI instance for this user,'
+-            print 'but cannot (yet) tell if it/they is/are running on the same $DISPLAY'
+-            print 'or some other $DISPLAY. PyHoca-GUI only allows one instance per $DISPLAY.'
+-            print
+-            print 'These are the other instances of PyHoca-GUI found for this user:'
+-            for line in processes_of_myself:
+-                print &quot;    &quot;.join(line)
+-            # FIXME: add $DISPLAY check here, only return False if no PyHoca-GUI instance is running on this $DISPLAY
+-            # return False
+-        return True
++
++            if os.path.isdir(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;)):
++                shutil.rmtree(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;))
++
++        my_pid = str(os.getpid())
++        if not os.path.exists(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;)):
++            os.makedirs(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;))
++        my_pidfile = os.path.expanduser(&quot;~/.x2go/pyhoca-gui/display.{pid}&quot;.format(pid=my_pid))
++
++        my_display = os.environ['DISPLAY']
++        open(my_pidfile, 'w').write(my_display)
++
++        already_running_for_this_display = False
++        for pidfile in os.listdir(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;)):
++
++            # this is our own pid file...
++            if my_pidfile.endswith(pidfile):
++                continue
++
++            display = open(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/&quot;) + pidfile, 'r').read()
++
++            if display.split('.')[0] == my_display.split('.')[0]:
++                other_pid = pidfile.split('.')[1]
++                print
++                print('One instance of PyHoca-GUI (PID: {other_pid}) is already running for this $DISPLAY {display}'.format(other_pid=other_pid, display=my_display))
++
++                return True
++
++        return False
++
+     elif _X2GOCLIENT_OS == 'Windows':
+         import wmi
+         w = wmi.WMI()
+@@ -169,6 +185,8 @@ def check_running():
+ def version():
+     # print version text and exit
+     sys.stderr.write (&quot;%s\n&quot; % VERSION_TEXT)
++    remove_pidfile()
++
+     sys.exit(0)
+ 
+ 
+@@ -180,6 +198,8 @@ def runtime_error(m, parser=None, exitcode=-1):
+     if parser is not None:
+         parser.print_usage()
+     sys.stderr.write (&quot;%s: error: %s\n&quot; % (PROG_NAME, m))
++
++    remove_pidfile()
+     sys.exit(exitcode)
+ 
+ 
+@@ -272,6 +292,14 @@ portable_options = [
+                   ]
+ 
+ 
++def remove_pidfile():
++
++    if _X2GOCLIENT_OS  in ('Linux', 'Mac'):
++        my_pid = str(os.getpid())
++        if os.path.exists(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/display.{pid}&quot;.format(pid=my_pid))):
++            os.remove(os.path.expanduser(&quot;~/.x2go/pyhoca-gui/display.{pid}&quot;.format(pid=my_pid)))
++
++
+ def parseargs():
+ 
+     global DEBUG
+@@ -389,6 +417,8 @@ def main():
+             thisPyHocaGUI.WakeUpIdle()
+             thisPyHocaGUI.ExitMainLoop()
+ 
++    remove_pidfile()
++
+ if __name__ == '__main__':
+     main()
+ 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022533.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-16-g573ccd6
+</A></li>
+	<LI>Next message: <A HREF="022538.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.8-18-gb9235e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22536">[ date ]</a>
+              <a href="thread.html#22536">[ thread ]</a>
+              <a href="subject.html#22536">[ subject ]</a>
+              <a href="author.html#22536">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,547 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-102-g2f1c22d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-102-g2f1c22d&In-Reply-To=%3C20140108142648.F02465DB3C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023178.html">
+   <LINK REL="Next"  HREF="023159.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-102-g2f1c22d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-102-g2f1c22d&In-Reply-To=%3C20140108142648.F02465DB3C%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-102-g2f1c22d">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:26:48 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023178.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-97-gda34d5d
+</A></li>
+        <LI>Next message: <A HREF="023159.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-105-gb1b59d1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23192">[ date ]</a>
+              <a href="thread.html#23192">[ thread ]</a>
+              <a href="subject.html#23192">[ subject ]</a>
+              <a href="author.html#23192">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  2f1c22df05d628d18458ded68c27100e8c76dbbc (commit)
+      from  20934399dd3170bdbbb616eb3d634acd00b647d3 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 +
+ x2go/backends/terminal/_stdout.py |    2 +-
+ x2go/cache.py                     |   10 +++--
+ x2go/client.py                    |   52 ++++++++++++++++---------
+ x2go/registry.py                  |   77 ++++++++++++++++++++++++++++++++++---
+ x2go/session.py                   |   57 ++++++++++++++++++++++-----
+ 6 files changed, 161 insertions(+), 39 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 11d28ee..1f876f8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -17,6 +17,8 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+       x2goserver &gt;= 3.1.0.0).
+     - Provide client-side cache of shared local folders, detect server-side
+       unsharing of client-side folders.
++    - Introduce concept of master sessions per profile to X2goClient class. Only
++      the master session can mount/unmount client-side shared folders.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 4ded9bc..d1db106 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -663,7 +663,7 @@ class X2goTerminalSessionSTDOUT(object):
+                          '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
+                          _x2go_key_fname,
+                          '%s__REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
+-                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
++                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname),
+                        ]
+ 
+         elif folder_type == 'spool':
+diff --git a/x2go/cache.py b/x2go/cache.py
+index a1d6c51..87d2bac 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -142,7 +142,6 @@ class X2goListSessionsCache(object):
+         @type profile_name: C{str}
+ 
+         &quot;&quot;&quot;
+-
+         try:
+             if self.x2go_listsessions_cache[profile_name]['sessions']:
+                 for session_name in self.x2go_listsessions_cache[profile_name]['sessions']:
+@@ -251,11 +250,14 @@ class X2goListSessionsCache(object):
+         @type session_uuid: C{str}
+ 
+         &quot;&quot;&quot;
+-        if profile_name is None and session_uuid:
+-            profile_name = self.client_instance.get_session_profile_name(session_uuid)
++        if profile_name is None and session_uuid and self.client_instance:
++            try:
++                profile_name = self.client_instance.get_session_profile_name(session_uuid)
++            except x2go_exceptions.X2goSessionRegistryException:
++                raise x2go_exceptions.X2goSessionCacheException(&quot;requested session UUID is not valid anymore&quot;)
+         _is_profile_cached = self.x2go_listsessions_cache.has_key(profile_name)
+         _is_cache_type_cached = _is_profile_cached and self.x2go_listsessions_cache[profile_name].has_key(cache_type)
+         if cache_type is None:
+             return _is_profile_cached
+         else:
+-            return _is_cache_type_cached
+\ No newline at end of file
++            return _is_cache_type_cached
+diff --git a/x2go/client.py b/x2go/client.py
+index 095598c..880c79d 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1546,13 +1546,14 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if session_uuid is None and profile_name:
+-            _connected = self._X2goClient__client_connected_sessions_of_profile_name(profile_name, return_objects=False)
+-            if len(_connected) &gt; 0:
+-                session_uuid = _connected[0]
++            session_uuid = self._X2goClient__get_master_session(profile_name, return_object=False)
+         if session_uuid:
+-            return self.session_registry(session_uuid).is_folder_sharing_available()
++            try:
++                return self.session_registry(session_uuid).is_folder_sharing_available()
++            except x2go_exceptions.X2goSessionRegistryException:
++                return False
+         else:
+-            self.logger('Cannot find a terminal session for profile ,,%s\'\' that can be used to query folder sharing capabilities' % profile_name, loglevel=log.loglevel_WARN)
++            self.logger('Cannot find a terminal session for profile ,,%s\'\' that can be used to query folder sharing capabilities' % profile_name, loglevel=log.loglevel_INFO)
+             return False
+     __is_folder_sharing_available = is_folder_sharing_available
+     __profile_is_folder_sharing_available = is_folder_sharing_available
+@@ -1584,11 +1585,12 @@ class X2goClient(object):
+         if folder_name: local_path = folder_name
+ 
+         if session_uuid is None and profile_name:
+-            _associated = self._X2goClient__client_associated_sessions_of_profile_name(profile_name, return_objects=False)
+-            if len(_associated) &gt; 0:
+-                session_uuid = _associated[0]
++            session_uuid = self._X2goClient__get_master_session(profile_name, return_object=False)
+         if session_uuid:
+-            return self.session_registry(session_uuid).share_local_folder(local_path=local_path)
++            try:
++                return self.session_registry(session_uuid).share_local_folder(local_path=local_path)
++            except x2go_exceptions.X2goSessionException:
++                return False
+         else:
+             self.logger('Cannot find a terminal session for profile ,,%s\'\' to share a local folder with' % profile_name, loglevel=log.loglevel_WARN)
+             return False
+@@ -1616,9 +1618,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if session_uuid is None and profile_name:
+-            _associated = self._X2goClient__client_associated_sessions_of_profile_name(profile_name, return_objects=False)
+-            if len(_associated) &gt; 0:
+-                session_uuid = _associated[0]
++            session_uuid = self._X2goClient__get_master_session(profile_name, return_object=False)
+         if session_uuid:
+             return self.session_registry(session_uuid).unshare_all_local_folders()
+         else:
+@@ -1653,9 +1653,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if session_uuid is None and profile_name:
+-            _associated = self._X2goClient__client_associated_sessions_of_profile_name(profile_name, return_objects=False)
+-            if len(_associated) &gt; 0:
+-                session_uuid = _associated[0]
++            session_uuid = self._X2goClient__get_master_session(profile_name, return_object=False)
+         if session_uuid:
+             return self.session_registry(session_uuid).unshare_local_folder(local_path=local_path)
+         else:
+@@ -1676,9 +1674,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if session_uuid is None and profile_name:
+-            _associated = self._X2goClient__client_associated_sessions_of_profile_name(profile_name, return_objects=False)
+-            if len(_associated) &gt; 0:
+-                session_uuid = _associated[0]
++            session_uuid = self._X2goClient__get_master_session(profile_name, return_object=False)
+ 
+         if session_uuid and profile_name is None:
+             profile_name = self.session_registry(session_uuid).get_profile_name()
+@@ -1699,6 +1695,26 @@ class X2goClient(object):
+     __session_get_shared_folders = get_shared_folders
+     __profile_get_shared_folders = get_shared_folders
+ 
++    def get_master_session(self, profile_name, return_object=True, return_session_name=False):
++        &quot;&quot;&quot;\
++        Retrieve the master session of a specific profile.
++
++        @param profile_name: the profile name that we query the master session of
++        @type profile_name: C{str}
++        @param return_object: return L{X2goSession} instance
++        @type return_object: C{bool}
++        @param return_session_name: return X2Go session name
++        @type return_session_name: C{bool}
++
++        @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return self.session_registry.master_session(profile_name, return_object=return_object, return_session_name=return_session_name)
++    profile_master_session = get_master_session
++    __get_master_session = get_master_session
++    __profile_master_session = profile_master_session
++
+     ###
+     ### Provide access to the X2goClient's session registry
+     ### 
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 35426f1..1771ae6 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -78,6 +78,7 @@ class X2goSessionRegistry(object):
+ 
+         self.registry = {}
+         self.control_sessions = {}
++        self.master_sessions = {}
+ 
+         self._last_available_session_registration = None
+         self._skip_auto_registration = False
+@@ -263,6 +264,8 @@ class X2goSessionRegistry(object):
+             _profile_name = self(_session_uuid).get_profile_name()
+             _session_name = self(_session_uuid).get_session_name()
+ 
++            print _session_uuid, _session_name
++
+             if self(_session_uuid).get_server_hostname() != _current_status['server']:
+ 
+                 # if the server (hostname) has changed due to a configuration change we skip all notifications
+@@ -279,12 +282,19 @@ class X2goSessionRegistry(object):
+                 else:
+                     # explicitly ask for the terminal_session object directly here, so we also get 'PENDING' terminal sessions here...
+                     if self(_session_uuid).terminal_session:
++
++                        # declare as master session if appropriate
++                        if _profile_name not in self.master_sessions.keys():
++                            self.master_sessions[_profile_name] = self(_session_uuid)
++                            self(_session_uuid).set_master_session()
++
+                         if _last_status['suspended']:
+                             # from a suspended state
+                             self.client_instance.HOOK_on_session_has_resumed_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                         elif _last_status['virgin']:
+                             # as a new session
+                             self.client_instance.HOOK_on_session_has_started_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++
+                     else:
+                         if _last_status['suspended']:
+                             # from a suspended state
+@@ -293,11 +303,26 @@ class X2goSessionRegistry(object):
+                             # as a new session
+                             self.client_instance.HOOK_on_session_has_started_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+ 
+-            elif _last_status['connected'] and (not _last_status['suspended'] and _current_status['suspended']) and not _current_status['faulty']:
++            elif _last_status['connected'] and (not _last_status['suspended'] and _current_status['suspended']) and not _current_status['faulty'] and _session_name:
++
++                # unregister as master session
++                if _profile_name in self.master_sessions.keys():
++                    self(_session_uuid).unset_master_session()
++                    if self.master_sessions[_profile_name] == self(_session_uuid):
++                        del self.master_sessions[_profile_name]
++
+                 # session has been suspended
+                 self(_session_uuid).session_cleanup()
+                 self.client_instance.HOOK_on_session_has_been_suspended(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-            elif _last_status['connected'] and (not _last_status['terminated'] and _current_status['terminated']) and not _current_status['faulty']:
++
++            elif _last_status['connected'] and (not _last_status['terminated'] and _current_status['terminated']) and not _current_status['faulty'] and _session_name:
++
++                # unregister as master session
++                if _profile_name in self.master_sessions.keys():
++                    self(_session_uuid).unset_master_session()
++                    if self.master_sessions[_profile_name] == self(_session_uuid):
++                        del self.master_sessions[_profile_name]
++
+                 # session has terminated
+                 self.client_instance.HOOK_on_session_has_terminated(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                 try: self(_session_uuid).session_cleanup()
+@@ -307,6 +332,12 @@ class X2goSessionRegistry(object):
+                 if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
+                     self.forget(_session_uuid)
+ 
++        for _profile_name in self.connected_profiles(return_profile_names=True):
++            _running_sessions = self.running_sessions_of_profile_name(_profile_name)
++            if _profile_name not in self.master_sessions.keys() and _running_sessions:
++                self.master_sessions[_profile_name] = _running_sessions[0]
++                _running_sessions[0].set_master_session()
++
+         return True
+ 
+     def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False):
+@@ -443,7 +474,7 @@ class X2goSessionRegistry(object):
+             control_session = self.control_sessions[profile_id]
+ 
+         # when starting a new session, we will try to use unused registered virgin sessions
+-        # depending on your application layout, there shoul either be one or no such virgin session at all
++        # depending on your application layout, there should either be one or no such virgin session at all
+         _virgin_sessions = self.virgin_sessions_of_profile_name(profile_name, return_objects=True)
+         if _virgin_sessions and not session_name:
+ 
+@@ -496,6 +527,9 @@ class X2goSessionRegistry(object):
+         if profile_id not in self.control_sessions.keys():
+             self.control_sessions[profile_id] = s.get_control_session()
+ 
++        # make sure a new session is a non-master session unless promoted in update_status method
++        self(session_uuid).unset_master_session()
++
+         return session_uuid
+ 
+     def has_session_of_session_name(self, session_name):
+@@ -618,7 +652,6 @@ class X2goSessionRegistry(object):
+         @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
+         @rtype: C{list}
+ 
+-
+         &quot;&quot;&quot;
+         return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids, return_session_names=return_session_names)
+ 
+@@ -891,7 +924,7 @@ class X2goSessionRegistry(object):
+         &quot;&quot;&quot;
+         return [ c for c in self.control_sessions.values() if c.is_connected() ]
+ 
+-    def connected_profiles(self, use_paramiko=False):
++    def connected_profiles(self, use_paramiko=False, return_profile_ids=True, return_profile_names=False):
+         &quot;&quot;&quot;\
+         Retrieve a list of all currently connected session profiles.
+ 
+@@ -904,5 +937,37 @@ class X2goSessionRegistry(object):
+         if use_paramiko:
+             return [ p for p in self.control_sessions.keys() if self.control_sessions[p].is_connected() ]
+         else:
+-            return self.connected_sessions(return_profile_ids=True)
++            return self.connected_sessions(return_profile_ids=return_profile_ids, return_profile_names=return_profile_names)
++
++    def master_session(self, profile_name, return_object=True, return_session_name=False):
++        &quot;&quot;&quot;\
++        Retrieve the master session of a specific profile.
+ 
++        @param profile_name: the profile name that we query the master session of
++        @type profile_name: C{str}
++        @param return_object: return L{X2goSession} instance
++        @type return_object: C{bool}
++        @param return_session_name: return X2Go session name
++        @type return_session_name: C{bool}
++
++        @return: a session list (as UUID hashes, objects, profile names/IDs or session names)
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if profile_name not in self.connected_profiles(return_profile_names=True):
++            return None
++
++        if profile_name not in self.master_sessions.keys() or self.master_sessions[profile_name] is None:
++            return None
++
++        _session = self.master_sessions[profile_name]
++
++        if not _session.is_master_session():
++            self.master_sessions[profile_name] = None
++
++        if return_object:
++            return _session
++        elif return_session_name:
++            return _session.get_session_name()
++        else:
++            return _session.get_uuid()
+diff --git a/x2go/session.py b/x2go/session.py
+index 8167dd8..6c82eaa 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -276,6 +276,7 @@ class X2goSession(object):
+         self._SUPPORTED_MIMEBOX = SUPPORTED_MIMEBOX
+         self._SUPPORTED_FOLDERSHARING = SUPPORTED_FOLDERSHARING
+ 
++        self.master_session = None
+         self.init_control_session()
+         self.terminal_session = None
+ 
+@@ -364,6 +365,42 @@ class X2goSession(object):
+                                                         ssh_rootdir=self.ssh_rootdir,
+                                                         logger=self.logger)
+ 
++    def is_master_session(self):
++        &quot;&quot;&quot;\
++        Is this session a/the master session of sessions.
++
++        The master session is the session has been launched first for a specific connection,
++        it also is _the_ session that controls the client-side shared folders.
++
++        @param server: new server name
++        @type server: C{str}
++
++        &quot;&quot;&quot;
++        if self.master_session is None:
++            return True
++        return self.master_session
++
++    def set_master_session(self):
++        &quot;&quot;&quot;\
++        Declare this as a master session of a connection channel.
++
++        @param server: new server name
++        @type server: C{str}
++
++        &quot;&quot;&quot;
++        self.logger('Using session %s as master session for profile %s.' % (self.get_session_name(), self.get_profile_name()), loglevel=log.loglevel_NOTICE)
++        self.master_session = True
++
++    def unset_master_session(self):
++        &quot;&quot;&quot;\
++        Declare this as a non-master session of a connection channel.
++
++        @param server: new server name
++        @type server: C{str}
++
++        &quot;&quot;&quot;
++        self.master_session = False
++
+     def set_server(self, server):
+         &quot;&quot;&quot;\
+         Modify server name after L{X2goSession} has already been initialized.
+@@ -432,6 +469,8 @@ class X2goSession(object):
+                 self.get_control_session().__del__()
+                 self.control_session = None
+ 
++        self.master_session = None
++
+         if self.has_terminal_session():
+             self.get_terminal_session().__del__()
+             self.terminal_session = None
+@@ -855,6 +894,7 @@ class X2goSession(object):
+         self.suspended = None
+         self.terminated = None
+         self.faults = None
++        self.master_session = None
+         try:
+             self.update_status(force_update=True)
+         except x2go_exceptions.X2goControlSessionException:
+@@ -1493,8 +1533,11 @@ class X2goSession(object):
+         if self._SUPPORTED_FOLDERSHARING and self.allow_share_local_folders:
+             if self.is_connected():
+                 return self.control_session.is_folder_sharing_available()
++            else:
++                self.logger('session is not connected, cannot share local folders now', loglevel=log.loglevel_WARN)
+         else:
+             self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
++        return False
+ 
+     def share_local_folder(self, local_path=None, folder_name=None):
+         &quot;&quot;&quot;\
+@@ -1515,13 +1558,11 @@ class X2goSession(object):
+         if folder_name: local_path=folder_name
+ 
+         if self.has_terminal_session():
+-            if self._SUPPORTED_FOLDERSHARING and self.allow_share_local_folders:
++            if self.is_folder_sharing_available() and self.is_master_session():
+                 if self.terminal_session.share_local_folder(local_path=local_path):
+                     self.shared_folders.append(local_path)
+                     return True
+                 return False
+-            else:
+-                self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+     __share_local_folder = share_local_folder
+@@ -1540,7 +1581,7 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+-            if self._SUPPORTED_FOLDERSHARING and self.allow_share_local_folders:
++            if self.is_folder_sharing_available() and self.is_master_session():
+                 if force_all:
+                     self.shared_folders = []
+                     return self.terminal_session.unshare_all_local_folders()
+@@ -1550,8 +1591,6 @@ class X2goSession(object):
+                         retval = retval | self.terminal_session.unshare_local_folder(_shared_folder)
+                     self.shared_folders = []
+                     return retval
+-            else:
+-                self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+         return False
+@@ -1571,11 +1610,9 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         if self.has_terminal_session():
+-            if self._SUPPORTED_FOLDERSHARING and self.allow_share_local_folders and local_path in self.shared_folders:
++            if self.is_folder_sharing_available() and self.is_master_session() and local_path in self.shared_folders:
+                 self.shared_folders.remove(local_path)
+                 return self.terminal_session.unshare_local_folder(local_path=local_path)
+-            else:
+-                self.logger('local folder sharing is disabled for this session profile', loglevel=log.loglevel_WARN)
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+     __unshare_local_folder = unshare_local_folder
+@@ -1594,7 +1631,7 @@ class X2goSession(object):
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+-        if self.shared_folders and check_list_mounts:
++        if self.is_folder_sharing_available and self.is_master_session() and self.shared_folders and check_list_mounts:
+ 
+             unshared_folders = []
+             if mounts is None:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023178.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-97-gda34d5d
+</A></li>
+	<LI>Next message: <A HREF="023159.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-105-gb1b59d1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23192">[ date ]</a>
+              <a href="thread.html#23192">[ thread ]</a>
+              <a href="subject.html#23192">[ subject ]</a>
+              <a href="author.html#23192">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

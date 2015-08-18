@@ -1,0 +1,775 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-257-g0042fba
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-257-g0042fba&In-Reply-To=%3C20140107151800.A26DE5DBB7%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020991.html">
+   <LINK REL="Next"  HREF="020917.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-257-g0042fba</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-257-g0042fba&In-Reply-To=%3C20140107151800.A26DE5DBB7%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-257-g0042fba">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:18:00 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020991.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+        <LI>Next message: <A HREF="020917.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-258-ge891bfa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20910">[ date ]</a>
+              <a href="thread.html#20910">[ thread ]</a>
+              <a href="subject.html#20910">[ subject ]</a>
+              <a href="author.html#20910">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  0042fba6522012ee12af9d8962e707a70db16ed9 (commit)
+      from  d4ec52b42c35c39ef19a7f73d4ab48529cee219f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/info/_stdout.py          |   63 +++++++++++-
+ x2go/backends/printing/_file.py        |   38 +++++++-
+ x2go/backends/profiles/_file.py        |  168 ++++++++++++++++++++++++++++----
+ x2go/backends/profiles/_gconf.py       |   13 ++-
+ x2go/backends/profiles/_httpsbroker.py |   13 ++-
+ x2go/backends/profiles/_winreg.py      |   13 ++-
+ x2go/inifiles.py                       |    6 +-
+ x2go/mimebox.py                        |    5 +
+ x2go/printqueue.py                     |    3 +
+ 9 files changed, 290 insertions(+), 32 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/info/_stdout.py b/x2go/backends/info/_stdout.py
+index 9f34976..7182a95 100644
+--- a/x2go/backends/info/_stdout.py
++++ b/x2go/backends/info/_stdout.py
+@@ -54,6 +54,9 @@ class X2goServerSessionInfoSTDOUT(object):
+         &quot;&quot;&quot;\
+         Parse a single line of X2go's listsessions output.
+ 
++        @param x2go_output: output from ,,x2golistsessions'' command (as list of strings/lines)
++        @type x2go_output: C{list}
++
+         &quot;&quot;&quot;
+         try:
+             l = x2go_output.split(&quot;|&quot;)
+@@ -80,19 +83,43 @@ class X2goServerSessionInfoSTDOUT(object):
+             raise e
+ 
+     def is_published_applications_provider(self):
++        &quot;&quot;&quot;\
++        Detect from session info if this session is a published applications provider.
+ 
++        @return: returns C{True} if this session is a published applications provider
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         return re.match('.*_stRPUBLISHED_.*', self.name)
+ 
+     def is_running(self):
++        &quot;&quot;&quot;\
++        Is this session running?
++
++        @return: C{True} if the session is running, C{False} otherwise
++        @rtype: C{bool}
+ 
++        &quot;&quot;&quot;
+         return self.status == 'R'
+ 
+     def is_suspended(self):
++        &quot;&quot;&quot;\
++        Is this session suspended?
+ 
++        @return: C{True} if the session is suspended, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         return self.status == 'S'
+ 
+     def is_desktop_session(self):
++        &quot;&quot;&quot;\
++        Is this session a desktop session?
++
++        @return: C{True} if this session is a desktop session, C{False} otherwise
++        @rtype: C{bool}
+ 
++        &quot;&quot;&quot;
+         _desktop_sessions = defaults.X2GO_DESKTOPSESSIONS.keys()
+         _regexp_desktop_sessions = '(%s)' % &quot;|&quot;.join(_desktop_sessions)
+         return re.match('.*_stD%s_.*' % _regexp_desktop_sessions, self.name)
+@@ -101,6 +128,9 @@ class X2goServerSessionInfoSTDOUT(object):
+         &quot;&quot;&quot;\
+         Parse x2gostartagent output.
+ 
++        @param x2go_output: output from ,,x2gostartagent'' command (as list of strings/lines)
++        @type x2go_output: C{list}
++
+         &quot;&quot;&quot;
+         try:
+             l = x2go_output.split(&quot;\n&quot;)
+@@ -130,7 +160,7 @@ class X2goServerSessionInfoSTDOUT(object):
+ 
+     def initialize(self, x2go_output, username='', hostname='', local_container='', remote_container=''):
+         &quot;&quot;&quot;\
+-        Parse X2Go server's C{x2gostartagent} stdout values.
++        Setup a a session info data block, includes parsing of X2Go server's C{x2gostartagent} stdout values.
+ 
+         @param x2go_output: X2Go server's C{x2gostartagent} command output, each value 
+             separated by a newline character.
+@@ -153,15 +183,33 @@ class X2goServerSessionInfoSTDOUT(object):
+         self.remote_container = remote_container
+ 
+     def protect(self):
++        &quot;&quot;&quot;\
++        Write-protect this session info data structure.
++
++        &quot;&quot;&quot;
+         self.protected = True
+ 
+     def unprotect(self):
++        &quot;&quot;&quot;\
++        Remove write-protection from this session info data structure.
++
++        &quot;&quot;&quot;
+         self.protected = False
+ 
+     def is_protected(self):
++        &quot;&quot;&quot;\
++
++        &quot;&quot;&quot;
+         return self.protected
+ 
+     def get_status(self):
++        &quot;&quot;&quot;\
++        Retrieve the session's status from this session info data structure.
++
++        @return: session status
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
+         return self.status
+ 
+     def clear(self):
+@@ -189,6 +237,9 @@ class X2goServerSessionInfoSTDOUT(object):
+         &quot;&quot;&quot;\
+         Update all properties of a L{X2goServerSessionInfo} object.
+ 
++        @param session_info: a provided session info data structure
++        @type session_info: C{X2goServerSessionInfo*}
++
+         &quot;&quot;&quot;
+         if type(session_info) == type(self):
+             for prop in ('graphics_port', 'snd_port', 'sshfs_port', 'date_suspended', 'status', ):
+@@ -215,6 +266,8 @@ class X2goServerSessionListSTDOUT(object):
+             session separated by a newline character. Session values are separated 
+             by Unix Pipe Symbols ('|')
+         @type x2go_output: str
++        @param info_backend: the session info backend to use
++        @type info_backend: C{X2goServerSessionInfo*}
+ 
+         &quot;&quot;&quot;
+         self.sessions = {}
+@@ -231,7 +284,13 @@ class X2goServerSessionListSTDOUT(object):
+ 
+     def get_session_info(self, session_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the session information for C{&lt;session_name&gt;}.
++
++        @param session_name: the queried session name
++        @type session_name: C{str}
++
++        @return: the session info of C{&lt;session_name&gt;}
++        @rtype: C{X2goServerSessionInfo*} or C{None}
+ 
+         &quot;&quot;&quot;
+         try:
+diff --git a/x2go/backends/printing/_file.py b/x2go/backends/printing/_file.py
+index 7be1199..372624c 100644
+--- a/x2go/backends/printing/_file.py
++++ b/x2go/backends/printing/_file.py
+@@ -141,6 +141,16 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+         &quot;&quot;&quot;\
+         Return the print action described by the &#187;printing&#171; configuration file.
+ 
++        @param reload: reload the configuration file before retrieving the print action?
++        @type reload: C{bool}
++        @param reinit: re-detect the print action from what is stored in cache?
++        @type reinit: C{bool}
++        @param return_name: return the print action name, not the class
++        @type return_name: C{bool}
++
++        @return: the configured print action
++        @rtype: C{obj} or C{str}
++
+         &quot;&quot;&quot;
+         if reload:
+             self.load()
+@@ -155,7 +165,15 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+ 
+     def get_property(self, print_property):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve a printing property as mapped by the L{_print_property_map} dictionary.
++
++        @param print_property: a printing property
++        @type print_property: C{str}
++
++        @return: the stored value for C{&lt;print_property&gt;}
++        @rtype: C{str}
++
++        @raise X2goClientPrintingException: if the printing property does not exist
+ 
+         &quot;&quot;&quot;
+         if print_property in _print_property_map.keys():
+@@ -167,7 +185,14 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+ 
+     def set_property(self, print_property, value):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Set a printing property as mapped by the L{_print_property_map} dictionary.
++
++        @param print_property: a printing property
++        @type print_property: C{str}
++        @param value: the value to be stored as C{&lt;print_property&gt;}
++        @rtype: C{str}
++
++        @raise X2goClientPrintingException: if the printing property does not exist or if there is a type mismatch
+ 
+         &quot;&quot;&quot;
+         if print_property in _print_property_map.keys():
+@@ -184,7 +209,14 @@ class X2goClientPrintingFILE(inifiles.X2goIniFile):
+ 
+     def store_print_action(self, print_action, **print_properties):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Accept a new print action configuration. This includes the print action
++        itself (DIALOG, PDFVIEW, PDFSAVE, PRINT or PRINTCMD) and related printing properties
++        as mapped by the L{_print_property_map} dictionary.
++
++        @param print_action: the print action name
++        @type print_action: C{str}
++        @param print_properties: the printing properties to set for the given print action
++        @type print_properties: C{dict}
+ 
+         &quot;&quot;&quot;
+         if print_action == 'DIALOG':
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/_file.py
+index 4ebe6c8..0edd84b 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/_file.py
+@@ -47,7 +47,20 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def __init__(self, config_files=_X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve X2Go session profiles from a file, typically C{~/.x2goclient/sessions}.
++
++        @param config_files: a list of config file locations, the first file name in this list the user has write access to will be the user configuration file
++        @type config_files: C{list}
++        @param defaults: not used for this class
++        @type defaults: C{dict}
++        @param session_profile_defaults: a default session profile
++        @type session_profile_defaults: C{dict}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goSessionProfilesFILE} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         self.defaultValues = {}
+@@ -77,13 +90,31 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def __call__(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve the session profile configuration for a given session profile ID (or name)
++
++        @param profile_id_or_name: profile ID or profile name
++        @type profile_id_or_name: C{str}
++
++        @return: the profile ID's / name's profile configuration
++        @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+         _profile_id = self.check_profile_id_or_name(self, profile_id_or_name)
+         return self.get_profile_config(profile_id=_profile_id)
+ 
+     def get_profile_metatype(self, profile_id_or_name, force=False):
++        &quot;&quot;&quot;\
++        Detect a human readable session profile type from the session profile configuration.
++
++        @param profile_id_or_name: profile ID or profile name
++        @type profile_id_or_name: C{str}
++        @param force: re-detect the meta type, otherwise use a cached result
++        @type force: C{bool}
++
++        @return: the profile ID's / name's meta type
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
+ 
+         _profile_id = self.check_profile_id_or_name(profile_id_or_name)
+         if not self._profile_metatypes.has_key(_profile_id) or force:
+@@ -117,7 +148,13 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def get_profile_option_type(self, option):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Get the data type for a specific session profile option.
++
++        @param option: the option to get the data type for
++        @type option: will be detected by this method
++
++        @return: the data type of C{option}
++        @rtype: C{type}
+ 
+         &quot;&quot;&quot;
+         try:
+@@ -127,7 +164,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def get_type(self, section, key):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Override the parent class's get_type method due to the special layout of this class.
++
++        @param section: INI file section
++        @type section: C{str}
++        @param key: key in INI file section
++        @type key: C{str}
++
++        @return: the data type of C{key} in C{section}
++        @rtype: C{type}
+ 
+         &quot;&quot;&quot;
+         # we have to handle the get_type method separately...
+@@ -135,7 +180,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def get_profile_config(self, profile_id_or_name=None, profile_id=None):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        The configuration options for a single session profile.
++
++        @param profile_id_or_name: either profile ID or profile name is accepted
++        @type profile_id_or_name: C{str}
++        @param profile_id: profile ID (fast than specifying C{profile_id_or_name})
++        @type profile_id: C{str}
++
++        @return: the session profile configuration for the given profile ID (or name)
++        @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+         _profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+@@ -146,12 +199,25 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def default_profile_config(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Return a default session profile.
++
++        @return: default session profile
++        @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+         return copy.deepcopy(self.defaultSessionProfile)
+ 
+     def has_profile(self, profile_id_or_name):
++        &quot;&quot;&quot;\
++        Does a session profile of a given profile ID or profile name exist?
++
++        @param profile_id_or_name: profile ID or profile name
++        @type profile_id_or_name: C{str}
++
++        @return: C{True} if there is such a session profile, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         try:
+             self.check_profile_id_or_name(profile_id_or_name)
+             return True
+@@ -161,7 +227,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+     @property
+     def profile_ids(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Renders a list of all profile IDs found in the session profile configuration file.
+ 
+         &quot;&quot;&quot;
+         if not self._cached_profile_ids:
+@@ -170,7 +236,13 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def has_profile_id(self, profile_id):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Does a session profile of a given profile ID exist? (Faster than L{has_profile()}.)
++
++        @param profile_id: profile ID
++        @type profile_id: C{str}
++
++        @return: C{True} if there is such a session profile, C{False} otherwise
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         return profile_id in self.profile_ids
+@@ -178,7 +250,7 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+     @property
+     def profile_names(self):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Renders a list of all profile names found in the session profile configuration file.
+ 
+         &quot;&quot;&quot;
+         if not self._cached_profile_names:
+@@ -187,14 +259,26 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def has_profile_name(self, profile_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Does a session profile of a given profile name exist? (Faster than L{has_profile()}.)
++
++        @param profile_name: profile name
++        @type profile_name: C{str}
++
++        @return: C{True} if there is such a session profile, C{False} otherwise
++        @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+         return profile_name in self.profile_names
+ 
+     def to_profile_id(self, profile_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Convert profile name to profile ID.
++
++        @param profile_name: profile name
++        @type profile_name: C{str}
++
++        @return: profile ID
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         _profile_ids = [ p for p in self.profile_ids if self.to_profile_name(p) == profile_name ]
+@@ -207,7 +291,13 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def to_profile_name(self, profile_id):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Convert profile ID to profile name.
++
++        @param profile_id: profile ID
++        @type profile_id: C{str}
++
++        @return: profile name
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         _profile_config = self.get_profile_config(profile_id=profile_id)
+@@ -218,7 +308,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def add_profile(self, profile_id=None, **kwargs):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Add a new session profile.
++
++        @param profile_id: a custom profile ID--if left empty a profile ID will be auto-generated
++        @type profile_id: C{str}
++        @param kwargs: session profile options for this new session profile
++        @type kwargs: C{dict}
++
++        @return: the (auto-generated) profile ID of the new session profile
++        @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+         if profile_id is None:
+@@ -240,7 +338,10 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def delete_profile(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Delete a session profile from the configuration file.
++
++        @param profile_id_or_name: profile ID or profile name
++        @type profile_id_or_name: C{str}
+ 
+         &quot;&quot;&quot;
+         _profile_id = self.check_profile_id_or_name(profile_id_or_name)
+@@ -252,7 +353,14 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def update_value(self, section, key, value):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Update a value in a session profile.
++
++        @param section: the profile ID
++        @type section: C{str}
++        @param key: the session profile option of the given profile ID
++        @type key: C{str}
++        @param value: the value to update the session profile option with
++        @type value: any type, depends on the session profile option
+ 
+         &quot;&quot;&quot;
+         profile_id = section
+@@ -269,7 +377,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def check_profile_id_or_name(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Detect the profile ID from a given string which maybe profile ID or profile name.
++
++        @param profile_id_or_name: profile ID or profile name
++        @type profile_id_or_name: C{str}
++
++        @return: profile ID
++        @rtype: C{str}
++
++        @raise X2goProfileException: if no such session profile exists
+ 
+         &quot;&quot;&quot;
+         _profile_id = None
+@@ -285,7 +401,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def to_session_params(self, profile_id_or_name=None, profile_id=None):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Convert session profile options to L{X2goSession} constructor method parameters.
++
++        @param profile_id_or_name: either profile ID or profile name is accepted
++        @type profile_id_or_name: C{str}
++        @param profile_id: profile ID (fast than specifying C{profile_id_or_name})
++        @type profile_id: C{str}
++
++        @return: a dictionary of L{X2goSession} constructor method parameters
++        @rtype: C{dict}
+ 
+         &quot;&quot;&quot;
+         _profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+@@ -293,7 +417,15 @@ class X2goSessionProfilesFILE(inifiles.X2goIniFile):
+ 
+     def get_session_param(self, profile_id_or_name, param):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Get a single L{X2goSession} parameter from a specific session profile.
++
++        @param profile_id_or_name: either profile ID or profile name is accepted
++        @type profile_id_or_name: C{str}
++        @param param: the parameter name in the L{X2goSession} constructor method
++        @type param: C{str}
++
++        @return: the value of the session profile option represented by C{param}
++        @rtype: depends on the session profile option requested
+ 
+         &quot;&quot;&quot;
+         return self.to_session_params(profile_id_or_name)[param]
+diff --git a/x2go/backends/profiles/_gconf.py b/x2go/backends/profiles/_gconf.py
+index 13d8ccf..177c3a5 100644
+--- a/x2go/backends/profiles/_gconf.py
++++ b/x2go/backends/profiles/_gconf.py
+@@ -39,9 +39,18 @@ class X2goSessionProfilesGCONF(inifiles.X2goIniFile):
+     defaultSessionProfile = X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-    def __init__(self, config_files=X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve X2Go session profiles from gconf daemon.
++
++        @param session_profile_defaults: a default session profile
++        @type session_profile_defaults: C{dict}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goSessionProfilesGCONF} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         raise X2goNotImplementedYetException('GCONF backend support is not implemented yet')
+diff --git a/x2go/backends/profiles/_httpsbroker.py b/x2go/backends/profiles/_httpsbroker.py
+index 2118468..b56b237 100644
+--- a/x2go/backends/profiles/_httpsbroker.py
++++ b/x2go/backends/profiles/_httpsbroker.py
+@@ -39,9 +39,18 @@ class X2goSessionProfilesHTTPSBROKER(inifiles.X2goIniFile):
+     defaultSessionProfile = X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-    def __init__(self, config_files=X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve X2Go session profiles from a HTTPS session broker.
++
++        @param session_profile_defaults: a default session profile
++        @type session_profile_defaults: C{dict}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goSessionProfilesHTTPSBROKER} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         raise X2goNotImplementedYetException('HTTPSBROKER backend support is not implemented yet')
+diff --git a/x2go/backends/profiles/_winreg.py b/x2go/backends/profiles/_winreg.py
+index dee6904..7fb1319 100644
+--- a/x2go/backends/profiles/_winreg.py
++++ b/x2go/backends/profiles/_winreg.py
+@@ -39,9 +39,18 @@ class X2goSessionProfilesWINREG(inifiles.X2goIniFile):
+     defaultSessionProfile = X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-    def __init__(self, config_files=X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        STILL UNDOCUMENTED
++        Retrieve X2Go session profiles from the Windows registry.
++
++        @param session_profile_defaults: a default session profile
++        @type session_profile_defaults: C{dict}
++        @param logger: you can pass an L{X2goLogger} object to the
++            L{X2goSessionProfilesWINREG} constructor
++        @type logger: L{X2goLogger} instance
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         raise X2goNotImplementedYetException('WINREG backend support is not implemented yet')
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+index 9622072..0b843b2 100644
+--- a/x2go/inifiles.py
++++ b/x2go/inifiles.py
+@@ -67,13 +67,13 @@ class X2goIniFile(object):
+         @type config_files: C{list}
+         @param defaults: a cascaded Python dicitionary structure with ini file defaults (to override
+             Python X2go's hard coded defaults in L{defaults}
+-        @type defaults: dict
++        @type defaults: C{dict}
+         @param logger: you can pass an L{X2goLogger} object to the
+-            L{X2goFwServer} constructor
++            L{X2goIniFile} constructor
+         @type logger: L{X2goLogger} instance
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+-        @type loglevel: int
++        @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
+         # make sure a None type gets turned into list type
+diff --git a/x2go/mimebox.py b/x2go/mimebox.py
+index ab4cd35..7ac56c4 100644
+--- a/x2go/mimebox.py
++++ b/x2go/mimebox.py
+@@ -162,6 +162,11 @@ class X2goMIMEboxQueue(threading.Thread):
+         change of the MIME box action will be valid for the next incoming file in the MIME box
+         directory.
+ 
++        @param mimebox_action: the MIME box action to execute for incoming files
++        @type mimebox_action: C{str} or C{obj}
++        @param kwargs: extra options for the specified MIME box action
++        @type kwargs: C{dict}
++
+         &quot;&quot;&quot;
+         if mimebox_action in defaults.X2GO_MIMEBOX_ACTIONS.keys():
+             mimebox_action = defaults.X2GO_MIMEBOX_ACTIONS[mimebox_action]
+diff --git a/x2go/printqueue.py b/x2go/printqueue.py
+index 3f3d10a..0fb8d4d 100644
+--- a/x2go/printqueue.py
++++ b/x2go/printqueue.py
+@@ -175,6 +175,9 @@ class X2goPrintQueue(threading.Thread):
+ 
+         @param print_action: new print action to be valid for incoming print jobs
+         @type print_action: C{str} or C{class}
++        @param kwargs: extra options for the specified print action
++        @type kwargs: C{dict}
++
+         &quot;&quot;&quot;
+         if print_action in defaults.X2GO_PRINT_ACTIONS.keys():
+             print_action = defaults.X2GO_PRINT_ACTIONS[print_action]
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020991.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-252-g144f7a4
+</A></li>
+	<LI>Next message: <A HREF="020917.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-258-ge891bfa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20910">[ date ]</a>
+              <a href="thread.html#20910">[ thread ]</a>
+              <a href="subject.html#20910">[ subject ]</a>
+              <a href="author.html#20910">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,421 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-17-gba589d1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.10-17-gba589d1&In-Reply-To=%3C20130830142505.91B165DB50%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011974.html">
+   <LINK REL="Next"  HREF="011960.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-17-gba589d1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.10-17-gba589d1&In-Reply-To=%3C20130830142505.91B165DB50%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-17-gba589d1">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:25:04 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011974.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-14-g165206e
+</A></li>
+        <LI>Next message: <A HREF="011960.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-16-gb4b4e20
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11958">[ date ]</a>
+              <a href="thread.html#11958">[ thread ]</a>
+              <a href="subject.html#11958">[ subject ]</a>
+              <a href="author.html#11958">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  ba589d1fd264f3ad3fbe8767bf215c0399a162cf (commit)
+      from  b4b4e209bf1d379adcff26e28305af076f8963d4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                             |    1 +
+ debian/patches/031_nx-X11_parallel-make.diff |  293 ++++++++++++++++++++++++++
+ debian/patches/series                        |    1 +
+ 3 files changed, 295 insertions(+)
+ create mode 100644 debian/patches/031_nx-X11_parallel-make.diff
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e7401d1..a942949 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,6 +13,7 @@ nx-libs (2:3.5.0.11-0) UNRELEASED; urgency=low
+   * Update patch: 001_add-main-makefile.full+lite.patch, allow passing of
+     configure args.
+   * Add patch: 030_nx-X11_configure-args.diff. Allow passing of configure args.
++  * Add patch: 031_nx-X11_parallel-make.diff, enable parallel make.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Tue, 07 Feb 2012 13:48:19 +0100
+ 
+diff --git a/debian/patches/031_nx-X11_parallel-make.diff b/debian/patches/031_nx-X11_parallel-make.diff
+new file mode 100644
+index 0000000..849ca72
+--- /dev/null
++++ b/debian/patches/031_nx-X11_parallel-make.diff
+@@ -0,0 +1,293 @@
++From: Jan Engelhardt &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">jengelh at medozas.de</A>&gt;
++Date: 2012-01-26 22:29:13.993994227 +0100
++
++Restore ability to build things in parallel.
++(${MAKE} must always appear in the rule directly, and not be
++hidden through expansions of other variables to get this to work.)
++
++---
++ nx-X11/Makefile                       |   64 +++++++++++++++++-----------------
++ nx-X11/config/imake/Makefile.ini      |    1 
++ nx-X11/extras/Mesa/Makefile           |    2 -
++ nx-X11/extras/Xpm/Makefile.noX        |    1 
++ nx-X11/extras/drm/linux-core/Makefile |    4 +-
++ nx-X11/extras/drm/linux/Makefile      |    4 +-
++ nx-X11/extras/ttf2pt1/Makefile        |    4 +-
++ nx-X11/lib/X11/Imakefile              |   12 ++----
++ nx-X11/lib/X11/Imakefile.NX.original  |   12 ++----
++ nx-X11/programs/Xserver/Imakefile     |    4 +-
++ 10 files changed, 60 insertions(+), 69 deletions(-)
++
++--- a/nx-X11/Makefile
+++++ b/nx-X11/Makefile
++@@ -32,8 +32,8 @@
++ VERSPROG = $(CONFIGSRC)/util/printver.exe
++ 
++ all:
++-	@$(MAKE_CMD) xmakefile-exists || $(MAKE) all-initial
++-	@$(MAKE_CMD) $@
+++	@${MAKE} ${MAKE_OPTS} xmakefile-exists || $(MAKE) all-initial
+++	@${MAKE} ${MAKE_OPTS} $@
++ 
++ all-initial:
++ 	@echo Please use make World, or on NT use nmake World.Win32.
++@@ -57,8 +57,8 @@
++ 	@date
++ 	@echo &quot;&quot;
++ 	@if [ -f xmakefile ]; then \
++-	    $(MAKE_CMD) -k distclean || \
++-	    $(MAKE_CMD) -k clean || \
+++	    ${MAKE} ${MAKE_OPTS} -k distclean || \
+++	    ${MAKE} ${MAKE_OPTS} -k clean || \
++ 	    $(RM) xmakefile; \
++ 	fi
++ 	@if [ ! -f $(IRULESRC)/host.def ]; then \
++@@ -84,14 +84,14 @@
++ #	fi
++ 	cd $(IMAKESRC) &amp;&amp; $(MAKE) $(FLAGS) clean
++ 	$(MAKE) $(MFLAGS) Makefile.boot
++-	$(MAKE_CMD) $(MFLAGS) version.def
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) version.def
++ 	$(MAKE) $(MFLAGS) Makefile.boot
++-	$(MAKE_CMD) $(MFLAGS) VerifyOS
++-	$(MAKE_CMD) $(MFLAGS) Makefiles
++-	$(MAKE_CMD) $(MFLAGS) BOOTSTRAPSUBDIRS= clean
++-	$(MAKE_CMD) $(MFLAGS) includes
++-	$(MAKE_CMD) $(MFLAGS) depend
++-	$(MAKE_CMD) $(MFLAGS) $(WORLDOPTS) World
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) VerifyOS
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) Makefiles
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) BOOTSTRAPSUBDIRS= clean
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) includes
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) depend
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) $(WORLDOPTS) World
++ 	@echo &quot;&quot;
++ 	@date
++ 	@echo &quot;&quot;
++@@ -153,15 +153,15 @@
++ 	-if exist xmakefile.bak del xmakefile.bak
++ 	-if exist xmakefile ren xmakefile xmakefile.bak
++ 	$(IMAKE:/=\) -s xmakefile -I$(IRULESRC) $(IMAKE_DEFINES) -DTOPDIR=$(TOP) -DCURDIR=$(CURRENT_DIR)
++-	$(MAKE_CMD) $(MFLAGS) VerifyOS
++-	$(MAKE_CMD) $(MFLAGS) Makefiles
++-	$(MAKE_CMD) $(MFLAGS) clean
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) VerifyOS
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) Makefiles
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) clean
++ 	cd $(CONFIGSRC)\util
++ 	$(MAKE) mkdirhier.exe
++ 	cd ..\..
++-	$(MAKE_CMD) $(MFLAGS) includes
++-	$(MAKE_CMD) $(MFLAGS) depend
++-	$(MAKE_CMD) $(MFLAGS) $(WIN32WORLDOPTS)
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) includes
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) depend
+++	${MAKE} ${MAKE_OPTS} $(MFLAGS) $(WIN32WORLDOPTS)
++ 	@echo :
++ 	@echo :
++ 	@echo Full build of $(RELEASE) complete.
++@@ -197,33 +197,33 @@
++ # a copy of every rule that might be invoked at top level
++ 
++ clean:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ dangerous_strip_clean:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ distclean:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ 	    $(RM) xmakefile $(IRULESRC)/version.def $(IRULESRC)/date.def
++ depend:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ Everything:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ external.ln:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ includes:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ install.sdk:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ install.ln:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ install.man:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ install:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ Makefiles:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ man_keywords:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ tags:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++ VerifyOS:
++-	    $(MAKE_CMD) $@
+++	    ${MAKE} ${MAKE_OPTS} $@
++--- a/nx-X11/config/imake/Makefile.ini
+++++ b/nx-X11/config/imake/Makefile.ini
++@@ -21,7 +21,6 @@
++ SHELL = /bin/sh
++ RM = rm -f
++ MV = mv
++-MAKE = make
++ RM_CMD = $(RM) *.CKP *.ln *.BAK *.bak *.o core errs ,* *~ *.a \
++ 	 tags TAGS make.log
++ NPROC = 1
++--- a/nx-X11/extras/Mesa/Makefile
+++++ b/nx-X11/extras/Mesa/Makefile
++@@ -12,7 +12,7 @@
++ 
++ 
++ doxygen:
++-	(cd doxygen ; make) ; \
+++	(cd doxygen ; ${MAKE}) ; \
++ 
++ clean:
++ 	@for dir in $(SUBDIRS) ; do \
++--- a/nx-X11/extras/Xpm/Makefile.noX
+++++ b/nx-X11/extras/Xpm/Makefile.noX
++@@ -32,7 +32,6 @@
++ 
++ SUBDIRS= lib sxpm cxpm
++ 
++-MAKE=make
++ MFLAGS=-f Makefile.noX
++ INSTALL= install -c
++ CURRENT_DIR=.
++--- a/nx-X11/extras/drm/linux-core/Makefile
+++++ b/nx-X11/extras/drm/linux-core/Makefile
++@@ -176,7 +176,7 @@
++ all: modules
++ 
++ modules: includes
++-	make -C $(LINUXDIR) $(GETCONFIG) SUBDIRS=`pwd` DRMSRCDIR=`pwd` modules
+++	${MAKE} -C $(LINUXDIR) $(GETCONFIG) SUBDIRS=`pwd` DRMSRCDIR=`pwd` modules
++ 
++ ifeq ($(HEADERFROMBOOT),1)
++ 
++@@ -246,7 +246,7 @@
++ 	rm -rf $(CLEANFILES)
++ 
++ $(MODULE_LIST)::
++-	make DRM_MODULES=$@ modules
+++	${MAKE} DRM_MODULES=$@ modules
++ 
++ # Build test utilities
++ 
++--- a/nx-X11/extras/drm/linux/Makefile
+++++ b/nx-X11/extras/drm/linux/Makefile
++@@ -184,7 +184,7 @@
++ all: modules
++ 
++ modules: includes
++-	make -C $(LINUXDIR) $(GETCONFIG) SUBDIRS=`pwd` DRMSRCDIR=`pwd` modules
+++	${MAKE} -C $(LINUXDIR) $(GETCONFIG) SUBDIRS=`pwd` DRMSRCDIR=`pwd` modules
++ 
++ ifeq ($(HEADERFROMBOOT),1)
++ 
++@@ -254,7 +254,7 @@
++ 	rm -rf $(CLEANFILES)
++ 
++ $(MODULE_LIST)::
++-	make DRM_MODULES=$@ modules
+++	${MAKE} DRM_MODULES=$@ modules
++ 
++ # Build test utilities
++ 
++--- a/nx-X11/extras/ttf2pt1/Makefile
+++++ b/nx-X11/extras/ttf2pt1/Makefile
++@@ -158,8 +158,8 @@
++ 
++ clean:
++ 	rm -f t1asm ttf2pt1 *.o app/RPM/Makefile app/RPM/*.spec *.core core.* core
++-	( cd other &amp;&amp; make clean; )
++-	( cd app/netscape &amp;&amp; make clean; )
+++	( cd other &amp;&amp; ${MAKE} clean; )
+++	( cd app/netscape &amp;&amp; ${MAKE} clean; )
++ 
++ veryclean: clean
++ 	rm -f $(DOCS) $(MANS)
++--- a/nx-X11/lib/X11/Imakefile
+++++ b/nx-X11/lib/X11/Imakefile
++@@ -1161,21 +1161,17 @@
++ 
++ #ifdef SunArchitecture
++ $(NX_XCOMPLIBTARGET): $(NX_XCOMPCONFIGTARGET)
++-	cd $(NX_XCOMPLIBDIR) &amp;&amp; \
++-	gmake
+++	${MAKE} -C $(NX_XCOMPLIBDIR)
++ 
++ $(NX_XCOMPEXTLIBTARGET): $(NX_XCOMPEXTCONFIGTARGET)
++-	cd ../../../nxcompext &amp;&amp; \
++-	gmake
+++	${MAKE} -C ../../../nxcompext
++ 
++ #else
++ $(NX_XCOMPLIBTARGET): $(NX_XCOMPCONFIGTARGET)
++-	cd $(NX_XCOMPLIBDIR) &amp;&amp; \
++-	make
+++	${MAKE} -C $(NX_XCOMPLIBDIR)
++ 
++ $(NX_XCOMPEXTLIBTARGET): $(NX_XCOMPEXTCONFIGTARGET)
++-	cd ../../../nxcompext &amp;&amp; \
++-	make
+++	${MAKE} -C ../../../nxcompext
++ 
++ #endif
++ 
++--- a/nx-X11/lib/X11/Imakefile.NX.original
+++++ b/nx-X11/lib/X11/Imakefile.NX.original
++@@ -1159,21 +1159,17 @@
++ 
++ #ifdef SunArchitecture
++ $(NX_XCOMPLIBTARGET): $(NX_XCOMPCONFIGTARGET)
++-	cd $(NX_XCOMPLIBDIR) &amp;&amp; \
++-	gmake
+++	${MAKE} -C $(NX_XCOMPLIBDIR)
++ 
++ $(NX_XCOMPEXTLIBTARGET): $(NX_XCOMPEXTCONFIGTARGET)
++-	cd ../../../nxcompext &amp;&amp; \
++-	gmake
+++	${MAKE} -C ../../../nxcompext
++ 
++ #else
++ $(NX_XCOMPLIBTARGET): $(NX_XCOMPCONFIGTARGET)
++-	cd $(NX_XCOMPLIBDIR) &amp;&amp; \
++-	make
+++	${MAKE} -C $(NX_XCOMPLIBDIR)
++ 
++ $(NX_XCOMPEXTLIBTARGET): $(NX_XCOMPEXTCONFIGTARGET)
++-	cd ../../../nxcompext &amp;&amp; \
++-	make
+++	${MAKE} -C ../../../nxcompext
++ 
++ #endif
++ 
++--- a/nx-X11/programs/Xserver/Imakefile
+++++ b/nx-X11/programs/Xserver/Imakefile
++@@ -1045,11 +1045,11 @@
++ #ifdef SunArchitecture
++ $(NX_XSHADOWLIBTARGET): $(NX_XSHADOWCONFIGTARGET)
++ 	cd $(NX_XSHADOWLIBDIR) &amp;&amp; \
++-	gmake
+++	${MAKE}
++ #else
++ $(NX_XSHADOWLIBTARGET): $(NX_XSHADOWCONFIGTARGET)
++ 	cd $(NX_XSHADOWLIBDIR) &amp;&amp; \
++-	rm -f *.o &amp;&amp; make
+++	rm -f *.o &amp;&amp; ${MAKE}
++ #endif
++ 
++ ServerTarget(nxagent,$(NX_XSHADOWLIBTARGET) $(NXAGENTDIRS),$(NXAGENTOBJS), \
+diff --git a/debian/patches/series b/debian/patches/series
+index 826e1cf..fe0a51c 100644
+--- a/debian/patches/series
++++ b/debian/patches/series
+@@ -24,6 +24,7 @@
+ 022_add-nxproxy-wrapper.full+lite.patch
+ 023_add-x2goagent-wrapper.full.patch
+ 030_nx-X11_configure-args.diff
++031_nx-X11_parallel-make.diff
+ 101_nxagent_set-rgb-path.full.patch
+ 102_xserver-xext_set-securitypolicy-path.full.patch
+ 102_xserver-xext_set-securitypolicy-path.debian.patch
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011974.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-14-g165206e
+</A></li>
+	<LI>Next message: <A HREF="011960.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.10-16-gb4b4e20
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11958">[ date ]</a>
+              <a href="thread.html#11958">[ thread ]</a>
+              <a href="subject.html#11958">[ subject ]</a>
+              <a href="author.html#11958">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

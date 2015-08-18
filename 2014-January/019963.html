@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-322-ga550eb7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-322-ga550eb7&In-Reply-To=%3C20140103195339.71C9A5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019958.html">
+   <LINK REL="Next"  HREF="019964.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-322-ga550eb7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-322-ga550eb7&In-Reply-To=%3C20140103195339.71C9A5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-322-ga550eb7">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:53:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019958.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-319-g66e2f2d
+</A></li>
+        <LI>Next message: <A HREF="019964.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-326-g9941f22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19963">[ date ]</a>
+              <a href="thread.html#19963">[ thread ]</a>
+              <a href="subject.html#19963">[ subject ]</a>
+              <a href="author.html#19963">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  a550eb7a5dc58acee577343c6d6031d394b79f3b (commit)
+      from  6b219e9ca6f76e55df80ba369807c9be831902de (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ X2Go/SupeReNicer.pm |  103 ++++++++++++++++++++++++++++-----------------------
+ debian/changelog    |    1 +
+ 2 files changed, 57 insertions(+), 47 deletions(-)
+
+The diff of changes is:
+diff --git a/X2Go/SupeReNicer.pm b/X2Go/SupeReNicer.pm
+index 0df187b..0f8a3cb 100644
+--- a/X2Go/SupeReNicer.pm
++++ b/X2Go/SupeReNicer.pm
+@@ -43,12 +43,17 @@ our @EXPORT=('superenice');
+ 
+ sub checkPID {
+ 	my $pid = sanitizer(&quot;num&quot;,$_[0]);
+-	open(PS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -p $pid|&quot;);
+-	my ($pidInf,undef) = &lt;PS&gt;;
+-	close(PS);
+-	my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($pidInf));
+-	$pid =~ s/\D//g;
+-	return ($pid,$user,$nice,$cmd)
++	if ( $pid )
++	{
++		open(PS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -p $pid|&quot;);
++		my ($pidInf,undef) = &lt;PS&gt;;
++		close(PS);
++		my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($pidInf));
++		$pid =~ s/\D//g;
++		return ($pid,$user,$nice,$cmd);
++	} else {
++		return (-1, &quot;failure&quot;, 0, &quot;failed to sanitize PID&quot;);
++	}
+ }
+ 
+ 
+@@ -118,42 +123,44 @@ sub superenice {
+ 				# Using the NICE value of the agent to figgure out the current nice state...
+ 				my ($psP,$psU,$psN,$psC) = checkPID($agentPid);
+ 
+-				if ($x2goState eq &quot;R&quot;) {
++				if ($psP &gt; -1) {
++					if ($x2goState eq &quot;R&quot;) {
+ 
+-					# State is R (Running?)...
+-					if ($psN ne $normalNL) {
+-						# If nice level is not normal, renice to normal...
+-						syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $normalNL for session \&quot;$x2gosid\&quot;&quot;);
+-						# For the sake of getting a user back to normal ASAP...  We'll renice the entire user not just individual sessions...
+-						system(&quot;renice&quot;, &quot;-n&quot;, &quot;$normalNL&quot;, &quot;-u&quot;, &quot;$userID&quot;);
+-					}
++						# State is R (Running?)...
++						if ($psN ne $normalNL) {
++							# If nice level is not normal, renice to normal...
++							syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $normalNL for session \&quot;$x2gosid\&quot;&quot;);
++							# For the sake of getting a user back to normal ASAP...  We'll renice the entire user not just individual sessions...
++							system(&quot;renice&quot;, &quot;-n&quot;, &quot;$normalNL&quot;, &quot;-u&quot;, &quot;$userID&quot;);
++						}
+ 
+-				} elsif ($x2goState eq &quot;S&quot;) {
++					} elsif ($x2goState eq &quot;S&quot;) {
+ 
+-					# State is S (suspended)
+-					if ($psN ne $idleNL) {
++						# State is S (suspended)
++						if ($psN ne $idleNL) {
+ 
+-						# Did we renice this?
+-						open(AUPS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -u $userID|&quot;); # use PS to fetch a list of the users current processes
+-						while (&lt;AUPS&gt;) {
+-							my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($_));
+-							$pid  = sanitizer(&quot;num&quot;,$pid);
+-
+-							if (-f &quot;/proc/$pid/environ&quot;) {
+-								open(ENVIRON,&quot;/proc/$pid/environ&quot;);my ($Environ,undef) = &lt;ENVIRON&gt;;close(ENVIRON);
+-								if ($Environ =~ m/X2GO_SESSION=$x2gosid/) {       # If the x2go Session ID is in environ... renice the pid...
+-									#syslog('debug', &quot;$pid: X2GO_SESSION=$x2gosid&quot;);
+-									system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-p&quot;, &quot;$pid&quot;);
++							# Did we renice this?
++							open(AUPS,&quot;/bin/ps --no-headers -o %u,%p,%n,%c -u $userID|&quot;); # use PS to fetch a list of the users current processes
++							while (&lt;AUPS&gt;) {
++								my ($user,$pid,$nice,$cmd)  = split(/\,/,clups($_));
++								$pid  = sanitizer(&quot;num&quot;,$pid);
++
++								if (-f &quot;/proc/$pid/environ&quot;) {
++									open(ENVIRON,&quot;/proc/$pid/environ&quot;);my ($Environ,undef) = &lt;ENVIRON&gt;;close(ENVIRON);
++									if ($Environ =~ m/X2GO_SESSION=$x2gosid/) {       # If the x2go Session ID is in environ... renice the pid...
++										#syslog('debug', &quot;$pid: X2GO_SESSION=$x2gosid&quot;);
++										system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-p&quot;, &quot;$pid&quot;);
++									}
+ 								}
+-							}
+ 
+-						}
+-						close(AUPS);
++							}
++							close(AUPS);
+ 
+-						# Renice the AGENT so that we'll know that this one is already reniced.
+-						system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-p&quot;, &quot;$agentPid&quot;);
+-						syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $idleNL for session \&quot;$x2gosid\&quot;&quot;);
++							# Renice the AGENT so that we'll know that this one is already reniced.
++							system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-p&quot;, &quot;$agentPid&quot;);
++							syslog('notice', &quot;ReNicing \&quot;$userID\&quot; to level $idleNL for session \&quot;$x2gosid\&quot;&quot;);
+ 
++						}
+ 					}
+ 				}
+ 			}
+@@ -198,22 +205,24 @@ sub superenice {
+ 				# Using the NICE value of the agent to figgure out the current nice state...
+ 				my ($psP,$psU,$psN,$psC) = checkPID($agentPid);
+ 				syslog('debug', &quot;$nUser:$x2goState,$agentPid:$psP,$psU,$psN,$psC&quot;);
+-				# State is R (Running?)...
+-				if ($x2goState eq &quot;R&quot;) {
++				if ($psP &gt; -1) {
++					# State is R (Running?)...
++					if ($x2goState eq &quot;R&quot;) {
+ 
+-					# If nice level is not normal, renice to normal...
+-					if ($psN ne $normalNL) {
+-						syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $normalNL&quot;);
+-						system(&quot;renice&quot;, &quot;-n&quot;, &quot;$normalNL&quot;, &quot;-u&quot;, &quot;$nUser&quot;);
+-					}
++						# If nice level is not normal, renice to normal...
++						if ($psN ne $normalNL) {
++							syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $normalNL&quot;);
++							system(&quot;renice&quot;, &quot;-n&quot;, &quot;$normalNL&quot;, &quot;-u&quot;, &quot;$nUser&quot;);
++						}
+ 
+-				# State is S (suspended)
+-				} elsif ($x2goState eq &quot;S&quot;) {
++					# State is S (suspended)
++					} elsif ($x2goState eq &quot;S&quot;) {
+ 
+-					# Did we renice this?
+-					if ($psN ne $idleNL) {
+-						syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $idleNL&quot;);
+-						system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-u&quot;, &quot;$nUser&quot;);
++						# Did we renice this?
++						if ($psN ne $idleNL) {
++							syslog('debug', &quot;ReNicing \&quot;$nUser\&quot; to level $idleNL&quot;);
++							system(&quot;renice&quot;, &quot;-n&quot;, &quot;$idleNL&quot;, &quot;-u&quot;, &quot;$nUser&quot;);
++						}
+ 					}
+ 				}
+ 			}
+diff --git a/debian/changelog b/debian/changelog
+index 823fe95..979576c 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -38,6 +38,7 @@ x2goserver (4.1.0.0-0x2go1) UNRELEASED; urgency=low
+     - Provide Perl functions to capture stdout/stderr with multi-argument system
+       calls.
+     - Avoid one argument system calls and backticks in SupeReNicer.
++    - Handle situations in SupeReNicer where the agent PID is not set.
+   * debian/control:
+     + Package X2Go::Log in separate package: libx2go-log-perl.
+     + Package X2Go::Server::DB in separate package: libx2go-server-db-perl.
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019958.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-319-g66e2f2d
+</A></li>
+	<LI>Next message: <A HREF="019964.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-326-g9941f22
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19963">[ date ]</a>
+              <a href="thread.html#19963">[ thread ]</a>
+              <a href="subject.html#19963">[ subject ]</a>
+              <a href="author.html#19963">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

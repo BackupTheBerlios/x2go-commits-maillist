@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-214-gef4ae50
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-214-gef4ae50&In-Reply-To=%3C20140107151754.61EF95DDA8%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020874.html">
+   <LINK REL="Next"  HREF="020902.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-214-gef4ae50</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-214-gef4ae50&In-Reply-To=%3C20140107151754.61EF95DDA8%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-214-gef4ae50">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:54 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020874.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-219-g10d5af9
+</A></li>
+        <LI>Next message: <A HREF="020902.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-213-gac5b31b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20892">[ date ]</a>
+              <a href="thread.html#20892">[ thread ]</a>
+              <a href="subject.html#20892">[ subject ]</a>
+              <a href="author.html#20892">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  ef4ae509162b4b5a13c319e7e87e584f3837b53b (commit)
+      from  ac5b31be15371c87eb335b54df50fe277000d580 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py  |    2 ++
+ x2go/xserver.py |   13 +++++++++----
+ 2 files changed, 11 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index 468ce08..e371471 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -325,9 +325,11 @@ class X2goClient(object):
+                         # FIXME: this trick is nasty, client implementation should rather cleanly shutdown launch X-server processes
+                         # 
+                         # re-use a left behind X-server instance of a previous/crashed run of Python X2Go Client
++                        self.logger('found a running (and maybe stray) X-server, trying to re-use it on X DISPLAY port: %s' % _last_display, loglevel=log.loglevel_WARN)
+                         os.environ.update({'DISPLAY': str(_last_display)})
+                     else:
+                         # presume the running XServer listens on :0
++                        self.logger('using fallback display for X-server: localhost:0', loglevel=log.loglevel_WARN)
+                         os.environ.update({'DISPLAY': 'localhost:0'})
+ 
+         if _X2GOCLIENT_OS == 'Windows' and start_pulseaudio:
+diff --git a/x2go/xserver.py b/x2go/xserver.py
+index c97c2ee..ee29d5c 100644
+--- a/x2go/xserver.py
++++ b/x2go/xserver.py
+@@ -226,7 +226,12 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+ 
+             # if the port changed, let's write it to our configuration file
+             if _detect_xserver_port != _last_xserver_port:
+-                self.update_value(xserver_name, 'last_display', _last_display.replace(_last_xserver_port, _detect_xserver_port))
++                _new_display = _last_display.replace(str(_last_xserver_port -6000), str(_detect_xserver_port -6000))
++                self.logger('cannot used configured X DISPLAY, the new available DISPLAY port %s has been detected' % _new_display, loglevel=log.loglevel_NOTICE)
++                self.update_value(xserver_name, 'last_display', _new_display)
++                _parameters = self.get_value(xserver_name, 'parameters')
++                _parameters[0] = &quot;:%s&quot; % (_detect_xserver_port -6000)
++                self.update_value(xserver_name, 'parameters', tuple(_parameters))  
+                 self.write_user_config = True
+                 self.write()
+ 
+@@ -275,10 +280,10 @@ class X2goXServer(threading.Thread):
+         self.xserver_config = xserver_config
+         self.hProcess = None
+ 
+-        if self.xserver_config.has_key('display'):
++        if self.xserver_config.has_key('last_display'):
+ 
+-            self.logger('setting DISPLAY environment variable to %s' % self.xserver_config['display'], loglevel=log.loglevel_NOTICE)
+-            os.environ.update({'DISPLAY': str(self.xserver_config['display'])})
++            self.logger('setting DISPLAY environment variable to %s' % self.xserver_config['last_display'], loglevel=log.loglevel_NOTICE)
++            os.environ.update({'DISPLAY': str(self.xserver_config['last_display'])})
+         threading.Thread.__init__(self)
+         self.daemon = True
+         self.start()
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020874.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-219-g10d5af9
+</A></li>
+	<LI>Next message: <A HREF="020902.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-213-gac5b31b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20892">[ date ]</a>
+              <a href="thread.html#20892">[ thread ]</a>
+              <a href="subject.html#20892">[ subject ]</a>
+              <a href="author.html#20892">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

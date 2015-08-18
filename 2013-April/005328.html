@@ -1,0 +1,201 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-85-gf51ce71
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.0.1.8-85-gf51ce71&In-Reply-To=%3C20130401160430.5D72D5DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005327.html">
+   <LINK REL="Next"  HREF="005329.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-85-gf51ce71</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gothinclient.git%20-%20master%20%28branch%29%20updated%3A%0A%091.0.1.8-85-gf51ce71&In-Reply-To=%3C20130401160430.5D72D5DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-85-gf51ce71">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Apr  1 18:04:30 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005327.html">[X2Go-Commits] x2gothinclient.git - wheezy-tce (branch) updated:	1.0.1.8-85-gf51ce71
+</A></li>
+        <LI>Next message: <A HREF="005329.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-86-gd9659bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5328">[ date ]</a>
+              <a href="thread.html#5328">[ thread ]</a>
+              <a href="subject.html#5328">[ subject ]</a>
+              <a href="author.html#5328">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  f51ce717c9443124c5829a64afd0226d8236ae35 (commit)
+       via  d485ba449a9668cf4f0a7d004b4c47e61713ac01 (commit)
+       via  d3f406d51f4af531037ac956e6ecdfa639a2c79f (commit)
+      from  aaba851450b69d66ebd3bfd2e79e7f7892f5d9e1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                    |    3 +++
+ debian/x2gocdmanager.init           |   13 ++++++++-----
+ debian/x2gothinclient.init          |    2 +-
+ debian/x2gothinclient.prerm         |    4 +---
+ x2gothinclient/sbin/x2gothinclientd |   16 ++--------------
+ 5 files changed, 15 insertions(+), 23 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 29492d6..66e4b70 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -54,6 +54,7 @@ x2gothinclient (1.0.99.1-0~x2go1) UNRELEASED; urgency=low
+     - x2gothinclient_update: make sure config target folders exist.
+     - x2gothinclient_create: syntax fix, spotted by Thomas G&#252;ttler (Fixes: #95).
+     - Export $LANG and $LANGUAGE to TCE daemon.
++    - Use qx instead of open3 to launch x2goclient. (Fixes: #66).
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+     + Priority: optional.
+@@ -79,6 +80,8 @@ x2gothinclient (1.0.99.1-0~x2go1) UNRELEASED; urgency=low
+   * Launch X2Go TCE via /etc/X11/default-display-manager. Add debconf template
+     to handle default display manager selection. Inspired by Debian's gdm
+     package.
++  * Only start X2Go CD Manager if x2gothinclientd is the default display
++    manager.
+ 
+   [ Oleksandr Shneyder ]
+   * New upstream version (1.0.99.1):
+diff --git a/debian/x2gocdmanager.init b/debian/x2gocdmanager.init
+index d759d30..b71f3af 100644
+--- a/debian/x2gocdmanager.init
++++ b/debian/x2gocdmanager.init
+@@ -49,9 +49,12 @@ test -x $DAEMON || exit 0
+ 
+ case &quot;$1&quot; in
+ 	start)
+-		log_daemon_msg &quot;Starting $DESC&quot; &quot;x2gocdmanager&quot;
+-		start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS
+-		log_end_msg $?
++		# only start the X2Go CD Manager if x2gothinclientd is configured as the default display manager
++		if [ &quot;$(cat $DEFAULT_DISPLAY_MANAGER_FILE)&quot; = &quot;/usr/sbin/x2gothinclientd&quot; ]; then
++			log_daemon_msg &quot;Starting $DESC&quot; &quot;x2gocdmanager&quot;
++			start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS
++			log_end_msg $?
++		fi
+ 	;;
+ 	stop)
+ 		log_daemon_msg &quot;Stopping $DESC&quot; &quot;x2gocdmanager&quot;
+@@ -63,9 +66,9 @@ case &quot;$1&quot; in
+ 	;;
+ 	restart)
+ 		log_daemon_msg &quot;Restarting $DESC&quot; &quot;x2gocdmanager&quot;
+-		start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid
++		$0 stop
+ 		sleep 1
+-		start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS
++		$0 start
+ 		log_end_msg $?
+ 	;;
+ 	*)
+diff --git a/debian/x2gothinclient.init b/debian/x2gothinclient.init
+index cbfd047..15c0028 100644
+--- a/debian/x2gothinclient.init
++++ b/debian/x2gothinclient.init
+@@ -78,7 +78,7 @@ case &quot;$1&quot; in
+ 	stop)
+ 		if [ -e /var/run/$NAME.pid ]; then
+ 			log_daemon_msg &quot;Stopping $DESC&quot; &quot;x2gothinclientd&quot;
+-			start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid &amp;&amp; echo &quot;$NAME.&quot; || echo &quot;not running&quot;
++			start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid
+ 			log_end_msg $?
+ 		fi
+ 	;;
+diff --git a/debian/x2gothinclient.prerm b/debian/x2gothinclient.prerm
+index 92edd7a..9b7fb81 100755
+--- a/debian/x2gothinclient.prerm
++++ b/debian/x2gothinclient.prerm
+@@ -61,9 +61,7 @@ fi
+ 
+ case &quot;$1&quot; in
+ 	remove)
+-		if [ -x /etc/init.d/x2gothinclient ]; then
+-			invoke-rc.d x2gothinclient stop
+-		fi
++		:
+ 		;;
+ 	deconfigure|upgrade|failed-upgrade)
+ 		:
+diff --git a/x2gothinclient/sbin/x2gothinclientd b/x2gothinclient/sbin/x2gothinclientd
+index 088137e..9e86548 100755
+--- a/x2gothinclient/sbin/x2gothinclientd
++++ b/x2gothinclient/sbin/x2gothinclientd
+@@ -133,20 +133,8 @@ elsif ($pid == 0 )
+ 		}
+ 
+ 		# test if x2goclient is running, if not launch it...
+-		my $x2goclient_pid = 0;
+-		if ( !check_client() )
+-		{
+-			local *IN, *OUT, *ERR;
+-			$x2goclient_pid = eval {
+-				open3( \*IN, \*OUT, \*ERR, &quot;su - x2gothinclient -c 'DISPLAY=:0 bash -c \&quot;/etc/x2go/x2gothinclient_start &amp;\&quot;'&quot;);
+-			};
+-			## give X2Go Client some time to start
+-			sleep(3);
+-			## wait for x2goclient to finish
+-			if ( check_client() )
+-			{
+-				waitpid( $x2goclient_pid, 0 );
+-			}
++		if ( !check_client() ) {
++			qx(su - x2gothinclient -c \&quot;export DISPLAY=:0; /etc/x2go/x2gothinclient_start\&quot;);
+ 		}
+ 	}
+ }
+
+
+hooks/post-receive
+-- 
+x2gothinclient.git (X2Go Thin Client Environment)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gothinclient.git&quot; (X2Go Thin Client Environment).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005327.html">[X2Go-Commits] x2gothinclient.git - wheezy-tce (branch) updated:	1.0.1.8-85-gf51ce71
+</A></li>
+	<LI>Next message: <A HREF="005329.html">[X2Go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-86-gd9659bd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5328">[ date ]</a>
+              <a href="thread.html#5328">[ thread ]</a>
+              <a href="subject.html#5328">[ subject ]</a>
+              <a href="author.html#5328">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

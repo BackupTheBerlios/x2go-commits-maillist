@@ -1,0 +1,460 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-21-g5854eff
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.0.36.1-21-g5854eff&In-Reply-To=%3C20140108142958.01FE75DD7A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024742.html">
+   <LINK REL="Next"  HREF="024763.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-21-g5854eff</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.0.36.1-21-g5854eff&In-Reply-To=%3C20140108142958.01FE75DD7A%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-21-g5854eff">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:57 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024742.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-20-gfdd7a2b
+</A></li>
+        <LI>Next message: <A HREF="024763.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-13-g00a7b3d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24753">[ date ]</a>
+              <a href="thread.html#24753">[ thread ]</a>
+              <a href="subject.html#24753">[ subject ]</a>
+              <a href="author.html#24753">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  5854eff8255d19ec57a1dfa298f941f9497870d8 (commit)
+      from  fdd7a2b63ae59a19dc18ea9b30a429b457444cac (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py |   61 +++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 38 insertions(+), 23 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index bb92ae2..a8e8999 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -802,15 +802,20 @@ class X2goClient(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if session_uuid is None and session_name is None:
+-            raise x2go_exceptions.X2goClientException('can\'t resume a session without either session_uuid or session_name')
+-        if session_name is None and self.session_registry(session_uuid).session_name is None:
+-            raise x2go_exceptions.X2goClientException('don\'t know which session to resume')
+-        if session_uuid is None:
+-            session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False)
+-            return self.session_registry(session_uuid).resume()
+-        else:
+-            return self.session_registry(session_uuid).resume(session_name=session_name)
++        try:
++            if session_uuid is None and session_name is None:
++                raise x2go_exceptions.X2goClientException('can\'t resume a session without either session_uuid or session_name')
++            if session_name is None and self.session_registry(session_uuid).session_name is None:
++                raise x2go_exceptions.X2goClientException('don\'t know which session to resume')
++            if session_uuid is None:
++                session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False)
++                return self.session_registry(session_uuid).resume()
++            else:
++                return self.session_registry(session_uuid).resume(session_name=session_name)
++        except x2go_exceptions.X2goControlSessionException:
++            profile_name = self.get_session_profile_name(session_uuid)
++            if self.disconnect_session(profile_name):
++                self.HOOK_on_control_session_death(profile_name)
+     __resume_session = resume_session
+ 
+     def suspend_session(self, session_uuid, session_name=None):
+@@ -840,13 +845,18 @@ class X2goClient(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if session_name is None:
+-            return self.session_registry(session_uuid).suspend()
+-        else:
+-            for session in self.session_registry.running_sessions():
+-                if session_name == session.get_session_name():
+-                    return session.suspend()
+-        return self.session_registry(session_uuid).control_session.suspend(session_name=session_name)
++        try:
++            if session_name is None:
++                return self.session_registry(session_uuid).suspend()
++            else:
++                for session in self.session_registry.running_sessions():
++                    if session_name == session.get_session_name():
++                        return session.suspend()
++            return self.session_registry(session_uuid).control_session.suspend(session_name=session_name)
++        except x2go_exceptions.X2goControlSessionException:
++            profile_name = self.get_session_profile_name(session_uuid)
++            if self.disconnect_session(profile_name):
++                self.HOOK_on_control_session_death(profile_name)
+     __suspend_session = suspend_session
+ 
+     def terminate_session(self, session_uuid, session_name=None):
+@@ -879,13 +889,18 @@ class X2goClient(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if session_name is None:
+-            return self.session_registry(session_uuid).terminate()
+-        else:
+-            for session in self.session_registry.running_sessions() + self.session_registry.suspended_sessions():
+-                if session_name == session.get_session_name():
+-                    return session.terminate()
+-        return self.session_registry(session_uuid).control_session.terminate(session_name=session_name)
++        try:
++            if session_name is None:
++                return self.session_registry(session_uuid).terminate()
++            else:
++                for session in self.session_registry.running_sessions() + self.session_registry.suspended_sessions():
++                    if session_name == session.get_session_name():
++                        return session.terminate()
++            return self.session_registry(session_uuid).control_session.terminate(session_name=session_name)
++        except x2go_exceptions.X2goControlSessionException:
++            profile_name = self.get_session_profile_name(session_uuid)
++            if self.disconnect_session(profile_name):
++                self.HOOK_on_control_session_death(profile_name)
+     __terminate_session = terminate_session
+ 
+     def get_session_profile_name(self, session_uuid):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024742.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-20-gfdd7a2b
+</A></li>
+	<LI>Next message: <A HREF="024763.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.0.36.1-13-g00a7b3d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24753">[ date ]</a>
+              <a href="thread.html#24753">[ thread ]</a>
+              <a href="subject.html#24753">[ subject ]</a>
+              <a href="author.html#24753">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

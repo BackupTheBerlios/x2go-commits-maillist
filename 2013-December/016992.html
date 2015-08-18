@@ -1,0 +1,1270 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-63-ga77d761
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-63-ga77d761&In-Reply-To=%3C20131217144335.5A26B5DB40%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016990.html">
+   <LINK REL="Next"  HREF="016993.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-63-ga77d761</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-63-ga77d761&In-Reply-To=%3C20131217144335.5A26B5DB40%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-63-ga77d761">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:35 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016990.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-62-g1c7a4f1
+</A></li>
+        <LI>Next message: <A HREF="016993.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-68-gd1bd661
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16992">[ date ]</a>
+              <a href="thread.html#16992">[ thread ]</a>
+              <a href="subject.html#16992">[ subject ]</a>
+              <a href="author.html#16992">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  a77d761dbb16d28206e7c2446654539935746e4e (commit)
+      from  1c7a4f1aa2694eec916fe1e35998b931cd089f8f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    2 +
+ onmainwindow.cpp        |   11 +-
+ sessionwidget.cpp       |    2 -
+ sharewidget.cpp         |  450 +++++++++++++++++++++++------------------------
+ sshmasterconnection.cpp |  163 ++++++++++++++++-
+ sshmasterconnection.h   |    1 +
+ sshprocess.cpp          |  203 +++++++++++++++++++--
+ sshprocess.h            |   12 +-
+ 8 files changed, 588 insertions(+), 256 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 5b02cb9..f8d5a5b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -58,6 +58,8 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+     - Support for keys &quot;shadowuser&quot; &quot;shadowdisplay&quot; and &quot;shadowmode&quot; in
+       config file. This allows choosing the default display for shadow
+       sessions.
++    - Support for GSSApi(Kerberos 5) authentication. Using ssh/scp commands
++      on Linux and Mac and plink/pscp on Windows.   
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 3b5b319..7a0a2a8 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2989,8 +2989,8 @@ void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage, SshMa
+                     &quot;For security reasons, it is recommended to stop the connection.\n&quot;
+                     &quot;Do you want to terminate the connection?\n&quot; );
+         if ( !QMessageBox::warning( 0, tr( &quot;Host key verification failed&quot; ),
+-                errMsg, tr( &quot;Yes&quot; ), tr( &quot;No&quot; ) ) != 0)
+-            {
++                                    errMsg, tr( &quot;Yes&quot; ), tr( &quot;No&quot; ) ) != 0)
++        {
+             connection-&gt;writeKnownHosts(false);
+             connection-&gt;wait();
+             if(sshConnection &amp;&amp; sshConnection !=connection)
+@@ -3016,8 +3016,8 @@ void ONMainWindow::slotSshServerAuthError ( int error, QString sshMessage, SshMa
+                     &quot;For security reasons, it is recommended to stop the connection.\n&quot;
+                     &quot;Do you want to terminate the connection?\n&quot;);
+         if ( !QMessageBox::warning( 0, tr( &quot;Host key verification failed&quot; ),
+-                errMsg, tr( &quot;Yes&quot; ), tr( &quot;No&quot; ) ) != 0)
+-            {
++                                    errMsg, tr( &quot;Yes&quot; ), tr( &quot;No&quot; ) ) != 0)
++        {
+             connection-&gt;writeKnownHosts(false);
+             connection-&gt;wait();
+             if(sshConnection &amp;&amp; sshConnection !=connection)
+@@ -3493,6 +3493,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+ void ONMainWindow::slotListSessions ( bool result,QString output,
+                                       int  )
+ {
++    x2goDebug&lt;&lt;output;
+     if ( result==false )
+     {
+         cardReady=false;
+@@ -4406,7 +4407,7 @@ void ONMainWindow::selectSession ( QStringList&amp; sessions )
+                     else
+                         shadowMode=SHADOW_VIEWONLY;
+                     startNewSession();
+-		    return;
++                    return;
+                 }
+             }
+         }
+diff --git a/sessionwidget.cpp b/sessionwidget.cpp
+index 9e54d19..179e6da 100644
+--- a/sessionwidget.cpp
++++ b/sessionwidget.cpp
+@@ -267,8 +267,6 @@ SessionWidget::SessionWidget ( QString id, ONMainWindow * mw,
+     connect (cbProxySameUser, SIGNAL(clicked(bool)), this, SLOT(slot_proxySameLogin()));
+ 
+     readConfig();
+-    cbKrbLogin-&gt;setChecked(false);
+-    cbKrbLogin-&gt;setVisible(false);
+ }
+ 
+ 
+diff --git a/sharewidget.cpp b/sharewidget.cpp
+index 22b9380..1c24191 100644
+--- a/sharewidget.cpp
++++ b/sharewidget.cpp
+@@ -38,109 +38,109 @@
+ 
+ ShareWidget::ShareWidget ( QString id, ONMainWindow * mw,
+                            QWidget * parent, Qt::WindowFlags f )
+-		: ConfigWidget ( id,mw,parent,f )
++    : ConfigWidget ( id,mw,parent,f )
+ {
+-	QGroupBox *egb=new QGroupBox ( tr ( &quot;&amp;Folders&quot; ),this );
+-	expTv=new QTreeView ( egb );
+-	expTv-&gt;setItemsExpandable ( false );
+-	expTv-&gt;setRootIsDecorated ( false );
++    QGroupBox *egb=new QGroupBox ( tr ( &quot;&amp;Folders&quot; ),this );
++    expTv=new QTreeView ( egb );
++    expTv-&gt;setItemsExpandable ( false );
++    expTv-&gt;setRootIsDecorated ( false );
+ 
+-	model=new QStandardItemModel ( 0,2 );
+-	ldir=new QLabel ( egb );
++    model=new QStandardItemModel ( 0,2 );
++    ldir=new QLabel ( egb );
+ 
+ 
+-	model-&gt;setHeaderData ( 0,Qt::Horizontal,QVariant (
+-	                           ( QString ) tr ( &quot;Path&quot; ) ) );
+-	model-&gt;setHeaderData ( 1,Qt::Horizontal,QVariant (
+-	                           ( QString ) tr ( &quot;Automount&quot; ) ) );
+-	expTv-&gt;setEditTriggers ( QAbstractItemView::NoEditTriggers );
++    model-&gt;setHeaderData ( 0,Qt::Horizontal,QVariant (
++                               ( QString ) tr ( &quot;Path&quot; ) ) );
++    model-&gt;setHeaderData ( 1,Qt::Horizontal,QVariant (
++                               ( QString ) tr ( &quot;Automount&quot; ) ) );
++    expTv-&gt;setEditTriggers ( QAbstractItemView::NoEditTriggers );
+ 
+ 
+ 
+-	QPushButton* openDir=new QPushButton (
+-	    QIcon ( mainWindow-&gt;iconsPath ( &quot;/16x16/file-open.png&quot; ) ),
+-	    QString::null,egb );
++    QPushButton* openDir=new QPushButton (
++        QIcon ( mainWindow-&gt;iconsPath ( &quot;/16x16/file-open.png&quot; ) ),
++        QString::null,egb );
+ 
+-	QPushButton* addDir=new QPushButton ( tr ( &quot;Add&quot; ),egb );
+-	QPushButton* delDir=new QPushButton ( tr ( &quot;Delete&quot; ),egb );
++    QPushButton* addDir=new QPushButton ( tr ( &quot;Add&quot; ),egb );
++    QPushButton* delDir=new QPushButton ( tr ( &quot;Delete&quot; ),egb );
+ #ifdef Q_WS_HILDON
+-	QSize sz=addDir-&gt;sizeHint();
+-	sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
+-	addDir-&gt;setFixedSize ( sz );
+-	sz=delDir-&gt;sizeHint();
+-	sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
+-	delDir-&gt;setFixedSize ( sz );
++    QSize sz=addDir-&gt;sizeHint();
++    sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
++    addDir-&gt;setFixedSize ( sz );
++    sz=delDir-&gt;sizeHint();
++    sz.setHeight ( ( int ) ( sz.height() /1.5 ) );
++    delDir-&gt;setFixedSize ( sz );
+ #endif
+ 
+-	QLabel *dirPrompt=new QLabel ( tr ( &quot;Path:&quot; ),egb );
+-	dirPrompt-&gt;setFixedSize ( dirPrompt-&gt;sizeHint() );
+-	openDir-&gt;setFixedSize ( openDir-&gt;sizeHint() );
+-
+-	ldir-&gt;setFrameStyle ( QFrame::StyledPanel|QFrame::Sunken );
+-
+-	cbFsConv=new QCheckBox (
+-	    tr ( &quot;Filename encoding&quot;
+-	       ),egb );
+-
+-	QHBoxLayout* enclay=new QHBoxLayout;
+-	cbFrom=new QComboBox ( egb );
+-	cbTo=new QComboBox ( egb );
+-	lFrom=new QLabel ( tr ( &quot;local:&quot; ),egb );
+-	lTo=new QLabel ( tr ( &quot;remote:&quot; ),egb );
+-
+-	enclay-&gt;addWidget ( cbFsConv );
+-	enclay-&gt;addWidget ( lFrom );
+-	enclay-&gt;addWidget ( cbFrom );
+-	enclay-&gt;addWidget ( lTo );
+-	enclay-&gt;addWidget ( cbTo );
+-	enclay-&gt;addStretch();
+-	loadEnc ( cbFrom );
+-	loadEnc ( cbTo );
+-
+-	cbFsSshTun=new QCheckBox (
+-	    tr ( &quot;Use ssh port forwarding to tunnel file system &quot;
+-	         &quot;connections through firewalls&quot; ),egb );
+-
+-	QVBoxLayout* expLay=new QVBoxLayout ( this );
+-	expLay-&gt;addWidget ( egb );
+-
+-	QHBoxLayout *tvLay=new QHBoxLayout ( egb );
+-
+-	QHBoxLayout *dirLAy=new QHBoxLayout();
+-	dirLAy-&gt;addWidget ( dirPrompt );
+-	dirLAy-&gt;addWidget ( ldir );
+-	dirLAy-&gt;addWidget ( openDir );
+-
+-	QVBoxLayout* leftLay=new QVBoxLayout();
+-	leftLay-&gt;addLayout ( dirLAy );
+-	leftLay-&gt;addSpacing ( 10 );
+-	leftLay-&gt;addWidget ( expTv );
+-	expLay-&gt;addLayout ( enclay );
+-	expLay-&gt;addWidget ( cbFsSshTun );
+-
+-	QVBoxLayout* rightLay=new QVBoxLayout();
+-	rightLay-&gt;addWidget ( addDir );
+-	rightLay-&gt;addStretch();
+-	rightLay-&gt;addWidget ( delDir );
+-	rightLay-&gt;addStretch();
+-
+-
+-	tvLay-&gt;addLayout ( leftLay );
+-	tvLay-&gt;addSpacing ( 10 );
+-	tvLay-&gt;addLayout ( rightLay );
+-
+-
+-
+-	expTv-&gt;setModel ( ( QAbstractItemModel* ) model );
+-	QFontMetrics fm1 ( expTv-&gt;font() );
+-	expTv-&gt;header()-&gt;resizeSection ( 1,
+-	                                 fm1.width ( tr ( &quot;Automount&quot; ) ) +10 );
+-	connect ( openDir,SIGNAL ( clicked() ),this,SLOT ( slot_openDir() ) );
+-	connect ( addDir,SIGNAL ( clicked() ),this,SLOT ( slot_addDir() ) );
+-	connect ( delDir,SIGNAL ( clicked() ),this,SLOT ( slot_delDir() ) );
+-	connect ( cbFsConv,SIGNAL ( clicked() ),this
+-	          ,SLOT ( slot_convClicked() ) );
+-	readConfig();
++    QLabel *dirPrompt=new QLabel ( tr ( &quot;Path:&quot; ),egb );
++    dirPrompt-&gt;setFixedSize ( dirPrompt-&gt;sizeHint() );
++    openDir-&gt;setFixedSize ( openDir-&gt;sizeHint() );
++
++    ldir-&gt;setFrameStyle ( QFrame::StyledPanel|QFrame::Sunken );
++
++    cbFsConv=new QCheckBox (
++        tr ( &quot;Filename encoding&quot;
++           ),egb );
++
++    QHBoxLayout* enclay=new QHBoxLayout;
++    cbFrom=new QComboBox ( egb );
++    cbTo=new QComboBox ( egb );
++    lFrom=new QLabel ( tr ( &quot;local:&quot; ),egb );
++    lTo=new QLabel ( tr ( &quot;remote:&quot; ),egb );
++
++    enclay-&gt;addWidget ( cbFsConv );
++    enclay-&gt;addWidget ( lFrom );
++    enclay-&gt;addWidget ( cbFrom );
++    enclay-&gt;addWidget ( lTo );
++    enclay-&gt;addWidget ( cbTo );
++    enclay-&gt;addStretch();
++    loadEnc ( cbFrom );
++    loadEnc ( cbTo );
++
++    cbFsSshTun=new QCheckBox (
++        tr ( &quot;Use ssh port forwarding to tunnel file system &quot;
++             &quot;connections through firewalls&quot; ),egb );
++
++    QVBoxLayout* expLay=new QVBoxLayout ( this );
++    expLay-&gt;addWidget ( egb );
++
++    QHBoxLayout *tvLay=new QHBoxLayout ( egb );
++
++    QHBoxLayout *dirLAy=new QHBoxLayout();
++    dirLAy-&gt;addWidget ( dirPrompt );
++    dirLAy-&gt;addWidget ( ldir );
++    dirLAy-&gt;addWidget ( openDir );
++
++    QVBoxLayout* leftLay=new QVBoxLayout();
++    leftLay-&gt;addLayout ( dirLAy );
++    leftLay-&gt;addSpacing ( 10 );
++    leftLay-&gt;addWidget ( expTv );
++    expLay-&gt;addLayout ( enclay );
++    expLay-&gt;addWidget ( cbFsSshTun );
++
++    QVBoxLayout* rightLay=new QVBoxLayout();
++    rightLay-&gt;addWidget ( addDir );
++    rightLay-&gt;addStretch();
++    rightLay-&gt;addWidget ( delDir );
++    rightLay-&gt;addStretch();
++
++
++    tvLay-&gt;addLayout ( leftLay );
++    tvLay-&gt;addSpacing ( 10 );
++    tvLay-&gt;addLayout ( rightLay );
++
++
++
++    expTv-&gt;setModel ( ( QAbstractItemModel* ) model );
++    QFontMetrics fm1 ( expTv-&gt;font() );
++    expTv-&gt;header()-&gt;resizeSection ( 1,
++                                     fm1.width ( tr ( &quot;Automount&quot; ) ) +10 );
++    connect ( openDir,SIGNAL ( clicked() ),this,SLOT ( slot_openDir() ) );
++    connect ( addDir,SIGNAL ( clicked() ),this,SLOT ( slot_addDir() ) );
++    connect ( delDir,SIGNAL ( clicked() ),this,SLOT ( slot_delDir() ) );
++    connect ( cbFsConv,SIGNAL ( clicked() ),this
++              ,SLOT ( slot_convClicked() ) );
++    readConfig();
+ }
+ 
+ 
+@@ -150,211 +150,211 @@ ShareWidget::~ShareWidget()
+ 
+ void ShareWidget::slot_openDir()
+ {
+-	QString startDir=ONMainWindow::getHomeDirectory();
++    QString startDir=ONMainWindow::getHomeDirectory();
+ #ifdef Q_OS_WIN
+-	if ( ONMainWindow::getPortable() &amp;&amp;
+-	        ONMainWindow::U3DevicePath().length() &gt;0 )
+-	{
+-		startDir=ONMainWindow::U3DevicePath() +&quot;/&quot;;
+-	}
++    if ( ONMainWindow::getPortable() &amp;&amp;
++            ONMainWindow::U3DevicePath().length() &gt;0 )
++    {
++        startDir=ONMainWindow::U3DevicePath() +&quot;/&quot;;
++    }
+ #endif
+ 
+-	QString path= QFileDialog::getExistingDirectory (
+-	                  this,
+-	                  tr ( &quot;Select folder&quot; ),
+-	                  startDir );
+-	if ( path!=QString::null )
+-	{
++    QString path= QFileDialog::getExistingDirectory (
++                      this,
++                      tr ( &quot;Select folder&quot; ),
++                      startDir );
++    if ( path!=QString::null )
++    {
+ #ifdef Q_OS_WIN
+-		if ( ONMainWindow::getPortable() &amp;&amp;
+-		        ONMainWindow::U3DevicePath().length() &gt;0 )
+-		{
+-			if ( path.indexOf ( ONMainWindow::U3DevicePath() ) !=0 )
+-			{
+-				QMessageBox::critical (
+-				    0l,tr ( &quot;Error&quot; ),
+-				    tr ( &quot;x2goclient is running in &quot;
+-				         &quot;portable mode. You should &quot;
+-				         &quot;use a path on your usb device &quot;
+-				         &quot;to be able to access your data &quot;
+-				         &quot;whereever you are&quot; ),
+-				    QMessageBox::Ok,QMessageBox::NoButton );
+-				slot_openDir();
+-				return;
+-			}
+-			path.replace ( ONMainWindow::U3DevicePath(),
+-			               &quot;(U3)&quot; );
+-		}
++        if ( ONMainWindow::getPortable() &amp;&amp;
++                ONMainWindow::U3DevicePath().length() &gt;0 )
++        {
++            if ( path.indexOf ( ONMainWindow::U3DevicePath() ) !=0 )
++            {
++                QMessageBox::critical (
++                    0l,tr ( &quot;Error&quot; ),
++                    tr ( &quot;x2goclient is running in &quot;
++                         &quot;portable mode. You should &quot;
++                         &quot;use a path on your usb device &quot;
++                         &quot;to be able to access your data &quot;
++                         &quot;whereever you are&quot; ),
++                    QMessageBox::Ok,QMessageBox::NoButton );
++                slot_openDir();
++                return;
++            }
++            path.replace ( ONMainWindow::U3DevicePath(),
++                           &quot;(U3)&quot; );
++        }
+ #endif
+-		ldir-&gt;setText ( path );
+-	}
++        ldir-&gt;setText ( path );
++    }
+ }
+ 
+ 
+ void ShareWidget::slot_addDir()
+ {
+-	QString path=ldir-&gt;text();
+-	if ( path.length() &lt;1 )
+-		return;
+-	for ( int i=0;i&lt;model-&gt;rowCount();++i )
+-		if ( model-&gt;index ( i,0 ).data().toString() ==path )
+-			return;
+-	QStandardItem *item;
+-	item= new QStandardItem ( path );
+-	model-&gt;setItem ( model-&gt;rowCount(),0,item );
+-	item= new QStandardItem();
+-	item-&gt;setCheckable ( true );
+-	model-&gt;setItem ( model-&gt;rowCount()-1,1,item );
+-	ldir-&gt;setText ( QString::null );
++    QString path=ldir-&gt;text();
++    if ( path.length() &lt;1 )
++        return;
++    for ( int i=0; i&lt;model-&gt;rowCount(); ++i )
++        if ( model-&gt;index ( i,0 ).data().toString() ==path )
++            return;
++    QStandardItem *item;
++    item= new QStandardItem ( path );
++    model-&gt;setItem ( model-&gt;rowCount(),0,item );
++    item= new QStandardItem();
++    item-&gt;setCheckable ( true );
++    model-&gt;setItem ( model-&gt;rowCount()-1,1,item );
++    ldir-&gt;setText ( QString::null );
+ }
+ 
+ 
+ void ShareWidget::slot_delDir()
+ {
+-	model-&gt;removeRow ( expTv-&gt;currentIndex().row() );
++    model-&gt;removeRow ( expTv-&gt;currentIndex().row() );
+ }
+ 
+ 
+ void ShareWidget::readConfig()
+ {
+ 
+-	X2goSettings st ( &quot;sessions&quot; );
++    X2goSettings st ( &quot;sessions&quot; );
+ 
+-	QString exportDir=st.setting()-&gt;value ( sessionId+&quot;/export&quot;,
+-	                                        ( QVariant ) QString::null ).toString();
++    QString exportDir=st.setting()-&gt;value ( sessionId+&quot;/export&quot;,
++                                            ( QVariant ) QString::null ).toString();
+ 
+-	cbFsSshTun-&gt;setChecked ( st.setting()-&gt;value ( sessionId+&quot;/fstunnel&quot;,
+-	                         true ).toBool() );
+-	QStringList lst=exportDir.split ( &quot;;&quot;,QString::SkipEmptyParts );
++    cbFsSshTun-&gt;setChecked ( st.setting()-&gt;value ( sessionId+&quot;/fstunnel&quot;,
++                             true ).toBool() );
++    QStringList lst=exportDir.split ( &quot;;&quot;,QString::SkipEmptyParts );
+ 
+-	QString toCode=st.setting()-&gt;value ( sessionId+&quot;/iconvto&quot;,
+-	                                     ( QVariant ) &quot;UTF-8&quot; ).toString();
++    QString toCode=st.setting()-&gt;value ( sessionId+&quot;/iconvto&quot;,
++                                         ( QVariant ) &quot;UTF-8&quot; ).toString();
+ 
+ #ifdef Q_OS_WIN
+-	QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
+-	                                       ( QVariant ) tr (
+-	                                           &quot;WINDOWS-1252&quot; ) ).toString();
++    QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
++                                           ( QVariant ) tr (
++                                                   &quot;WINDOWS-1252&quot; ) ).toString();
+ #endif
+ #ifdef Q_OS_DARWIN
+-	QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
+-	                                       ( QVariant )
+-	                                       &quot;UTF-8&quot; ).toString();
++    QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
++                                           ( QVariant )
++                                           &quot;UTF-8&quot; ).toString();
+ #endif
+ #ifdef Q_OS_LINUX
+-	QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
+-	                                       ( QVariant ) tr (
+-	                                           &quot;ISO8859-1&quot; ) ).toString();
++    QString fromCode=st.setting()-&gt;value ( sessionId+&quot;/iconvfrom&quot;,
++                                           ( QVariant ) tr (
++                                                   &quot;ISO8859-1&quot; ) ).toString();
+ #endif
+ 
+-	cbFsConv-&gt;setChecked ( st.setting()-&gt;value ( sessionId+&quot;/useiconv&quot;,
+-	                       ( QVariant ) false ).toBool() );
+-	slot_convClicked();
++    cbFsConv-&gt;setChecked ( st.setting()-&gt;value ( sessionId+&quot;/useiconv&quot;,
++                           ( QVariant ) false ).toBool() );
++    slot_convClicked();
+ 
+-	int ind=cbFrom-&gt;findText ( fromCode );
+-	if ( ind !=-1 )
+-		cbFrom-&gt;setCurrentIndex ( ind );
++    int ind=cbFrom-&gt;findText ( fromCode );
++    if ( ind !=-1 )
++        cbFrom-&gt;setCurrentIndex ( ind );
+ 
+-	ind=cbTo-&gt;findText ( toCode );
+-	if ( ind !=-1 )
+-		cbTo-&gt;setCurrentIndex ( ind );
++    ind=cbTo-&gt;findText ( toCode );
++    if ( ind !=-1 )
++        cbTo-&gt;setCurrentIndex ( ind );
+ 
+-	for ( int i=0;i&lt;lst.size();++i )
+-	{
++    for ( int i=0; i&lt;lst.size(); ++i )
++    {
+ #ifndef Q_OS_WIN
+-		QStringList tails=lst[i].split ( &quot;:&quot;,QString::SkipEmptyParts );
++        QStringList tails=lst[i].split ( &quot;:&quot;,QString::SkipEmptyParts );
+ #else
+-		QStringList tails=lst[i].split ( &quot;#&quot;,QString::SkipEmptyParts );
++        QStringList tails=lst[i].split ( &quot;#&quot;,QString::SkipEmptyParts );
+ #endif
+-		QStandardItem *item;
+-		item= new QStandardItem ( tails[0] );
+-		model-&gt;setItem ( model-&gt;rowCount(),0,item );
+-		item= new QStandardItem();
+-		item-&gt;setCheckable ( true );
+-		if ( tails[1]==&quot;1&quot; )
+-			item-&gt;setCheckState ( Qt::Checked );
+-		model-&gt;setItem ( model-&gt;rowCount()-1,1,item );
+-	}
++        QStandardItem *item;
++        item= new QStandardItem ( tails[0] );
++        model-&gt;setItem ( model-&gt;rowCount(),0,item );
++        item= new QStandardItem();
++        item-&gt;setCheckable ( true );
++        if ( tails[1]==&quot;1&quot; )
++            item-&gt;setCheckState ( Qt::Checked );
++        model-&gt;setItem ( model-&gt;rowCount()-1,1,item );
++    }
+ }
+ 
+ void ShareWidget::setDefaults()
+ {
+-	cbFsSshTun-&gt;setChecked ( true );
++    cbFsSshTun-&gt;setChecked ( true );
+ 
+-	QString toCode=&quot;UTF-8&quot;;
++    QString toCode=&quot;UTF-8&quot;;
+ 
+ #ifdef Q_OS_WIN
+-	QString fromCode=tr ( &quot;WINDOWS-1252&quot; );
++    QString fromCode=tr ( &quot;WINDOWS-1252&quot; );
+ #endif
+ #ifdef Q_OS_DARWIN
+-	QString fromCode=&quot;UTF-8&quot;;
++    QString fromCode=&quot;UTF-8&quot;;
+ #endif
+ #ifdef Q_OS_LINUX
+-	QString fromCode=tr ( &quot;ISO8859-1&quot; );
++    QString fromCode=tr ( &quot;ISO8859-1&quot; );
+ #endif
+ 
+-	cbFsConv-&gt;setChecked ( false );
+-	slot_convClicked();
++    cbFsConv-&gt;setChecked ( false );
++    slot_convClicked();
+ 
+-	int ind=cbFrom-&gt;findText ( fromCode );
+-	if ( ind !=-1 )
+-		cbFrom-&gt;setCurrentIndex ( ind );
+-	ind=cbTo-&gt;findText ( toCode );
+-	if ( ind !=-1 )
+-		cbTo-&gt;setCurrentIndex ( ind );
++    int ind=cbFrom-&gt;findText ( fromCode );
++    if ( ind !=-1 )
++        cbFrom-&gt;setCurrentIndex ( ind );
++    ind=cbTo-&gt;findText ( toCode );
++    if ( ind !=-1 )
++        cbTo-&gt;setCurrentIndex ( ind );
+ }
+ 
+ 
+ void ShareWidget::saveSettings()
+ {
+ 
+-	X2goSettings st ( &quot;sessions&quot; );
+-	st.setting()-&gt;setValue ( sessionId+&quot;/fstunnel&quot;,
+-	                         ( QVariant ) cbFsSshTun-&gt;isChecked() );
++    X2goSettings st ( &quot;sessions&quot; );
++    st.setting()-&gt;setValue ( sessionId+&quot;/fstunnel&quot;,
++                             ( QVariant ) cbFsSshTun-&gt;isChecked() );
+ 
+-	QString exportDirs;
+-	for ( int i=0;i&lt;model-&gt;rowCount();++i )
+-	{
++    QString exportDirs;
++    for ( int i=0; i&lt;model-&gt;rowCount(); ++i )
++    {
+ #ifndef Q_OS_WIN
+-		exportDirs+=model-&gt;index ( i,0 ).data().toString() +&quot;:&quot;;
++        exportDirs+=model-&gt;index ( i,0 ).data().toString() +&quot;:&quot;;
+ #else
+-		exportDirs+=model-&gt;index ( i,0 ).data().toString() +&quot;#&quot;;
++        exportDirs+=model-&gt;index ( i,0 ).data().toString() +&quot;#&quot;;
+ #endif
+ 
+-		if ( model-&gt;item ( i,1 )-&gt;checkState() ==Qt::Checked )
+-			exportDirs+=&quot;1;&quot;;
+-		else
+-			exportDirs+=&quot;0;&quot;;
+-	}
+-	st.setting()-&gt;setValue ( sessionId+&quot;/export&quot;, ( QVariant ) exportDirs );
++        if ( model-&gt;item ( i,1 )-&gt;checkState() ==Qt::Checked )
++            exportDirs+=&quot;1;&quot;;
++        else
++            exportDirs+=&quot;0;&quot;;
++    }
++    st.setting()-&gt;setValue ( sessionId+&quot;/export&quot;, ( QVariant ) exportDirs );
+ 
+ 
+-	st.setting()-&gt;setValue ( sessionId+&quot;/iconvto&quot;,cbTo-&gt;currentText() );
+-	st.setting()-&gt;setValue ( sessionId+&quot;/iconvfrom&quot;,cbFrom-&gt;currentText() );
+-	st.setting()-&gt;setValue ( sessionId+&quot;/useiconv&quot;,cbFsConv-&gt;isChecked() );
+-	st.setting()-&gt;sync();
++    st.setting()-&gt;setValue ( sessionId+&quot;/iconvto&quot;,cbTo-&gt;currentText() );
++    st.setting()-&gt;setValue ( sessionId+&quot;/iconvfrom&quot;,cbFrom-&gt;currentText() );
++    st.setting()-&gt;setValue ( sessionId+&quot;/useiconv&quot;,cbFsConv-&gt;isChecked() );
++    st.setting()-&gt;sync();
+ }
+ 
+ 
+ void ShareWidget::loadEnc ( QComboBox* cb )
+ {
+-	QFile file ( &quot;:/txt/encodings&quot; );
+-	if ( !file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
+-		return;
+-
+-	QTextStream in ( &amp;file );
+-	while ( !in.atEnd() )
+-	{
+-		QString line = in.readLine();
+-		line=line.replace ( &quot;//&quot;,&quot;&quot; );
+-		cb-&gt;addItem ( line );
+-	}
++    QFile file ( &quot;:/txt/encodings&quot; );
++    if ( !file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
++        return;
++
++    QTextStream in ( &amp;file );
++    while ( !in.atEnd() )
++    {
++        QString line = in.readLine();
++        line=line.replace ( &quot;//&quot;,&quot;&quot; );
++        cb-&gt;addItem ( line );
++    }
+ }
+ 
+ void ShareWidget::slot_convClicked()
+ {
+-	bool val=cbFsConv-&gt;isChecked();
+-	cbTo-&gt;setEnabled ( val );
+-	cbFrom-&gt;setEnabled ( val );
+-	lTo-&gt;setEnabled ( val );
+-	lFrom-&gt;setEnabled ( val );
++    bool val=cbFsConv-&gt;isChecked();
++    cbTo-&gt;setEnabled ( val );
++    cbFrom-&gt;setEnabled ( val );
++    lTo-&gt;setEnabled ( val );
++    lFrom-&gt;setEnabled ( val );
+ }
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index 0672eb0..9a81853 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -47,13 +47,104 @@
+ #define PROXYTUNNELPORT 44444
+ 
+ #undef DEBUG
+-// #define DEBUG
++#define DEBUG
+ 
+ #undef SSH_DEBUG
+ // #define SSH_DEBUG
+ 
+ static bool isLibSshInited=false;
+ 
++
++#ifdef Q_OS_WIN
++#include &lt;QSettings&gt;
++// parse known_hosts file from libssh and export keys in registry to use with plink.exe
++void SshMasterConnection::parseKnownHosts()
++{
++    QFile fl(mainWnd-&gt;getHomeDirectory()+&quot;/ssh/known_hosts&quot;);
++    if (!fl.open(QFile::ReadOnly))
++        return;
++    QSettings settings(&quot;HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\SshHostKeys&quot;,
++                       QSettings::NativeFormat);
++    while (!fl.atEnd())
++    {
++        QString line=fl.readLine();
++        QStringList parts=line.split(' ',QString::SkipEmptyParts);
++        if (parts.count()!=3)
++            continue;
++
++        //lines in known_hosts have format:
++        //[host]:port &lt;ssh-rsa|ssh-dss&gt; &lt;key&gt;
++        //we proceeding only lines from libssh - no hashed hostnames
++        //or patterns are allowed
++
++        QString type=&quot;unknown&quot;;
++        QString port=&quot;22&quot;;
++        if (parts[1]==&quot;ssh-dss&quot;)
++            type=&quot;dss&quot;;
++        if (parts[1]==&quot;ssh-rsa&quot;)
++            type=&quot;rsa2&quot;;
++
++
++        QStringList hostParts=parts[0].split(&quot;:&quot;,QString::SkipEmptyParts);
++        if (hostParts.count()&gt;1)
++            port=hostParts[1];
++        hostParts[0].replace(&quot;[&quot;,&quot;&quot;);
++        hostParts[0].replace(&quot;]&quot;,&quot;&quot;);
++
++        QString keyName=type+&quot;@&quot;+port+&quot;:&quot;+hostParts[0];
++
++        QByteArray bytes=QByteArray::fromBase64(parts[2].toAscii());
++        QStringList fields;
++
++        //key is a set of data fields:
++        //[size][data][size][data].....[size][data]
++
++        for (int i=0; i&lt;bytes.count();)
++        {
++            int size=0;
++            //first 4 bytes are for size of data fild (big-endian)
++            for (int j=0; j&lt;4; ++j)
++            {
++                size+=((uchar)(bytes[i])) * pow(256,3-j);
++                i++;
++            }
++            QByteArray data;
++            data=bytes.mid(i,size);
++            QString hex;
++
++            for (int j=0; j&lt;data.count(); ++j)
++            {
++                QString byte;
++                byte.sprintf(&quot;%02x&quot;,(uchar)(data[j]));
++                hex+=byte;
++            }
++            //remove leading '0'
++            for (;;)
++            {
++                if (hex.length()==0)
++                    break;
++                if (hex[0]=='0')
++                    hex.remove(0,1);
++                else
++                    break;
++            }
++            hex=&quot;0x&quot;+hex;
++            fields&lt;&lt;hex;
++            i+=size;
++        }
++        //first element is a type of key, we don't need it
++        fields.removeFirst();
++        settings.setValue(keyName,fields.join(&quot;,&quot;));
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;writing key in registry: HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\SshHostKeys&quot;&lt;&lt;endl;
++        x2goDebug&lt;&lt;keyName&lt;&lt;&quot;=&quot;&lt;&lt;fields.join(&quot;,&quot;)&lt;&lt;endl;
++#endif
++    }
++    settings.sync();
++}
++#endif
++
++
+ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int port, bool acceptUnknownServers, QString user,
+         QString pass, QString key, bool autologin, bool krblogin,
+         bool useproxy, ProxyType type, QString proxyserver, quint16 proxyport,
+@@ -92,11 +183,14 @@ SshMasterConnection::SshMasterConnection (QObject* parent, QString host, int por
+     kerberos=krblogin;
+ #ifdef DEBUG
+     if (kerberos)
++    {
+         x2goDebug&lt;&lt;&quot;starting ssh connection with kerberos authentication&quot;&lt;&lt;endl;
++    }
+     else
++    {
+         x2goDebug&lt;&lt;&quot;starting ssh connection without kerberos authentication&quot;&lt;&lt;endl;
++    }
+ #endif
+-    kerberos=false;
+ #ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;SshMasterConnection, instance &quot;&lt;&lt;this&lt;&lt;&quot; created&quot;;
+ #endif
+@@ -359,6 +453,11 @@ void SshMasterConnection::run()
+ 
+ #ifdef Q_OS_WIN
+     ssh_options_set ( my_ssh_session, SSH_OPTIONS_SSH_DIR, (mainWnd-&gt;getHomeDirectory()+&quot;/ssh&quot;).toAscii());
++    if (kerberos)
++    {
++        parseKnownHosts();
++    }
++
+ #endif
+     ssh_options_set(my_ssh_session, SSH_OPTIONS_LOG_VERBOSITY, &amp;verbosity);
+ 
+@@ -496,7 +595,13 @@ void SshMasterConnection::run()
+         }
+         QString err;
+         if (!kerberos)
++        {
+             err=ssh_get_error ( my_ssh_session );
++        }
++        else
++        {
++            err=sshProcErrString;
++        }
+         QString message=tr ( &quot;Authentication failed&quot; );
+ #ifdef DEBUG
+         x2goDebug&lt;&lt;message&lt;&lt;&quot; - &quot;&lt;&lt;err;
+@@ -870,9 +975,63 @@ bool SshMasterConnection::userAuthWithKey()
+     return true;
+ }
+ 
++bool SshMasterConnection::userAuthKrb()
++{
++    QProcess ssh;
++    QString sshCmd;
++
++#ifdef Q_OS_WIN
++    sshCmd=&quot;plink -batch &quot;+user+&quot;@&quot;+host+&quot; -P &quot;+
++           QString::number(port)+ &quot; whoami&quot;;
++#else
++    sshCmd=&quot;ssh -o GSSApiAuthentication=yes &quot;+user+&quot;@&quot;+host+&quot; -p &quot;+
++           QString::number(port)+ &quot; -o PasswordAuthentication=no whoami&quot;;
++#endif
++
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;starting ssh:&quot; &lt;&lt;sshCmd&lt;&lt;endl;
++#endif
++    ssh.start(sshCmd);
++
++
++    if (!ssh.waitForStarted(5000))
++    {
++        sshProcErrString=ssh.errorString();
++        authErrors&lt;&lt;sshProcErrString;
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;ssh start failed:&quot; &lt;&lt;sshProcErrString&lt;&lt;endl;
++#endif
++        return false;
++    }
++    if (!ssh.waitForFinished(20000))
++    {
++        sshProcErrString=ssh.errorString();
++        authErrors&lt;&lt;sshProcErrString;
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;ssh not finished:&quot; &lt;&lt;sshProcErrString&lt;&lt;endl;
++#endif
++        return false;
++    }
++    QString outp=ssh.readAllStandardOutput();
++    QString err=ssh.readAllStandardError();
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;ssh exited\n&quot;;
++    x2goDebug&lt;&lt;&quot;stdout - &quot;&lt;&lt;outp&lt;&lt;endl;
++    x2goDebug&lt;&lt;&quot;stderr - &quot;&lt;&lt;err&lt;&lt;endl;
++    x2goDebug&lt;&lt;&quot;code - &quot;&lt;&lt;ssh.exitCode()&lt;&lt;&quot;, status - &quot;&lt;&lt;ssh.exitStatus()&lt;&lt;endl;
++#endif
++    if (ssh.exitCode() == 0 &amp;&amp; ssh.exitStatus() == 0)
++        return true;
++    sshProcErrString=err;
++    authErrors&lt;&lt;sshProcErrString;
++    return false;
++}
++
+ 
+ bool SshMasterConnection::userAuth()
+ {
++    if (kerberos)
++        return userAuthKrb();
+     if ( autologin &amp;&amp; key==&quot;&quot; )
+         if ( userAuthAuto() )
+             return true;
+diff --git a/sshmasterconnection.h b/sshmasterconnection.h
+index 43ad7f6..dda9772 100644
+--- a/sshmasterconnection.h
++++ b/sshmasterconnection.h
+@@ -114,6 +114,7 @@ private:
+     bool userAuthAuto();
+     bool userAuthWithKey();
+     bool userAuth();
++    bool userAuthKrb();
+     void channelLoop();
+     void finalize(int arg1);
+     void copy();
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 1813142..69a057e 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -22,14 +22,20 @@
+ #include &lt;QTimer&gt;
+ #include &lt;QUuid&gt;
+ 
++#include &lt;QProcess&gt;
+ #ifndef Q_OS_WIN
+ #include &lt;arpa/inet.h&gt;
+ #include &lt;netinet/tcp.h&gt;
+ #endif
+ 
+ #undef DEBUG
+-// #define DEBUG
++#define DEBUG
+ 
++#ifdef Q_OS_DARWIN
++#define KEEPALIVE_OPTION &quot; -o ServerAliveInterval=60 &quot;
++#else
++#define KEEPALIVE_OPTION &quot; -o ProtocolKeepAlives=60 &quot;
++#endif
+ 
+ SshProcess::SshProcess(SshMasterConnection* master, int pid): QObject(0)
+ {
+@@ -40,6 +46,8 @@ SshProcess::SshProcess(SshMasterConnection* master, int pid): QObject(0)
+     tunnel=false;
+     normalExited=true;
+     this-&gt;pid=pid;
++    proc=0l;
++    execProcess=false;
+ }
+ 
+ SshProcess::~SshProcess()
+@@ -47,6 +55,25 @@ SshProcess::~SshProcess()
+ #ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;ssh process destructor&quot;;
+ #endif
++
++    if (proc)
++    {
++        if (tunnel)
++        {
++            disconnect(proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,
++                       SLOT(slotSshProcFinished(int,QProcess::ExitStatus)));
++            disconnect(proc,SIGNAL(readyReadStandardError()),this,SLOT(slotSshProcStdErr()));
++            disconnect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(slotSshProcStdOut()));
++        }
++        if (proc-&gt;state()==QProcess::Running &amp;&amp; execProcess)
++        {
++            if(!proc-&gt;waitForFinished(3000))
++            {
++                proc-&gt;terminate();
++            }
++        }
++        delete proc;
++    }
+     if (serverSocket&gt;0)
+     {
+ #ifdef Q_OS_WIN
+@@ -131,41 +158,153 @@ void SshProcess::startNormal(const QString&amp; cmd)
+ {
+     QUuid uuid = QUuid::createUuid();
+     QString uuidStr = uuid.toString().mid(1, 36).toLower();
++    execProcess=true;
+ 
+-    QString shcmd = &quot;sh -c \&quot;echo X2GODATABEGIN:&quot; + uuidStr + &quot;; &quot;+cmd+&quot;; echo X2GODATAEND:&quot; + uuidStr +&quot;\&quot;;&quot;;
+ //#ifdef DEBUG
+ // ONLY UNCOMMENT FOR TESTING, MIGHT REVEAL PASSWORD WHEN command=RDP
+ //    x2goDebug&lt;&lt;&quot;executing remote command: &quot;&lt;&lt;shcmd&lt;&lt;endl;
+ // #endif
+-    masterCon-&gt;addChannelConnection(this, uuidStr, shcmd);
+-    connect(masterCon,SIGNAL(stdOut(SshProcess*,QByteArray)),this,SLOT(slotStdOut(SshProcess*,QByteArray)));
+-    connect(masterCon,SIGNAL(channelClosed(SshProcess*,QString)), this,SLOT(slotChannelClosed(SshProcess*,QString)));
++    if(!masterCon-&gt;useKerberos())
++    {
++        QString shcmd = &quot;sh -c \&quot;echo X2GODATABEGIN:&quot; + uuidStr + &quot;; &quot;+cmd+&quot;; echo X2GODATAEND:&quot; + uuidStr +&quot;\&quot;;&quot;;
++        masterCon-&gt;addChannelConnection(this, uuidStr, shcmd);
++        connect(masterCon,SIGNAL(stdOut(SshProcess*,QByteArray)),this,SLOT(slotStdOut(SshProcess*,QByteArray)));
++        connect(masterCon,SIGNAL(channelClosed(SshProcess*,QString)), this,SLOT(slotChannelClosed(SshProcess*,QString)));
++    }
++    else
++    {
++        QString shcmd = &quot;echo X2GODATABEGIN:&quot; + uuidStr + &quot;; &quot;+cmd+&quot;; echo X2GODATAEND:&quot; + uuidStr;
++        proc=new QProcess(this);
++#ifdef Q_OS_WIN
++        QString sshString=&quot;plink -batch -P &quot;+
++#else
++        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +&quot;-o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
++#endif
++                          QString::number(masterCon-&gt;getPort())+&quot; &quot;+
++                          masterCon-&gt;getUser()+&quot;@&quot;+ masterCon-&gt;getHost() +  &quot; \&quot;&quot;+shcmd+&quot;\&quot;&quot;;
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;running ssh:&quot; &lt;&lt;sshString&lt;&lt;endl;
++#endif
++        procUuid=uuidStr;
++        proc-&gt;start(sshString);
++
++        if (!proc-&gt;waitForStarted(5000))
++        {
++            stdErrString=proc-&gt;errorString();
++#ifdef DEBUG
++            x2goDebug&lt;&lt;&quot;ssh start failed:&quot; &lt;&lt;stdErrString&lt;&lt;endl;
++#endif
++            slotChannelClosed(this, uuidStr);
++            return;
++        }
++        connect(proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,
++                SLOT(slotSshProcFinished(int,QProcess::ExitStatus)));
++        connect(proc,SIGNAL(readyReadStandardError()),this,SLOT(slotSshProcStdErr()));
++        connect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(slotSshProcStdOut()));
++    }
++
+ }
+ 
+ void SshProcess::start_cp(QString src, QString dst)
+ {
+-    connect(masterCon, SIGNAL(copyErr(SshProcess*,QString,QString)), this,
+-            SLOT(slotCopyErr(SshProcess*,QString,QString)));
+-    connect(masterCon, SIGNAL(copyOk(SshProcess*)), this,SLOT(slotCopyOk(SshProcess*)));
+     scpSource=src;
+-    masterCon-&gt;addCopyRequest(this,src,dst);
++    if(!masterCon-&gt;useKerberos())
++    {
++        connect(masterCon, SIGNAL(copyErr(SshProcess*,QString,QString)), this,
++                SLOT(slotCopyErr(SshProcess*,QString,QString)));
++        connect(masterCon, SIGNAL(copyOk(SshProcess*)), this,SLOT(slotCopyOk(SshProcess*)));
++        masterCon-&gt;addCopyRequest(this,src,dst);
++    }
++    else
++    {
++        proc=new QProcess(this);
++#ifdef Q_OS_WIN
++//pscp don't working with paths like &quot;~user&quot;
++//I hope a home directories of your users are in /home/
++        dst.replace(&quot;~&quot;+masterCon-&gt;getUser(),&quot;/home/&quot;+masterCon-&gt;getUser());
++        dst.replace(&quot;~&quot;,&quot;/home/&quot;+masterCon-&gt;getUser());
++
++        QString sshString=&quot;pscp -batch -P &quot;+
++#else
++        QString sshString=&quot;scp -o GSSApiAuthentication=yes -o PasswordAuthentication=no -P &quot;+
++#endif
++                          QString::number(masterCon-&gt;getPort())+&quot; &quot;+src+&quot; &quot;+
++                          masterCon-&gt;getUser()+&quot;@&quot;+ masterCon-&gt;getHost()+&quot;:&quot;+dst;
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;running scp:&quot; &lt;&lt;sshString&lt;&lt;endl;
++#endif
++        proc-&gt;start(sshString);
++
++        if (!proc-&gt;waitForStarted(5000))
++        {
++            stdErrString=proc-&gt;errorString();
++#ifdef DEBUG
++            x2goDebug&lt;&lt;&quot;ssh start failed:&quot; &lt;&lt;stdErrString&lt;&lt;endl;
++#endif
++            slotChannelClosed(this,&quot;&quot;);
++            return;
++        }
++        connect(proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,
++                SLOT(slotSshProcFinished(int,QProcess::ExitStatus)));
++        connect(proc,SIGNAL(readyReadStandardError()),this,SLOT(slotSshProcStdErr()));
++        connect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(slotSshProcStdOut()));
++    }
+ }
+ 
+ 
+ void SshProcess::startTunnel(const QString&amp; forwardHost, uint forwardPort, const QString&amp; localHost,
+                              uint localPort, bool reverse)
+ {
+-    this-&gt;forwardHost=forwardHost;
+-    this-&gt;forwardPort=forwardPort;
+-    this-&gt;localHost=localHost;
+-    this-&gt;localPort=localPort;
+     tunnel=true;
+-    if (!reverse)
+-        tunnelLoop();
++    if(!masterCon-&gt;useKerberos())
++    {
++        this-&gt;forwardHost=forwardHost;
++        this-&gt;forwardPort=forwardPort;
++        this-&gt;localHost=localHost;
++        this-&gt;localPort=localPort;
++        if (!reverse)
++            tunnelLoop();
++        else
++        {
++            connect(masterCon, SIGNAL(reverseListenOk(SshProcess*)), this, SLOT(slotReverseTunnelOk(SshProcess*)));
++            tunnelConnection=masterCon-&gt;reverseTunnelConnection(this, forwardPort, localHost, localPort);
++        }
++    }
+     else
+     {
+-        connect(masterCon, SIGNAL(reverseListenOk(SshProcess*)), this, SLOT(slotReverseTunnelOk(SshProcess*)));
+-        tunnelConnection=masterCon-&gt;reverseTunnelConnection(this, forwardPort, localHost, localPort);
++        proc=new QProcess(this);
++#ifdef Q_OS_WIN
++        QString sshString=&quot;plink -batch -P &quot;+
++#else
++	        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +&quot;-o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
++#endif
++                          QString::number(masterCon-&gt;getPort())+&quot; &quot;+
++                          masterCon-&gt;getUser()+&quot;@&quot;+
++                          masterCon-&gt;getHost() + &quot; -N &quot;;
++        if (!reverse)
++            sshString+=&quot; -L &quot; + QString::number(localPort)+&quot;:&quot;+forwardHost+&quot;:&quot;+QString::number(forwardPort);
++        else
++            sshString+=&quot; -R &quot;+ QString::number(forwardPort)+&quot;:&quot;+forwardHost+&quot;:&quot;+QString::number(localPort);
++
++#ifdef DEBUG
++        x2goDebug&lt;&lt;&quot;running ssh:&quot; &lt;&lt;sshString&lt;&lt;endl;
++#endif
++        proc-&gt;start(sshString);
++
++        if (!proc-&gt;waitForStarted(5000))
++        {
++            stdErrString=proc-&gt;errorString();
++#ifdef DEBUG
++            x2goDebug&lt;&lt;&quot;ssh start failed:&quot; &lt;&lt;stdErrString&lt;&lt;endl;
++#endif
++            slotChannelClosed(this,&quot;&quot;);
++            return;
++        }
++        connect(proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,
++                SLOT(slotSshProcFinished(int,QProcess::ExitStatus)));
++        connect(proc,SIGNAL(readyReadStandardError()),this,SLOT(slotSshProcStdErr()));
++        connect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(slotSshProcStdOut()));
++        emit sshTunnelOk(pid);
+     }
+ }
+ 
+@@ -228,6 +367,10 @@ void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+     if (!normalExited)
+     {
+         output=abortString;
++        if (output.length()&lt;5)
++        {
++            output=stdErrString;
++        }
+     }
+     else
+     {
+@@ -239,7 +382,8 @@ void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+             x2goDebug&lt;&lt;&quot;have only stderr, something must be wrong&quot;&lt;&lt;endl;
+ #endif
+         }
+-        else {
++        else
++        {
+             QString begin_marker = &quot;X2GODATABEGIN:&quot;+uuid+&quot;\n&quot;;
+             QString end_marker = &quot;X2GODATAEND:&quot;+uuid+&quot;\n&quot;;
+             int output_begin=stdOutString.indexOf(begin_marker) + begin_marker.length();
+@@ -248,7 +392,28 @@ void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+         }
+     }
+ #ifdef DEBUG
+-    x2goDebug&lt;&lt;&quot;ssh finished:&quot;&lt;&lt;normalExited&lt;&lt;&quot; - &quot;&lt;&lt;output&lt;&lt;endl;
++    x2goDebug&lt;&lt;&quot;ssh finished:&quot;&lt;&lt;normalExited&lt;&lt;&quot; - &quot;&lt;&lt;output&lt;&lt;uuid&lt;&lt;endl;
+ #endif
+     emit sshFinished(normalExited, output, pid);
+ }
++
++void SshProcess::slotSshProcFinished(int exitCode, QProcess::ExitStatus exitStatus)
++{
++    normalExited=false;
++    if (exitCode==0 &amp;&amp; exitStatus==QProcess::NormalExit)
++        normalExited=true;
++#ifdef DEBUG
++    x2goDebug&lt;&lt;&quot;ssh process exit code :&quot;&lt;&lt;exitStatus;
++#endif
++    slotChannelClosed(this,procUuid);
++}
++
++void SshProcess::slotSshProcStdErr()
++{
++    slotStdErr(this, proc-&gt;readAllStandardError());
++}
++
++void SshProcess::slotSshProcStdOut()
++{
++    slotStdOut(this, proc-&gt;readAllStandardOutput());
++}
+diff --git a/sshprocess.h b/sshprocess.h
+index caddb3f..d1e05bf 100644
+--- a/sshprocess.h
++++ b/sshprocess.h
+@@ -20,14 +20,13 @@
+ 
+ #include &lt;libssh/libssh.h&gt;
+ #include &lt;QObject&gt;
+-
++#include &lt;QProcess&gt;
+ #ifndef Q_OS_WIN
+ #include &lt;netinet/in.h&gt;
+ #endif
+ 
+ #include &quot;sshmasterconnection.h&quot;
+ 
+-
+ class SshProcess : public QObject
+ {
+     Q_OBJECT
+@@ -70,7 +69,10 @@ private:
+     QString abortString;
+     bool tunnel;
+     bool normalExited;
+-
++//only to use with krb (until no GSSAPI support in libssh)
++    QProcess* proc;
++    QString procUuid;
++    bool execProcess;
+ 
+ private slots:
+     void slotCheckNewConnection();
+@@ -81,6 +83,10 @@ private slots:
+     void slotReverseTunnelOk(SshProcess* creator);
+     void slotCopyOk(SshProcess* creator);
+     void slotCopyErr(SshProcess* creator,QString message, QString sshSessionErr);
++    //krb stuff
++    void slotSshProcFinished( int exitCode, QProcess::ExitStatus exitStatus);
++    void slotSshProcStdErr();
++    void slotSshProcStdOut();
+ signals:
+     void sshFinished ( bool result, QString output, int processId);
+     void sshTunnelOk(int processId);
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016990.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-62-g1c7a4f1
+</A></li>
+	<LI>Next message: <A HREF="016993.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-68-gd1bd661
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16992">[ date ]</a>
+              <a href="thread.html#16992">[ thread ]</a>
+              <a href="subject.html#16992">[ subject ]</a>
+              <a href="author.html#16992">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

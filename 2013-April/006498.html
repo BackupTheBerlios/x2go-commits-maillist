@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	adc34c5dfa6a012b868c3b368dad325074a0f61a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09adc34c5dfa6a012b868c3b368dad325074a0f61a&In-Reply-To=%3C20130427114532.E013D5DB2D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006490.html">
+   <LINK REL="Next"  HREF="006483.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	adc34c5dfa6a012b868c3b368dad325074a0f61a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09adc34c5dfa6a012b868c3b368dad325074a0f61a&In-Reply-To=%3C20130427114532.E013D5DB2D%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	adc34c5dfa6a012b868c3b368dad325074a0f61a">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Apr 27 13:45:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006490.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	5c90b12afe82afce6c09624e684da3dca687028e
+</A></li>
+        <LI>Next message: <A HREF="006483.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	a17c0a60a2e3f036cf54013f0402c18a5f0768cf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6498">[ date ]</a>
+              <a href="thread.html#6498">[ thread ]</a>
+              <a href="subject.html#6498">[ subject ]</a>
+              <a href="author.html#6498">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  adc34c5dfa6a012b868c3b368dad325074a0f61a (commit)
+      from  f80b38d61ce1b138c119a57cda951ea8b6c66cc1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   69 +++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 40 insertions(+), 29 deletions(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index 7770970..4e43ec4 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -249,6 +249,43 @@ done:
+ 	return retval;
+ }
+ 
++static int
++session_socket_handler (const char * buffer, int buffer_len, struct passwd * pwdent, int socketfd)
++{
++	/* Locks to carry over */
++	mlock(buffer, buffer_len);
++
++	if (setgid(pwdent-&gt;pw_gid) &lt; 0 || setuid(pwdent-&gt;pw_uid) &lt; 0 ||
++			setegid(pwdent-&gt;pw_gid) &lt; 0 || seteuid(pwdent-&gt;pw_uid) &lt; 0) {
++		return EXIT_FAILURE;
++	}
++
++	if (listen(socketfd, 1) &lt; 0) {
++		return EXIT_FAILURE;
++	}
++
++	socklen_t connected_addr_size;
++	int connectfd;
++	struct sockaddr_un connected_addr;
++
++	connected_addr_size = sizeof(struct sockaddr_un);
++	connectfd = accept(socketfd, (struct sockaddr *)&amp;connected_addr, &amp;connected_addr_size);
++	if (connectfd &lt; 0) {
++		return EXIT_FAILURE;
++	}
++
++	int writedata;
++	writedata = write(connectfd, buffer, buffer_len);
++
++	close(connectfd);
++
++	if (writedata == buffer_len) {
++		return 0;
++	}
++
++	return EXIT_FAILURE;
++}
++
+ pid_t session_pid = 0;
+ /* Open Session.  Here we need to fork a little process so that we can
+    give the credentials to the session itself so that it can startup the
+@@ -330,40 +367,14 @@ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv
+ 
+ 	pid_t pid = fork();
+ 	if (pid == 0) {
+-		/* Locks to carry over */
+-		mlock(buffer, buffer_len);
++		int retval = 0;
+ 
+-		if (setgid(pwdent-&gt;pw_gid) &lt; 0 || setuid(pwdent-&gt;pw_uid) &lt; 0 ||
+-				setegid(pwdent-&gt;pw_gid) &lt; 0 || seteuid(pwdent-&gt;pw_uid) &lt; 0) {
+-			_exit(EXIT_FAILURE);
+-		}
+-
+-		if (listen(socketfd, 1) &lt; 0) {
+-			_exit(EXIT_FAILURE);
+-		}
+-
+-		socklen_t connected_addr_size;
+-		int connectfd;
+-		struct sockaddr_un connected_addr;
++		retval = session_socket_handler(buffer, buffer_len, pwdent, socketfd);
+ 
+-		connected_addr_size = sizeof(struct sockaddr_un);
+-		connectfd = accept(socketfd, (struct sockaddr *)&amp;connected_addr, &amp;connected_addr_size);
+-		if (connectfd &lt; 0) {
+-			_exit(EXIT_FAILURE);
+-		}
+-
+-		int writedata;
+-		writedata = write(connectfd, buffer, buffer_len);
+-
+-		close(connectfd);
+ 		close(socketfd);
+ 		free(buffer);
+ 
+-		if (writedata == buffer_len) {
+-			_exit(0);
+-		} else {
+-			_exit(EXIT_FAILURE);
+-		}
++		_exit(retval);
+ 	} else if (pid &lt; 0) {
+ 		retval = PAM_SYSTEM_ERR;
+ 		close(socketfd);
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006490.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	5c90b12afe82afce6c09624e684da3dca687028e
+</A></li>
+	<LI>Next message: <A HREF="006483.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	a17c0a60a2e3f036cf54013f0402c18a5f0768cf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6498">[ date ]</a>
+              <a href="thread.html#6498">[ thread ]</a>
+              <a href="subject.html#6498">[ subject ]</a>
+              <a href="author.html#6498">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

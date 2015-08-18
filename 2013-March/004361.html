@@ -1,0 +1,276 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-8-ge48dab7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.0.6-8-ge48dab7&In-Reply-To=%3C20130306182349.B59645DB14%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004360.html">
+   <LINK REL="Next"  HREF="004362.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-8-ge48dab7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%090.0.0.6-8-ge48dab7&In-Reply-To=%3C20130306182349.B59645DB14%40ymir%3E"
+       TITLE="[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-8-ge48dab7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Mar  6 19:23:49 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004360.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-7-g09dff93
+</A></li>
+        <LI>Next message: <A HREF="004362.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.4.0.2-2-g9ac619d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4361">[ date ]</a>
+              <a href="thread.html#4361">[ thread ]</a>
+              <a href="subject.html#4361">[ subject ]</a>
+              <a href="author.html#4361">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  e48dab769735322633d28a54c19f25bdeed27aa3 (commit)
+      from  09dff9341cb3dc697bce90864fe3e9c76f059269 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit e48dab769735322633d28a54c19f25bdeed27aa3
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Mar 6 19:23:46 2013 +0100
+
+    Ignore off-line X2Go servers in multi-node load-balanced setups. (Fixes: #132).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 +
+ x2gobroker/__init__.py            |    9 ++++
+ x2gobroker/agent.py               |    3 +-
+ x2gobroker/brokers/base_broker.py |   97 +++++++++++++++++++++++++------------
+ 4 files changed, 78 insertions(+), 33 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index d8c0c3c..00b4ee1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,8 @@ x2gobroker (0.0.0.7-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (0.0.0.7):
+     - Add algorithm to ,,normalize'' hostnames used in session profiles
+       vs. those returned by the broker agent. (Fixes: #133).
++    - Ignore off-line X2Go servers in multi-node load-balanced setups.
++      (Fixes: #132).
+   * /debian/control:
+     + Build-Depend on python-paste, python-nose (testsuite needs them).
+ 
+diff --git a/x2gobroker/__init__.py b/x2gobroker/__init__.py
+index 6d877ca..f63bf9c 100644
+--- a/x2gobroker/__init__.py
++++ b/x2gobroker/__init__.py
+@@ -20,3 +20,12 @@
+ 
+ __VERSION__ = '0.0.0.7'
+ __AUTHOR__ = 'Mike Gabriel (X2Go Project) &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;'
++
++from loggers import logger_error
++
++class X2GoBrokerBaseException(BaseException):
++    def __init__(self, *args, **kwargs):
++        BaseException.__init__(self, *args, **kwargs)
++        logger_error.error('An exceptional problem occurred: {exception}(&quot;{msg}&quot;)'.format(exception=type(self).__name__, msg=str(self)))
++
++class X2GoBrokerAgentException(X2GoBrokerBaseException): pass
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index 9b63f00..3782bb5 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -82,6 +82,7 @@ def call_local_broker_agent(username, mode, cmdline_args=[]):
+     if result[0].startswith('OK'):
+         return [ r for r in result[1:] if r ]
+ 
++    raise x2gobroker.X2GoBrokerAgentException('Query to local X2Go Broker Agent failed with no response')
+ 
+ def call_remote_broker_agent(username, mode, cmdline_args=[], remote_agent=None):
+     &quot;&quot;&quot;\
+@@ -133,7 +134,7 @@ def call_remote_broker_agent(username, mode, cmdline_args=[], remote_agent=None)
+         if result and result[0].startswith('OK'):
+             return [ r for r in result[1:] if r ]
+     except paramiko.SSHException:
+-        logger_error.error('could not connect to remote X2Go Broker Agent (user: {user}, hostname: {hostname}, port: {port}'.format(user=remote_username, hostname=remote_hostname, port=remote_port))
++        raise x2gobroker.X2GoBrokerAgentException('Query to remote X2Go Broker Agent (user: {user}, hostname: {hostname}, port: {port}) failed'.format(user=remote_username, hostname=remote_hostname, port=remote_port))
+ 
+ 
+ def list_sessions(username, query_mode='LOCAL', remote_agent=None):
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index 04dd86b..273e605 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -787,6 +787,24 @@ class X2GoBroker(object):
+ 
+         return list_of_profiles
+ 
++    def random_remote_agent(self, profile_id, exclude_agents=[]):
++        &quot;&quot;&quot;\
++        &quot;&quot;&quot;
++        profile = self.get_profile(profile_id)
++        server_list = profile[u'host']
++
++        for agent in exclude_agents:
++            if agent['hostname'] in server_list:
++                server_list.remove(server)
++
++        remote_agent = None
++        if server_list:
++            random.shuffle(server_list)
++            remote_agent_server = server_list[0]
++            remote_agent_port = profile[u'sshport']
++            remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
++        return remote_agent
++
+     def select_session(self, profile_id, username=None):
+         &quot;&quot;&quot;\
+         Start/resume a session by selecting a profile name offered by the X2Go client.
+@@ -808,52 +826,67 @@ class X2GoBroker(object):
+ 
+         remote_agent = None
+         if agent_query_mode.upper() == u'SSH':
+-            random.shuffle(server_list)
+-            remote_agent_server = server_list[0]
+-            remote_agent_port = profile[u'sshport']
+-            remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
++            remote_agent = self.random_remote_agent(server_list)
+ 
+         # detect best X2Go server for this user if load balancing is configured
+         if len(server_list) &gt;= 2 and username:
+ 
+-            busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent = remote_agent)
+ 
+-            # when detecting the server load we have to support handling of differing subdomains (config
+-            # file vs. server load returned by x2gobroker agent). Best approach: all members of a multi-node
+-            # server farm either (a) do not have a subdomain in their hostname or (b) the subdomain is
+-            # is identical.
++            # query remote agent for session info, if one of the server's is down, we will try the next one...
++            busy_servers = None
++            exclude_agents = []
++            while not busy_servers and remote_agent:
++
++                try:
++                    busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent=remote_agent)
++                except x2gobroker.X2GoBrokerAgentException:
++                    exclude_agents.append(remote_agent)
++                    remote_agent = self.random_remote_agent(profile_id, exclude_agents=exclude_agents)
+ 
+-            # Example:
+-            #
+-            #    ts01, ts02 - hostnames as returned by agent
+-            #    ts01.intern, ts02.intern - hostnames configured in session profile option ,,host''
+-            #    -&gt; this will result in the subdomain .intern being stripped off from the hostnames before detecting
+-            #       the best server for this user
++            if busy_servers is not None:
+ 
+-            ### NORMALIZE (=reduce to hostname only) X2Go server names (as found in config) if possible
+-            server_list_normalized, subdomains_config = x2gobroker.utils.normalize_hostnames(server_list)
++                # if we do not get until here, then all broker agent calls have failed!!!!
+ 
+-            ### NORMALIZE X2Go server names (as returned by x2gobroker agent)--only if the hostnames in the config share the same subdomain
+-            if len(subdomains_config) == 1:
++                # when detecting the server load we have to support handling of differing subdomains (config
++                # file vs. server load returned by x2gobroker agent). Best approach: all members of a multi-node
++                # server farm either (a) do not have a subdomain in their hostname or (b) the subdomain is
++                # is identical.
+ 
+-                busy_servers_normalized, subdomains_agent = x2gobroker.utils.normalize_hostnames(busy_servers)
+-                if len(subdomains_agent) &lt;= 1:
++                # Example:
++                #
++                #    ts01, ts02 - hostnames as returned by agent
++                #    ts01.intern, ts02.intern - hostnames configured in session profile option ,,host''
++                #    -&gt; this will result in the subdomain .intern being stripped off from the hostnames before detecting
++                #       the best server for this user
+ 
+-                    # all X2Go servers in the multi-node server farm are in the same DNS subdomain
+-                    # we can operate on hostname-only hostnames
+-                    server_list = server_list_normalized
+-                    busy_servers = busy_servers_normalized
++                ### NORMALIZE (=reduce to hostname only) X2Go server names (as found in config) if possible
++                server_list_normalized, subdomains_config = x2gobroker.utils.normalize_hostnames(server_list)
+ 
+-            for server in server_list:
+-                if server not in busy_servers.keys():
+-                    busy_servers[server] = 0
++                ### NORMALIZE X2Go server names (as returned by x2gobroker agent)--only if the hostnames in the config share the same subdomain
++                if len(subdomains_config) == 1:
+ 
+-            busy_server_list = [ (load, server) for server, load in busy_servers.items() ]
+-            busy_server_list.sort()
++                    busy_servers_normalized, subdomains_agent = x2gobroker.utils.normalize_hostnames(busy_servers)
++                    if len(subdomains_agent) &lt;= 1:
+ 
+-            logger_broker.debug('base_broker.X2GoBroker.select_session(): load balancer analysis: {server_load}'.format(server_load=unicode(busy_server_list)))
++                        # all X2Go servers in the multi-node server farm are in the same DNS subdomain
++                        # we can operate on hostname-only hostnames
++                        server_list = server_list_normalized
++                        busy_servers = busy_servers_normalized
+ 
+-            best_server = busy_server_list[0][1]
++                for server in server_list:
++                    if server not in busy_servers.keys():
++                        busy_servers[server] = 0
++
++                busy_server_list = [ (load, server) for server, load in busy_servers.items() ]
++                busy_server_list.sort()
++
++                logger_broker.debug('base_broker.X2GoBroker.select_session(): load balancer analysis: {server_load}'.format(server_load=unicode(busy_server_list)))
++
++                best_server = busy_server_list[0][1]
++
++            else:
++                logger_broker.warning('base_broker.X2GoBroker.select_session(): all expected broker agents failed to respond, this does not look good. We tried these agent hosts: {agent_hosts}'.format(agent_hosts=unicode(server_list)))
++                best_server = server_list[0]
+ 
+         else:
+             best_server = server_list[0]
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004360.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	0.0.0.6-7-g09dff93
+</A></li>
+	<LI>Next message: <A HREF="004362.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.4.0.2-2-g9ac619d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4361">[ date ]</a>
+              <a href="thread.html#4361">[ thread ]</a>
+              <a href="subject.html#4361">[ subject ]</a>
+              <a href="author.html#4361">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

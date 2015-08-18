@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-213-ge6cdad1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-213-ge6cdad1&In-Reply-To=%3C20140103195328.49BC35DB3D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019886.html">
+   <LINK REL="Next"  HREF="019891.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-213-ge6cdad1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-213-ge6cdad1&In-Reply-To=%3C20140103195328.49BC35DB3D%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-213-ge6cdad1">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:53:28 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019886.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-212-gf7f414b
+</A></li>
+        <LI>Next message: <A HREF="019891.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-215-g538f5a7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19888">[ date ]</a>
+              <a href="thread.html#19888">[ thread ]</a>
+              <a href="subject.html#19888">[ subject ]</a>
+              <a href="author.html#19888">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  e6cdad130e1aebe7fa94022b3f7fe0d1cf6c4f8c (commit)
+      from  f7f414b7b87e13e89e9eb9109e00562fa6aecc86 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog              |    3 +++
+ x2goserver/bin/x2gostartagent |    5 +++++
+ x2goserver/sbin/x2godbadmin   |    7 +++++--
+ 3 files changed, 13 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2b362eb..6a70599 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -70,6 +70,9 @@ x2goserver (4.0.1.7-0~x2go1) UNRELEASED; urgency=low
+       (Fixes: #285).
+     - Provide sudoers.d/x2goserver file that allows sudoed commands under
+       KDE (by pertaining the env var QT_GRAPHICSSYSTEM. (Fixes: #276).
++    - With PostgreSQL as session db backend, prevent the root user from
++      launching sessions. Also, prevent x2gouser_root from being added as a
++      PostgreSQL user. (Fixes: #310).
+   * /debian/control:
+     - Update LONG_DESCRIPTIONS.
+     - Move xfonts-base from Recommends: field to Depends: field (bin:package
+diff --git a/x2goserver/bin/x2gostartagent b/x2goserver/bin/x2gostartagent
+index 1b3f454..607a35e 100755
+--- a/x2goserver/bin/x2gostartagent
++++ b/x2goserver/bin/x2gostartagent
+@@ -27,6 +27,11 @@ $X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ X2GO_PORT=49 #First port for X2GO=50
+ SSH_PORT=30000 #First ssh port 30001
+ 
++if egrep &quot;^backend[ ]*=[ ]*postgres&quot; /etc/x2go/x2gosql/sql 1&gt;/dev/null 2&gt;/dev/null &amp;&amp; [ &quot;x$USER&quot; = &quot;xroot&quot; ]; then
++	echo &quot;The super-user \&quot;root\&quot; is not allowed to launch X2Go sessions.&quot;
++	exit -1
++fi
++
+ X2GO_ROOT=&quot;${HOME}/.x2go&quot;
+ export NX_ROOT=$X2GO_ROOT
+ 
+diff --git a/x2goserver/sbin/x2godbadmin b/x2goserver/sbin/x2godbadmin
+index 5362905..4f10b02 100755
+--- a/x2goserver/sbin/x2godbadmin
++++ b/x2goserver/sbin/x2godbadmin
+@@ -308,9 +308,12 @@ sub add_user()
+ {
+ 	my $user=shift;
+ 	my ($name, $pass, $uid, $pgid, $quota, $comment, $gcos, $dir, $shell, $expire) = getpwnam($user);
+-	if (! $uid)
++	if (! $name)
+ 	{
+-		print &quot;Can not find user ($user)\n&quot;;
++		print &quot;Cannot find user ($user)\n&quot;;
++		return;
++	} elsif ($name == &quot;root&quot;) {
++		print &quot;The super-user \&quot;root\&quot; is not allowed to use X2Go\n&quot;;
+ 		return;
+ 	}
+ 	$pass=`makepasswd`;
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019886.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-212-gf7f414b
+</A></li>
+	<LI>Next message: <A HREF="019891.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-215-g538f5a7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19888">[ date ]</a>
+              <a href="thread.html#19888">[ thread ]</a>
+              <a href="subject.html#19888">[ subject ]</a>
+              <a href="author.html#19888">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

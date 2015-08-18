@@ -1,0 +1,200 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6-6-gce46482
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.6-6-gce46482&In-Reply-To=%3C20130914135514.02C775DB3E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012715.html">
+   <LINK REL="Next"  HREF="012717.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6-6-gce46482</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.6-6-gce46482&In-Reply-To=%3C20130914135514.02C775DB3E%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6-6-gce46482">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:13 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012715.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6
+</A></li>
+        <LI>Next message: <A HREF="012717.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6-4-gddd50d4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12716">[ date ]</a>
+              <a href="thread.html#12716">[ thread ]</a>
+              <a href="subject.html#12716">[ subject ]</a>
+              <a href="author.html#12716">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  ce46482629e575dc947cd57c7a1a76f88e80977b (commit)
+      from  42f28cf1185fdb580970eb4f9b5e7e19412356b9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog              |    1 +
+ pyhoca/wxgui/printingprefs.py |   62 ++++++++++++++++++++++++++++-------------
+ 2 files changed, 43 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2377456..7496342 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -3,6 +3,7 @@ pyhoca-gui (0.1.0.7-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (0.1.0.7)
+     - minor i18n fixes (de)
+     - Delaying taskbar icon closure as much as possible (closes upstream issue #79).
++    - Check if print system (CUPS/WinSpool) is available or not (close upstream issue #74)
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 06 Jul 2011 22:17:10 +0200
+ 
+diff --git a/pyhoca/wxgui/printingprefs.py b/pyhoca/wxgui/printingprefs.py
+index 2f079c6..ff1bb64 100644
+--- a/pyhoca/wxgui/printingprefs.py
++++ b/pyhoca/wxgui/printingprefs.py
+@@ -73,21 +73,28 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+         self._availablePrinters = {}
+         if _X2GOCLIENT_OS != &quot;Windows&quot;:
+             # initialize CUPS config API and retrieve a list of local print queues
+-            cups.setUser(_CURRENT_LOCAL_USER)
+-            cups_connection = cups.Connection()
+-            cups_printers = cups_connection.getPrinters()
+-            for p in cups_printers.keys():
+-                self._availablePrinters.update({ p: '%s (%s)' % (p, cups_printers[p]['printer-info']), })
+-            self._defaultPrinter = cups_connection.getDefault()
++            try:
++                cups.setUser(_CURRENT_LOCAL_USER)
++                cups_connection = cups.Connection()
++                cups_printers = cups_connection.getPrinters()
++                for p in cups_printers.keys():
++                    self._availablePrinters.update({ p: '%s (%s)' % (p, cups_printers[p]['printer-info']), })
++                self._defaultPrinter = cups_connection.getDefault()
++            except RuntimeError:
++                self._defaultPrinter = '#PRINTSYSTEM_UNAVAILABLE#'
+         else:
+             # initialize win32print API and retrieve a list of local print queues
+-            win32_printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
+-            for p in win32_printers:
+-                if p[3]:
+-                    self._availablePrinters.update({p[2]: '%s (%s)' % (p[2], p[3]), })
+-                else:
+-                    self._availablePrinters.update({p[2]: '%s' % p[2], })
+-                self._defaultPrinter = win32print.GetDefaultPrinter()
++            try:
++                win32_printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
++                for p in win32_printers:
++                    if p[3]:
++                        self._availablePrinters.update({p[2]: '%s (%s)' % (p[2], p[3]), })
++                    else:
++                        self._availablePrinters.update({p[2]: '%s' % p[2], })
++                        self._defaultPrinter = win32print.GetDefaultPrinter()
++            except:
++                # FIXME: find out what exception could occur here.
++                self._defaultPrinter = '#PRINTSYSTEM_UNAVAILABLE#'
+ 
+         self.client_printing = self._PyHocaGUI.client_printing
+ 
+@@ -211,10 +218,16 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+ 
+         self.PdfViewCmd.SetValue(self.client_printing.get_property('pdfview_cmd'))
+         self.PdfSaveToFolder.SetValue(self.client_printing.get_property('save_to_folder'))
+-        try:
+-            _printer_name = self._availablePrinters[self.client_printing.get_property('printer')]
+-        except KeyError:
+-            _printer_name = self._availablePrinters[self._defaultPrinter]
++        if self._defaultPrinter != '#PRINTSYSTEM_UNAVAILABLE#':
++            try:
++                _printer_name = self._availablePrinters[self.client_printing.get_property('printer')]
++            except KeyError:
++                _printer_name = self._availablePrinters[self._defaultPrinter]
++        else:
++            _printer_name = _(u'Print system is not available')
++            self.PrintPrinter.Clear()
++            self.PrintPrinter.Append(_(u'Print system is not available'))
++            self.PrintPrinter.Enable(False)
+         self.PrintPrinter.SetValue(_printer_name)
+         self.PrintCmd.SetValue(self.client_printing.get_property('print_cmd'))
+ 
+@@ -237,10 +250,18 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+ 
+     @property
+     def _print_action_properties(self):
++
++        # handle missing print system
++        _printer = [ p for p in self._availablePrinters.keys() if self._availablePrinters[p] == self.PrintPrinter.GetValue() and self._defaultPrinter != '#PRINTSYSTEM_UNAVAILABLE#' ]
++        try:
++            _printer = _printer[0]
++        except IndexError:
++            _printer = ''
++
+         return {
+             'pdfview_cmd': self.PdfViewCmd.GetValue(),
+             'save_to_folder': self.PdfSaveToFolder.GetValue(),
+-            'printer': [ p for p in self._availablePrinters.keys() if self._availablePrinters[p] == self.PrintPrinter.GetValue() ][0],
++            'printer': _printer,
+             'print_cmd': self.PrintCmd.GetValue(),
+         }
+ 
+@@ -298,8 +319,9 @@ class PyHocaGUI_PrintingPreferences(wx.Dialog):
+ 
+     def PrintPrinterSelected(self):
+         self._disable_PrintOptions()
+-        self.PrintPrinterLabel.Enable(True)
+-        self.PrintPrinter.Enable(True)
++        if self._defaultPrinter != '#PRINTSYSTEM_UNAVAILABLE#':
++            self.PrintPrinterLabel.Enable(True)
++            self.PrintPrinter.Enable(True)
+ 
+     def PrintCmdSelected(self):
+         self._disable_PrintOptions()
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012715.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6
+</A></li>
+	<LI>Next message: <A HREF="012717.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.6-4-gddd50d4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12716">[ date ]</a>
+              <a href="thread.html#12716">[ thread ]</a>
+              <a href="subject.html#12716">[ subject ]</a>
+              <a href="author.html#12716">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

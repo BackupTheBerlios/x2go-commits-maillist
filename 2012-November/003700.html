@@ -1,0 +1,187 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-86-gf7bffc7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.10-86-gf7bffc7&In-Reply-To=%3C20121121093529.F388A5DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003699.html">
+   <LINK REL="Next"  HREF="003701.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-86-gf7bffc7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.10-86-gf7bffc7&In-Reply-To=%3C20121121093529.F388A5DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-86-gf7bffc7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Nov 21 10:35:29 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003699.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-85-gfc27736
+</A></li>
+        <LI>Next message: <A HREF="003701.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	57030875e10c269c360ac2b1c1623b9f427d6714
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3700">[ date ]</a>
+              <a href="thread.html#3700">[ thread ]</a>
+              <a href="subject.html#3700">[ subject ]</a>
+              <a href="author.html#3700">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  f7bffc7d1e9e8c64a3e01e3c79ec8a94ed7b4970 (commit)
+      from  fc277361b4e764ef8f5a9b9c66fbd61b0c7cad40 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit f7bffc7d1e9e8c64a3e01e3c79ec8a94ed7b4970
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Nov 21 10:33:29 2012 +0100
+
+    more work on the folder mounting code
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/session.py |   36 ++++++++++++++++++++++++------------
+ 1 file changed, 24 insertions(+), 12 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/session.py b/x2go/session.py
+index a399514..752a5a7 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -623,7 +623,8 @@ class X2goSession(object):
+ 
+         # retrieve an up-to-date list of sharable local folders from the client instance
+         if self.client_instance:
+-            self.share_local_folders = self.client_instance.get_profile_config(self.profile_name, 'export').keys()
++            _exports = self.client_instance.get_profile_config(self.profile_name, 'export')
++            self.share_local_folders = [ sf for sf in _exports.keys() if _exports[sf] ]
+ 
+         i = 0
+         while i &lt; max_wait:
+@@ -2450,25 +2451,32 @@ class X2goSession(object):
+         # compat for Python-X2Go (&lt;=0.1.1.6)
+         if folder_name: local_path=folder_name
+ 
++        local_path = unicode(local_path)
++
+         retval = False
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session():
+ 
+                 # for the sake of non-blocking I/O: let's pretend the action has already been successful
+-                if self.shared_folders.has_key(unicode(local_path)):
+-                    self.shared_folders[unicode(local_path)]['status'] = 'mounted'
++                if self.shared_folders.has_key(local_path):
++                    self.shared_folders[local_path]['status'] = 'mounted'
+                 else:
+-                    self.shared_folders.update({ unicode(local_path): { 'status': 'new', 'mountpoint': '', }, })
++                    self.shared_folders.update({ local_path: { 'status': 'new', 'mountpoint': '', }, })
+                 if self.terminal_session.share_local_folder(local_path=local_path):
+                     if update_exported_folders:
+                         self._update_restore_exported_folders()
+                     retval = True
+                 else:
+                     # remove local_path from folder again if the mounting process failed
+-                    if self.shared_folders[unicode(local_path)]['status'] == 'new':
+-                        del self.shared_folders[unicode(local_path)]
++                    if self.shared_folders[local_path]['status'] == 'new':
++                        del self.shared_folders[local_path]
+                     else:
+-                        self.shared_folders[unicode(local_path)]['status'] = 'unmounted'
++                        self.shared_folders[local_path]['status'] = 'unmounted'
++
++                    # disable this local folder in session profile if restoring shared folders for following sessions is activated
++                    if self.client_instance and self.restore_shared_local_folders:
++                        if local_path in self._restore_exported_folders.keys():
++                            self._restore_exported_folders[local_path] = False
+ 
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+@@ -2525,16 +2533,19 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         retval = False
++
++        local_path = unicode(local_path)
++
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session() and local_path in self.shared_folders.keys():
+ 
+                 # for the sake of non-blocking I/O: let's pretend the action has already been successful
+-                self.shared_folders[unicode(local_path)]['status'] = 'unmounted'
++                self.shared_folders[local_path]['status'] = 'unmounted'
+                 if self.terminal_session.unshare_local_folder(local_path=local_path):
+                     retval = True
+                 else:
+                     # if unmounting failed restore the status with ,,mounted'', not sure if that works ok...
+-                    self.shared_folders[unicode(local_path)]['status'] = 'mounted'
++                    self.shared_folders[local_path]['status'] = 'mounted'
+ 
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+@@ -2621,14 +2632,15 @@ class X2goSession(object):
+                         break
+ 
+             unshared_folders = False
++
+             for sf in self.shared_folders.keys():
+                 m = self.shared_folders[sf]['mountpoint']
+-                if m not in _defacto_mounts:
++                if m and m not in _defacto_mounts:
+                     try:
+-                        if self.shared_folders[sf]['status'] != 'new':
++                        if self.shared_folders[sf]['status'] == 'mounted':
+                             self.shared_folders[sf]['status'] = 'unmounted'
++                            self.logger('Detected server-side unsharing of client-side folder for profile %s: %s:' % (self.get_profile_name(), sf), loglevel=log.loglevel_INFO)
+                             unshared_folders = True
+-                        self.logger('Detected server-side unsharing of client-side folder for profile %s: %s:' % (self.get_profile_name(), sf), loglevel=log.loglevel_INFO)
+                     except IndexError:
+                         pass
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003699.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-85-gfc27736
+</A></li>
+	<LI>Next message: <A HREF="003701.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	57030875e10c269c360ac2b1c1623b9f427d6714
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3700">[ date ]</a>
+              <a href="thread.html#3700">[ thread ]</a>
+              <a href="subject.html#3700">[ subject ]</a>
+              <a href="author.html#3700">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

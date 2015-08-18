@@ -1,0 +1,393 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	1e9e565968956a3974eefa21765b7710db207b0d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%091e9e565968956a3974eefa21765b7710db207b0d&In-Reply-To=%3C20130914135530.63A0B5DB74%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012887.html">
+   <LINK REL="Next"  HREF="012893.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	1e9e565968956a3974eefa21765b7710db207b0d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%091e9e565968956a3974eefa21765b7710db207b0d&In-Reply-To=%3C20130914135530.63A0B5DB74%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	1e9e565968956a3974eefa21765b7710db207b0d">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:30 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012887.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fe57d1ad10f04c05565d3dbb712bc1d3f0caf5
+</A></li>
+        <LI>Next message: <A HREF="012893.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-40-g6087fbd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12889">[ date ]</a>
+              <a href="thread.html#12889">[ thread ]</a>
+              <a href="subject.html#12889">[ subject ]</a>
+              <a href="author.html#12889">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  1e9e565968956a3974eefa21765b7710db207b0d (commit)
+      from  bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/stdout.py |   17 +++++-
+ x2go/client.py                  |   33 ++++++++++++
+ x2go/session.py                 |  108 ++++++++++++++++++++++++---------------
+ 3 files changed, 115 insertions(+), 43 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/stdout.py b/x2go/backends/control/stdout.py
+index 28bddb6..722eb61 100644
+--- a/x2go/backends/control/stdout.py
++++ b/x2go/backends/control/stdout.py
+@@ -152,6 +152,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         else:
+             return self._remote_group[group]
+ 
++    def is_x2gouser(self, username):
++        return username in self._x2go_remote_group('x2gousers')
++
+     @property
+     def _x2go_session_auth_rsakey(self):
+         if self._session_auth_rsakey is None:
+@@ -283,13 +286,23 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         del self.x2go_listsessions_cache
+         t_names = self.associated_terminals.keys()
+         for  t_obj in self.associated_terminals.values():
+-            t_obj.suspend()
++            try:
++                t_obj.suspend()
++            except x2go_exceptions.X2goSessionException:
++                pass
+             del t_obj
+         for t_name in t_names:
+             del self.associated_terminals[t_name]
+         if self.get_transport() is not None:
+             self.get_transport().close()
+ 
++    def is_alive(self):
++        try:
++            self._x2go_exec_command('echo', loglevel=log.loglevel_DEBUG)
++            return True
++        except x2go_exceptions.X2goSessionException:
++            return False
++
+     def start(self, **kwargs):
+         &quot;&quot;&quot;\
+         Start a new X2go session. 
+@@ -316,7 +329,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             raise x2go_exceptions.X2goSessionException('remote user %s is not member of X2go server group x2gousers' % self.get_transport().get_username())
+ 
+         if session_name is not None:
+-            session_info = self.list_sessions(refresh_cache=true)[session_name]
++            session_info = self.list_sessions(refresh_cache=True)[session_name]
+         else:
+             session_info = None
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index 488468c..ad329ac 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -184,6 +184,19 @@ class X2goClient(object):
+         return _CURRENT_LOCAL_USER
+     get_client_username = __get_client_username
+ 
++    def __is_valid_username(self):
++        &quot;&quot;&quot;\
++        Check if user is allowed to start an X2go session on a remote server.
++
++        @return User allowed to start a session?
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
++        return _CURRENT_LOCAL_USER
++    get_client_username = __get_client_username
++
++
++
+     def register_all_session_profiles(self, return_objects=False):
+         &quot;&quot;&quot;\
+         Register all session profiles found in the C{sessions} configuration file 
+@@ -851,10 +864,30 @@ class X2goClient(object):
+         &quot;&quot;&quot;
+         return self.session_registry.registered_sessions_of_name(profile_name)
+     __client_registered_sessions_of_name = client_registered_sessions_of_name
++
+     ###
+     ### Provide access to the X2go server's sessions DB
+     ### 
+ 
++    def server_is_alive(self, session_uuid):
++        &quot;&quot;&quot;\
++        Test if server that corresponds to the terminal session C{session_uuid} is alive.
++
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).is_alive()
++    __server_is_alive = server_is_alive
++
++    def server_is_x2gouser(self, session_uuid, username=None):
++        &quot;&quot;&quot;\
++        Check if user is allowed to start an X2go session on a remote server.
++
++        @return User allowed to start a session?
++        @rtype: C{str}
++
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).is_x2gouser(username=None)
++    __server_is_x2gouser = server_is_x2gouser
++
+     def server_running_sessions(self, session_uuid):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+diff --git a/x2go/session.py b/x2go/session.py
+index 045245c..c842497 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -156,6 +156,12 @@ class X2goSession(object):
+         return self.control_session.get_transport().get_username()
+     __get_username = get_username
+ 
++
++    def is_x2gouser(self, username=None):
++        if username is None:
++            username = self.get_username()
++        return self.control_session.is_x2gouser(username)
++
+     def get_password(self):
+         &quot;&quot;&quot;\
+         After a session has been setup up you can query the
+@@ -166,6 +172,7 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         return self.control_session._session_password
++    __get_password = get_password
+ 
+     def get_server(self):
+         &quot;&quot;&quot;\
+@@ -264,11 +271,11 @@ class X2goSession(object):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        self.control_session.disconnect()
+         self.connected = False
+         self.running = False
+         self.suspended = False
+         self.terminated = False
++        self.control_session.disconnect()
+     __disconnect = disconnect
+ 
+     def set_print_action(self, print_action, **kwargs):
+@@ -281,11 +288,22 @@ class X2goSession(object):
+         self.terminal_session.set_print_action(print_action, **kwargs)
+     __set_print_action = set_print_action
+ 
++    def is_alive(self):
++        return self.control_session.is_alive()
++    __is_alive = is_alive
++
+     def clean_sessions(self):
+-        self.control_session.clean_sessions()
++        if self.is_alive():
++            self.control_session.clean_sessions()
++        else:
++            self._X2goSession__disconnect()
++    __clean_sessions = clean_sessions
+ 
+     def list_sessions(self, no_cache=False, refresh_cache=False):
++        if (no_cache or refresh_cache) and not self.is_alive():
++            self._X2goSession__disconnect()
+         return self.control_session.list_sessions(no_cache=no_cache, refresh_cache=refresh_cache)
++    __list_sessions = list_sessions
+ 
+     def resume(self, session_name=None):
+         &quot;&quot;&quot;\
+@@ -296,40 +314,43 @@ class X2goSession(object):
+         @type session_name: C{str}
+ 
+         &quot;&quot;&quot;
+-        _control = self.control_session
+-        _terminal = _control.resume(session_name=session_name, logger=self.logger, **self.terminal_params)
+-        self.guardian_thread = _terminal.guardian_thread
+-        self.terminal_session = _terminal
+-        if _terminal is not None:
++        if self.is_alive():
++            _control = self.control_session
++            _terminal = _control.resume(session_name=session_name, logger=self.logger, **self.terminal_params)
++            self.guardian_thread = _terminal.guardian_thread
++            self.terminal_session = _terminal
++            if _terminal is not None:
+ 
+-            if SUPPORTED_SOUND and _terminal.params.snd_system is not 'none':
+-                _terminal.start_sound()
++                if SUPPORTED_SOUND and _terminal.params.snd_system is not 'none':
++                    _terminal.start_sound()
+ 
+-            if (SUPPORTED_PRINTING and self.printing) or (SUPPORTED_FOLDERSHARING and self.share_local_folders):
+-                _terminal.start_sshfs()
++                if (SUPPORTED_PRINTING and self.printing) or (SUPPORTED_FOLDERSHARING and self.share_local_folders):
++                    _terminal.start_sshfs()
+ 
+-            try:
+-                if SUPPORTED_PRINTING and self.printing:
+-                    _terminal.start_printing()
+-            except X2goPrintException:
+-                pass
++                try:
++                    if SUPPORTED_PRINTING and self.printing:
++                        _terminal.start_printing()
++                except X2goPrintException:
++                    pass
+ 
+-            if SUPPORTED_FOLDERSHARING and self.share_local_folders:
+-                if _control.get_transport().reverse_tunnels[_terminal.get_session_name()]['sshfs'][1] is not None:
+-                    for _folder in self.share_local_folders:
+-                        _terminal.share_local_folder(_folder)
++                if SUPPORTED_FOLDERSHARING and self.share_local_folders:
++                    if _control.get_transport().reverse_tunnels[_terminal.get_session_name()]['sshfs'][1] is not None:
++                        for _folder in self.share_local_folders:
++                            _terminal.share_local_folder(_folder)
+ 
+-            # only run the session startup command if we do not resume...
+-            if session_name is None:
+-                _terminal.run_command()
++                # only run the session startup command if we do not resume...
++                if session_name is None:
++                    _terminal.run_command()
+ 
+-            self.suspended = False
+-            self.running = True
+-            self.terminated = False
++                self.suspended = False
++                self.running = True
++                self.terminated = False
+ 
+-            self.terminal_session = _terminal
++                self.terminal_session = _terminal
+ 
+-        return self.running
++            return self.running
++        else:
++            self._X2goSession__disconnect()
+     __resume = resume
+ 
+     def start(self):
+@@ -352,12 +373,14 @@ class X2goSession(object):
+         server-side X2go session name to this method.
+ 
+         &quot;&quot;&quot;
+-        if self.terminal_session.suspend():
+-
+-            self.running = False
+-            self.suspended = True
+-            return True
++        if self.is_alive():
++            if self.terminal_session.suspend():
+ 
++                self.running = False
++                self.suspended = True
++                return True
++        else:
++            self._X2goSession__disconnect()
+         return False
+     __suspend = suspend
+ 
+@@ -373,12 +396,15 @@ class X2goSession(object):
+         server-side X2go session name to this method.
+ 
+         &quot;&quot;&quot;
+-        if self.terminal_session.terminate():
++        if self.is_alive():
++            if self.terminal_session.terminate():
+ 
+-            self.running = False
+-            self.suspended = False
+-            self.terminated = True
+-            return True
++                self.running = False
++                self.suspended = False
++                self.terminated = True
++                return True
++        else:
++            self._X2goSession__disconnect()
+ 
+         return False
+     __terminate = terminate
+@@ -434,7 +460,7 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         return self.control_session.is_connected()
+-    _is_connected = is_connected
++    __is_connected = is_connected
+ 
+     def is_running(self):
+         &quot;&quot;&quot;\
+@@ -445,7 +471,7 @@ class X2goSession(object):
+ 
+         &quot;&quot;&quot;
+         return self.is_connected() and self.control_session.is_running(self.get_session_name())
+-    _is_running = is_running
++    __is_running = is_running
+ 
+     def is_suspended(self):
+         &quot;&quot;&quot;\
+@@ -482,7 +508,7 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return self.session_object.share_local_folder(folder_name=folder_name)
++        return self.terminal_session.share_local_folder(folder_name=folder_name)
+     __share_local_folder = share_local_folder
+ 
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012887.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fe57d1ad10f04c05565d3dbb712bc1d3f0caf5
+</A></li>
+	<LI>Next message: <A HREF="012893.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-40-g6087fbd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12889">[ date ]</a>
+              <a href="thread.html#12889">[ thread ]</a>
+              <a href="subject.html#12889">[ subject ]</a>
+              <a href="author.html#12889">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

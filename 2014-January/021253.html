@@ -1,0 +1,374 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	a786acc8b8b6e5cd558fa702be6a9718ab812550
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%09a786acc8b8b6e5cd558fa702be6a9718ab812550&In-Reply-To=%3C20140107151933.819635DEF6%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021364.html">
+   <LINK REL="Next"  HREF="021256.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	a786acc8b8b6e5cd558fa702be6a9718ab812550</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%09a786acc8b8b6e5cd558fa702be6a9718ab812550&In-Reply-To=%3C20140107151933.819635DEF6%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	a786acc8b8b6e5cd558fa702be6a9718ab812550">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:19:33 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021364.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	7058128148bfb912fca8a0fac8ebffe184646f1a
+</A></li>
+        <LI>Next message: <A HREF="021256.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	829d095ecba176e184989299c0b221167b56f5ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21253">[ date ]</a>
+              <a href="thread.html#21253">[ thread ]</a>
+              <a href="subject.html#21253">[ subject ]</a>
+              <a href="author.html#21253">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  a786acc8b8b6e5cd558fa702be6a9718ab812550 (commit)
+      from  12260727cde62560a4549f8f9736b63becbe58c9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/__init__.py                 |    2 +-
+ x2go/backends/control/stdout.py  |   24 +++++++++++++++++-------
+ x2go/backends/terminal/stdout.py |   36 +++++++++++++++++++++++++++++-------
+ x2go/session.py                  |    1 +
+ x2go/utils.py                    |    4 ++--
+ 5 files changed, 50 insertions(+), 17 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index 4022a13..71455ab 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -153,7 +153,7 @@ Contact
+ &quot;&quot;&quot;
+ 
+ __NAME__    = 'python-x2go'
+-__VERSION__ = '0.0.22'
++__VERSION__ = '0.0.23'
+ 
+ from gevent import monkey
+ monkey.patch_all()
+diff --git a/x2go/backends/control/stdout.py b/x2go/backends/control/stdout.py
+index f9f32ef..9bda4de 100644
+--- a/x2go/backends/control/stdout.py
++++ b/x2go/backends/control/stdout.py
+@@ -43,6 +43,21 @@ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+ from x2go.backends.proxy import X2goProxy as _X2goProxy
+ 
++def _rerewrite_blanks(cmd):
++    # X2go run command replace X2GO_SPACE_CHAR string with blanks
++    if cmd:
++        cmd = cmd.replace(&quot;X2GO_SPACE_CHAR&quot;, &quot; &quot;)
++    return cmd
++
++def _rewrite_password(cmd, password):
++
++    # if there is a ,,-p :X2GOPASSWORD:'' parameter in RDP options then we will replace 
++    # it by our X2go session password
++    if cmd:
++        cmd = cmd.replace(':X2GOPASSWORD:', password)
++    return cmd
++
++
+ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     &quot;&quot;&quot;\
+     STILL UNDOCUMENTED
+@@ -122,13 +137,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             timeout = gevent.Timeout(10)
+             timeout.start()
+             try:
+-                self.logger('executing command on X2go server: %s' % cmd, loglevel)
+-                return self.exec_command(cmd, **kwargs)
+-                #g = gevent.spawn(self.exec_command, cmd, **kwargs)
+-                #if g.exception is None:
+-                #    return g.get(block=True, timeout=10)
+-                #else:
+-                #    raise g.exception
++                self.logger('executing command on X2go server: %s' % _rerewrite_blanks(cmd), loglevel)
++                return self.exec_command(_rewrite_password(cmd, self._session_password), **kwargs)
+             except AttributeError:
+                 raise x2go_exceptions.X2goControlSessionException('the X2go control session has died unexpectedly')
+             except EOFError:
+diff --git a/x2go/backends/terminal/stdout.py b/x2go/backends/terminal/stdout.py
+index 9d1ca62..1f260ae 100644
+--- a/x2go/backends/terminal/stdout.py
++++ b/x2go/backends/terminal/stdout.py
+@@ -56,7 +56,7 @@ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+ from x2go.backends.proxy import X2goProxy as _X2goProxy
+ 
+-def _rewrite_cmd(cmd):
++def _rewrite_cmd(cmd, params=None):
+ 
+     # start with an empty string
+     cmd = cmd or ''
+@@ -65,8 +65,11 @@ def _rewrite_cmd(cmd):
+     if cmd in defaults.window_managers.keys():
+         cmd = defaults.window_managers[cmd]
+ 
+-    # X2go run command replace X2GO_SPACE_CHAR string with blanks
+-    cmd.replace(&quot; &quot;, &quot;X2GO_SPACE_CHAR&quot;)
++    if (cmd == 'RDP') and (type(params) == X2goSessionParams):
++        if params.geometry == 'fullscreen':
++            cmd = 'rdesktop -f -N %s %s' % (params.rdp_options, params.rdp_server)
++        else:
++            cmd = 'rdesktop -g %s -N %s %s' % (params.geometry, params.rdp_options, params.rdp_server)
+ 
+     # place quot marks around cmd if not empty string
+     if cmd:
+@@ -74,6 +77,13 @@ def _rewrite_cmd(cmd):
+     return cmd
+ 
+ 
++def _rewrite_blanks(cmd):
++    # X2go run command replace X2GO_SPACE_CHAR string with blanks
++    if cmd:
++        cmd = cmd.replace(&quot; &quot;, &quot;X2GO_SPACE_CHAR&quot;)
++    return cmd
++
++
+ class X2goSessionParams(object):
+     &quot;&quot;&quot;\
+     The L{X2goSessionParams} class is used to store all parameters that
+@@ -100,10 +110,16 @@ class X2goSessionParams(object):
+             self.session_type = 'D'
+             return
+         if cmd:
+-            if cmd in defaults.window_managers.keys():
++            if cmd == 'RDP':
++                self.session_type = 'R'
++                return
++            if cmd.startswith('rdesktop'):
++                self.session_type = 'R'
++                return
++            elif cmd in defaults.window_managers.keys():
+                 self.session_type = 'D'
+                 return
+-            if os.path.basename(cmd) in defaults.window_managers.values():
++            elif os.path.basename(cmd) in defaults.window_managers.values():
+                 self.session_type = 'D'
+                 return
+         self.session_type = 'R'
+@@ -199,6 +215,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  geometry=&quot;800x600&quot;, depth=24, link=&quot;adsl&quot;, pack=&quot;16m-jpeg-9&quot;, 
+                  cache_type=&quot;unix-kde&quot;, kblayout='us', kbtype='pc105/us',
+                  session_type=&quot;application&quot;, snd_system='pulse', cmd=None,
++                 rdp_server=None, rdp_options=None,
+                  rootdir=None,
+                  profile_name='UNKNOWN', profile_id=utils._genSessionProfileId(),
+                  print_action=None, print_action_args={},
+@@ -241,6 +258,10 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.kbtype = kbtype
+         self.params.snd_system = snd_system
+         self.params.cmd = cmd
++
++        self.params.rdp_server = rdp_server
++        self.params.rdp_options = rdp_options
++
+         self.params.rootdir = (type(rootdir) is types.StringType) and rootdir or os.path.join(_LOCAL_HOME,_X2GO_SESSION_ROOTDIR)
+         self.params.update()
+ 
+@@ -546,12 +567,11 @@ class X2goTerminalSessionSTDOUT(object):
+                      str(self.session_info.agent_pid),
+                      str(self.session_info.name), 
+                      str(self.session_info.snd_port),
+-                     _rewrite_cmd(self.params.cmd),
++                     _rewrite_blanks(_rewrite_cmd(self.params.cmd, params=self.params)),
+                      str(self.params.snd_system),
+                      str(self.params.session_type),
+                      &quot;&gt;&amp; /dev/null &amp; exit&quot;,
+                    ]
+-
+         if self.params.snd_system is 'pulse':
+             cmd_line = [ 'PULSE_CLIENTCONFIG=%s/.pulse-client.conf' % self.session_info.remote_container ] + cmd_line
+ 
+@@ -614,6 +634,8 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.params.kblayout or self.params.kbtype:
+             setkbd = &quot;1&quot;
+ 
++        self.params.update()
++
+         cmd_line = [ &quot;x2gostartagent&quot;,
+                      str(self.params.geometry),
+                      str(self.params.link),
+diff --git a/x2go/session.py b/x2go/session.py
+index 6020b9e..03d25a1 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -47,6 +47,7 @@ from defaults import SUPPORTED_SOUND, SUPPORTED_PRINTING, SUPPORTED_FOLDERSHARIN
+ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'cache_type', 'kblayout', 'kbtype',
+                         'session_type', 'snd_system', 'cmd',
++                        'rdp_server', 'rdp_options',
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
+                         'proxy_class', 'logger',
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 58c4c7a..8a2fa06 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -122,6 +122,8 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'name': 'profile_name',
+             'key': 'key_filename',
+             'command': 'cmd',
++            'rdpserver': 'rdp_server',
++            'rdpoptions': 'rdp_options',
+         }
+         _speed_dict = {
+             '1': 'modem',
+@@ -200,8 +202,6 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sndport',
+             'icon',
+             'applications',
+-            'rdpoptions',
+-            'rdpserver',
+             'xdmcpserver',
+         ]
+         for i in _ignored_options:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021364.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	7058128148bfb912fca8a0fac8ebffe184646f1a
+</A></li>
+	<LI>Next message: <A HREF="021256.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	829d095ecba176e184989299c0b221167b56f5ab
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21253">[ date ]</a>
+              <a href="thread.html#21253">[ thread ]</a>
+              <a href="subject.html#21253">[ subject ]</a>
+              <a href="author.html#21253">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

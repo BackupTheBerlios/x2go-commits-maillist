@@ -1,0 +1,292 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-132-g58289bf
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.1.4-132-g58289bf&In-Reply-To=%3C20140107152102.34AFB5E0D1%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="021772.html">
+   <LINK REL="Next"  HREF="021781.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-132-g58289bf</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.1.1.4-132-g58289bf&In-Reply-To=%3C20140107152102.34AFB5E0D1%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-132-g58289bf">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:02 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="021772.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-136-gb190513
+</A></li>
+        <LI>Next message: <A HREF="021781.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-138-ge6596c5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21779">[ date ]</a>
+              <a href="thread.html#21779">[ thread ]</a>
+              <a href="subject.html#21779">[ subject ]</a>
+              <a href="author.html#21779">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  58289bff5a67cec50189866c85f565e5d8190135 (commit)
+      from  73f108b61e83c1d9ecae46fb3caa7b26b61c9dc6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/registry.py |   10 +++++-----
+ x2go/session.py  |    2 ++
+ 3 files changed, 8 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index f563c7f..6905acc 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -41,6 +41,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Retrieve feature list from X2Go server per session.
+     - Add published applications support.
+     - Fix base64 encoded icon string.
++    - Fix master session recognition.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 0d06a03..18b4d61 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -333,14 +333,14 @@ class X2goSessionRegistry(object):
+                     self.forget(_session_uuid)
+ 
+         for _profile_name in [ p for p in self.connected_profiles(return_profile_names=True) if p not in self.master_sessions.keys() ]:
+-            _running_sessions = self.running_sessions_of_profile_name(_profile_name)
+-            _pubapp_sessions = [ _s for _s in self.pubapp_sessions_of_profile_name(_profile_name) if _s in _running_sessions ]
++            _running_associated_sessions = [ _s for _s in self.running_sessions_of_profile_name(_profile_name, return_objects=True) if _s.is_associated() ]
++            _pubapp_sessions = [ _s for _s in self.pubapp_sessions_of_profile_name(_profile_name, return_objects=True) if _s in _running_associated_sessions ]
+             if _pubapp_sessions:
+                 self.master_sessions[_profile_name] = _pubapp_sessions[0]
+                 _pubapp_sessions[0].set_master_session()
+-            elif _running_sessions:
+-                self.master_sessions[_profile_name] = _running_sessions[0]
+-                _running_sessions[0].set_master_session()
++            elif _running_associated_sessions:
++                self.master_sessions[_profile_name] = _running_associated_sessions[0]
++                _running_associated_sessions[0].set_master_session()
+ 
+         return True
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index fa83111..a3fdb8b 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -769,6 +769,8 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         return self.terminal_session not in (None, 'PENDING')
+     __has_terminal_session = has_terminal_session
++    is_associated = has_terminal_session
++    __is_associated = has_terminal_session
+ 
+     def check_host(self):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="021772.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-136-gb190513
+</A></li>
+	<LI>Next message: <A HREF="021781.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.1.1.4-138-ge6596c5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#21779">[ date ]</a>
+              <a href="thread.html#21779">[ thread ]</a>
+              <a href="subject.html#21779">[ subject ]</a>
+              <a href="author.html#21779">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

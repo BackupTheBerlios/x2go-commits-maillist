@@ -1,0 +1,293 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-14-g72a92e5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.1-14-g72a92e5&In-Reply-To=%3C20130421203041.191E85DB25%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005439.html">
+   <LINK REL="Next"  HREF="005441.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-14-g72a92e5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.4.0.1-14-g72a92e5&In-Reply-To=%3C20130421203041.191E85DB25%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-14-g72a92e5">git-admin at x2go.org
+       </A><BR>
+    <I>Sun Apr 21 22:30:41 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005439.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-13-g19fd6c1
+</A></li>
+        <LI>Next message: <A HREF="005441.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-15-gd118ba6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5440">[ date ]</a>
+              <a href="thread.html#5440">[ thread ]</a>
+              <a href="subject.html#5440">[ subject ]</a>
+              <a href="author.html#5440">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  72a92e5d645ef83875eb3556d92df669ace84580 (commit)
+      from  19fd6c12a12101f98d21b179d4d9b679ddee69a1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 72a92e5d645ef83875eb3556d92df669ace84580
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Apr 21 22:30:36 2013 +0200
+
+    Use TaskBarIcon.ShowBalloon() instead of wx.NotificationMessage for notifications.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    3 +-
+ pyhoca/wxgui/frontend.py |    2 +-
+ pyhoca/wxgui/notify.py   |  153 +++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 154 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index dd6f5ff..584eaf8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -11,7 +11,8 @@ pyhoca-gui (0.4.0.2-0~x2go1) UNRELEASED; urgency=low
+     + Provide icon2exe.py for adding .ico files to .exe files. Thanks
+       to the original authors: Giovanni Bajo and previously McMillan
+       Enterprises, Inc.
+-    + Explicitly set the tray icon for wx.NotificationMessage calls.
++    + Use TaskBarIcon.ShowBalloon() instead of wx.NotificationMessage for
++      notifications.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 13 Feb 2013 12:51:24 +0100
+ 
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 93cc9a9..4f49af5 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -310,7 +310,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+         if x2go.X2GOCLIENT_OS in ('Linux', 'Mac'):
+             self.notifier = notify.libnotify_NotifierPopup(self)
+         if x2go.X2GOCLIENT_OS in ('Windows'):
+-            self.notifier = notify.notificationmessage_NotifierPopup(self.about)
++            self.notifier = notify.showballoon_NotifierPopup(self.about)
+ 
+         self._sub_windows = []
+         self._logon_windows = {}
+diff --git a/pyhoca/wxgui/notify.py b/pyhoca/wxgui/notify.py
+index 62c5b7b..2b27c6b 100644
+--- a/pyhoca/wxgui/notify.py
++++ b/pyhoca/wxgui/notify.py
+@@ -152,6 +152,157 @@ class libnotify_NotifierPopup(object):
+         pass
+ 
+ 
++class showballoon_NotifierPopup(object):
++    &quot;&quot;&quot;\
++    L{PyHocaGUI} notification utilizing C{wx.TaskBarIcon.ShowBalloon()}, used on Windows OS.
++
++    &quot;&quot;&quot;
++    title = {}
++    text = {}
++    icon = {}
++    timeout = {}
++
++    def __init__(self, _about):
++        &quot;&quot;&quot;\
++        Notifier popup (constructor).
++
++        @param _about: main application window
++        @type _about: C{obj}
++
++        &quot;&quot;&quot;
++        self._PyHocaGUI = _about._PyHocaGUI
++        self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
++
++    def prepare(self, context, title=None, text=None, icon=None, timeout=None):
++        &quot;&quot;&quot;\
++        Prepare a notification that gets sent to C{libnotify} later (by the L{send()} method).
++
++        Use C{context} as a unique identifier. When sending the notification later, C{context}
++        will unequivocally map to the notification content that shall get sent.
++
++        @param context: a unique identifier for this notification preparation
++        @type context: C{str}
++        @param title: notification title
++        @type title: C{str}
++        @param text: notification text
++        @type text: C{str}
++        @param icon: icon name for an icon that appears with the notification
++        @type icon: C{str}
++        @param timeout: let notification disappear after C{&lt;timeout&gt;} milliseconds
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
++        if title is not None:
++            self.title[context] = title
++        if text is not None:
++            self.text[context] = text
++        if icon is not None:
++            self.icon[context] = icon
++        if timeout is not None:
++            self.timeout[context] = timeout
++
++    def send(self, title=None, text=None, context=None, icon=None, timeout=8000):
++        &quot;&quot;&quot;\
++        Send notifications directly (or use a prepared notification).
++
++        @param title: notification title
++        @type title: C{str}
++        @param text: notification text
++        @type text: C{str}
++        @param context: an identifier that refers to a prepared notification
++        @type context: C{str}
++        @param icon: icon name for an icon that appears with the notification
++        @type icon: C{str}
++        @param timeout: let notification disappear after C{&lt;timeout&gt;} milliseconds
++        @type timeout: C{int}
++
++        &quot;&quot;&quot;
++        if context is not None:
++            try:
++                title = self.title[context]
++                del self.title[context]
++            except KeyError:
++                pass
++            try:
++                text = self.text[context]
++                del self.text[context]
++            except KeyError:
++                pass
++            try:
++                icon = self.icon[context]
++                del self.icon[context]
++            except KeyError:
++                pass
++            try:
++                timeout = self.timeout[context]
++                del self.timeout[context]
++            except KeyError:
++                pass
++
++        # libnotify timeouts are given in millisecs, on Windows we use seconds...
++        timeout = timeout / 1000
++
++        _icon_map_wx = {
++            'audio_error': wx.ICON_ERROR,
++            'auth_success': wx.ICON_INFORMATION,
++            'auth_failed': wx.ICON_WARNING,
++            'auth_error': wx.ICON_ERROR,
++            'auth_disconnect': wx.ICON_INFORMATION,
++            'profile_add': wx.ICON_INFORMATION,
++            'profile_delete': wx.ICON_INFORMATION,
++            'profile_edit': wx.ICON_INFORMATION,
++            'profile_save': wx.ICON_INFORMATION,
++            'profile_error': wx.ICON_ERROR,
++            'session_cleanall': wx.ICON_INFORMATION,
++            'session_error': wx.ICON_ERROR,
++            'session_pause': wx.ICON_INFORMATION,
++            'session_printing': wx.ICON_INFORMATION,
++            'session_resume': wx.ICON_INFORMATION,
++            'session_start': wx.ICON_INFORMATION,
++            'session_terminate': wx.ICON_INFORMATION,
++            'session_warning': wx.ICON_WARNING,
++        }
++        if icon in _icon_map_wx.keys():
++           icon = _icon_map_wx[icon]
++        else:
++           icon = wx.ICON_INFORMATION
++
++        try:
++            if not self._PyHocaGUI.disable_notifications:
++                # you will need wxPython &gt;= 2.9 for this
++                self._PyHocaGUI.taskbar.ShowBalloon(
++                    title,
++                    text,
++                    timeout*1000,
++                    icon,
++                )
++        except:
++            pass
++
++        # on Windows some error messages are already encoded, some are not, depending from which module they come
++        try: _title = title.encode(utils.get_encoding())
++        except: _title = title
++        try: _text = text.encode(utils.get_encoding())
++        except: _text = text
++
++        try: self._pyhoca_logger('['+_title+'] '+_text, loglevel=log.loglevel_NOTICE)
++        except UnicodeDecodeError: self._pyhoca_logger('Unicode error occurred while rendering a log message...', loglevel=log.loglevel_WARN)
++
++    def Close(self):
++        &quot;&quot;&quot;\
++        Provide a C{Close()} method which does nothing.
++
++        &quot;&quot;&quot;
++        pass
++
++    def Destroy(self):
++        &quot;&quot;&quot;\
++        Provide a C{Destroy()} method which does nothing.
++
++        &quot;&quot;&quot;
++        pass
++
++
+ class notificationmessage_NotifierPopup(object):
+     &quot;&quot;&quot;\
+     L{PyHocaGUI} notification utilizing C{wx.NotificationMessage()}, used on Windows OS.
+@@ -277,8 +428,6 @@ class notificationmessage_NotifierPopup(object):
+                 _notification_msg.SetMessage(text)
+                 _notification_msg.SetParent(self._PyHocaGUI.about)
+                 _notification_msg.SetFlags(icon)
+-                notification_icon = MakeIcon('pyhoca-trayicon')
+-                _notification_msg.UseTaskBarIcon(notification_icon)
+                 _notification_msg.Show(timeout=timeout)
+         except:
+             # if we are running wxPython 2.8, we ignore missing 
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005439.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-13-g19fd6c1
+</A></li>
+	<LI>Next message: <A HREF="005441.html">[X2Go-Commits] pyhoca-gui.git - master (branch) updated:	0.4.0.1-15-gd118ba6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5440">[ date ]</a>
+              <a href="thread.html#5440">[ thread ]</a>
+              <a href="subject.html#5440">[ subject ]</a>
+              <a href="author.html#5440">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,284 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-44-gf41550a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.0.37.0-44-gf41550a&In-Reply-To=%3C20140107151639.9C7C25DBFB%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020402.html">
+   <LINK REL="Next"  HREF="020463.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-44-gf41550a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.0.37.0-44-gf41550a&In-Reply-To=%3C20140107151639.9C7C25DBFB%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-44-gf41550a">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:16:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020402.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-43-g12bb02a
+</A></li>
+        <LI>Next message: <A HREF="020463.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-41-gc17955c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20434">[ date ]</a>
+              <a href="thread.html#20434">[ thread ]</a>
+              <a href="subject.html#20434">[ subject ]</a>
+              <a href="author.html#20434">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  f41550a56ecc92d14466317c0370b209d866d90c (commit)
+      from  12bb02a83abd24c50689d960beff9aad238d3a8c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   30 +++++++++++-----
+ x2go/checkhosts.py               |   74 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 96 insertions(+), 8 deletions(-)
+ create mode 100644 x2go/checkhosts.py
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 7e2d7d5..1a47554 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -32,6 +32,7 @@ import paramiko
+ import gevent
+ 
+ import copy
++import binascii
+ 
+ # Python X2go modules
+ import x2go.sshproxy as sshproxy
+@@ -39,6 +40,7 @@ import x2go.log as log
+ import x2go.utils as utils
+ import x2go.x2go_exceptions as x2go_exceptions
+ import x2go.defaults as defaults
++import x2go.checkhosts as checkhosts
+ 
+ from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+@@ -239,22 +241,32 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Perform a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
++        _hostname = hostname
++        _port = port
++        _fingerprint = 'NO-FINGERPRINT'
++        _fingerprint_type = 'SOME-KEY-TYPE'
++
++        _check_policy = checkhosts.X2goCheckHostKeyPolicy()
++        self.set_missing_host_key_policy(_check_policy)
++
+         try:
+             paramiko.SSHClient.connect(self, hostname=hostname, port=port, username='foo', password='bar')
++        except x2go_exceptions.AuthenticationException:
+             host_ok = True
+-            self.logger('SSH host key verification succeeded.', loglevel=log.loglevel_NOTICE)
++            self.logger('SSH host key verification succeeded. Host is already known to the client\'s Paramiko/SSH sub-system.', loglevel=log.loglevel_NOTICE)
+         except x2go_exceptions.SSHException, e:
+-            msg = e.message
+-            if msg.startswith('Unknown server')
++            msg = str(e)
++            if msg.startswith('Checked host key for X2go server '):
+                 host_ok = False
+-                self.logger('SSH host key verification failed.', loglevel=log.loglevel_NOTICE)
++                _hostname = _check_policy.get_hostname().split(':')[0].lstrip('[').rstrip(']')
++                _port = _check_policy.get_hostname().split(':')[1]
++                _fingerprint = _check_policy.get_key_fingerprint_with_colons()
++                _fingerprint_type = _check_policy.get_key_name()
++                self.logger('SSH host key verification failed. Seeing this X2go server for the first time.', loglevel=log.loglevel_NOTICE)
+             else:
+                 raise(e)
+ 
+-        _hostname = hostname
+-        _port = port
+-        _fingerprint = 'NO-FINGERPRINT'
+-        _fingerprint_type = 'SOME-KEY-TYPE'
++        self.set_missing_host_key_policy(paramiko.RejectPolicy())
+         return (host_ok, _hostname, _port, _fingerprint, _fingerprint_type)
+ 
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+@@ -406,6 +418,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self.close()
+             raise paramiko.AuthenticationException()
+ 
++        self.set_missing_host_key_policy(paramiko.RejectPolicy())
++
+         self.hostname = hostname
+         self.port = port
+ 
+diff --git a/x2go/checkhosts.py b/x2go/checkhosts.py
+new file mode 100644
+index 0000000..d4eda9a
+--- /dev/null
++++ b/x2go/checkhosts.py
+@@ -0,0 +1,74 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++Providing mechanisms to control session backends to check host validity.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gocheckhosts-pylib'
++
++# modules
++import paramiko
++import binascii
++
++# Python X2go modules
++import x2go_exceptions
++
++class X2goCheckHostKeyPolicy(paramiko.MissingHostKeyPolicy):
++    &quot;&quot;&quot;\
++    Policy for making host key information available to Python X2go after a 
++    Paramiko/SSH connect has been attempted. A connect that uses this 
++    C{paramiko.MissingHostKeyPolicy} will always fail.
++
++    This is used by L{X2goControlSessionSTDOUT}.
++    &quot;&quot;&quot;
++    def missing_host_key(self, client, hostname, key):
++        self.client = client
++        self.hostname = hostname
++        self.key = key
++        client._log(paramiko.common.DEBUG, 'Checking %s host key for %s: %s' %
++                   (key.get_name(), hostname, binascii.hexlify(key.get_fingerprint())))
++        raise x2go_exceptions.SSHException('Checked host key for X2go server %s' % hostname)
++
++    def get_client(self):
++        return self.client
++
++    def get_hostname(self):
++        return self.hostname
++
++    def get_key(self):
++        return self.key
++
++    def get_key_name(self):
++        return self.key.get_name().upper()
++
++    def get_key_fingerprint(self):
++        return binascii.hexlify(self.key.get_fingerprint())
++
++    def get_key_fingerprint_with_colons(self):
++        _fingerprint = self.get_key_fingerprint()
++        _colon_fingerprint = ''
++        idx = 0
++        for char in _fingerprint:
++            idx += 1
++            _colon_fingerprint += char
++            if idx % 2 == 0:
++                _colon_fingerprint += ':'
++        return _colon_fingerprint.rstrip(':')
++
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020402.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-43-g12bb02a
+</A></li>
+	<LI>Next message: <A HREF="020463.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-41-gc17955c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20434">[ date ]</a>
+              <a href="thread.html#20434">[ thread ]</a>
+              <a href="subject.html#20434">[ subject ]</a>
+              <a href="author.html#20434">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

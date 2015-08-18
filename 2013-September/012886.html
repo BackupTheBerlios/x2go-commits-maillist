@@ -1,0 +1,511 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855&In-Reply-To=%3C20130914135530.355925DB72%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012877.html">
+   <LINK REL="Next"  HREF="012887.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855&In-Reply-To=%3C20130914135530.355925DB72%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:30 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012877.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-38-g3b29fe2
+</A></li>
+        <LI>Next message: <A HREF="012887.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fe57d1ad10f04c05565d3dbb712bc1d3f0caf5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12886">[ date ]</a>
+              <a href="thread.html#12886">[ thread ]</a>
+              <a href="subject.html#12886">[ subject ]</a>
+              <a href="author.html#12886">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  bcb1bc06b3f2ceb51f4b8a14f18c04b91f171855 (commit)
+      from  61081683ba395feec7eb1b2ca0ccc8aa4e41e127 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/stdout.py |   42 +++++++++++----
+ x2go/cache.py                   |  111 +++++++++++++++++++++++++++++++++++++++
+ x2go/cleanup.py                 |   12 ++---
+ x2go/client.py                  |    8 +--
+ x2go/guardian.py                |   19 ++++---
+ x2go/session.py                 |    6 ++-
+ 6 files changed, 168 insertions(+), 30 deletions(-)
+ create mode 100644 x2go/cache.py
+
+The diff of changes is:
+diff --git a/x2go/backends/control/stdout.py b/x2go/backends/control/stdout.py
+index a38d55c..28bddb6 100644
+--- a/x2go/backends/control/stdout.py
++++ b/x2go/backends/control/stdout.py
+@@ -37,6 +37,7 @@ import x2go.log as log
+ import x2go.utils as utils
+ import x2go.x2go_exceptions as x2go_exceptions
+ import x2go.defaults as defaults
++import x2go.cache as cache
+ 
+ from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+@@ -62,11 +63,14 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     _remote_home = None
+     _remote_group = {}
+ 
++    x2go_listsessions_cache = None
++
+     def __init__(self,
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
+                  proxy_backend=_X2goProxy,
++                 use_listsessions_cache=True,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  *args, **kwargs):
+         &quot;&quot;&quot;\
+@@ -85,6 +89,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self._info_backend = info_backend
+         self._list_backend = list_backend
+         self._proxy_backend = proxy_backend
++        self.use_listsessions_cache = use_listsessions_cache
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+ 
+     def __del__(self):
+@@ -263,6 +268,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         ssh_transport._x2go_session_marker = True
+         self._session_password = password
+ 
++        if self.use_listsessions_cache:
++            self.x2go_listsessions_cache = cache.X2goListSessionsCache(self, logger=self.logger)
++            self.x2go_listsessions_cache.start()
++
+         return (self.get_transport() is not None)
+ 
+     def disconnect(self):
+@@ -270,6 +279,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
++        self.x2go_listsessions_cache.stop_thread()
++        del self.x2go_listsessions_cache
+         t_names = self.associated_terminals.keys()
+         for  t_obj in self.associated_terminals.values():
+             t_obj.suspend()
+@@ -305,7 +316,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             raise x2go_exceptions.X2goSessionException('remote user %s is not member of X2go server group x2gousers' % self.get_transport().get_username())
+ 
+         if session_name is not None:
+-            session_info = self.list_sessions()[session_name]
++            session_info = self.list_sessions(refresh_cache=true)[session_name]
+         else:
+             session_info = None
+ 
+@@ -342,7 +353,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         return _terminal or None
+ 
+-    def list_sessions(self, raw=False):
++    def list_sessions(self, raw=False, no_cache=False, refresh_cache=False):
+         &quot;&quot;&quot;\
+         List all sessions of current user on the connected server.
+ 
+@@ -356,13 +367,23 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @rtype: L{X2goServerSessionList} instance or str
+ 
+         &quot;&quot;&quot;
+-        (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2golistsessions&quot;)
+-
+         if raw:
+             return stdout.read(), stderr.read()
+ 
+-        _stdout_read = stdout.read()
+-        return self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++        elif no_cache or refresh_cache or (self.use_listsessions_cache is False) or (self.x2go_listsessions_cache is None):
++
++            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;x2golistsessions&quot;)
++
++            _stdout_read = stdout.read()
++            _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
++            if refresh_cache and self.x2go_listsessions_cache is not None:
++                self.x2go_listsessions_cache.update_session_list(session_list=_listsessions)
++
++            return _listsessions
++
++        else:
++
++            return self.x2go_listsessions_cache.list_sessions()
+ 
+     def clean_sessions(self):
+         &quot;&quot;&quot;\
+@@ -370,7 +391,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         connected user on the remote X2go server and terminate them.
+ 
+         &quot;&quot;&quot;
+-        session_infos = self.list_sessions()
++        session_infos = self.list_sessions(refresh_cache=True)
+         for session_info in session_infos.values():
+             self.terminate(session_name=session_info)
+ 
+@@ -400,7 +421,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        session_infos = self.list_sessions()
++        session_infos = self.list_sessions(refresh_cache=True)
+         if session_name in session_infos.keys():
+             return session_infos[session_name].is_running()
+         return False
+@@ -414,7 +435,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        session_infos = self.list_sessions()
++        session_infos = self.list_sessions(refresh_cache=True)
+         if session_name in session_infos.keys():
+             return session_infos[session_name].is_suspended()
+         return False
+@@ -431,8 +452,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        session_infos = self.list_sessions()
+-
++        session_infos = self.list_sessions(refresh_cache=True)
+ 
+         if session_name not in session_infos.keys():
+             if session_name in self.terminated_terminals:
+diff --git a/x2go/cache.py b/x2go/cache.py
+new file mode 100644
+index 0000000..147c5b4
+--- /dev/null
++++ b/x2go/cache.py
+@@ -0,0 +1,111 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++X2goListSessionCache class - caching X2go session information.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gocache-pylib'
++
++# modules
++import gevent
++import threading
++import copy
++
++# Python X2go modules
++import log
++import x2go_exceptions
++
++class X2goListSessionsCache(threading.Thread):
++    &quot;&quot;&quot;\
++    STILL UNDOCUMENTED
++
++    &quot;&quot;&quot;
++
++    x2go_listsessions_cache = None
++
++    def __init__(self, control_session, refresh_interval=5, logger=None, loglevel=log.loglevel_DEFAULT):
++        &quot;&quot;&quot;\
++        @param control: the L{X2goControlSession} that uses this L{X2goListSessionsCache}
++        @type control: C{instance}
++        @param refresh_interval: refresh interval of the list sessions cache in seconds
++        @type refresh_interval: C{int}
++        @param logger: you can pass an L{X2goLogger} object to the L{X2goSessionGuardian} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        if logger is None:
++            self.logger = log.X2goLogger(loglevel=loglevel)
++        else:
++            self.logger = copy.deepcopy(logger)
++        self.logger.tag = __NAME__
++
++        self.control_session = control_session
++        self.refresh_interval = refresh_interval
++        threading.Thread.__init__(self, target=self.refresh_cache)
++        self.daemon = True
++
++    def refresh_cache(self):
++        &quot;&quot;&quot;\
++        The handler of this L{X2goListSessionsCache} thread.
++
++        &quot;&quot;&quot;
++        seconds = 0
++        self._keepalive = True
++        while self._keepalive:
++            gevent.sleep(1)
++            seconds += 1
++            if seconds % self.refresh_interval == 0:
++                self.update_session_list()
++
++    def update_session_list(self, session_list=None):
++        &quot;&quot;&quot;\
++        Retrieve a recent session list either from the control session's C{list_sessions()}
++        method or as an argument.
++
++        @param session_list: an L{X2goServerSessionList} backend instance
++        @type session_list C{instance}
++
++        &quot;&quot;&quot;
++        if session_list is None:
++            try:
++                self.x2go_listsessions_cache = self.control_session.list_sessions(no_cache=True)
++            except x2go_exceptions.X2goSessionException:
++                pass
++        else:
++            self.x2go_listsessions_cache = session_list
++
++    def list_sessions(self):
++        &quot;&quot;&quot;\
++        Retrieve the current cache content of L{X2goListSessionsCache}.
++
++        &quot;&quot;&quot;
++        return self.x2go_listsessions_cache
++
++    def stop_thread(self):
++        &quot;&quot;&quot;\
++        Stop this L{X2goListSessionsCache} thread.
++
++        &quot;&quot;&quot;
++        self._keepalive = False
++
++
+diff --git a/x2go/cleanup.py b/x2go/cleanup.py
+index 72aa038..04949df 100644
+--- a/x2go/cleanup.py
++++ b/x2go/cleanup.py
+@@ -27,7 +27,7 @@ import guardian
+ import rforward
+ 
+ 
+-def x2go_cleanup(e=None, session=None, threads=[]):
++def x2go_cleanup(e=None, terminal_session=None, threads=[]):
+     &quot;&quot;&quot;\
+     For every Python X2go application you write, please make sure to 
+     capture the KeyboardInterrupt and the SystemExit exceptions and 
+@@ -49,16 +49,16 @@ def x2go_cleanup(e=None, session=None, threads=[]):
+     @param e: if L{x2go_cleanup} got called as we caught an exception this can be the C{Exception} that
+         we might process at the end of the clean-up (or if clean-up failed or was not appropriate)
+     @type e: C{exception}
+-    @param session: an L{X2goSession} object
+-    @type session: C{instance}
++    @param terminal_session: an L{X2goSession} object
++    @type terminal_session: C{instance}
+     @param threads: a list of threads to clean up
+     @type threads: C{list}
+ 
+     &quot;&quot;&quot;
+-    if session is None:
++    if terminal_session is None:
+         active_threads = threading.enumerate()
+     else:
+-        session.logger('cleaning up threads of session: %s' % session.session_info.name)
++        terminal_session.logger('cleaning up threads of terminal session: %s' % terminal_session.session_info.name)
+         active_threads = threads
+ 
+     # stop X2go reverse forwarding tunnels
+@@ -66,7 +66,7 @@ def x2go_cleanup(e=None, session=None, threads=[]):
+         if type(t) == rforward.X2goRevFwTunnel:
+             t.stop_thread()
+ 
+-    # stop X2go paramiko transports used by X2goSession objects
++    # stop X2go paramiko transports used by X2goTerminalSession objects
+     for t in active_threads:
+         if type(t) == paramiko.Transport:
+             if hasattr(t, '_x2go_session_marker'):
+diff --git a/x2go/client.py b/x2go/client.py
+index 2b12c78..488468c 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -861,7 +861,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if self._X2goClient__is_session_connected(session_uuid):
+-            session_list = self._X2goClient__list_sessions(session_uuid)
++            session_list = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+             return [ key for key in session_list.keys() if session_list[key].status == 'R' ]
+         else:
+             raise X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
+@@ -890,7 +890,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         if self._X2goClient__is_session_connected(session_uuid):
+-            session_list = self._X2goClient__list_sessions(session_uuid)
++            session_list = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+             return [ key for key in session_list.keys() if session_list[key].status == 'S' ]
+         else:
+             raise X2goClientException('X2go session with UUID %s is not connected' % session_uuid)
+@@ -934,7 +934,7 @@ class X2goClient(object):
+         session.clean_sessions()
+     __clean_sessions = clean_sessions
+ 
+-    def list_sessions(self, session_uuid):
++    def list_sessions(self, session_uuid, no_cache=False, refresh_cache=False):
+         &quot;&quot;&quot;\
+         Use the X2go session registered under C{session_uuid} to
+         retrieve a list of running or suspended X2go sessions on the 
+@@ -950,7 +950,7 @@ class X2goClient(object):
+ 
+         &quot;&quot;&quot;
+         session = self.session_registry(session_uuid)
+-        return session.list_sessions()
++        return session.list_sessions(no_cache=no_cache, refresh_cache=refresh_cache)
+     __list_sessions = list_sessions
+ 
+     ###
+diff --git a/x2go/guardian.py b/x2go/guardian.py
+index 4c2fa8d..7c483f6 100644
+--- a/x2go/guardian.py
++++ b/x2go/guardian.py
+@@ -56,10 +56,10 @@ class X2goSessionGuardian(threading.Thread):
+ 
+     &quot;&quot;&quot;
+ 
+-    def __init__(self, session, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, terminal_session, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+-        @param session: the L{X2goSession} that is controlled by this L{X2goSessionGuardian}
+-        @type session: C{instance}
++        @param terminal_session: the L{X2goTerminalSession} that is controlled by this L{X2goSessionGuardian}
++        @type terminal_session: C{instance}
+         @param logger: you can pass an L{X2goLogger} object to the L{X2goSessionGuardian} constructor
+         @type logger: C{instance}
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+@@ -73,8 +73,7 @@ class X2goSessionGuardian(threading.Thread):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        self.session = session
+-        self._keepalive = True
++        self.terminal_session = terminal_session
+         threading.Thread.__init__(self, target=self.guardian)
+         self.daemon = True
+ 
+@@ -84,11 +83,17 @@ class X2goSessionGuardian(threading.Thread):
+ 
+         &quot;&quot;&quot;
+         global _sigterm_received
++
++        seconds = 0
++        self._keepalive = True
+         while not _sigterm_received and self._keepalive:
+             gevent.sleep(1)
+-        self.logger('X2go session guardian thread waking up, calling session cleanup for session: %s' % self.session.session_info.name, loglevel=log.loglevel_DEBUG)
++            seconds += 1
++
++        self.logger('X2go session guardian thread waking up after %s seconds' % seconds, loglevel=log.loglevel_DEBUG)
++        self.logger('calling terminal session cleanup for terminal session: %s' % self.terminal_session.session_info.name, loglevel=log.loglevel_DEBUG)
+ 
+-        x2go_cleanup(session=self.session, threads=self.active_threads)
++        x2go_cleanup(terminal_session=self.terminal_session, threads=self.active_threads)
+ 
+     def stop_thread(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/session.py b/x2go/session.py
+index 354069a..045245c 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -120,6 +120,7 @@ class X2goSession(object):
+             self.control_session = control_session
+ 
+         self.terminal_session = None
++        self.guardian_thread = None
+         self.logger('starting X2goSession', loglevel=log.loglevel_DEBUG)
+         if known_hosts:
+             self.control_session.load_host_keys(known_hosts)
+@@ -283,8 +284,8 @@ class X2goSession(object):
+     def clean_sessions(self):
+         self.control_session.clean_sessions()
+ 
+-    def list_sessions(self):
+-        return self.control_session.list_sessions()
++    def list_sessions(self, no_cache=False, refresh_cache=False):
++        return self.control_session.list_sessions(no_cache=no_cache, refresh_cache=refresh_cache)
+ 
+     def resume(self, session_name=None):
+         &quot;&quot;&quot;\
+@@ -297,6 +298,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         _control = self.control_session
+         _terminal = _control.resume(session_name=session_name, logger=self.logger, **self.terminal_params)
++        self.guardian_thread = _terminal.guardian_thread
+         self.terminal_session = _terminal
+         if _terminal is not None:
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012877.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-38-g3b29fe2
+</A></li>
+	<LI>Next message: <A HREF="012887.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	e3fe57d1ad10f04c05565d3dbb712bc1d3f0caf5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12886">[ date ]</a>
+              <a href="thread.html#12886">[ thread ]</a>
+              <a href="subject.html#12886">[ subject ]</a>
+              <a href="author.html#12886">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,441 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-300-g937723e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-300-g937723e&In-Reply-To=%3C20140103195337.516E15DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="019971.html">
+   <LINK REL="Next"  HREF="019973.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-300-g937723e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.1.1.3-300-g937723e&In-Reply-To=%3C20140103195337.516E15DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-300-g937723e">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan  3 20:53:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="019971.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-306-gfca9c15
+</A></li>
+        <LI>Next message: <A HREF="019973.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-299-g8438c1e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19972">[ date ]</a>
+              <a href="thread.html#19972">[ thread ]</a>
+              <a href="subject.html#19972">[ subject ]</a>
+              <a href="author.html#19972">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  937723e0a9c2461d94fb9acfefc38a9d24b0efb4 (commit)
+      from  8438c1ec5b2b021ad535ac1d493279d9e5a983e8 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2goserver-xsession/Makefile     |    8 +-
+ x2goserver-xsession/etc/Xsession |  207 +++++++++++++++++++++++++++-----------
+ x2goserver/bin/x2goruncommand    |    2 +-
+ 4 files changed, 154 insertions(+), 64 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 6bdb2ae..fc443f8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -92,6 +92,7 @@ x2goserver (4.0.1.10-0x2go1) UNRELEASED; urgency=low
+     - Use xkb ruleset 'base' rather than xfree86 as on RHEL systems the
+       xfree86 symlink to base rulset does not exist.
+     - Grab systemd service file from Fedora and ship it upstream.
++    - Provide RHEL/Fedora support in x2goserver-xsession.
+   * x2goserver.spec:
+     + Ship x2goserver.spec (RPM package definitions) in upstream project.
+       (Thanks to the Fedora package maintainers).
+diff --git a/x2goserver-xsession/Makefile b/x2goserver-xsession/Makefile
+index 14bad33..bfb0f6d 100755
+--- a/x2goserver-xsession/Makefile
++++ b/x2goserver-xsession/Makefile
+@@ -22,6 +22,8 @@ SHAREDIR=$(PREFIX)/share/x2go
+ 
+ XSESSIONDIR ?= /etc/X11/Xsession.d
+ XSESSIONOPTIONFILE ?= /etc/X11/Xsession.options
++XINITRCDIR ?= /etc/X11/xinit/xinitrc.d
++XCLIENTSDIR ?= /etc/X11/xinit/Xclients.d
+ 
+ ETC_FILES=$(shell cd etc &amp;&amp; echo *)
+ FEATURE_SCRIPTS=$(shell cd share/x2gofeature.d &amp;&amp; echo *.features)
+@@ -52,8 +54,10 @@ install_config:
+ #       provide target dirs for X11 related symlinks
+ 	$(INSTALL_PROGRAM) etc/Xsession                 $(DESTDIR)$(ETCDIR)/
+ 	$(INSTALL_SYMLINK) /etc/X11/Xresources          $(DESTDIR)$(ETCDIR)/
+-	if [ -e $(XSESSIONOPTIONFILE) ]; then $(INSTALL_SYMLINK) $(XSESSIONOPTIONFILE) $(DESTDIR)$(ETCDIR)/Xsession.options; else touch $(DESTDIR)$(ETCDIR)/Xsession.options; fi
+-	if [ -d $(XSESSIONDIR) ]; then $(INSTALL_SYMLINK) $(XSESSIONDIR) $(DESTDIR)$(ETCDIR)/Xsession.d; else $(INSTALL_DIR) $(DESTDIR)$(ETCDIR)/Xsession.d; fi
++	if [ -e /etc/debian_version ]; if [ -e $(XSESSIONOPTIONFILE) ]; then $(INSTALL_SYMLINK) $(XSESSIONOPTIONFILE) $(DESTDIR)$(ETCDIR)/Xsession.options; else touch $(DESTDIR)$(ETCDIR)/Xsession.options; fi; fi
++	if [ -e /etc/debian_version ]; if [ -d $(XSESSIONDIR) ]; then $(INSTALL_SYMLINK) $(XSESSIONDIR) $(DESTDIR)$(ETCDIR)/Xsession.d; else $(INSTALL_DIR) $(DESTDIR)$(ETCDIR)/Xsession.d; fi; fi
++	if [ -e /etc/redhat-release ]; if [ -d $(XINITRCDIR) ]; then $(INSTALL_SYMLINK) $(XINITRCDIR) $(DESTDIR)$(ETCDIR)/xinitrc.d; else $(INSTALL_DIR) $(DESTDIR)$(ETCDIR)/xinitrc.d; fi; fi
++	if [ -e /etc/redhat-release ]; if [ -d $(XCLIENTSDIR) ]; then $(INSTALL_SYMLINK) $(XCLIENTSDIR) $(DESTDIR)$(ETCDIR)/Xclients.d; else $(INSTALL_DIR) $(DESTDIR)$(ETCDIR)/Xclients.d; fi; fi
+ 
+ install_man:
+ 
+diff --git a/x2goserver-xsession/etc/Xsession b/x2goserver-xsession/etc/Xsession
+index 47ec40e..243be76 100755
+--- a/x2goserver-xsession/etc/Xsession
++++ b/x2goserver-xsession/etc/Xsession
+@@ -13,48 +13,48 @@ X2GO_LIBEXEC_PATH=&quot;$(x2gopath libexec)&quot;;
+ PROGNAME=XSession-x2go
+ 
+ message () {
+-  # pretty-print messages of arbitrary length; use xmessage if it
+-  # is available and $DISPLAY is set
+-  MESSAGE=&quot;$PROGNAME: $*&quot;
+-  echo &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} &gt;&amp;2
+-  if [ -n &quot;$DISPLAY&quot; ] &amp;&amp; which xmessage &gt; /dev/null 2&gt;&amp;1; then
+-    echo &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
+-  fi
++	# pretty-print messages of arbitrary length; use xmessage if it
++	# is available and $DISPLAY is set
++	MESSAGE=&quot;$PROGNAME: $*&quot;
++	echo &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} &gt;&amp;2
++	if [ -n &quot;$DISPLAY&quot; ] &amp;&amp; which xmessage &gt; /dev/null 2&gt;&amp;1; then
++		echo &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
++	fi
+ }
+ 
+ message_nonl () {
+-  # pretty-print messages of arbitrary length (no trailing newline); use
+-  # xmessage if it is available and $DISPLAY is set
+-  MESSAGE=&quot;$PROGNAME: $*&quot;
+-  echo -n &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} &gt;&amp;2;
+-  if [ -n &quot;$DISPLAY&quot; ] &amp;&amp; which xmessage &gt; /dev/null 2&gt;&amp;1; then
+-    echo -n &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
+-  fi
++	# pretty-print messages of arbitrary length (no trailing newline); use
++	# xmessage if it is available and $DISPLAY is set
++	MESSAGE=&quot;$PROGNAME: $*&quot;
++	echo -n &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} &gt;&amp;2;
++	if [ -n &quot;$DISPLAY&quot; ] &amp;&amp; which xmessage &gt; /dev/null 2&gt;&amp;1; then
++		echo -n &quot;$MESSAGE&quot; | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
++	fi
+ }
+ 
+ errormsg () {
+-  # exit script with error
+-  message &quot;$*&quot;
+-  exit 1
++	# exit script with error
++	message &quot;$*&quot;
++	exit 1
+ }
+ 
+ internal_errormsg () {
+-  # exit script with error; essentially a &quot;THIS SHOULD NEVER HAPPEN&quot; message
+-  # One big call to message() for the sake of xmessage; if we had two then
+-  # the user would have dismissed the error we want reported before seeing the
+-  # request to report it.
+-  errormsg &quot;$*&quot; \
+-           &quot;Please report the installed version of the \&quot;x2goserver\&quot;&quot; \
+-           &quot;package and the complete text of this error message to&quot; \
+-           &quot;&lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.x2go.org</A>&gt;.&quot;
++	# exit script with error; essentially a &quot;THIS SHOULD NEVER HAPPEN&quot; message
++	# One big call to message() for the sake of xmessage; if we had two then
++	# the user would have dismissed the error we want reported before seeing the
++	# request to report it.
++	errormsg &quot;$*&quot; \
++	   &quot;Please report the installed version of the \&quot;X2Go Server\&quot;&quot; \
++	   &quot;package and the complete text of this error message to&quot; \
++	   &quot;&lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.x2go.org</A>&gt;.&quot;
+ }
+ 
+ # Load profile
+ for file in &quot;/etc/profile&quot; &quot;$HOME/.profile&quot; &quot;/etc/xprofile&quot; &quot;$HOME/.xprofile&quot;; do
+-    if [ -f &quot;$file&quot; ]; then
+-        echo &quot;Loading profile from $file&quot;;
+-        . &quot;$file&quot;
+-    fi
++	if [ -f &quot;$file&quot; ]; then
++		echo &quot;Loading profile from $file&quot;;
++		. &quot;$file&quot;
++	fi
+ done
+ 
+ # initialize variables for use by all session scripts
+@@ -71,17 +71,16 @@ ALTUSERXSESSION=$HOME/.Xsession-x2go
+ ERRFILE=$HOME/.xsession-x2go-errors
+ 
+ # attempt to create an error file; abort if we cannot
+-if (umask 077 &amp;&amp; touch &quot;$ERRFILE&quot;) 2&gt; /dev/null &amp;&amp; [ -w &quot;$ERRFILE&quot; ] &amp;&amp;
+-  [ ! -L &quot;$ERRFILE&quot; ]; then
+-  chmod 600 &quot;$ERRFILE&quot;
++if (umask 077 &amp;&amp; touch &quot;$ERRFILE&quot;) 2&gt; /dev/null &amp;&amp; [ -w &quot;$ERRFILE&quot; ] &amp;&amp; [ ! -L &quot;$ERRFILE&quot; ]; then
++	chmod 600 &quot;$ERRFILE&quot;
+ elif ERRFILE=$(mktemp 2&gt; /dev/null); then
+-  if ! ln -sf &quot;$ERRFILE&quot; &quot;${TMPDIR:=/tmp}/xsession-x2go-$USER&quot;; then
+-    message &quot;warning: unable to symlink \&quot;$TMPDIR/xsession-x2go-$USER\&quot; to&quot; \
+-             &quot;\&quot;$ERRFILE\&quot;; look for session log/errors in&quot; \
+-             &quot;\&quot;$TMPDIR/xsession-x2go-$USER\&quot;.&quot;
+-  fi
++	if ! ln -sf &quot;$ERRFILE&quot; &quot;${TMPDIR:=/tmp}/xsession-x2go-$USER&quot;; then
++		message &quot;warning: unable to symlink \&quot;$TMPDIR/xsession-x2go-$USER\&quot; to&quot; \
++		        &quot;\&quot;$ERRFILE\&quot;; look for session log/errors in&quot; \
++		        &quot;\&quot;$TMPDIR/xsession-x2go-$USER\&quot;.&quot;
++	fi
+ else
+-  errormsg &quot;unable to create X session (X2Go) log/error file; aborting.&quot;
++	errormsg &quot;unable to create X session (X2Go) log/error file; aborting.&quot;
+ fi
+ 
+ exec &gt;&gt;&quot;$ERRFILE&quot; 2&gt;&amp;1
+@@ -90,7 +89,7 @@ echo &quot;$PROGNAME: X session started for $LOGNAME at $(date)&quot;
+ 
+ # sanity check; is our session script directory present?
+ if [ ! -d &quot;$SYSSESSIONDIR&quot; ]; then
+-  errormsg &quot;no \&quot;$SYSSESSIONDIR\&quot; directory found; aborting.&quot;
++	errormsg &quot;no \&quot;$SYSSESSIONDIR\&quot; directory found; aborting.&quot;
+ fi
+ 
+ # Attempt to create a file of non-zero length in /tmp; a full filesystem can
+@@ -100,32 +99,118 @@ fi
+ # determining what went wrong.
+ WRITE_TEST=$(mktemp)
+ if ! echo &quot;*&quot; &gt;&gt;&quot;$WRITE_TEST&quot;; then
+-  message &quot;warning: unable to write to ${WRITE_TEST%/*}; X session (X2Go) may&quot; \
+-          &quot;exit with an error&quot;
++	message &quot;warning: unable to write to ${WRITE_TEST%/*}; X session (X2Go) may&quot; \
++	        &quot;exit with an error&quot;
+ fi
+ rm -f &quot;$WRITE_TEST&quot;
+ 
+-# use run-parts to source every file in the session directory; we source
+-# instead of executing so that the variables and functions defined above
+-# are available to the scripts, and so that they can pass variables to each
+-# other
+ 
+-SESSIONFILES=$(run-parts --list $SYSSESSIONDIR)
+-SYSSESSIONDIR=/etc/x2go/Xsession.d
+-
+-SESSIONFILES=$(run-parts --list $SYSSESSIONDIR)
+-
+-### source Xsession files
+-if [ -n &quot;$SESSIONFILES&quot; ]; then
+-
+-    set +e
+-    for SESSIONFILE in $SESSIONFILES; do
+-        &quot;$X2GO_LIBEXEC_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;executing $SESSIONFILE&quot;
+-        . $SESSIONFILE
+-    done
+-    set -e
++if [ -f /etc/debian_version ]; then
++
++	# use run-parts to source every file in the session directory; we source
++	# instead of executing so that the variables and functions defined above
++	# are available to the scripts, and so that they can pass variables to each
++	# other
++
++	SESSIONFILES=$(run-parts --list $SYSSESSIONDIR)
++	SYSSESSIONDIR=/etc/x2go/Xsession.d
++
++	SESSIONFILES=$(run-parts --list $SYSSESSIONDIR)
++
++	### source Xsession files
++	if [ -n &quot;$SESSIONFILES&quot; ]; then
++
++		set +e
++		for SESSIONFILE in $SESSIONFILES; do
++			&quot;$X2GO_LIBEXEC_PATH/x2gosyslog&quot; &quot;$0&quot; &quot;info&quot; &quot;executing $SESSIONFILE&quot;
++			. $SESSIONFILE
++		done
++		set -e
++	fi
++elif [ -f /etc/redhat-release ]; then
++
++	# define a fallback... (should never be needed). The XSESSION_EXEC var gets set in
++	# X2Go's x2goruncommand script and can be used with obsolete switchdesk or with
++	# Xclients.d scripts (also rarely used, see below...).
++	XSESSION_EXEC=${XSESSION_EXEC:-xterm}
++
++	# Set up i18n environment
++	if [ -r /etc/profile.d/lang.sh ]; then
++		. /etc/profile.d/lang.sh
++	fi
++
++	# merge in defaults
++	[ -r &quot;$SYSRESOURCES&quot; ] &amp;&amp; xrdb -nocpp -merge &quot;$SYSRESOURCES&quot;
++	[ -r &quot;$USRRESOURCES&quot; ] &amp;&amp; xrdb -merge &quot;$USRRESOURCES&quot;
++
++	# RHEL's Xsession file for X11 allows playing with setxkbmap / xmodmap
++	# We provide this for compat, but disrecommend using it. Make sure to
++	# disable any Keyboard setup in X2Go Client / PyHoca-GUI if you want to
++	# use server-side key mappings.
++	USRMODMAP=$HOME/.Xmodmap-x2go
++	USRXKBMAP=$HOME/.Xkbmap-x2go
++
++	SYSMODMAP=/etc/x2go/Xmodmap
++	SYSXKBMAP=/etc/x2go/Xkbmap
++
++	# merge in keymaps
++	if [ -r &quot;$SYSXKBMAP&quot; ]; then
++		setxkbmap $(cat &quot;$SYSXKBMAP&quot;)
++		XKB_IN_USE=yes
++	fi
++
++	if [ -r &quot;$USRXKBMAP&quot; ]; then
++		setxkbmap $(cat &quot;$USRXKBMAP&quot;)
++		XKB_IN_USE=yes
++	fi
++
++	# xkb and xmodmap don't play nice together
++	if [ -z &quot;$XKB_IN_USE&quot; ]; then
++		[ -r &quot;$SYSMODMAP&quot; ] &amp;&amp; xmodmap &quot;$SYSMODMAP&quot;
++		[ -r &quot;$USRMODMAP&quot; ] &amp;&amp; xmodmap &quot;$USRMODMAP&quot;
++	fi
++
++	unset XKB_IN_USE
++
++	# run all system xinitrc shell scripts.
++	for file in /etc/x2go/xinit/xinitrc.d/* ; do
++		. $file
++	done
++
++	# Prefix launch of session with ssh-agent if available and not already running.
++	SSH_AGENT=
++	if [ -x /usr/bin/ssh-agent -a -z &quot;$SSH_AGENT_PID&quot; ]; then
++		if [ &quot;x$TMPDIR&quot; != &quot;x&quot; ]; then
++			SSH_AGENT=&quot;/usr/bin/ssh-agent /bin/env TMPDIR=$TMPDIR&quot;
++		else
++			SSH_AGENT=&quot;/usr/bin/ssh-agent&quot;
++		fi
++	fi
++
++	CK_XINIT_SESSION=
++	if [ -x /usr/bin/ck-xinit-session -a -z &quot;$XDG_SESSION_COOKIE&quot; ]; then
++		CK_XINIT_SESSION=&quot;/usr/bin/ck-xinit-session&quot;
++	fi
++
++	# At the time of integrating X2Go Xsession support for RHEL6 / Fedora
++	# the Xsession stuff in Fedora/RHEL6 seems to be a little mess.
++	# The proposed strategy is to have Xclients.$WM.sh files in 
++	# /etc/X11/xinit/Xclients.d. Currently, only wmx uses this mechanism.
++	# As it is a described but rather unused ,,standard'' we will not support it
++	# in X2Go for now, but leave it here as a reminder...
++
++	# XCLIENTS_D=/etc/x2go/Xclients.d
++	#if [ -d &quot;$XCLIENTS_D&quot; -a -x &quot;$XCLIENTS_D/Xclients.${XSESSION_EXEC}.sh&quot; ]; then
++	#	exec -l $SHELL -c &quot;$CK_XINIT_SESSION $SSH_AGENT $XCLIENTS_D/Xclients.$1.sh&quot;
++	#fi
++
++	# switchdesk support is also totally deprecated in RHEL, but we leave it here
++	# as a reminder, as well, in case we need it in the future for special setups...
++	#if [ -x &quot;$SWITCHDESKPATH/Xclients.${XSESSION_EXEC}&quot; ]; then
++	#	exec -l &quot;$SHELL&quot; -c &quot;$SWITCHDESKPATH/Xclients.${XSESSION_EXEC}&quot;;
++	#fi
++
++	exec $CK_XINIT_SESSION $SSH_AGENT /bin/sh -c &quot;exec -l $SHELL -c \&quot;$STARTUP\&quot;&quot;
+ fi
+ 
+ exit 0
+-
+-# vim:set ai et sts=2 sw=2 tw=80:
+diff --git a/x2goserver/bin/x2goruncommand b/x2goserver/bin/x2goruncommand
+index d5f39d2..5d5113c 100755
+--- a/x2goserver/bin/x2goruncommand
++++ b/x2goserver/bin/x2goruncommand
+@@ -230,7 +230,7 @@ if [ &quot;$EXEC&quot; != &quot;&quot; ] &amp;&amp; [ -x $EXEC ]; then
+ 	x2gofeature X2GO_XSESSION &amp;&gt;/dev/null &amp;&amp; [ &quot;x$X2GO_SESS_TYPE&quot; = &quot;xD&quot; ] &amp;&amp; {
+ 		STARTUP=&quot;$cmd$args&quot;
+ 		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;notice&quot; &quot;launching session with Xsession-x2go mechanism, using STARTUP=\&quot;$STARTUP\&quot;&quot;
+-		STARTUP=&quot;/usr/bin/env LD_LIBRARY_PATH=${LD_LIBRARY_PATH} ${STARTUP}&quot; /etc/x2go/Xsession
++		XSESSION_EXEC=&quot;$cmd&quot; STARTUP=&quot;/usr/bin/env LD_LIBRARY_PATH=${LD_LIBRARY_PATH} ${STARTUP}&quot; /etc/x2go/Xsession
+ 	} || {
+ 		$X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;debug&quot; &quot;executing command \&quot;$cmd$args\&quot;...&quot;
+ 		$EXEC_WRAPPER $cmd$args
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="019971.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-306-gfca9c15
+</A></li>
+	<LI>Next message: <A HREF="019973.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.1.1.3-299-g8438c1e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19972">[ date ]</a>
+              <a href="thread.html#19972">[ thread ]</a>
+              <a href="subject.html#19972">[ subject ]</a>
+              <a href="author.html#19972">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

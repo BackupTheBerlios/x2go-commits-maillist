@@ -1,0 +1,570 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	c1cce02e184e39e4a306a15f7b47810a0b4b6c8f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master-inai%20%28branch%29%20updated%3A%0A%09c1cce02e184e39e4a306a15f7b47810a0b4b6c8f&In-Reply-To=%3C20130423190822.984AE5DB47%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005593.html">
+   <LINK REL="Next"  HREF="005586.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	c1cce02e184e39e4a306a15f7b47810a0b4b6c8f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20master-inai%20%28branch%29%20updated%3A%0A%09c1cce02e184e39e4a306a15f7b47810a0b4b6c8f&In-Reply-To=%3C20130423190822.984AE5DB47%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	c1cce02e184e39e4a306a15f7b47810a0b4b6c8f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Apr 23 21:08:22 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005593.html">[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	9e508bb70a2d28a2b94ed0e7da2ba5b8e191880b
+</A></li>
+        <LI>Next message: <A HREF="005586.html">[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	689eb8340b47a1188a1b628d244e001054a5ac35
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5585">[ date ]</a>
+              <a href="thread.html#5585">[ thread ]</a>
+              <a href="subject.html#5585">[ subject ]</a>
+              <a href="author.html#5585">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master-inai has been updated
+       via  c1cce02e184e39e4a306a15f7b47810a0b4b6c8f (commit)
+      from  b518fc866f0a3554e45d12902b1a8b21596f8e4e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/defaults.py                             |    6 +-
+ x2gobroker/nameservices/base.py                    |    9 +
+ .../nameservices/{libnss.py =&gt; testsuite.py}       |   38 ++-
+ x2gobroker/tests/test_broker_base.py               |  299 +++++++++++++++++++-
+ 4 files changed, 321 insertions(+), 31 deletions(-)
+ copy x2gobroker/nameservices/{libnss.py =&gt; testsuite.py} (59%)
+
+The diff of changes is:
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index ef9b759..fb70a34 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -122,13 +122,13 @@ X2GOBROKER_SESSIONPROFILE_DEFAULTS = {
+         u'sshport': 22,
+         u'setdpi': 0,
+         u'pack': u'16m-jpeg',
+-        u'acl-users-allow': [u'ALL'],
++        u'acl-users-allow': [],
+         u'acl-users-deny': [],
+         u'acl-users-order': '',
+-        u'acl-groups-allow': [u'ALL'],
++        u'acl-groups-allow': [],
+         u'acl-groups-deny': [],
+         u'acl-groups-order': '',
+-        u'acl-clients-allow': [u'ALL'],
++        u'acl-clients-allow': [],
+         u'acl-clients-deny': [],
+         u'acl-clients-order': '',
+         u'acl-any-order': u'deny-allow',
+diff --git a/x2gobroker/nameservices/base.py b/x2gobroker/nameservices/base.py
+index 48ac244..7419be9 100644
+--- a/x2gobroker/nameservices/base.py
++++ b/x2gobroker/nameservices/base.py
+@@ -18,6 +18,8 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
++import copy
++
+ class X2GoBrokerNameService(object):
+ 
+     def has_user(self, username):
+@@ -43,3 +45,10 @@ class X2GoBrokerNameService(object):
+ 
+     def get_group_members(self, group, primary_groups=False):
+         return []
++
++    def get_user_groups(self, username, primary_groups=False):
++        _groups = []
++        for _group in self.get_groups():
++            if self.is_group_member(username=username, group=_group, primary_groups=primary_groups):
++                _groups.append(_group)
++        return _groups
+diff --git a/x2gobroker/nameservices/libnss.py b/x2gobroker/nameservices/testsuite.py
+similarity index 59%
+copy from x2gobroker/nameservices/libnss.py
+copy to x2gobroker/nameservices/testsuite.py
+index 4636a13..e2a0e1f 100644
+--- a/x2gobroker/nameservices/libnss.py
++++ b/x2gobroker/nameservices/testsuite.py
+@@ -18,10 +18,6 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-# modules
+-import pwd
+-import grp
+-
+ # Python X2GoBroker modules
+ import base
+ 
+@@ -29,20 +25,34 @@ import base
+ class X2GoBrokerNameService(base.X2GoBrokerNameService):
+ 
+     def get_users(self):
+-        return [ p.pw_name for p in pwd.getpwall() ]
++        return [ 'maja', 'willi', 'flip', 'kassandra', 'thekla' ]
+ 
+     def get_primary_group(self, username):
+-        prim_gid_number = [ p.pw_gid for p in pwd.getpwall() if p.pw_name == username ]
+-        return [ g.gr_name for g in grp.getgrall() if g.gr_gid in prim_gid_number ]
++        return username
+ 
+     def get_groups(self):
+-        return [ g.gr_name for g in grp.getgrall() ]
++        return [ 'male', 'female', 'bees', 'grasshoppers', 'spiders' ]
+ 
+     def get_group_members(self, group, primary_groups=False):
+-        _members_from_primgroups = []
+-        if primary_groups:
+-            for username in self.get_users():
+-                if group in self.get_primary_group(username):
+-                    _members_from_primgroups.append(group)
+-        return grp.getgrnam(group).gr_mem + _members_from_primgroups
++        _groups = []
++        _dict = {
++            'male': ['willi', 'flip'],
++            'female': ['maja', 'kassandra', 'thekla'],
++            'bees': ['maja', 'willi', 'kassandra'],
++            'grasshoppers': ['flip'],
++            'spiders': ['thekla'],
++        }
++        if group in _dict.keys():
++            _groups.extend(_dict[group])
++        _dict_prim = {
++            'maja': 'maja',
++            'willi': 'willi',
++            'flip': 'flip',
++            'kassandra': 'kassandra',
++            'thekla': 'thekla',
++        }
++        if group in _dict_prim.keys() and primary_groups:
++            _groups.extend(_dict_prim[group])
++
++        return _groups
+ 
+diff --git a/x2gobroker/tests/test_broker_base.py b/x2gobroker/tests/test_broker_base.py
+index ec83e94..0e5f7ec 100644
+--- a/x2gobroker/tests/test_broker_base.py
++++ b/x2gobroker/tests/test_broker_base.py
+@@ -267,13 +267,13 @@ check-credentials = false
+     def test_getdefaultacls(self):
+         base_backend = self._init_base_backend()
+         _expected_acls = {
+-            'acl-users-allow': ['ALL'],
++            'acl-users-allow': [],
+             'acl-users-deny': [],
+             'acl-users-order': '',
+-            'acl-groups-allow': ['ALL'],
++            'acl-groups-allow': [],
+             'acl-groups-deny': [],
+             'acl-groups-order': '',
+-            'acl-clients-allow': ['ALL'],
++            'acl-clients-allow': [],
+             'acl-clients-deny': [],
+             'acl-clients-order': '',
+             'acl-any-order': 'deny-allow',
+@@ -287,21 +287,43 @@ check-credentials = false
+ 
+     ### TEST ACL CHECK: check_profile_acls()
+ 
+-    def test_checkprofileacls_simpletests(self):
++    def test_checkprofileacls_user_simpletests(self):
+         base_backend = self._init_base_backend()
+         username = 'foo'
++        # no ACLs will grant access
++        acls = {
++            'acl-users-allow': [],
++            'acl-user-deny': [],
++            'acl-users-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
++        acls = {
++            'acl-users-allow': [],
++            'acl-user-deny': [],
++            'acl-users-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+         acls = {
+             'acl-users-allow': ['ALL'],
++            'acl-users-deny': [],
+             'acl-users-order': 'deny-allow',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+         acls = {
++            'acl-users-allow': ['ALL'],
++            'acl-users-deny': [],
++            'acl-users-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
++        acls = {
+             'acl-users-allow': ['foo'],
++            'acl-users-deny': [],
+             'acl-users-order': 'deny-allow',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+         acls = {
+-            'acl-users-allow': ['ALL'],
++            'acl-users-allow': ['foo'],
++            'acl-users-deny': [],
+             'acl-users-order': 'allow-deny',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+@@ -317,16 +339,28 @@ check-credentials = false
+             'acl-users-order': 'allow-deny',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), False)
+-
+-    def test_checkprofileacls_usercombitests(self):
+-        base_backend = self._init_base_backend()
+-        username = 'foo'
+         acls = {
+-            'acl-users-allow': ['ALL'],
++            'acl-users-allow': [],
++            'acl-users-deny': ['foo'],
++            'acl-users-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++        acls = {
++            'acl-users-allow': [],
+             'acl-users-deny': ['foo'],
+             'acl-users-order': 'allow-deny',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++
++    def test_checkprofileacls_user_combitests(self):
++        base_backend = self._init_base_backend()
++        username = 'foo'
++        acls = {
++            'acl-users-allow': ['foo'],
++            'acl-users-deny': ['ALL'],
++            'acl-users-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+         acls = {
+             'acl-users-allow': ['foo'],
+             'acl-users-deny': ['ALL'],
+@@ -334,17 +368,254 @@ check-credentials = false
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), False)
+         acls = {
+-            'acl-users-deny': ['ALL'],
+-            'acl-users-allow': ['foo'],
++            'acl-users-allow': ['ALL'],
++            'acl-users-deny': ['foo'],
+             'acl-users-order': 'deny-allow',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), True)
+         acls = {
+-            'acl-users-deny': ['foo'],
+             'acl-users-allow': ['ALL'],
+-            'acl-users-order': 'deny-allow',
++            'acl-users-deny': ['foo'],
++            'acl-users-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++
++    def test_testsuite_nameservice(self):
++
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.brokers.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        users = base_backend.get_users()
++        users.sort()
++        self.assertEqual(users, ['flip', 'kassandra', 'maja', 'thekla', 'willi'])
++        groups = base_backend.get_groups()
++        groups.sort()
++        self.assertEqual(groups, ['bees', 'female', 'grasshoppers', 'male', 'spiders'])
++
++    def test_checkprofileacls_group_simpletests(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.brokers.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        username = 'willi'
++        acls = {
++            'acl-groups-allow': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
++        acls = {
++            'acl-groups-allow': ['male'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), True)
++        acls = {
++            'acl-groups-allow': ['ALL'],
++            'acl-groups-order': 'allow-deny',
+         }
+         self.assertEqual(base_backend.check_profile_acls(username, acls), True)
++        acls = {
++            'acl-groups-allow': [],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++        acls = {
++            'acl-groups-allow': [],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        # now we set acl-users-allow to [] and we block all groups
++        self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++        acls = {
++            'acl-groups-allow': [],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username, acls), False)
++
++    def test_checkprofileacls_group_combitests(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.brokers.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        username_f = 'flip' # is a male grasshopper
++        username_m = 'maja' # is a female bee
++        username_w = 'willi' # is a drone (male bee)
++        acls = {
++            'acl-groups-allow': ['bees'],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-groups-allow': ['ALL'],
++            'acl-groups-deny': ['bees'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), False)
++        acls = {
++            'acl-groups-allow': ['ALL'],
++            'acl-groups-deny': ['bees'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-groups-allow': ['bees'],
++            'acl-groups-deny': ['ALL'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), False)
++        acls = {
++            'acl-groups-allow': ['male'],
++            'acl-groups-deny': ['bees'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-groups-allow': ['male'],
++            'acl-groups-deny': ['bees'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), False)
++
++    def test_checkprofileacls_userandgroup_combitests(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = testsuite
++default-group-db = testsuite
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.brokers.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
++        username_f = 'flip'
++        username_k = 'kassandra'
++        username_m = 'maja'
++        username_t = 'thekla'
++        username_w = 'willi'
++        acls = {
++            'acl-users-allow': ['flip'],
++            'acl-users-deny': [],
++            'acl-users-order': 'deny-allow',
++            'acl-groups-allow': ['female','male'],
++            'acl-groups-deny': ['spiders'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-users-allow': ['flip'],
++            'acl-users-deny': [],
++            'acl-users-order': 'deny-allow',
++            'acl-groups-allow': ['female','male'],
++            'acl-groups-deny': ['spiders'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-users-allow': ['flip'],
++            'acl-users-deny': [],
++            'acl-users-order': 'allow-deny',
++            'acl-groups-allow': ['male','female'],
++            'acl-groups-deny': ['spiders','grasshoppers'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-users-allow': [],
++            'acl-users-deny': [],
++            'acl-users-order': 'allow-deny',
++            'acl-groups-allow': ['male','female'],
++            'acl-groups-deny': ['spiders','grasshoppers'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-users-allow': ['flip', 'thekla'],
++            'acl-users-deny': ['maja'],
++            'acl-users-order': 'allow-deny',
++            'acl-groups-allow': ['male','female'],
++            'acl-groups-deny': ['spiders','grasshoppers'],
++            'acl-groups-order': 'allow-deny',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), True)
++        acls = {
++            'acl-users-allow': ['flip', 'thekla'],
++            'acl-users-deny': ['maja'],
++            'acl-users-order': 'deny-allow',
++            'acl-groups-allow': ['female'],
++            'acl-groups-deny': ['spiders','grasshoppers'],
++            'acl-groups-order': 'deny-allow',
++        }
++        self.assertEqual(base_backend.check_profile_acls(username_f, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_k, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_m, acls), False)
++        self.assertEqual(base_backend.check_profile_acls(username_t, acls), True)
++        self.assertEqual(base_backend.check_profile_acls(username_w, acls), False)
++
+ 
+ def test_suite():
+     from unittest import TestSuite, makeSuite
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005593.html">[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	9e508bb70a2d28a2b94ed0e7da2ba5b8e191880b
+</A></li>
+	<LI>Next message: <A HREF="005586.html">[X2Go-Commits] x2gobroker.git - master-inai (branch) updated:	689eb8340b47a1188a1b628d244e001054a5ac35
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5585">[ date ]</a>
+              <a href="thread.html#5585">[ thread ]</a>
+              <a href="subject.html#5585">[ subject ]</a>
+              <a href="author.html#5585">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

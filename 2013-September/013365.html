@@ -1,0 +1,410 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-10-g9a3d8cd
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-10-g9a3d8cd&In-Reply-To=%3C20130914135618.455AB5DCD0%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013346.html">
+   <LINK REL="Next"  HREF="013367.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-10-g9a3d8cd</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.4-10-g9a3d8cd&In-Reply-To=%3C20130914135618.455AB5DCD0%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.0.4-10-g9a3d8cd">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:18 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013346.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.38.0-67-g3a23cbf
+</A></li>
+        <LI>Next message: <A HREF="013367.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.38.0-68-g4a081cd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13365">[ date ]</a>
+              <a href="thread.html#13365">[ thread ]</a>
+              <a href="subject.html#13365">[ subject ]</a>
+              <a href="author.html#13365">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  9a3d8cdb423e1a3ebe6ced33d80c52bc1c04b51a (commit)
+      from  46be5e3b5b1f56c6c3084bccc5e36e6eb81b574b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    1 +
+ pyhoca/wxgui/profilemanager.py |  140 +++++++++++++++++++++++++++++-----------
+ 2 files changed, 105 insertions(+), 36 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e8f019e..67d53e4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -9,6 +9,7 @@ pyhoca-gui (0.2.0.5-0~x2go1) UNRELEASED; urgency=low
+     - Make session icon handling more robust, be more compatible with X2Go Client
+       about the session icon name. Rewrite mistakes pyhoca-gui &lt;= 0.2.0.4 did
+       on the icon attribute in the session profile config.
++    - Make DirectRDP sessions configurable through PyHoca-GUI profile manager.
+   * /debian/control:
+     + Add Oleksandr Shneyder to Uploaders.
+ 
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 2349547..cc3dc26 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -88,8 +88,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'PUBLISHEDAPPLICATIONS': _(u'Published Applications'),
+             'APPLICATION': _(u'Single Application'),
+             'XDMCP': _(u'XDMCP Query'),
+-            'RDP': _(u'Windows Terminal Server (RDP-proxy)'),
+-            #'DirectRDP': 'Windows Terminal Server (RDP-direct)',
++            'RDP': _(u'Windows Terminal Server (X2Go-proxied RDP)'),
++            'DirectRDP': 'Windows Terminal Server (direct RDP)',
+             'CUSTOM': _(u'Custom command'),
+             }
+         self.applicationChoices = {
+@@ -98,6 +98,10 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'OFFICE': _(u'Office'), 
+             'TERMINAL': _(u'Terminal'), 
+             }
++        self.rdpclientChoices = {
++            'rdesktop': u'rdesktop',
++            'xfreerdp': u'xfreerdp',
++            }
+         self.linkChoices = {
+             0: 'MODEM',
+             1: 'ISDN',
+@@ -114,6 +118,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             'OPENWITH': _(u'Open application chooser dialog'),
+             'SAVEAS': _(u'Save incoming file as ...'),
+         }
++
++
+         self._compressions = defaults.pack_methods_nx3_noqual
+         self.compressionChoices = {}
+         for _comp in self._compressions:
+@@ -149,6 +155,9 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         # we create a backup dict of our profile_config immediately (for being able to reset erroneously made changes)
+         self.profile_config_bak = copy.deepcopy(self.profile_config)
+ 
++        self._last_rdpclient = self.profile_config['rdpclient']
++        self._last_application = self.applicationChoices['TERMINAL']
++
+         self.X2goTabs = wx.Notebook(self, -1, style=0)
+         self.tab_Profile = wx.Panel(self.X2goTabs, -1)
+         self.tab_Session = wx.Panel(self.X2goTabs, -1)
+@@ -338,6 +347,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.Bind(wx.EVT_COMBOBOX, self.OnSessionTypeSelected, self.SessionType)
+         self.Bind(wx.EVT_CHECKBOX, self.OnUseDefaultSessionWindowTitle, self.UseDefaultSessionWindowTitle)
+         self.Bind(wx.EVT_CHECKBOX, self.OnSetSessionWindowTitle, self.SetSessionWindowTitle)
++        self.Bind(wx.EVT_TEXT, self.OnHostKeyPressed, self.Host)
+         self.Bind(wx.EVT_BUTTON, self.OnSSHKeyFileBrowse, self.SSHKeyFileBrowseButton)
+         self.Bind(wx.EVT_BUTTON, self.OnSSHProxyKeyFileBrowse, self.SSHProxyKeyFileBrowseButton)
+         self.Bind(wx.EVT_CHECKBOX, self.OnUseSSHProxy, self.UseSSHProxy)
+@@ -896,7 +906,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.RootlessSession.Enable(False)
+ 
+         self.UsePublishedApplications.SetValue(_published)
+-        if _command in self.sessionChoices.keys():
++        self.Application.SetItems(self.applicationChoices.values())
++        if _command == 'RDP' and self.profile_config['directrdp']:
++            self.SessionType.SetValue(self.sessionChoices['DirectRDP'])
++            self.Command.SetValue('')
++        elif _command in self.sessionChoices.keys():
+             self.SessionType.SetValue(self.sessionChoices[_command])
+             self.Application.SetValue('')
+             self.Command.SetValue('')
+@@ -907,6 +921,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.ApplicationLabel.Enable(True)
+             self.Application.Enable(True)
+             self.Application.SetValue(self.applicationChoices[_command])
++            self._last_application = self.applicationChoices[_command]
+             self.Command.SetValue('')
+             self.UsePublishedApplications.SetValue(False)
+             self.UsePublishedApplications.Enable(False)
+@@ -934,29 +949,35 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.UsePublishedApplications.Enable(False)
+             self.RootlessSession.Enable(False)
+ 
+-        if _command in ('RDP', 'DirectRDP'):
+-            self.RDPServerLabel.Enable(True)
+-            self.RDPServer.Enable(True)
+-            self.RDPOptionsLabel.Enable(True)
+-            self.RDPOptions.Enable(True)
+-            self.UsePublishedApplications.SetValue(False)
+-            self.UsePublishedApplications.Enable(False)
+-            self.RootlessSession.SetValue(True)
+-            self.RootlessSession.Enable(False)
++        if _command == 'RDP':
++            if self.profile_config['directrdp']:
++                self.enable_DirectRDP()
++                self.RDPOptions.SetValue(self.profile_config['directrdpsettings'])
++                self.RDPServerLabel.Enable(True)
++                self.RDPServer.Enable(False)
++                self.RDPOptionsLabel.Enable(True)
++                self.RDPOptions.Enable(True)
++                self.UsePublishedApplications.SetValue(False)
++                self.UsePublishedApplications.Enable(False)
++                self.RootlessSession.SetValue(False)
++                self.RootlessSession.Enable(False)
++            else:
++                self.disable_DirectRDP()
++                self.RDPServerLabel.Enable(True)
++                self.RDPServer.Enable(True)
++                self.RDPOptionsLabel.Enable(True)
++                self.RDPOptions.Enable(True)
++                self.UsePublishedApplications.SetValue(False)
++                self.UsePublishedApplications.Enable(False)
++                self.RootlessSession.SetValue(False)
++                self.RootlessSession.Enable(False)
+         else:
++            self.disable_DirectRDP()
+             self.RDPServerLabel.Enable(False)
+             self.RDPServer.Enable(False)
+             self.RDPOptionsLabel.Enable(False)
+             self.RDPOptions.Enable(False)
+ 
+-        if _command == 'DirectRDP':
+-            self.enable_DirectRDP()
+-        else:
+-            self.disable_DirectRDP()
+-
+-        self.RDPServer.SetValue(self.profile_config['rdpserver'])
+-        self.RDPOptions.SetValue(self.profile_config['rdpoptions'])
+-
+         self.XDMCPServer.SetValue(self.profile_config['xdmcpserver'])
+ 
+         if 0 &lt; self.profile_config['speed'] &lt;= 5:
+@@ -1156,6 +1177,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         &quot;&quot;&quot;
+         self.profile_config['name'] = self.ProfileName.GetValue()
+         self.profile_config['setsessiontitle'] = self.SetSessionWindowTitle.GetValue()
++        _session_type = [ s for s in self.sessionChoices.keys() if self.sessionChoices[s] == self.SessionType.GetValue() ][0]
+         if self.UseDefaultSessionWindowTitle.GetValue():
+             self.profile_config['sessiontitle'] = ''
+         else:
+@@ -1176,7 +1198,8 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         else:
+             self.profile_config['usesshproxy'] = False
+             self.profile_config['host'] = self.Host.GetValue()
+-            self.profile_config['sshport'] = self.SSHPort.GetValue()
++            if _session_type != 'DirectRDP':
++                self.profile_config['sshport'] = self.SSHPort.GetValue()
+         self.profile_config['sshproxyhost'] = self.SSHProxyHost.GetValue()
+         self.profile_config['sshproxyuser'] = self.SSHProxyUser.GetValue()
+         self.profile_config['sshproxytunnel'] = '%s:%s:%s:%s' % (self.SSHProxyTunnelFromHost.GetValue(),
+@@ -1187,7 +1210,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.profile_config['sshproxykeyfile'] = self.SSHProxyKeyFile.GetValue()
+ 
+         self.profile_config['applications'] = self.applicationChoices.keys()
+-        _session_type = [ s for s in self.sessionChoices.keys() if self.sessionChoices[s] == self.SessionType.GetValue() ][0]
++        self.profile_config['directrdp'] = False
+         if _session_type == 'APPLICATION':
+             _command = [ a for a in self.applicationChoices.keys() if self.applicationChoices[a] == self.Application.GetValue() ][0]
+             self.profile_config['rootless'] = True
+@@ -1197,6 +1220,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         elif _session_type == 'RDP':
+             _command = _session_type
+             self.profile_config['rootless'] = False
++            self.profile_config['rdpserver'] = self.RDPServer.GetValue()
++            self.profile_config['rdpoptions'] = self.RDPOptions.GetValue()
++        elif _session_type == 'DirectRDP':
++            _command = 'RDP'
++            self.profile_config['rootless'] = False
++            self.profile_config['directrdp'] = True
++            self.profile_config['directrdpsettings'] = self.RDPOptions.GetValue()
++            self.profile_config['rdpport'] = self.SSHPort.GetValue()
++            self.profile_config['rdpclient'] = [ rc for rc in self.rdpclientChoices.keys() if self.rdpclientChoices[rc] == self.Application.GetValue() ][0]
+         elif _session_type == 'PUBLISHEDAPPLICATIONS':
+             _command = &quot;&quot;
+             self.profile_config['rootless'] = True
+@@ -1204,8 +1236,6 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             _command = _session_type
+             self.profile_config['rootless'] = False
+         self.profile_config['command'] = _command
+-        self.profile_config['rdpserver'] = self.RDPServer.GetValue()
+-        self.profile_config['rdpoptions'] = self.RDPOptions.GetValue()
+         self.profile_config['xdmcpserver'] = self.XDMCPServer.GetValue()
+ 
+         _link_idx = self.LinkSpeed.GetValue()
+@@ -1347,12 +1377,14 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         @type event: C{obj}
+ 
+         &quot;&quot;&quot;
+-        self.HostLabel.Enable(False)
+-        self.Host.Enable(False)
+-        self.SSHPortLabel.Enable(False)
+-        self.SSHPort.Enable(False)
++        self.HostLabel.Enable(True)
++        self.Host.Enable(True)
++        self.SSHPortLabel.Enable(True)
++        self.SSHPort.Enable(True)
++        self.SSHPort.SetValue(self.profile_config_bak['rdpport'])
+         self.SSHKeyFileLabel.Enable(False)
+         self.SSHKeyFile.Enable(False)
++        self.UseSSHProxy.Enable(False)
+         self.staticbox_LinkSpeed.Enable(False)
+         self.LinkSpeed.Enable(False)
+         self.ModemLabel.Enable(False)
+@@ -1366,7 +1398,15 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.ImageQualityLabel.Enable(False)
+         self.ImageQuality.Enable(False)
+         self.tab_Settings.Enable(False)
+-        self.tab_SharedFilesAndFolders.Enable(False)
++        self.tab_SharedFilesAndFolders.Enable(True)
++        self.RDPServer.Enable(False)
++        self.RDPServer.SetValue(self.Host.GetValue())
++        self.RDPOptions.SetValue(self.profile_config_bak['directrdpsettings'])
++        if self.Application.GetValue() in self.applicationChoices.keys():
++            self._last_application = self.Application.GetValue()
++        self.Application.SetItems(self.rdpclientChoices.values())
++        self.Application.SetValue(self._last_rdpclient)
++        self.Application.Enable(True)
+ 
+     def disable_DirectRDP(self):
+         &quot;&quot;&quot;\
+@@ -1381,8 +1421,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.Host.Enable(True)
+             self.SSHPortLabel.Enable(True)
+             self.SSHPort.Enable(True)
++            self.SSHPort.SetValue(self.profile_config_bak['sshport'])
++        else:
++            self.SSHPort.SetValue(self.SSHProxyTunnelFromPort.GetValue())
+         self.SSHKeyFileLabel.Enable(True)
+         self.SSHKeyFile.Enable(True)
++        self.UseSSHProxy.Enable(True)
+         self.staticbox_LinkSpeed.Enable(True)
+         self.LinkSpeed.Enable(True)
+         self.ModemLabel.Enable(True)
+@@ -1397,6 +1441,12 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.ImageQuality.Enable(True)
+         self.tab_Settings.Enable(True)
+         self.tab_SharedFilesAndFolders.Enable(True)
++        self.RDPServer.SetValue(self.profile_config_bak['rdpserver'])
++        self.RDPOptions.SetValue(self.profile_config_bak['rdpoptions'])
++        if self.Application.GetValue() in self.rdpclientChoices.keys():
++            self._last_rdpclient = self.Application.GetValue()
++        self.Application.SetItems(self.applicationChoices.values())
++        self.Application.SetValue(self._last_application)
+ 
+     def OnSessionTypeSelected(self, event):
+         &quot;&quot;&quot;\
+@@ -1451,26 +1501,33 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.XDMCPServerLabel.Enable(False)
+             self.XDMCPServer.Enable(False)
+ 
+-        if _session_type in ('RDP', 'DirectRDP', ):
++        if _session_type == 'DirectRDP':
++            self.enable_DirectRDP()
++            self.RDPServerLabel.Enable(True)
++            self.RDPServer.Enable(False)
++            self.RDPOptionsLabel.Enable(True)
++            self.RDPOptions.Enable(True)
++            self.UsePublishedApplications.SetValue(False)
++            self.UsePublishedApplications.Enable(False)
++            self.RootlessSession.SetValue(False)
++            self.RootlessSession.Enable(False)
++        elif _session_type == 'RDP':
++            self.disable_DirectRDP()
+             self.RDPServerLabel.Enable(True)
+             self.RDPServer.Enable(True)
+             self.RDPOptionsLabel.Enable(True)
+             self.RDPOptions.Enable(True)
+             self.UsePublishedApplications.SetValue(False)
+             self.UsePublishedApplications.Enable(False)
+-            self.RootlessSession.SetValue(True)
++            self.RootlessSession.SetValue(False)
+             self.RootlessSession.Enable(False)
+         else:
++            self.disable_DirectRDP()
+             self.RDPServerLabel.Enable(False)
+             self.RDPServer.Enable(False)
+             self.RDPOptionsLabel.Enable(False)
+             self.RDPOptions.Enable(False)
+ 
+-        if _session_type == 'DirectRDP':
+-            self.enable_DirectRDP()
+-        else:
+-            self.disable_DirectRDP()
+-
+         if _session_type == 'PUBLISHEDAPPLICATIONS':
+             self._last_pubapp_value = self.UsePublishedApplications.GetValue()
+             self._last_auto_start_value = self.AutoStartSession.GetValue()
+@@ -1505,6 +1562,17 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         else:
+             self.ImageQuality.Enable(False)
+ 
++    def OnHostKeyPressed(self, event):
++        &quot;&quot;&quot;\
++        Gets called whenever something gets typed in the host name field.
++
++        @param event: event
++        @type event: C{obj}
++
++        &quot;&quot;&quot;
++        if [ k for k in self.sessionChoices.keys() if self.sessionChoices[k] == self.SessionType.GetValue() ][0] == 'DirectRDP':
++            self.RDPServer.SetValue(self.Host.GetValue())
++
+     def OnSSHKeyFileBrowse(self, event):
+         &quot;&quot;&quot;\
+         Gets called if the user requests to browse for an SSH key file (for X2Go client/server connection).
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013346.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.38.0-67-g3a23cbf
+</A></li>
+	<LI>Next message: <A HREF="013367.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.38.0-68-g4a081cd
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13365">[ date ]</a>
+              <a href="thread.html#13365">[ thread ]</a>
+              <a href="subject.html#13365">[ subject ]</a>
+              <a href="author.html#13365">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

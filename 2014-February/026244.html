@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [pyhoca-gui] 12/18: Move setup_win32log to a	separate module file.
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-February/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2012/18%3A%20Move%20setup_win32log%20to%20a%0A%09separate%20module%20file.&In-Reply-To=%3C20140207122626.02F823BDEE%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026243.html">
+   <LINK REL="Next"  HREF="026245.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [pyhoca-gui] 12/18: Move setup_win32log to a	separate module file.</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bpyhoca-gui%5D%2012/18%3A%20Move%20setup_win32log%20to%20a%0A%09separate%20module%20file.&In-Reply-To=%3C20140207122626.02F823BDEE%40ymir%3E"
+       TITLE="[X2Go-Commits] [pyhoca-gui] 12/18: Move setup_win32log to a	separate module file.">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Feb  7 13:26:25 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026243.html">[X2Go-Commits] [pyhoca-gui] 05/18: Make setup.py importable, only run setup() function on direct calls.
+</A></li>
+        <LI>Next message: <A HREF="026245.html">[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26244">[ date ]</a>
+              <a href="thread.html#26244">[ thread ]</a>
+              <a href="subject.html#26244">[ subject ]</a>
+              <a href="author.html#26244">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch brokerclient
+in repository pyhoca-gui.
+
+commit 062e7eb1208b510594d77f0a3da2bb8fd2613aad
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Feb 7 10:43:20 2014 +0100
+
+    Move setup_win32log to a separate module file.
+---
+ debian/changelog              |    1 +
+ pyhoca-gui                    |    6 +++--
+ pyhoca/wxgui/launcher.py      |   35 -------------------------
+ pyhoca/wxgui/win32_logging.py |   58 +++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 63 insertions(+), 37 deletions(-)
+
+diff --git a/debian/changelog b/debian/changelog
+index 1e527d1..8e8e52b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -10,6 +10,7 @@ pyhoca-gui (0.5.0.0-0x2go1) UNRELEASED; urgency=low
+   * Make SCRIPT_NAME in setup.py configurable (monkey-patchable).
+   * Make setup.py importable, only run setup() function on direct calls.
+   * Don't refer to py2exe anymore in nsis_template's naming scheme.
++  * Move setup_win32log to a separate module file.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 08 Jan 2014 21:28:37 +0100
+ 
+diff --git a/pyhoca-gui b/pyhoca-gui
+index 61c6240..d6e60b6 100755
+--- a/pyhoca-gui
++++ b/pyhoca-gui
+@@ -22,8 +22,9 @@
+ import os
+ import sys
+ 
+-from pyhoca.wxgui.launcher import setup_consolelog
+-setup_consolelog()
++PROG_NAME = &quot;PyHoca-GUI&quot;
++from pyhoca.wxgui.win32_logging import setup_win32log
++setup_win32log(PROG_NAME)
+ 
+ from pyhoca.wxgui import __VERSION__
+ from pyhoca.wxgui.launcher import PyHocaGUI_Launcher
+@@ -35,6 +36,7 @@ __version__ = __VERSION__
+ if __name__ == '__main__':
+     app = PyHocaGUI_Launcher()
+     app.setup_process()
++    app.setup_progname(PROG_NAME)
+     app.setup_devmode()
+     args, logger, liblogger = app.parseargs()
+     app.main(args=args, logger=logger, liblogger=liblogger)
+diff --git a/pyhoca/wxgui/launcher.py b/pyhoca/wxgui/launcher.py
+index 845aaf5..8dcb8f8 100644
+--- a/pyhoca/wxgui/launcher.py
++++ b/pyhoca/wxgui/launcher.py
+@@ -56,41 +56,6 @@ import defaults
+ import basepath
+ import taskbar
+ 
+-def setup_consolelog(self):
+-    if hasattr(sys, 'frozen') and str(sys.frozen) in (&quot;windows_exe&quot;, &quot;console_exe&quot;, &quot;1&quot;, ):
+-        class Win32_Logging(object):
+-
+-            softspace = 0
+-            _fname = os.path.join(os.environ['AppData'], self.PROG_NAME, '%s.log' % self.PROG_NAME)
+-            _file = None
+-
+-            def __init__(self, filemode='a'):
+-                self._filemode = filemode
+-                if os.path.isfile(self._fname) and self._filemode == &quot;w+&quot;:
+-                    os.remove(self._fname)
+-
+-            def write(self, text, **kwargs):
+-                if self._file is None:
+-                    try:
+-                        try:
+-                            os.mkdir(os.path.dirname(self._fname))
+-                        except:
+-                            pass
+-                        self._file = open(self._fname, self._filemode)
+-                    except:
+-                        pass
+-                else:
+-                    self._file.write(text)
+-                    self._file.flush()
+-
+-            def flush(self):
+-                if self._file is not None:
+-                    self._file.flush()
+-
+-        sys.stdout = Win32_Logging(filemode='w+')
+-        sys.stderr = Win32_Logging(filemode='a')
+-        del Win32_Logging
+-
+ 
+ class PyHocaGUI_Launcher(object):
+ 
+diff --git a/pyhoca/wxgui/win32_logging.py b/pyhoca/wxgui/win32_logging.py
+new file mode 100644
+index 0000000..b1be3ad
+--- /dev/null
++++ b/pyhoca/wxgui/win32_logging.py
+@@ -0,0 +1,58 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2014 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2010-2014 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++#
++# PyHoca GUI is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# PyHoca GUI is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import sys
++import os
++
++def setup_win32log(PROG_NAME):
++    if hasattr(sys, 'frozen') and str(sys.frozen) in (&quot;windows_exe&quot;, &quot;console_exe&quot;, &quot;1&quot;, ):
++        class Win32_Logging(object):
++
++            softspace = 0
++            _fname = os.path.join(os.environ['AppData'], PROG_NAME, '%s.log' % PROG_NAME)
++            _file = None
++
++            def __init__(self, filemode='a'):
++                self._filemode = filemode
++                if os.path.isfile(self._fname) and self._filemode == &quot;w+&quot;:
++                    os.remove(self._fname)
++
++            def write(self, text, **kwargs):
++                if self._file is None:
++                    try:
++                        try:
++                            os.mkdir(os.path.dirname(self._fname))
++                        except:
++                            pass
++                        self._file = open(self._fname, self._filemode)
++                    except:
++                        pass
++                else:
++                    self._file.write(text)
++                    self._file.flush()
++
++            def flush(self):
++                if self._file is not None:
++                    self._file.flush()
++
++        sys.stdout = Win32_Logging(filemode='w+')
++        sys.stderr = Win32_Logging(filemode='a')
++        del Win32_Logging
++
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/pyhoca-gui.git
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026243.html">[X2Go-Commits] [pyhoca-gui] 05/18: Make setup.py importable, only run setup() function on direct calls.
+</A></li>
+	<LI>Next message: <A HREF="026245.html">[X2Go-Commits] [pyhoca-gui] 09/18: try moving setup_consolelog out of the PyHocaGUI_Launcher class
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26244">[ date ]</a>
+              <a href="thread.html#26244">[ thread ]</a>
+              <a href="subject.html#26244">[ subject ]</a>
+              <a href="author.html#26244">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

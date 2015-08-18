@@ -1,0 +1,378 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-72-gbe65efa
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-72-gbe65efa&In-Reply-To=%3C20131217144336.57B375DB41%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016994.html">
+   <LINK REL="Next"  HREF="016996.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-72-gbe65efa</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-72-gbe65efa&In-Reply-To=%3C20131217144336.57B375DB41%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-72-gbe65efa">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:36 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016994.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-73-g371cd61
+</A></li>
+        <LI>Next message: <A HREF="016996.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-71-g9d714e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16995">[ date ]</a>
+              <a href="thread.html#16995">[ thread ]</a>
+              <a href="subject.html#16995">[ subject ]</a>
+              <a href="author.html#16995">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  be65efa3a6e5a84da5531d2707dcaeb248a14474 (commit)
+      from  9d714e35d68e68dda9dfbc5fe737626179a009e4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog   |    2 +
+ onmainwindow.cpp   |    5 +-
+ settingswidget.cpp |  147 +++++++++++++++++++++++++++++++++++-----------------
+ settingswidget.h   |   12 +++--
+ 4 files changed, 115 insertions(+), 51 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index af05070..7311428 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -71,6 +71,8 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+     - GSSApi(Kerberos 5) authentication for sshproxy and sshbroker 
+     - fixed GSSApi(Kerberos 5) authentication for sshproxy and sshbroker
+       on windows
++    - changed keyboard settings. Supported modes: auto, none and config with
++      model/layout(variant)
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index db2e349..61f6458 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -88,7 +88,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     defaultPack=&quot;16m-jpeg&quot;;
+     defaultQuality=9;
+     defaultLayout&lt;&lt;tr ( &quot;us&quot; );
+-    defaultKbdType=tr ( &quot;pc105/us&quot; );
++    defaultKbdType=&quot;auto&quot;;
+     defaultCmd=&quot;KDE&quot;;
+     defaultSshPort=sshPort=clientSshPort=&quot;22&quot;;
+     LDAPPrintSupport=false;
+@@ -3780,6 +3780,9 @@ void ONMainWindow::startNewSession()
+         type=st-&gt;setting()-&gt;value ( sid+&quot;/type&quot;,
+                                     ( QVariant )
+                                     defaultKbdType ).toString();
++        type.replace(&quot;\\&quot;,&quot;&quot;);
++        type.replace(&quot;(&quot;,&quot;\\(&quot;);
++        type.replace(&quot;)&quot;,&quot;\\)&quot;);
+         if ( !embedMode )
+         {
+             command=st-&gt;setting()-&gt;value ( sid+&quot;/command&quot;,
+diff --git a/settingswidget.cpp b/settingswidget.cpp
+index 15eb91e..f728740 100644
+--- a/settingswidget.cpp
++++ b/settingswidget.cpp
+@@ -150,28 +150,36 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+ #endif
+ 
+ 
+-    kbd=new QCheckBox ( tr ( &quot;Keep current keyboard Settings&quot; ),kgb );
+-    layout=new QLineEdit ( kgb );
+-    type=new QLineEdit ( kgb );
+-    QVBoxLayout *kbLay = new QVBoxLayout ( kgb );
+-
+-    QVBoxLayout *klLay = new QVBoxLayout();
+-    QVBoxLayout *kwLay = new QVBoxLayout();
+-    QHBoxLayout *ksLay = new QHBoxLayout();
+ 
+-    klLay-&gt;addWidget ( layoutLabel= new QLabel (
+-        tr ( &quot;Keyboard layout:&quot; ),kgb ) );
+-    klLay-&gt;addWidget ( typeLabel= new QLabel (
+-        tr ( &quot;Keyboard model:&quot; ),kgb ) );
++    rbKbdAuto=new QRadioButton(tr(&quot;Auto detect keyboard settings&quot;),kgb);
++    rbKbdNoSet=new QRadioButton(tr(&quot;Do not configure keyboard&quot;),kgb);
++    rbKbdSet=new QRadioButton(tr(&quot;Configure keyboard&quot;),kgb);
++    QButtonGroup* kbRadio=new QButtonGroup(kgb);
++    kbRadio-&gt;addButton(rbKbdAuto);
++    kbRadio-&gt;addButton(rbKbdNoSet);
++    kbRadio-&gt;addButton(rbKbdSet);
++
++    gbKbdString=new QGroupBox(kgb);
++    gbKbdString-&gt;setFlat(true);
++
++
++    QHBoxLayout* kbstrlay=new QHBoxLayout(gbKbdString);
++    kbstrlay-&gt;addWidget(new QLabel(tr(&quot;Model: &quot;), gbKbdString));
++    leModel=new QLineEdit(gbKbdString);
++    kbstrlay-&gt;addWidget(leModel);
++    kbstrlay-&gt;addWidget(new QLabel(tr(&quot;Layout: &quot;), gbKbdString));
++    leLayout=new QLineEdit(gbKbdString);
++    kbstrlay-&gt;addWidget(leLayout);
++    kbstrlay-&gt;addWidget(new QLabel(tr(&quot;Variant: &quot;), gbKbdString));
++    leVariant=new QLineEdit(gbKbdString);
++    kbstrlay-&gt;addWidget(leVariant);
+ 
+-    kwLay-&gt;addWidget ( layout );
+-    kwLay-&gt;addWidget ( type );
+-
+-    ksLay-&gt;addLayout ( klLay );
+-    ksLay-&gt;addLayout ( kwLay );
++    QVBoxLayout *kbLay = new QVBoxLayout ( kgb );
+ 
+-    kbLay-&gt;addWidget ( kbd );
+-    kbLay-&gt;addLayout ( ksLay );
++    kbLay-&gt;addWidget ( rbKbdAuto);
++    kbLay-&gt;addWidget ( rbKbdNoSet);
++    kbLay-&gt;addWidget ( rbKbdSet);
++    kbLay-&gt;addWidget( gbKbdString );
+ 
+     sound=new QCheckBox ( tr ( &quot;Enable sound support&quot; ),sbgr );
+     QButtonGroup* sndsys=new QButtonGroup;
+@@ -285,16 +293,9 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+ 
+ 
+ 
++    connect ( kbRadio, SIGNAL (buttonClicked(QAbstractButton*)), this, SLOT(slot_kbdClicked()));
+     connect ( cbSetDPI,SIGNAL ( toggled ( bool ) ),DPI,
+               SLOT ( setEnabled ( bool ) ) );
+-    connect ( kbd,SIGNAL ( toggled ( bool ) ),layout,
+-              SLOT ( setDisabled ( bool ) ) );
+-    connect ( kbd,SIGNAL ( toggled ( bool ) ),layoutLabel,
+-              SLOT ( setDisabled ( bool ) ) );
+-    connect ( kbd,SIGNAL ( toggled ( bool ) ),type,
+-              SLOT ( setDisabled ( bool ) ) );
+-    connect ( kbd,SIGNAL ( toggled ( bool ) ),typeLabel,
+-              SLOT ( setDisabled ( bool ) ) );
+     connect ( sound,SIGNAL ( toggled ( bool ) ),this,
+               SLOT ( slot_sndToggled ( bool ) ) );
+     connect ( sndsys,SIGNAL ( buttonClicked ( int ) ),this,
+@@ -306,7 +307,8 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     connect ( cbDefSndPort,SIGNAL ( toggled ( bool ) ),this,
+               SLOT ( slot_sndDefPortChecked ( bool ) ) );
+ 
+-    kbd-&gt;setChecked ( true );
++    setDefaults();
++
+     custom-&gt;setChecked ( true );
+     readConfig();
+ }
+@@ -316,6 +318,13 @@ SettingsWidget::~SettingsWidget()
+ {
+ }
+ 
++
++void SettingsWidget::slot_kbdClicked()
++{
++    gbKbdString-&gt;setVisible(rbKbdSet-&gt;isChecked());
++}
++
++
+ #ifdef Q_OS_LINUX
+ void SettingsWidget::setDirectRdp(bool direct)
+ {
+@@ -558,18 +567,43 @@ void SettingsWidget::readConfig()
+         st.setting()-&gt;value ( sessionId+&quot;/dpi&quot;,
+                               ( QVariant ) mainWindow-&gt;getDefaultDPI() ).toUInt() );
+ 
+-    kbd-&gt;setChecked ( !st.setting()-&gt;value (
+-                          sessionId+&quot;/usekbd&quot;,
+-                          ( QVariant ) mainWindow-&gt;getDefaultSetKbd()
+-                      ).toBool() );
+-    layout-&gt;setText (
+-        st.setting()-&gt;value ( sessionId+&quot;/layout&quot;,
+-                              ( QVariant ) mainWindow-&gt;getDefaultLayout()
+-                            ).toString() );
+-    type-&gt;setText (
+-        st.setting()-&gt;value ( sessionId+&quot;/type&quot;,
+-                              ( QVariant ) mainWindow-&gt;getDefaultKbdType()
+-                            ).toString() );
++    QString ktype=st.setting()-&gt;value ( sessionId+&quot;/type&quot;,
++                                        ( QVariant ) mainWindow-&gt;getDefaultKbdType()
++                                      ).toString();
++    if(ktype==&quot;auto&quot;)
++    {
++        rbKbdAuto-&gt;setChecked(true);
++    }
++    else
++    {
++        rbKbdSet-&gt;setChecked(true);
++        ktype.replace(&quot;\\&quot;,&quot;&quot;);
++        QStringList str=ktype.split(&quot;/&quot;);
++        if(str.size()&gt;0)
++        {
++            leModel-&gt;setText(str[0]);
++        }
++        if(str.size()&gt;1)
++        {
++            str[1].replace(&quot;)&quot;,&quot;&quot;);
++            str=str[1].split(&quot;(&quot;);
++            if(str.size()&gt;0)
++            {
++                leLayout-&gt;setText(str[0]);
++            }
++            if(str.size()&gt;1)
++            {
++                leVariant-&gt;setText(str[1]);
++            }
++        }
++    }
++
++    rbKbdNoSet-&gt;setChecked ( !st.setting()-&gt;value (
++                                 sessionId+&quot;/usekbd&quot;,
++                                 ( QVariant ) mainWindow-&gt;getDefaultSetKbd()
++                             ).toBool() );
++    slot_kbdClicked();
++
+     bool snd=st.setting()-&gt;value (
+                  sessionId+&quot;/sound&quot;,
+                  ( QVariant ) mainWindow-&gt;getDefaultUseSound()
+@@ -640,9 +674,15 @@ void SettingsWidget::setDefaults()
+     DPI-&gt;setValue ( mainWindow-&gt;getDefaultDPI() );
+     DPI-&gt;setEnabled ( mainWindow-&gt;getDefaultSetDPI() );
+ 
+-    kbd-&gt;setChecked ( !mainWindow-&gt;getDefaultSetKbd() );
+-    layout-&gt;setText ( tr ( &quot;us&quot; ) );
+-    type-&gt;setText ( tr ( &quot;pc105/us&quot; ) );
++    rbKbdAuto-&gt;setChecked ( mainWindow-&gt;getDefaultSetKbd() );
++    rbKbdNoSet-&gt;setChecked ( !mainWindow-&gt;getDefaultSetKbd() );
++    rbKbdSet-&gt;setChecked (false );
++    leLayout-&gt;setText ( tr ( &quot;us&quot; ) );
++    leModel-&gt;setText ( &quot;pc105&quot; );
++    leVariant-&gt;setText(&quot;&quot;);
++
++    slot_kbdClicked();
++
+     sound-&gt;setChecked ( true );
+     pulse-&gt;setChecked ( true );
+     slot_sndToggled ( true );
+@@ -712,11 +752,24 @@ void SettingsWidget::saveSettings()
+                              ( QVariant ) cbXinerama-&gt;isChecked() );
+ 
+     st.setting()-&gt;setValue ( sessionId+&quot;/usekbd&quot;,
+-                             ( QVariant ) !kbd-&gt;isChecked() );
+-    st.setting()-&gt;setValue ( sessionId+&quot;/layout&quot;,
+-                             ( QVariant ) layout-&gt;text() );
++                             ( QVariant ) !rbKbdNoSet-&gt;isChecked() );
++
++    QString ktype;
++    if(rbKbdAuto-&gt;isChecked())
++    {
++        ktype=&quot;auto&quot;;
++    }
++    else
++    {
++        ktype=leModel-&gt;text()+&quot;/&quot;+leLayout-&gt;text();
++        if(leVariant-&gt;text().length()&gt;0)
++        {
++            ktype+=&quot;\\(&quot;+leVariant-&gt;text()+&quot;\\)&quot;;
++        }
++    }
++
+     st.setting()-&gt;setValue ( sessionId+&quot;/type&quot;,
+-                             ( QVariant ) type-&gt;text() );
++                             ( QVariant ) ktype );
+     st.setting()-&gt;setValue ( sessionId+&quot;/sound&quot;,
+                              ( QVariant ) sound-&gt;isChecked() );
+     if ( arts-&gt;isChecked() )
+diff --git a/settingswidget.h b/settingswidget.h
+index 75d6724..ed1bf57 100644
+--- a/settingswidget.h
++++ b/settingswidget.h
+@@ -57,21 +57,26 @@ private slots:
+     void slot_sndDefPortChecked ( bool val );
+     void slot_identDisplays();
+     void slot_hideIdentWins();
++    void slot_kbdClicked();
+ private:
+     enum {PULSE,ARTS,ESD};
+     QSpinBox* width;
+     QSpinBox* height;
+     QSpinBox* displayNumber;
+     QRadioButton* fs;
+-    QCheckBox* kbd;
+-    QLineEdit* layout;
+-    QLineEdit* type;
+     QRadioButton* custom;
+     QRadioButton* display;
+     QRadioButton* maxRes;
+     QRadioButton* arts;
+     QRadioButton* pulse;
+     QRadioButton* esd;
++    QRadioButton* rbKbdAuto;
++    QRadioButton* rbKbdNoSet;
++    QRadioButton* rbKbdSet;
++    QGroupBox* gbKbdString;
++    QLineEdit* leModel;
++    QLineEdit* leLayout;
++    QLineEdit* leVariant;
+     QCheckBox* sound;
+     QRadioButton* rbStartSnd;
+     QRadioButton* rbNotStartSnd;
+@@ -93,6 +98,7 @@ private:
+     QList &lt;QMainWindow*&gt; identWins;
+     QGroupBox *kgb;
+     QGroupBox *sbgr;
++
+ #ifdef Q_OS_LINUX
+     QGroupBox *rdpBox;
+     QRadioButton* rRdesktop;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016994.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-73-g371cd61
+</A></li>
+	<LI>Next message: <A HREF="016996.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-71-g9d714e3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16995">[ date ]</a>
+              <a href="thread.html#16995">[ thread ]</a>
+              <a href="subject.html#16995">[ subject ]</a>
+              <a href="author.html#16995">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

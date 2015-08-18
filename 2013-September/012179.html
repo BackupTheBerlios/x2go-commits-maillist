@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-22-g7a76ed9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.0-22-g7a76ed9&In-Reply-To=%3C20130911100654.495465DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012178.html">
+   <LINK REL="Next"  HREF="012180.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-22-g7a76ed9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.0-22-g7a76ed9&In-Reply-To=%3C20130911100654.495465DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-22-g7a76ed9">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 11 12:06:54 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012178.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-26-ga4c7c35
+</A></li>
+        <LI>Next message: <A HREF="012180.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-21-g3c5222d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12179">[ date ]</a>
+              <a href="thread.html#12179">[ thread ]</a>
+              <a href="subject.html#12179">[ subject ]</a>
+              <a href="author.html#12179">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  7a76ed9a7b420ba037ccc8ab6073be566fcdd99a (commit)
+      from  3c5222db2ea16590f6f80833547ac9b41c0d660b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    2 ++
+ onmainwindow.cpp |   80 ++++++++++++++++++++++++++++++++++++------------------
+ 2 files changed, 56 insertions(+), 26 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index afa6b9c..e3a1cd1 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -14,6 +14,8 @@ x2goclient (4.0.1.1-0~x2go1) UNRELEASED; urgency=low
+     - Enable full access desktop sharing across user accounts.
+     - Avoid multiple selectUserSession requests when in broker
+       mode.
++    - Properly set the remote server address received via selectUserSession
++      method when in broker mode. (Fixes: #226).
+ 
+   [ Ezra B&#252;hler ]
+   * New upstream version (4.0.1.1):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 71b9e1d..1d9ca54 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -3286,17 +3286,21 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+         st=new X2goSettings(config.iniFile, QSettings::IniFormat);
+ 
+     passForm-&gt;setEnabled ( false );
+-    if(!embedMode)
+-        host=st-&gt;setting()-&gt;value ( sid+&quot;/host&quot;,
+-                                    ( QVariant ) QString::null ).toString();
+-    else
+-        host=config.server;
+     if(brokerMode)
+     {
++        host=config.serverIp;
+         sshPort=config.sshport;
+-
+         x2goDebug&lt;&lt;&quot;Server: &quot;&lt;&lt;host;
+     }
++    else if (embedMode)
++    {
++        host=config.server;
++    }
++    else
++    {
++        host=st-&gt;setting()-&gt;value ( sid+&quot;/host&quot;,
++                                    ( QVariant ) QString::null ).toString();
++    }
+ 
+     QString cmd=st-&gt;setting()-&gt;value ( sid+&quot;/command&quot;,
+                                        ( QVariant ) QString::null ).toString();
+@@ -3420,12 +3424,6 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+ 
+     delete st;
+ 
+-    if(brokerMode)
+-    {
+-        host=config.serverIp;
+-    }
+-
+-
+     sshConnection=startSshConnection ( host,sshPort,acceptRsa,user,passwd,autologin, krblogin, false, useproxy,proxyType,proxyserver,
+                                        proxyport, proxylogin, proxypassword, proxyKey,proxyAutologin);
+     return true;
+@@ -4020,12 +4018,11 @@ void ONMainWindow::resumeSession ( const x2goSession&amp; s )
+         rootless=st-&gt;setting()-&gt;value ( sid+&quot;/rootless&quot;,
+                                         ( QVariant ) false ).toBool();
+ 
+-        if ( !embedMode )
++        if ( brokerMode )
+         {
+-            host=st-&gt;setting()-&gt;value ( sid+&quot;/host&quot;,
+-                                        ( QVariant ) s.server ).toString();
++            host = config.serverIp;
+         }
+-        else
++        else if ( embedMode )
+         {
+             startEmbedded=false;
+             if ( st-&gt;setting()-&gt;value ( sid+&quot;/startembed&quot;,
+@@ -4056,6 +4053,11 @@ void ONMainWindow::resumeSession ( const x2goSession&amp; s )
+                 usekbd=true;
+             }
+         }
++        else
++        {
++            host=st-&gt;setting()-&gt;value ( sid+&quot;/host&quot;,
++                                        ( QVariant ) s.server ).toString();
++        }
+         delete st;
+     }
+ 
+@@ -4469,17 +4471,21 @@ void ONMainWindow::slotSuspendSess()
+                      S_SERVER ).data().toString();
+     if ( !useLdap )
+     {
+-        if ( !embedMode )
++        if ( brokerMode )
++        {
++            host=config.serverIp;
++        }
++        if ( embedMode )
++        {
++            host=config.server;
++        }
++        else
+         {
+             X2goSettings st ( &quot;sessions&quot; );
+             QString sid=lastSession-&gt;id();
+             host=st.setting()-&gt;value ( sid+&quot;/host&quot;,
+                                        ( QVariant ) host ).toString();
+         }
+-        else
+-        {
+-            host=config.server;
+-        }
+     }
+     else
+     {
+@@ -4864,7 +4870,15 @@ void ONMainWindow::slotRetResumeSess ( bool result,
+     }
+     if ( !useLdap )
+     {
+-        if ( !embedMode )
++        if ( brokerMode )
++        {
++            host=config.serverIp;
++        }
++        else if ( embedMode )
++        {
++            host=config.server;
++        }
++        else
+         {
+             X2goSettings st ( &quot;sessions&quot; );
+ 
+@@ -4872,8 +4886,6 @@ void ONMainWindow::slotRetResumeSess ( bool result,
+             host=st.setting()-&gt;value ( sid+&quot;/host&quot;,
+                                        ( QVariant ) host ).toString();
+         }
+-        else
+-            host=config.server;
+         resumingSession.server=host;
+     }
+ 
+@@ -5781,10 +5793,18 @@ void ONMainWindow::setStatStatus ( QString status )
+         statusBar()-&gt;hide();
+ #endif
+         QString srv;
+-        if ( embedMode )
++        if ( brokerMode )
++        {
++            srv=config.serverIp;
++        }
++        else if ( embedMode )
++        {
+             srv=config.server;
++        }
+         else
++        {
+             srv=resumingSession.server;
++        }
+         slVal-&gt;setText ( resumingSession.sessionId+&quot;\n&quot;+
+                          srv+&quot;\n&quot;+
+                          getCurrentUname() +&quot;\n&quot;+
+@@ -5801,7 +5821,15 @@ void ONMainWindow::setStatStatus ( QString status )
+     else
+     {
+ 
+-        QString srv=config.server;
++        QString srv;
++        if ( brokerMode )
++        {
++            srv=config.serverIp;
++        }
++        else
++        {
++            srv=config.server;
++        }
+         QString message=getCurrentUname() +&quot;@&quot;+
+                         srv+
+                         &quot;, &quot;+tr ( &quot;Session&quot; ) +&quot;: &quot;+
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012178.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-26-ga4c7c35
+</A></li>
+	<LI>Next message: <A HREF="012180.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.0-21-g3c5222d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12179">[ date ]</a>
+              <a href="thread.html#12179">[ thread ]</a>
+              <a href="subject.html#12179">[ subject ]</a>
+              <a href="author.html#12179">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

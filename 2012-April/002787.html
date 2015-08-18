@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-8-g077700a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.0-8-g077700a&In-Reply-To=%3C20120429122444.519975DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002786.html">
+   <LINK REL="Next"  HREF="002788.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-8-g077700a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goserver.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.0-8-g077700a&In-Reply-To=%3C20120429122444.519975DB19%40ymir%3E"
+       TITLE="[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-8-g077700a">git-admin at x2go.org
+       </A><BR>
+    <I>Sun Apr 29 14:24:44 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002786.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-7-gc13ffe1
+</A></li>
+        <LI>Next message: <A HREF="002788.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-9-g3b0fc54
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2787">[ date ]</a>
+              <a href="thread.html#2787">[ thread ]</a>
+              <a href="subject.html#2787">[ subject ]</a>
+              <a href="author.html#2787">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  077700a44d18794fce590395fbc4b84eb818f1f4 (commit)
+      from  c13ffe1cb2c39edfacab52bc62e278469da19c9e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 077700a44d18794fce590395fbc4b84eb818f1f4
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Apr 29 14:20:42 2012 +0200
+
+    Add feature X2GO_SERVERSIDE_DESKTOPCOMMANDS. Let client provide a generic desktop shell command (GNOME, UNITRY, KDE, etc.) which then gets translated into an executable command by x2goruncommand.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    3 ++
+ x2goserver/bin/x2goruncommand                      |   29 ++++++++++++++++++++
+ x2goserver/share/x2gofeature.d/x2goserver.features |    1 +
+ 3 files changed, 33 insertions(+), 0 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index bca28f0..37d81d0 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -9,6 +9,9 @@ x2goserver (3.1.1.1-0~x2go1) UNRELEASED; urgency=low
+     - Avoid error messages in x2gocmdexistmessage if cmdoutput file could
+       not be found.
+     - Provide nx-X11 libraries for applications launched via x2goruncommand.
++    - Add feature X2GO_SERVERSIDE_DESKTOPCOMMANDS. Let client provide a generic
++      desktop shell command (GNOME, UNITRY, KDE, etc.) which then gets
++      translated into an executable command by x2goruncommand.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Wed, 04 Apr 2012 11:44:14 +0200
+ 
+diff --git a/x2goserver/bin/x2goruncommand b/x2goserver/bin/x2goruncommand
+index a6addbf..6518685 100755
+--- a/x2goserver/bin/x2goruncommand
++++ b/x2goserver/bin/x2goruncommand
+@@ -63,6 +63,35 @@ elif [ &quot;$sndsys&quot; == &quot;arts&quot; ]; then
+ 	export ARTS_SERVER=localhost:$4
+ fi
+ 
++# detect Ubuntu version via /etc/lsb-release (not supported by Debian)
++if [ -e &quot;/etc/lsb-release&quot; ]; then
++	source /etc/lsb-release
++fi
++
++# let x2goruncommand choose what command to use for a given desktop shell name (GNOME, UNITY, KDE, XFCE4, LXDE, TRINITY)
++if [ &quot;$cmd&quot; == &quot;GNOME&quot; ]; then
++
++	# Ubuntu starting with 12.04 (precise) launches Unity when calling gnome-session.
++	# GNOME (Ubuntu classic) gets launched when calling gnome-session-fallback.
++
++	if [ &quot;$DISTRIB_ID&quot; == &quot;Ubuntu&quot; ] &amp;&amp; echo &quot;$DISTRIB_CODENAME&quot; | egrep -v &quot;^[a-o].*&quot; &gt;/dev/null; then
++		$cmd=&quot;/usr/bin/gnome-session-fallback&quot;
++	else
++		$cmd=&quot;/usr/bin/gnome-session&quot;
++	fi
++elif [ &quot;$cmd&quot; == &quot;UNITY&quot; ] &amp;&amp; [ &quot;$DISTRIB_ID&quot; == &quot;Ubuntu&quot; ] &amp;&amp; echo &quot;$DISTRIB_CODENAME&quot; | egrep -v &quot;^[a-o].*&quot; &gt;/dev/null; then
++	$cmd=&quot;/usr/bin/gnome-session&quot;
++
++elif [ &quot;$cmd&quot; == &quot;KDE&quot; ]; then
++	$cmd=&quot;/usr/bin/startkde&quot;
++elif [ &quot;$cmd&quot; == &quot;XFCE4&quot; ]; then
++	$cmd=&quot;/usr/bin/xfce4-session&quot;
++elif [ &quot;$cmd&quot; == &quot;LXDE&quot; ]; then
++	$cmd=&quot;/usr/bin/startlxde&quot;
++elif [ &quot;$cmd&quot; == &quot;TRINITY&quot; ]; then
++	$cmd=&quot;/usr/bin/starttrinity&quot;
++fi
++
+ if [ &quot;$cmd&quot; == &quot;WWWBROWSER&quot; ]; then
+ 	if [ -e &quot;/usr/bin/firefox&quot; ]; then
+ 		cmd=&quot;/usr/bin/firefox&quot;
+diff --git a/x2goserver/share/x2gofeature.d/x2goserver.features b/x2goserver/share/x2gofeature.d/x2goserver.features
+index 70313d2..a5dd741 100755
+--- a/x2goserver/share/x2gofeature.d/x2goserver.features
++++ b/x2goserver/share/x2gofeature.d/x2goserver.features
+@@ -34,6 +34,7 @@ case &quot;$X2GO_FEATURE&quot; in
+     &quot;X2GO_UMOUNTSESSION_ALL&quot;) echo &quot;ok&quot;; exit 0;;
+     &quot;X2GO_UMOUNTSESSION_ONLYPATH&quot;) echo &quot;ok&quot;; exit 0;;
+     &quot;X2GO_PUBLISHED_APPLICATIONS&quot;) echo &quot;ok&quot;; exit 0;;
++    &quot;X2GO_SERVERSIDE_DESKTOPCOMMANDS&quot;) echo &quot;ok&quot;; exit 0;;
+     *) exit -1;;
+ 
+ esac
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002786.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-7-gc13ffe1
+</A></li>
+	<LI>Next message: <A HREF="002788.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-9-g3b0fc54
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2787">[ date ]</a>
+              <a href="thread.html#2787">[ thread ]</a>
+              <a href="subject.html#2787">[ subject ]</a>
+              <a href="author.html#2787">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

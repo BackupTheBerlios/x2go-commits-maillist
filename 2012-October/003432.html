@@ -1,0 +1,529 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient2.git - master (branch) updated:	d553677502781c5f5520ec2c41f067d054df9465
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09d553677502781c5f5520ec2c41f067d054df9465&In-Reply-To=%3C20121025155657.AB4A65DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003431.html">
+   <LINK REL="Next"  HREF="003433.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient2.git - master (branch) updated:	d553677502781c5f5520ec2c41f067d054df9465</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%09d553677502781c5f5520ec2c41f067d054df9465&In-Reply-To=%3C20121025155657.AB4A65DB18%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient2.git - master (branch) updated:	d553677502781c5f5520ec2c41f067d054df9465">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Oct 25 17:56:57 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003431.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	2e0e6e8669e8285046ae3f3c32578a5406fa11e2
+</A></li>
+        <LI>Next message: <A HREF="003433.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-61-g64c5691
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3432">[ date ]</a>
+              <a href="thread.html#3432">[ thread ]</a>
+              <a href="subject.html#3432">[ subject ]</a>
+              <a href="author.html#3432">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d553677502781c5f5520ec2c41f067d054df9465 (commit)
+      from  2e0e6e8669e8285046ae3f3c32578a5406fa11e2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d553677502781c5f5520ec2c41f067d054df9465
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Thu Oct 25 17:56:18 2012 +0200
+
+    add class X2GoClientConfig and init config details
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2goapplication.cpp                                |    4 +-
+ x2goapplication.h                                  |    8 ++
+ x2goclient2.pro                                    |    4 +
+ x2goclientconfig.cpp                               |  119 ++++++++++++++++++++
+ x2goclientconfig.h                                 |  108 ++++++++++++++++++
+ x2goclientconfigdetail.cpp                         |   43 +++++++
+ configuratorkeyboard.h =&gt; x2goclientconfigdetail.h |   34 +++---
+ 7 files changed, 305 insertions(+), 15 deletions(-)
+ create mode 100644 x2goclientconfig.cpp
+ create mode 100644 x2goclientconfig.h
+ create mode 100644 x2goclientconfigdetail.cpp
+ copy configuratorkeyboard.h =&gt; x2goclientconfigdetail.h (68%)
+
+The diff of changes is:
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index f388fd9..7c6efda 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -27,6 +27,7 @@
+ #include &quot;workarea.h&quot;
+ #include &quot;messagebox.h&quot;
+ #include &lt;QScrollBar&gt;
++#include &quot;x2goclientconfig.h&quot;
+ 
+ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplication(argc, argv, flags)
+ {
+@@ -46,11 +47,12 @@ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplicatio
+     addTranslator (appNames, &quot;MAILCLIENT&quot;,tr ( &quot;Email client&quot; ) );
+     addTranslator (appNames, &quot;OFFICE&quot;,tr ( &quot;Office&quot; ) );
+     addTranslator (appNames, &quot;TERMINAL&quot;,tr ( &quot;Terminal&quot; ) );
+-
++    clientConfig=new X2GoClientConfig;
+ }
+ 
+ X2GoApplication::~X2GoApplication()
+ {
++    delete clientConfig;
+     qDebug()&lt;&lt;&quot;X2Go Application exited&quot;;
+ }
+ 
+diff --git a/x2goapplication.h b/x2goapplication.h
+index 7045353..a715154 100644
+--- a/x2goapplication.h
++++ b/x2goapplication.h
+@@ -26,6 +26,10 @@
+ public: void set_##NAME(TYPE val){NAME=val;} \
+ public: TYPE get_##NAME(){return NAME;}
+ 
++#define X2GO_RO_PROPERTY(TYPE,NAME)  private: TYPE NAME; \
++public: TYPE get_##NAME(){return NAME;}
++
++
+ #define X2GO_PROPERTY_GETTER(TYPE,NAME) public: TYPE get_##NAME(){return NAME;}
+ #define X2GO_PROPERTY_SETTER(TYP,NAME) public: void set_##NAME(TYPE val){NAME=val;}
+ 
+@@ -37,6 +41,7 @@ class Profile;
+ class ProfileSettingsForm;
+ class MainWindow;
+ class ProfileDetailConfiguratorForm;
++class X2GoClientConfig;
+ 
+ struct nameTranslator
+ {
+@@ -53,6 +58,7 @@ class X2GoApplication: public QApplication
+     X2GO_PROPERTY(SessionForm*, sessionForm)
+     X2GO_PROPERTY(MainWindow*, mainWindow)
+     X2GO_PROPERTY(ProfileDetailConfiguratorForm*, profileDetailConfiguratorForm)
++    X2GO_PROPERTY_GETTER(X2GoClientConfig*, clientConfig)
+ public:
+     ~X2GoApplication();
+     X2GoApplication(int&amp; argc, char** argv, int  = ApplicationFlags);
+@@ -68,6 +74,8 @@ private:
+     QList&lt;Profile*&gt; profiles;
+     QList&lt;nameTranslator&gt; desktopNames;
+     QList&lt;nameTranslator&gt; appNames;
++    X2GoClientConfig* clientConfig;
++private:
+     const nameTranslator* getTranslator(QList&lt;nameTranslator&gt;&amp; list, int index);
+     QString getInternName(QList&lt;nameTranslator&gt;&amp; list, QString readableName);
+     QString getReadableName(QList&lt;nameTranslator&gt;&amp; list, QString internName);
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index d02c685..cae1795 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -50,6 +50,8 @@ SOURCES += main.cpp \
+            configuratorprinting.cpp \
+            configuratorsharing.cpp \
+            messagebox.cpp \
++           x2goclientconfig.cpp \
++           x2goclientconfigdetail.cpp \
+            profile.cpp
+ 
+ HEADERS += mainwindow.h \
+@@ -73,6 +75,8 @@ HEADERS += mainwindow.h \
+            configuratorprinting.h \
+            configuratorsharing.h \
+            messagebox.h \
++           x2goclientconfig.h \
++           x2goclientconfigdetail.h \
+            profile.h
+ 
+ LIBS += -lssh
+diff --git a/x2goclientconfig.cpp b/x2goclientconfig.cpp
+new file mode 100644
+index 0000000..d96c871
+--- /dev/null
++++ b/x2goclientconfig.cpp
+@@ -0,0 +1,119 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++
++#include &quot;x2goclientconfig.h&quot;
++#include &lt;QDir&gt;
++
++X2GoClientConfig::X2GoClientConfig()
++{
++    initDetail(&amp;printShowDialog, (bool)true, QString::null, &quot;printing.General.showdialog&quot;, tr(&quot;Display printing dialog&quot;));
++    initDetail(&amp;printPDFView, (bool)false, QString::null, &quot;printing.General.pdfview&quot;, tr(&quot;View PDF instead of printing&quot;));
++    initDetail(&amp;printCustomCommand, (bool)false, QString::null, &quot;printing.print.startcmd&quot;, tr(&quot;Use custom printer command&quot;));
++    initDetail(&amp;printCommand, (QString)&quot;lpr&quot;, QString::null, &quot;printing.print.command&quot;, tr(&quot;Custom printer command&quot;));
++    initDetail(&amp;printStdin, (bool)false, QString::null, &quot;printing.print.stdin&quot;, tr(&quot;Redirect output to printer command STDIN&quot;));
++    initDetail(&amp;printPS, (bool)false, QString::null, &quot;printing.print.ps&quot;, tr(&quot;Print output in PS format&quot;));
++    initDetail(&amp;printViewOpen, (bool)false, QString::null, &quot;printing.view.open&quot;, tr(&quot;Open PDF in viewer application&quot;));
++    initDetail(&amp;printViewCommand, (QString)&quot;xpdf&quot;, QString::null, &quot;printing.view.command&quot;, tr(&quot;PDF Viewer application&quot;));
++    initDetail(&amp;printCUPSDefaultPrinter, (QString)QString::null, QString::null, &quot;printing.CUPS.defaultprinter&quot;,
++               tr(&quot;Default CUPS printer&quot;));
++
++    initDetail(&amp;showStatusBar, (bool)true, &quot;--show-status-bar&quot;, &quot;settings.General.showStatus&quot;, tr(&quot;Display status bar&quot;));
++    initDetail(&amp;clientSSHPort, (int)22, &quot;--client-ssh-port&quot;, &quot;settings.General.clientport&quot;,
++               tr(&quot;Clientside SSH port for file system export usage&quot;));
++    
++    initDetail(&amp;trayEnabled, (bool)false, QString::null, &quot;settings.trayicon.enabled&quot;, tr(&quot;Display icon in system tray&quot;));
++    initDetail(&amp;trayMinimize, (bool)false, QString::null, &quot;settings.trayicon.mintotray&quot;, tr(&quot;Hide to system tray when minimized&quot;));
++    initDetail(&amp;trayHideOnClose, (bool)false, QString::null, &quot;settings.trayicon.noclose&quot;, tr(&quot;Hide to system tray when closed&quot;));
++    initDetail(&amp;trayHideOnConnect, (bool)false, QString::null, &quot;settings.trayicon.mincon&quot;,
++               tr(&quot;Hide to system tray after connection is established&quot;));
++    initDetail(&amp;trayShowOnDisconnect, (bool)false, QString::null, &quot;settings.trayicon.maxdiscon&quot;,
++               tr(&quot;Restore from system tray after session is disconnected&quot;));
++
++    initDetail(&amp;windowSize, QSize(800,600), QString::null, &quot;sizes.mainwindow.size&quot;, tr(&quot;Size of main window&quot;));
++    initDetail(&amp;windowPosition, QPoint(800,600), QString::null, &quot;sizes.mainwindow.pos&quot;, tr(&quot;Position of main window&quot;));
++    initDetail(&amp;windowShowMaximized, (bool)false, &quot;--maximize&quot;, &quot;sizes.mainwindow.maximized&quot;, tr(&quot;Maximize main window&quot;));
++
++    initDetail(&amp;showHelp, (bool)false, &quot;--help&quot;, QString::null, tr(&quot;show help and exit&quot;));
++    initDetail(&amp;showHelpPack, (bool)false,&quot;--help-pack&quot;,QString::null,tr(&quot;show available pack methods and exit&quot;));
++    initDetail(&amp;portableMode, (bool)false, &quot;--portable&quot;, QString::null, tr(&quot;start in \&quot;portable\&quot; mode&quot;));
++    initDetail(&amp;cleanFilesOnExit, (bool)false, &quot;--clean-all-files&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;hideMenu, (bool)false, &quot;--no-menu&quot;, QString::null, tr(&quot;hide menu bar&quot;));
++    initDetail(&amp;defaultXinerama, (bool)false, &quot;--xinerama&quot;, QString::null, tr(&quot;use Xinerama by default&quot;));
++    initDetail(&amp;thinClientMode, (bool)false, &quot;--thinclient&quot;, QString::null, tr(&quot;run without window manager&quot;));
++    initDetail(&amp;showHaltButton, (bool)false, &quot;--haltbt&quot;, QString::null, tr(&quot;show shutdown button&quot;));
++    initDetail(&amp;startHidden, (bool)false, &quot;--hide&quot;, QString::null, tr(&quot;start hidden&quot;));
++    initDetail(&amp;usePGPCard, (bool)false, &quot;--pgp-card&quot;, QString::null, tr(&quot;use openPGP card authentication&quot;));
++    initDetail(&amp;autoAddToKnownHosts, (bool)false, &quot;--add-to-known-hosts&quot;, QString::null,
++               tr(&quot;add RSA key fingerprint to ~/.ssh/known_hosts&quot;));
++    initDetail(&amp;disallowSessionEdit, (bool)false, &quot;--no-session-edit&quot;, QString::null,
++               tr(&quot;not allow user to edit preconfigured sessions&quot;));
++    initDetail(&amp;defaultAutoLogin, (bool)false, &quot;--autologin&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;defaultBrockerAutoLogin, (bool)false, &quot;--broker-autologin&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;defaultNoBrockerAuth, (bool)false, &quot;--broker-noauth&quot;, QString::null, tr(&quot;&quot;));
++
++    initDetail(&amp;defaultDpi, (int)0, &quot;--dpi&quot;, QString::null, tr(&quot;set dpi of x2goagent, default - not set&quot;));
++    initDetail(&amp;defaultLink, (QString)&quot;adsl&quot;, &quot;--link&quot;, QString::null,
++               tr(&quot;&lt;modem|isdn|adsl|wan|lan&gt; set default link type, default 'adsl'&quot;));
++    initDetail(&amp;defaultPack, (QString)&quot;16m-jpeg-9&quot;, &quot;--pack&quot;, QString::null, tr(&quot;set default pack method, default '16m-jpeg-9'&quot;));
++    initDetail(&amp;defaultSound, (bool)true, &quot;--sound&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;defaultSessionGeometry, (QString)&quot;1024x768&quot;, &quot;--geometry&quot;, QString::null,
++               tr(&quot;&lt;W&gt;x&lt;H&gt;|fullscreen set default geometry, default value '800x600'&quot;));
++    initDetail(&amp;defaultKbdLayout, (QString)tr(&quot;us&quot;), &quot;--kbd-layout&quot;, QString::null,
++               tr(&quot;set default keyboard layout or layouts comma separated&quot;));
++    initDetail(&amp;defaultKbdType, (QString)tr(&quot;pc105/us&quot;), &quot;--kbd-type&quot;, QString::null, tr(&quot;set default keyboard type&quot;));
++    initDetail(&amp;defaultChangeKbd, (bool)true, &quot;--set-kbd&quot;, QString::null, tr(&quot;overwrite current keyboard settings&quot;));
++
++    initDetail(&amp;sessionConfigFile, (QString)QString::null, &quot;--session-conf&quot;, QString::null, tr(&quot;path to alternative session config&quot;));
++
++    initDetail(&amp;defaultSessionName, (QString)QString::null, &quot;--session&quot;, QString::null, tr(&quot;Start specified session&quot;));
++    initDetail(&amp;defaultSessionId, (QString)QString::null, &quot;--sessionid&quot;, QString::null, tr(&quot;&quot;));
++
++    initDetail(&amp;defaultUserName, (QString)QString::null, &quot;--user&quot;, QString::null, tr(&quot;select specified user&quot;));
++    initDetail(&amp;defaultSessionCommand, (QString)QString::null, &quot;--command&quot;, QString::null, tr(&quot;Set default command, default value 'KDE'&quot;));
++    initDetail(&amp;defaultSSHPort, (int)22, &quot;--ssh-port&quot;, QString::null, tr(&quot;default SSH port, default 22&quot;));
++    initDetail(&amp;defaultSSHKey, (QString)QString::null, &quot;--ssh-key&quot;, QString::null, tr(&quot;&quot;));
++
++    initDetail(&amp;brokerUrl, (QString)QString::null, &quot;--broker-url&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;brokerSSHKey, (QString)QString::null, &quot;--broker-ssh-key&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;brokerName, (QString)QString::null, &quot;--broker-name&quot;, QString::null, tr(&quot;&quot;));
++    initDetail(&amp;authId, (QString)QString::null, &quot;--auth-id&quot;, QString::null, tr(&quot;&quot;));
++
++    initDetail(&amp;autoStartApp, (QString)QString::null, &quot;--autostart&quot;, QString::null,
++               tr(&quot;launch \&quot;app\&quot; by session start in \&quot;published applications\&quot; mode&quot;));
++
++    initDetail(&amp;homeDirectory, (QString)QDir::homePath(), &quot;--home&quot;, QString::null, tr(&quot;set users home directory&quot;));
++
++    initDetail(&amp;readExportsFrom, (QString)QString::null, &quot;--read-exports-from&quot;, QString::null, tr(&quot;&quot;));
++}
++
++void X2GoClientConfig::initDetail(X2GoClientConfigDetail* detail, QVariant value, QString commandLineParameter,
++                                  QString configFileParameter,
++                                  QString description, bool (*checkSanityFunction)(QVariant value))
++{
++    detail-&gt;value=value;
++    detail-&gt;commandLineParameter=commandLineParameter;
++    detail-&gt;description=description;
++    detail-&gt;checkSanityFunction=checkSanityFunction;
++    detail-&gt;configFileParameter=configFileParameter;
++    configDetails&lt;&lt;detail;
++}
++
++
+diff --git a/x2goclientconfig.h b/x2goclientconfig.h
+new file mode 100644
+index 0000000..38b2a32
+--- /dev/null
++++ b/x2goclientconfig.h
+@@ -0,0 +1,108 @@
++/**************************************************************************
++*   Copyright (C) 2005-2012 by Oleksandr Shneyder                         *
++*   <A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>                                              *
++*                                                                         *
++*   This program is free software; you can redistribute it and/or modify  *
++*   it under the terms of the GNU General Public License as published by  *
++*   the Free Software Foundation; either version 2 of the License, or     *
++*   (at your option) any later version.                                   *
++*                                                                         *
++*   This program is distributed in the hope that it will be useful,       *
++*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
++*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
++*   GNU General Public License for more details.                          *
++*                                                                         *
++*   You should have received a copy of the GNU General Public License     *
++*   along with this program; if not, write to the                         *
++*   Free Software Foundation, Inc.,                                       *
++*   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
++***************************************************************************/
++
++
++#ifndef X2GOCLIENTCONFIG_H
++#define X2GOCLIENTCONFIG_H
++
++#include &lt;QObject&gt;
++#include &quot;x2goclientconfigdetail.h&quot;
++#include &quot;x2goapplication.h&quot;
++
++class X2GoClientConfig: public QObject
++{
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printShowDialog)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printPDFView)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printCustomCommand)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printCommand)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printStdin)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printPS)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printViewOpen)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printViewCommand)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, printCUPSDefaultPrinter)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, showStatusBar)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, clientSSHPort)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, trayEnabled)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, trayMinimize)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, trayHideOnClose)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, trayHideOnConnect)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, trayShowOnDisconnect)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, windowSize)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, windowPosition)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, windowShowMaximized)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, showHelp)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, showHelpPack)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, portableMode)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, cleanFilesOnExit)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, hideMenu)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultXinerama)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, thinClientMode)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, showHaltButton)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, startHidden)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, usePGPCard)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, autoAddToKnownHosts)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, disallowSessionEdit)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultAutoLogin)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultBrockerAutoLogin)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultNoBrockerAuth)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultDpi)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultLink)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultPack)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSound)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionGeometry)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultKbdLayout)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultKbdType)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultChangeKbd)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, sessionConfigFile)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionName)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionId)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultUserName)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionCommand)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSSHPort)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSSHKey)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, brokerUrl)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, brokerSSHKey)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, brokerName)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, authId)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, autoStartApp)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, homeDirectory)
++
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, readExportsFrom)
++public:
++    X2GoClientConfig();
++private:
++    QList&lt;X2GoClientConfigDetail*&gt; configDetails;
++private:
++    void initDetail(X2GoClientConfigDetail* detail, QVariant value, QString commandLineParameter, QString configFileParameter,
++                    QString description,  bool (*checkSanityFunction)(QVariant value)=0);
++};
++
++#endif // X2GOCLIENTCONFIG_H
+diff --git a/x2goclientconfigdetail.cpp b/x2goclientconfigdetail.cpp
+new file mode 100644
+index 0000000..cba3b29
+--- /dev/null
++++ b/x2goclientconfigdetail.cpp
+@@ -0,0 +1,43 @@
++/*
++    &lt;one line to give the program's name and a brief idea of what it does.&gt;
++    Copyright (C) 2012  Oleksandr Shneyder &lt;email&gt;
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program.  If not, see &lt;<A HREF="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</A>&gt;.
++*/
++
++#include &quot;x2goclientconfigdetail.h&quot;
++
++X2GoClientConfigDetail::X2GoClientConfigDetail()
++{
++}
++
++bool X2GoClientConfigDetail::parseCommandLineArgument(QString argument)
++{
++    /*        if(!parseCommandLineArgumentFunction)
++                return false;
++            ConfigDetailType val;
++            bool res=*parseCommandLineArgumentFunction(argument, val);
++            if(!res)
++                return false;
++            if(!checkSanityFunction)
++            {
++                value=val;
++                return true;
++            }
++            res=checkSanityFunction(val);
++            if(!res)
++                return false;
++            value=val;*/
++    return true;
++}
+diff --git a/configuratorkeyboard.h b/x2goclientconfigdetail.h
+similarity index 68%
+copy from configuratorkeyboard.h
+copy to x2goclientconfigdetail.h
+index 341a7ef..f54a524 100644
+--- a/configuratorkeyboard.h
++++ b/x2goclientconfigdetail.h
+@@ -19,22 +19,28 @@
+ ***************************************************************************/
+ 
+ 
+-#ifndef CONFIGURATORKEYBOARD_H
+-#define CONFIGURATORKEYBOARD_H
++#ifndef X2GOCLIENTCONFIGDETAIL_H
++#define X2GOCLIENTCONFIGDETAIL_H
+ 
+-#include &quot;profiledetailconfigurator.h&quot;
+-#include &quot;ui_configuratorkeyboard.h&quot;
+-
+-class ConfiguratorKeyboard: public ProfileDetailConfigurator, public Ui_ConfiguratorKeyboard
++#include &lt;QVariant&gt;
++#include &quot;x2goapplication.h&quot;
++class X2GoClientConfigDetail
+ {
+-    Q_OBJECT
+-public:
+-    ConfiguratorKeyboard(Profile* profile, QWidget* parent = 0, Qt::WindowFlags f = 0);
+-    virtual ~ConfiguratorKeyboard();
++    friend class X2GoClientConfig;
++    X2GO_PROPERTY_GETTER( QVariant, value)
++    X2GO_PROPERTY_GETTER( QString, commandLineParameter)
++    X2GO_PROPERTY_GETTER( QString, configFileParameter)
++    X2GO_PROPERTY_GETTER( QString, description)
+ private:
+-    virtual void init();
+-    virtual void defaults();
+-    virtual void apply();
++    bool (*checkSanityFunction)(QVariant value);
++    QVariant value;
++    QString commandLineParameter;
++    QString configFileParameter;
++    QString description;
++public:
++    X2GoClientConfigDetail();
++    bool parseCommandLineArgument(QString argument);
+ };
+ 
+-#endif // CONFIGURATORKEYBOARD_H
++#endif // X2GOCLIENTCONFIGDETAIL_H
++
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003431.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	2e0e6e8669e8285046ae3f3c32578a5406fa11e2
+</A></li>
+	<LI>Next message: <A HREF="003433.html">[X2go-Commits] x2gothinclient.git - master (branch) updated:	1.0.1.8-61-g64c5691
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3432">[ date ]</a>
+              <a href="thread.html#3432">[ thread ]</a>
+              <a href="subject.html#3432">[ subject ]</a>
+              <a href="author.html#3432">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,207 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2gobroker.git - master (branch) updated:	8206b502bce2392b6ca4551d964860c4a0848cef
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%098206b502bce2392b6ca4551d964860c4a0848cef&In-Reply-To=%3C20121206140848.AC2CE3BC43%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003816.html">
+   <LINK REL="Next"  HREF="003818.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2gobroker.git - master (branch) updated:	8206b502bce2392b6ca4551d964860c4a0848cef</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20master%20%28branch%29%20updated%3A%0A%098206b502bce2392b6ca4551d964860c4a0848cef&In-Reply-To=%3C20121206140848.AC2CE3BC43%40ymir%3E"
+       TITLE="[X2go-Commits] x2gobroker.git - master (branch) updated:	8206b502bce2392b6ca4551d964860c4a0848cef">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Dec  6 15:08:48 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003816.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	d9a975b5e648d5ee0a207814da8f85abc81e9f64
+</A></li>
+        <LI>Next message: <A HREF="003818.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	4bef261502ad0d4d20751eca0073f5f295aa99ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3817">[ date ]</a>
+              <a href="thread.html#3817">[ thread ]</a>
+              <a href="subject.html#3817">[ subject ]</a>
+              <a href="author.html#3817">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  8206b502bce2392b6ca4551d964860c4a0848cef (commit)
+      from  d9a975b5e648d5ee0a207814da8f85abc81e9f64 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 8206b502bce2392b6ca4551d964860c4a0848cef
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Dec 6 15:08:44 2012 +0100
+
+    extend test_getprofile so that ACL's can be placed into session profiles (and defaults) and these ACL's get ignored all the way down
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/backends/inifile.py           |   20 ++++++++++++++++++--
+ x2gobroker/defaults.py                   |   12 +++++++++++-
+ x2gobroker/tests/test_backend_inifile.py |   24 ++++++++++++++++++++++++
+ 3 files changed, 53 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/x2gobroker/backends/inifile.py b/x2gobroker/backends/inifile.py
+index 5d2f451..424634a 100644
+--- a/x2gobroker/backends/inifile.py
++++ b/x2gobroker/backends/inifile.py
+@@ -60,11 +60,27 @@ class X2GoBroker(base.X2GoBroker):
+ 
+     def get_profile_defaults(self):
+ 
+-        return self.session_profiles.get_defaults()
++        profile_defaults = self.session_profiles.get_defaults()
++        for key in profile_defaults.keys():
++            if key.startswith('acl-'):
++                del profile_defaults[key]
++        return profile_defaults
+ 
+     def get_profile(self, profile_id):
+ 
+-        return self.session_profiles.get_section(profile_id)
++        profile = self.session_profiles.get_section(profile_id)
++        for key in profile.keys():
++            if key.startswith('acl-'):
++                del profile[key]
++        return profile
++
++    def get_profile_acls(self, profile_id):
++
++        profile = self.session_profiles.get_section(profile_id)
++        for key in profile.keys():
++            if not key.startswith('acl-'):
++                del profile[key]
++        return profile
+ 
+     def list_profiles(self, username):
+ 
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index c11b36f..b9f477b 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -113,5 +113,15 @@ X2GOBROKER_SESSIONPROFILE_DEFAULTS = {
+         'sshport': 22,
+         'setdpi': 0,
+         'pack': '16m-jpeg',
++        'acl-users-allowed': ['ALL'],
++        'acl-users-denied': [],
++        'acl-users-order': '',
++        'acl-groups-allowed': ['ALL'],
++        'acl-groups-denied': [],
++        'acl-groups-order': '',
++        'acl-clients-allowed': ['ALL'],
++        'acl-clients-denied': [],
++        'acl-clients-order': '',
++        'acl-any-order': 'deny-allow',
+     },
+-}
+\ No newline at end of file
++}
+diff --git a/x2gobroker/tests/test_backend_inifile.py b/x2gobroker/tests/test_backend_inifile.py
+index 12f55c7..f9e7f2e 100644
+--- a/x2gobroker/tests/test_backend_inifile.py
++++ b/x2gobroker/tests/test_backend_inifile.py
+@@ -45,6 +45,9 @@ class TestX2GoBrokerBackendInifile(unittest.TestCase):
+         inifile_backend = x2gobroker.backends.inifile.X2GoBroker(profile_config_file='../../etc/x2gobroker-sessionprofiles.conf')
+         _profile_defaults = inifile_backend.get_profile_defaults()
+         _expected_profile_defaults = x2gobroker.defaults.X2GOBROKER_SESSIONPROFILE_DEFAULTS['DEFAULT']
++        for key in copy.deepcopy(_expected_profile_defaults):
++            if key.startswith('acl-'):
++                del _expected_profile_defaults[key]
+         for _param in _profile_defaults:
+             self.assertTrue( ( _param in _expected_profile_defaults.keys() and _profile_defaults[_param] == _expected_profile_defaults[_param] ) )
+         for _param in _expected_profile_defaults:
+@@ -69,6 +72,14 @@ cmd = GNOME
+ user = bar
+ cmd = KDE
+ fullscreen = true
++
++[testprofile3]
++user = bar
++cmd = KDE
++fullscreen = true
++acl-users-denied = ALL
++acl-users-allowed = foo,bar
++acl-users-order = deny-allow
+ &quot;&quot;&quot;
+         tf = tempfile.NamedTemporaryFile()
+         print &gt;&gt; tf, _session_profiles
+@@ -92,6 +103,12 @@ fullscreen = true
+             'cmd': 'KDE',
+             'fullscreen': True,
+         })
++        _expected_profile3 = copy.deepcopy(_expected_defaults)
++        _expected_profile3.update({
++            'user': 'bar',
++            'cmd': 'KDE',
++            'fullscreen': True,
++        })
+         _profile1 = inifile_backend.get_profile('testprofile1')
+         del _profile1['default']
+         for key in _expected_profile1.keys():
+@@ -106,6 +123,13 @@ fullscreen = true
+         for key in _profile2.keys():
+             self.assertTrue( ( key in _expected_profile2.keys() ) and ( _profile2[key] == _expected_profile2[key] ) )
+ 
++        _profile3 = inifile_backend.get_profile('testprofile3')
++        del _profile3['default']
++        for key in _expected_profile3.keys():
++            self.assertTrue( ( key in _profile3.keys() ) )
++        for key in _profile3.keys():
++            self.assertTrue( ( key in _expected_profile3.keys() ) and ( _profile3[key] == _expected_profile3[key] ) )
++
+     ### TEST: select_profile() method
+ 
+ #    def test_profileselection(self):
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003816.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	d9a975b5e648d5ee0a207814da8f85abc81e9f64
+</A></li>
+	<LI>Next message: <A HREF="003818.html">[X2go-Commits] x2gobroker.git - master (branch) updated:	4bef261502ad0d4d20751eca0073f5f295aa99ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3817">[ date ]</a>
+              <a href="thread.html#3817">[ thread ]</a>
+              <a href="subject.html#3817">[ subject ]</a>
+              <a href="author.html#3817">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,801 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient2.git - master (branch) updated:	1452cc08b0133fe54634eb6f8fd0f836b2f44035
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-October/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%091452cc08b0133fe54634eb6f8fd0f836b2f44035&In-Reply-To=%3C20121029144509.DE6C05DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003438.html">
+   <LINK REL="Next"  HREF="003440.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient2.git - master (branch) updated:	1452cc08b0133fe54634eb6f8fd0f836b2f44035</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient2.git%20-%20master%20%28branch%29%20updated%3A%0A%091452cc08b0133fe54634eb6f8fd0f836b2f44035&In-Reply-To=%3C20121029144509.DE6C05DB18%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient2.git - master (branch) updated:	1452cc08b0133fe54634eb6f8fd0f836b2f44035">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Oct 29 15:45:09 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003438.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	226c0053c56d1aa173ac1d31e0b7e0accb0315bb
+</A></li>
+        <LI>Next message: <A HREF="003440.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	b0d8a8de03376664323c178374eae7bf71ba3031
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3439">[ date ]</a>
+              <a href="thread.html#3439">[ thread ]</a>
+              <a href="subject.html#3439">[ subject ]</a>
+              <a href="author.html#3439">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  1452cc08b0133fe54634eb6f8fd0f836b2f44035 (commit)
+      from  226c0053c56d1aa173ac1d31e0b7e0accb0315bb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 1452cc08b0133fe54634eb6f8fd0f836b2f44035
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Mon Oct 29 15:44:17 2012 +0100
+
+    Add class x2gosettings. Parsing command line options. Load config file settings.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ profile.cpp                   |   83 ++++++++++---------
+ profile.h                     |    1 +
+ x2goapplication.cpp           |    6 ++
+ x2goclient2.pro               |    2 +
+ x2goclientconfig.cpp          |  178 +++++++++++++++++++++++++++++++++++++++--
+ x2goclientconfig.h            |   15 +++-
+ x2goclientconfigdetail.cpp    |   87 ++++++++++++++++----
+ x2goclientconfigdetail.h      |    8 +-
+ main.cpp =&gt; x2gosettings.cpp  |   69 ++++++++++------
+ searchbar.h =&gt; x2gosettings.h |   28 +++----
+ 10 files changed, 378 insertions(+), 99 deletions(-)
+ copy main.cpp =&gt; x2gosettings.cpp (51%)
+ copy searchbar.h =&gt; x2gosettings.h (80%)
+
+The diff of changes is:
+diff --git a/profile.cpp b/profile.cpp
+index 3b10262..8352e71 100644
+--- a/profile.cpp
++++ b/profile.cpp
+@@ -22,6 +22,8 @@
+ #include &quot;profileform.h&quot;
+ #include &quot;workarea.h&quot;
+ #include &quot;profilesettingsform.h&quot;
++#include &quot;x2goclientconfig.h&quot;
++#include &quot;x2goclientconfigdetail.h&quot;
+ #include &lt;QDebug&gt;
+ #include &lt;QPushButton&gt;
+ #include &lt;QScrollBar&gt;
+@@ -35,9 +37,36 @@
+ Profile::Profile(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+ {
+ //property initialization
+-    SSHPort=22;
++    setDefaultValues();
++    inited=false;
++    selected=false;
++    startDragPoint=-1;
++    f2SettingsConnector=0;
++    setFixedWidth(PROFILE_HEIGHT);
++
++    connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalViewPortResized()), this, SLOT(slotUpdateProfileWidget()));
++    connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalProfilesScrolled()), this, SLOT(slotUpdateProfileWidget()));
++    connect(X2GoApplication::instance()-&gt;get_profileForm()-&gt;scrollArea-&gt;verticalScrollBar(),
++            SIGNAL(rangeChanged(int,int)), this, SLOT(slotUpdateProfileWidget()));
++    connect(X2GoApplication::instance(), SIGNAL(signalUpdateProfiles()), this, SLOT(slotUpdateProfileWidget()));
++    connect(this, SIGNAL(signalDragFinished()), X2GoApplication::instance()-&gt;get_workArea(), SLOT(slotScrollToNearestForm()));
++    connect(this, SIGNAL(signalSelected(Profile*)), X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)));
++    connect(X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)),this, SLOT(slotProfileSelected(Profile*)));
++}
++
++
++Profile::~Profile()
++{
++
++}
++
++void Profile::setDefaultValues()
++{
++    X2GoClientConfig* cfg=X2GoApplication::instance()-&gt;get_clientConfig();
++    SSHPort=cfg-&gt;get_defaultSSHPort().get_value().toInt();
+     RDPPort=3389;
+-    autoLogin=false;
++    autoLogin=cfg-&gt;get_defaultAutoLogin().get_value().toBool();
++    user=cfg-&gt;get_defaultUserName().get_value().toString();
+     proxy=false;
+     proxyPort=22;
+     proxyAutoLogin=false;
+@@ -46,23 +75,24 @@ Profile::Profile(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+     directRDP=false;
+     rootless=false;
+     published=false;
+-    sound=false;
+-    speed=ADSL;
+-    quality=9;
+-    method=&quot;16m-jpeg&quot;;
+-    fullscreen=false;
+-    displayWidth=1024;
+-    displayHeight=748;
++    sound=cfg-&gt;get_defaultSound().get_value().toBool();
++    desktop=cfg-&gt;get_defaultSessionCommand().get_value().toString();
++    speed=(SpeedType)cfg-&gt;get_defaultSpeed().get_value().toInt();
++    quality=cfg-&gt;get_defaultPackQuality().get_value().toInt();
++    method=cfg-&gt;get_defaultPackMethod().get_value().toString();
++    fullscreen=cfg-&gt;get_defaultSessionGeometryFullScreen().get_value().toBool();
++    displayWidth=cfg-&gt;get_defaultSessionGeometryWidth().get_value().toInt();
++    displayHeight=cfg-&gt;get_defaultSessionGeometryHeight().get_value().toInt();
+     multiDisplay=false;
+     displayNumber=1;
+     maxDimension=false;
+-    changeDPI=false;
+-    dpi=96;
+-    xinerama=false;
+-    changeKeyboard=true;
+-    keyboardModel=&quot;pc105/us&quot;;
+-    keyboardLayout=&quot;us&quot;;
+-    sound=true;
++    changeDPI=(cfg-&gt;get_defaultDpi().get_value().toInt()&gt;0);
++    dpi=cfg-&gt;get_defaultDpi().get_value().toInt();
++    xinerama=cfg-&gt;get_defaultXinerama().get_value().toInt();
++    changeKeyboard=cfg-&gt;get_defaultChangeKbd().get_value().toInt();
++    keyboardModel=cfg-&gt;get_defaultKbdType().get_value().toString();
++    keyboardLayout=cfg-&gt;get_defaultKbdLayout().get_value().toString();
++    sound=cfg-&gt;get_defaultSound().get_value().toBool();
+     soundTunnel=true;
+     soundPort=4713;
+     useDefaultSoundPort=true;
+@@ -79,27 +109,6 @@ Profile::Profile(QWidget* parent, Qt::WindowFlags f): QFrame(parent, f)
+ #ifdef Q_OS_LINUX
+     localFSEncoding=tr ( &quot;ISO8859-1&quot; );
+ #endif
+-//
+-    inited=false;
+-    selected=false;
+-    startDragPoint=-1;
+-    f2SettingsConnector=0;
+-    setFixedWidth(PROFILE_HEIGHT);
+-
+-    connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalViewPortResized()), this, SLOT(slotUpdateProfileWidget()));
+-    connect(X2GoApplication::instance()-&gt;get_profileForm(), SIGNAL(signalProfilesScrolled()), this, SLOT(slotUpdateProfileWidget()));
+-    connect(X2GoApplication::instance()-&gt;get_profileForm()-&gt;scrollArea-&gt;verticalScrollBar(),
+-            SIGNAL(rangeChanged(int,int)), this, SLOT(slotUpdateProfileWidget()));
+-    connect(X2GoApplication::instance(), SIGNAL(signalUpdateProfiles()), this, SLOT(slotUpdateProfileWidget()));
+-    connect(this, SIGNAL(signalDragFinished()), X2GoApplication::instance()-&gt;get_workArea(), SLOT(slotScrollToNearestForm()));
+-    connect(this, SIGNAL(signalSelected(Profile*)), X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)));
+-    connect(X2GoApplication::instance(), SIGNAL(signalProfilesSelectionChanged(Profile*)),this, SLOT(slotProfileSelected(Profile*)));
+-}
+-
+-
+-Profile::~Profile()
+-{
+-
+ }
+ 
+ int Profile::getProfileIndex()
+diff --git a/profile.h b/profile.h
+index f639cdf..e460070 100644
+--- a/profile.h
++++ b/profile.h
+@@ -111,6 +111,7 @@ private:
+     void initWidget();
+     void setupRegularWidget();
+     void setupSelectedWidget();
++    void setDefaultValues();
+ protected:
+     virtual void  mouseMoveEvent ( QMouseEvent * event );
+     virtual void  mousePressEvent ( QMouseEvent * event );
+diff --git a/x2goapplication.cpp b/x2goapplication.cpp
+index 7c6efda..deeff4c 100644
+--- a/x2goapplication.cpp
++++ b/x2goapplication.cpp
+@@ -48,6 +48,12 @@ X2GoApplication::X2GoApplication(int&amp; argc, char** argv, int flags): QApplicatio
+     addTranslator (appNames, &quot;OFFICE&quot;,tr ( &quot;Office&quot; ) );
+     addTranslator (appNames, &quot;TERMINAL&quot;,tr ( &quot;Terminal&quot; ) );
+     clientConfig=new X2GoClientConfig;
++    clientConfig-&gt;loadConfigFiles();
++    if(!clientConfig-&gt;parseCommandLineArguments(arguments()))
++    {
++      qDebug()&lt;&lt;&quot;error parsing command line arguments&quot;;
++      ::exit(-1);
++    }
+ }
+ 
+ X2GoApplication::~X2GoApplication()
+diff --git a/x2goclient2.pro b/x2goclient2.pro
+index cae1795..9f723f0 100755
+--- a/x2goclient2.pro
++++ b/x2goclient2.pro
+@@ -52,6 +52,7 @@ SOURCES += main.cpp \
+            messagebox.cpp \
+            x2goclientconfig.cpp \
+            x2goclientconfigdetail.cpp \
++           x2gosettings.cpp \
+            profile.cpp
+ 
+ HEADERS += mainwindow.h \
+@@ -77,6 +78,7 @@ HEADERS += mainwindow.h \
+            messagebox.h \
+            x2goclientconfig.h \
+            x2goclientconfigdetail.h \
++           x2gosettings.h \
+            profile.h
+ 
+ LIBS += -lssh
+diff --git a/x2goclientconfig.cpp b/x2goclientconfig.cpp
+index 45bfd49..d0bbce9 100644
+--- a/x2goclientconfig.cpp
++++ b/x2goclientconfig.cpp
+@@ -20,7 +20,11 @@
+ 
+ 
+ #include &quot;x2goclientconfig.h&quot;
++#include &quot;profile.h&quot;
++#include &quot;x2gosettings.h&quot;
+ #include &lt;QDir&gt;
++#include &lt;QTextStream&gt;
++#include &lt;QDebug&gt;
+ 
+ X2GoClientConfig::X2GoClientConfig()
+ {
+@@ -72,11 +76,12 @@ X2GoClientConfig::X2GoClientConfig()
+ 
+     initDetail(&amp;defaultDpi, (int)0, &quot;--dpi&quot;, QString::null, tr(&quot;set dpi of x2goagent, default - not set&quot;));
+     initDetail(&amp;defaultLink, (QString)&quot;adsl&quot;, &quot;--link&quot;, QString::null,
+-               tr(&quot;&lt;modem|isdn|adsl|wan|lan&gt; set default link type, default 'adsl'&quot;));
+-    initDetail(&amp;defaultPack, (QString)&quot;16m-jpeg-9&quot;, &quot;--pack&quot;, QString::null, tr(&quot;set default pack method, default '16m-jpeg-9'&quot;));
++               tr(&quot;&lt;modem|isdn|adsl|wan|lan&gt; set default link type, default 'adsl'&quot;), &amp;X2GoClientConfig::checkLinkParameter);
++    initDetail(&amp;defaultPack, (QString)&quot;16m-jpeg-9&quot;, &quot;--pack&quot;, QString::null, tr(&quot;set default pack method, default '16m-jpeg-9'&quot;),
++               &amp;X2GoClientConfig::checkPackParameter);
+     initDetail(&amp;defaultSound, (bool)true, &quot;--sound&quot;, QString::null, tr(&quot;enable or disable sound by default&quot;));
+-    initDetail(&amp;defaultSessionGeometry, (QString)&quot;1024x768&quot;, &quot;--geometry&quot;, QString::null,
+-               tr(&quot;&lt;W&gt;x&lt;H&gt;|fullscreen set default geometry, default value '800x600'&quot;));
++    initDetail(&amp;defaultSessionGeometry, (QString)&quot;800x600&quot;, &quot;--geometry&quot;, QString::null,
++               tr(&quot;&lt;W&gt;x&lt;H&gt;|fullscreen set default geometry, default value '800x600'&quot;), &amp;X2GoClientConfig::checkGeometryParameter);
+     initDetail(&amp;defaultKbdLayout, (QString)tr(&quot;us&quot;), &quot;--kbd-layout&quot;, QString::null,
+                tr(&quot;set default keyboard layout or layouts comma separated&quot;));
+     initDetail(&amp;defaultKbdType, (QString)tr(&quot;pc105/us&quot;), &quot;--kbd-type&quot;, QString::null, tr(&quot;set default keyboard type&quot;));
+@@ -104,18 +109,181 @@ X2GoClientConfig::X2GoClientConfig()
+ 
+     initDetail(&amp;readExportsFrom, (QString)QString::null, &quot;--read-exports-from&quot;, QString::null,
+                tr(&quot;Read FS exports from this directory (thin client mode)&quot;));
++
++    initDetail(&amp;defaultSessionGeometryFullScreen, (bool)false, QString::null, QString::null,
++               tr(&quot;default fullscreen - not set directly, only via parsing \&quot;defaultSessionGeometry\&quot;&quot;));
++    initDetail(&amp;defaultSessionGeometryWidth, (int)800, QString::null, QString::null,
++               tr(&quot;default width - not set directly, only via parsing \&quot;defaultSessionGeometry\&quot;&quot;));
++    initDetail(&amp;defaultSessionGeometryHeight, (int)600, QString::null, QString::null,
++               tr(&quot;default height - not set directly, only via parsing \&quot;defaultSessionGeometry\&quot;&quot;));
++
++    initDetail(&amp;defaultPackMethod, (QString)&quot;16m-jpeg&quot;, QString::null, QString::null,
++               tr(&quot;default pack method - not set directly, only via parsing \&quot;defaultPack\&quot;&quot;));
++    initDetail(&amp;defaultPackQuality, (int)9, QString::null, QString::null,
++               tr(&quot;default pack quality - not set directly, only via parsing \&quot;defaultPack\&quot;&quot;));
++
++    initDetail(&amp;defaultSpeed, (int)Profile::ADSL, QString::null, QString::null,
++               tr(&quot;default connection speed - not set directly, only via parsing \&quot;defaultLink\&quot;&quot;));
++
+ }
+ 
+ void X2GoClientConfig::initDetail(X2GoClientConfigDetail* detail, QVariant value, QString commandLineParameter,
+                                   QString configFileParameter,
+-                                  QString description, bool (*checkSanityFunction)(QVariant value))
++                                  QString description, bool (X2GoClientConfig::*checkSanityFunction)(QVariant value))
+ {
+     detail-&gt;value=value;
+     detail-&gt;commandLineParameter=commandLineParameter;
+     detail-&gt;description=description;
+     detail-&gt;checkSanityFunction=checkSanityFunction;
+     detail-&gt;configFileParameter=configFileParameter;
++    detail-&gt;parent=this;
+     configDetails&lt;&lt;detail;
+ }
++bool X2GoClientConfig::checkPackParameter(QVariant value)
++{
++    QString val=value.toString();
++    QFile file ( &quot;:/txt/packs&quot; );
++    if ( !file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
++        return true;
++    QTextStream in ( &amp;file );
++    while ( !in.atEnd() )
++    {
++        QString pc=in.readLine();
++        if ( pc.indexOf ( &quot;-%&quot; ) !=-1 )
++        {
++            pc=pc.left ( pc.indexOf ( &quot;-%&quot; ) );
++
++            QStringList pctails=val.split ( &quot;-&quot; );
++            QString pcq=pctails[pctails.size()-1];
++            pctails.removeLast();
++
++            if ( pctails.join ( &quot;-&quot; ) ==pc )
++            {
++                bool ok;
++                int v=pcq.toInt ( &amp;ok );
++                if ( ok &amp;&amp; v&gt;=0 &amp;&amp; v&lt;=9 )
++                {
++                    defaultPackMethod.value==pc;
++                    defaultPackQuality.value=v;
++                    file.close();
++                    return true;
++                }
++                else
++                    break;
++            }
++        }
++        else
++        {
++            if ( pc==val )
++            {
++                defaultPackMethod.value=val;
++                file.close();
++                return true;
++            }
++        }
++    }
++    file.close();
++    return false;
++}
++
++
++bool X2GoClientConfig::checkGeometryParameter(QVariant value)
++{
++    QString geometry=value.toString();
++    if(geometry.compare(&quot;fullscreen&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSessionGeometryFullScreen.value=(bool)true;
++        return true;
++    }
++    QStringList res=geometry.split ( &quot;x&quot; );
++    if ( res.size() !=2 )
++        return false;
++    bool ok1,ok2;
++    int width=res[0].toInt ( &amp;ok1 );
++    int height=res[1].toInt ( &amp;ok2 );
++    if ( ! ( width &gt;0 &amp;&amp; height &gt;0 &amp;&amp; ok1 &amp;&amp; ok2 ) )
++        return false;
++    defaultSessionGeometryHeight.value=height;
++    defaultSessionGeometryWidth.value=width;
++    return false;
++}
+ 
+ 
++bool X2GoClientConfig::checkLinkParameter(QVariant value)
++{
++    if(value.toString().compare(&quot;modem&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSpeed.value=(int)Profile::MODEM;
++        return true;
++    }
++    if(value.toString().compare(&quot;isdn&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSpeed.value=(int)Profile::ISDN;
++        return true;
++    }
++    if(value.toString().compare(&quot;adsl&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSpeed.value=(int)Profile::ADSL;
++        return true;
++    }
++    if(value.toString().compare(&quot;wan&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSpeed.value=(int)Profile::WAN;
++        return true;
++    }
++    if(value.toString().compare(&quot;lan&quot;, Qt::CaseInsensitive)==0)
++    {
++        defaultSpeed.value=(int)Profile::LAN;
++        return true;
++    }
++    return false;
++}
++
++bool X2GoClientConfig::parseCommandLineArguments(QStringList arguments)
++{
++    for(int i=1; i&lt; arguments.size(); ++i)
++    {
++        QString option=arguments[i];
++        if(option.indexOf(&quot;--&quot;)!=0)
++            return false;
++        bool oldStyle=false;
++        QString argument=QString::null;
++        int delimPosition=option.indexOf(&quot;=&quot;);
++        if(delimPosition&gt;0)
++        {
++            oldStyle=true;
++            argument=option.mid(delimPosition+1);
++            option=option.mid(0,delimPosition);
++        }
++        X2GoClientConfigDetail* detail=getDetailByCommandLineOption(option);
++        if(!detail)
++            return false;
++        if(!oldStyle &amp;&amp; i&lt;arguments.size()-1 &amp;&amp; arguments[i+1].indexOf(&quot;--&quot;)!=0)
++            argument=arguments[++i];
++        if(!detail-&gt;parseCommandLineArgument(argument))
++            return false;
++    }
++    return true;
++}
++
++X2GoClientConfigDetail* X2GoClientConfig::getDetailByCommandLineOption(QString commandLineOption)
++{
++    foreach( X2GoClientConfigDetail* detail, configDetails)
++    {
++        if(detail-&gt;commandLineParameter==commandLineOption)
++            return detail;
++    }
++    return 0;
++}
++
++void X2GoClientConfig::loadConfigFiles()
++{
++    foreach( X2GoClientConfigDetail* detail, configDetails)
++    {
++        if(detail-&gt;configFileParameter==QString::null)
++            continue;
++        QStringList detailConfigPath=detail-&gt;configFileParameter.split(&quot;.&quot;);
++        X2goSettings configFile(detailConfigPath[0]);
++        detail-&gt;value=configFile.get_setting()-&gt;value(detailConfigPath[1]+&quot;/&quot;+detailConfigPath[2], detail-&gt;value);
++    }
++}
+diff --git a/x2goclientconfig.h b/x2goclientconfig.h
+index 38b2a32..37ee80d 100644
+--- a/x2goclientconfig.h
++++ b/x2goclientconfig.h
+@@ -23,6 +23,7 @@
+ #define X2GOCLIENTCONFIG_H
+ 
+ #include &lt;QObject&gt;
++#include &lt;QStringList&gt;
+ #include &quot;x2goclientconfigdetail.h&quot;
+ #include &quot;x2goapplication.h&quot;
+ 
+@@ -69,9 +70,15 @@ class X2GoClientConfig: public QObject
+ 
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultDpi)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultLink)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSpeed)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultPack)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultPackMethod)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultPackQuality)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSound)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionGeometry)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionGeometryFullScreen)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionGeometryWidth)
++    X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultSessionGeometryHeight)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultKbdLayout)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultKbdType)
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, defaultChangeKbd)
+@@ -98,11 +105,17 @@ class X2GoClientConfig: public QObject
+     X2GO_RO_PROPERTY(X2GoClientConfigDetail, readExportsFrom)
+ public:
+     X2GoClientConfig();
++    bool parseCommandLineArguments(QStringList arguments);
++    void loadConfigFiles();
+ private:
+     QList&lt;X2GoClientConfigDetail*&gt; configDetails;
+ private:
+     void initDetail(X2GoClientConfigDetail* detail, QVariant value, QString commandLineParameter, QString configFileParameter,
+-                    QString description,  bool (*checkSanityFunction)(QVariant value)=0);
++                    QString description,  bool (X2GoClientConfig::*checkSanityFunction)(QVariant value)=0);
++    bool checkLinkParameter(QVariant value);
++    bool checkGeometryParameter(QVariant value);
++    bool checkPackParameter(QVariant value);
++    X2GoClientConfigDetail* getDetailByCommandLineOption(QString commandLineOption);
+ };
+ 
+ #endif // X2GOCLIENTCONFIG_H
+diff --git a/x2goclientconfigdetail.cpp b/x2goclientconfigdetail.cpp
+index cba3b29..5b49515 100644
+--- a/x2goclientconfigdetail.cpp
++++ b/x2goclientconfigdetail.cpp
+@@ -17,27 +17,82 @@
+ */
+ 
+ #include &quot;x2goclientconfigdetail.h&quot;
++#include &quot;x2goclientconfig.h&quot;
+ 
+ X2GoClientConfigDetail::X2GoClientConfigDetail()
+ {
++    parent=0;
++    checkSanityFunction=0;
+ }
+ 
+-bool X2GoClientConfigDetail::parseCommandLineArgument(QString argument)
++bool X2GoClientConfigDetail::parseBool(QString argument)
++{
++    if(argument==QString::null)
++    {
++        value=true;
++        return true;
++    }
++    if(argument==&quot;1&quot;)
++    {
++        value=true;
++        return true;
++    }
++    if(argument==&quot;0&quot;)
++    {
++        value=false;
++        return true;
++    }
++    if(argument.compare(&quot;true&quot;,Qt::CaseInsensitive)==0)
++    {
++        value=true;
++        return true;
++    }
++    if(argument.compare(&quot;false&quot;,Qt::CaseInsensitive)==0)
++    {
++        value=false;
++        return true;
++    }
++    return false;
++}
++
++bool X2GoClientConfigDetail::parseInt(QString argument)
+ {
+-    /*        if(!parseCommandLineArgumentFunction)
+-                return false;
+-            ConfigDetailType val;
+-            bool res=*parseCommandLineArgumentFunction(argument, val);
+-            if(!res)
+-                return false;
+-            if(!checkSanityFunction)
+-            {
+-                value=val;
+-                return true;
+-            }
+-            res=checkSanityFunction(val);
+-            if(!res)
+-                return false;
+-            value=val;*/
++    bool convOk;
++    int val=argument.toInt(&amp;convOk,10);
++    if(convOk)
++    {
++        value=val;
++        return true;
++    }
++    return false;
++}
++
++bool X2GoClientConfigDetail::parseString(QString argument)
++{
++    value=argument;
+     return true;
+ }
++
++bool X2GoClientConfigDetail::parseCommandLineArgument(QString argument)
++{
++    bool result;
++    switch (value.type())
++    {
++    case QVariant::Int:
++        result= parseInt(argument);
++        break;
++    case QVariant::Bool:
++        result=parseBool(argument);
++        break;
++    case QVariant::String:
++        result= parseString(argument);
++        break;
++    default:
++        return false;
++    }
++    if(!result)
++        return false;
++    if(!checkSanityFunction)
++        return true;
++    return (parent-&gt;*checkSanityFunction)(value);
++}
+diff --git a/x2goclientconfigdetail.h b/x2goclientconfigdetail.h
+index f54a524..b72c5ea 100644
+--- a/x2goclientconfigdetail.h
++++ b/x2goclientconfigdetail.h
+@@ -27,16 +27,22 @@
+ class X2GoClientConfigDetail
+ {
+     friend class X2GoClientConfig;
++    typedef bool bool (X2GoClientConfig::*CheckSanityFunction)(QVariant value);
+     X2GO_PROPERTY_GETTER( QVariant, value)
+     X2GO_PROPERTY_GETTER( QString, commandLineParameter)
+     X2GO_PROPERTY_GETTER( QString, configFileParameter)
+     X2GO_PROPERTY_GETTER( QString, description)
+ private:
+-    bool (*checkSanityFunction)(QVariant value);
++    CheckSanityFunction checkSanityFunction;
++    X2GoClientConfig* parent;
+     QVariant value;
+     QString commandLineParameter;
+     QString configFileParameter;
+     QString description;
++private:
++    bool parseBool(QString argument);
++    bool parseInt(QString argument);
++    bool parseString(QString argument);
+ public:
+     X2GoClientConfigDetail();
+     bool parseCommandLineArgument(QString argument);
+diff --git a/main.cpp b/x2gosettings.cpp
+similarity index 51%
+copy from main.cpp
+copy to x2gosettings.cpp
+index 07debfb..884002d 100644
+--- a/main.cpp
++++ b/x2gosettings.cpp
+@@ -17,38 +17,57 @@
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
++
++#include &quot;x2gosettings.h&quot;
+ #include &quot;x2goapplication.h&quot;
+-#include &quot;mainwindow.h&quot;
+-#include &lt;QMessageBox&gt;
++#include &quot;x2goclientconfig.h&quot;
++#include &lt;QTemporaryFile&gt;
++#include &lt;QTextStream&gt;
++#include &lt;QDir&gt;
+ 
+-int main(int argc, char *argv[])
++X2goSettings::X2goSettings(QString fileContent, QSettings::Format format)
+ {
++    cfgFile=new QTemporaryFile();
++    cfgFile-&gt;open();
++    QTextStream out(cfgFile);
++    out&lt;&lt;fileContent;
++    cfgFile-&gt;close();
++    setting=new QSettings ( cfgFile-&gt;fileName(), format );
++}
+ 
+-    X2GoApplication app ( argc,argv );
+-    QStringList args;
+-    if ( argc &gt; 1 )
+-        args=app.arguments();
+-    if ( args.count() &gt;1 &amp;&amp; args[1]==&quot;--dialog&quot; )
++X2goSettings::X2goSettings ( QString group )
++{
++    cfgFile=0l;
++    QString sessionCfgFile=X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_sessionConfigFile().get_value().toString();
++    if (group==&quot;sessions&quot; &amp;&amp; sessionCfgFile.length()&gt;0)
++    {
++        setting=new QSettings ( sessionCfgFile,
++                                QSettings::IniFormat );
++        return;
++    }
++#ifndef Q_OS_WIN
++    setting=new QSettings ( QDir::homePath() +
++                            &quot;/.x2goclient/&quot;+group,
++                            QSettings::NativeFormat );
++#else
++    if ( !X2GoApplication::instance()-&gt;get_clientConfig()-&gt;get_portableMode().get_value().toBool())
+     {
+-        QString type=args[2];
+-        QString caption=args[4];
+-        caption=caption.replace ( &quot;NX&quot;,&quot;X2Go&quot; );
+-        QString text=args[6];
+-        if ( type==&quot;error&quot; || type==&quot;panic&quot; )
+-            return QMessageBox::critical ( 0, caption,text );
+-        if ( type==&quot;ok&quot; )
+-            return QMessageBox::information ( 0, caption,text );
+-        if ( type==&quot;yesno&quot; )
+-            return  QMessageBox::question ( 0, caption,text,
+-                                            QMessageBox::Yes,
+-                                            QMessageBox::No );
+-        return -1;
++        setting=new QSettings ( &quot;Obviously Nice&quot;,&quot;x2goclient&quot; );
++        setting-&gt;beginGroup ( group );
+     }
+     else
+     {
+-        MainWindow* mw = new MainWindow;
+-        mw-&gt;show();
+-        return app.exec();
++        setting=new QSettings ( QDir::homePath() +
++                                &quot;/.x2goclient/&quot;+group,
++                                QSettings::IniFormat );
+     }
+-    return 0;
++#endif
+ }
++
++X2goSettings::~X2goSettings()
++{
++    delete setting;
++    if (cfgFile)
++        delete cfgFile;
++}
++
+diff --git a/searchbar.h b/x2gosettings.h
+similarity index 80%
+copy from searchbar.h
+copy to x2gosettings.h
+index 725e341..8e4e19f 100644
+--- a/searchbar.h
++++ b/x2gosettings.h
+@@ -18,23 +18,23 @@
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ 
+-#ifndef SEARCHBAR_H
+-#define SEARCHBAR_H
+ 
+-#include &quot;svgframe.h&quot;
+-#include &quot;ui_searchbar.h&quot;
++#ifndef X2GOSETTINGS_H
++#define X2GOSETTINGS_H
+ 
+-class SearchBar : public SVGFrame, public Ui_searchBar
++#include &lt;QSettings&gt;
++#include &quot;x2goapplication.h&quot;
++
++class QTemporaryFile;
++class X2goSettings
+ {
+-    Q_OBJECT
++  X2GO_RO_PROPERTY(QSettings*, setting)
+ public:
+-    SearchBar(QWidget* parent = 0, Qt::WindowFlags f = 0);
+-    ~SearchBar();
+-    QLineEdit* getLineEdit()
+-    {
+-        return lineEdit;
+-    }
+-
++    X2goSettings ( QString group );
++    X2goSettings ( QString fileContent, QSettings::Format format);
++    ~X2goSettings();
++private:
++    QTemporaryFile* cfgFile;
+ };
+ 
+-#endif // SEARCHBAR_H
++#endif
+
+
+hooks/post-receive
+-- 
+x2goclient2.git (X2Go Client 2 (rewrite of x2goclient.git))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient2.git&quot; (X2Go Client 2 (rewrite of x2goclient.git)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003438.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	226c0053c56d1aa173ac1d31e0b7e0accb0315bb
+</A></li>
+	<LI>Next message: <A HREF="003440.html">[X2go-Commits] x2goclient2.git - master (branch) updated:	b0d8a8de03376664323c178374eae7bf71ba3031
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3439">[ date ]</a>
+              <a href="thread.html#3439">[ thread ]</a>
+              <a href="subject.html#3439">[ subject ]</a>
+              <a href="author.html#3439">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-42-g9069d0c
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.0.37.0-42-g9069d0c&In-Reply-To=%3C20140107151639.669345DBFA%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020565.html">
+   <LINK REL="Next"  HREF="020360.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-42-g9069d0c</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.0.37.0-42-g9069d0c&In-Reply-To=%3C20140107151639.669345DBFA%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-42-g9069d0c">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:16:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020565.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0
+</A></li>
+        <LI>Next message: <A HREF="020360.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-45-gecd66a9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20356">[ date ]</a>
+              <a href="thread.html#20356">[ thread ]</a>
+              <a href="subject.html#20356">[ subject ]</a>
+              <a href="author.html#20356">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  9069d0c5422868b2eae28cbcb9f2cab4bbdbe983 (commit)
+      from  c17955ccc33e7ce2f13428968e46f8b3e2a03803 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   22 +++++++++++++++++-----
+ x2go/client.py                   |    2 +-
+ x2go/session.py                  |   10 +++++-----
+ 3 files changed, 23 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 59d4bd3..7e2d7d5 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -234,16 +234,28 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     def set_profile_name(self, profile_name):
+         self.profile_name = profile_name
+ 
+-    def check_host(self, host, port=22):
++    def check_host(self, hostname, port=22):
+         &quot;&quot;&quot;\
+         Perform a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
+-        #paramiko.SSHClient.connect(host=host, port=port, username='foo', password='bar')
+-        _host = host
++        try:
++            paramiko.SSHClient.connect(self, hostname=hostname, port=port, username='foo', password='bar')
++            host_ok = True
++            self.logger('SSH host key verification succeeded.', loglevel=log.loglevel_NOTICE)
++        except x2go_exceptions.SSHException, e:
++            msg = e.message
++            if msg.startswith('Unknown server')
++                host_ok = False
++                self.logger('SSH host key verification failed.', loglevel=log.loglevel_NOTICE)
++            else:
++                raise(e)
++
++        _hostname = hostname
+         _port = port
+-        _fingerprint = 'dummy fingerprint'
+-        return (False, _host, _port, _fingerprint)
++        _fingerprint = 'NO-FINGERPRINT'
++        _fingerprint_type = 'SOME-KEY-TYPE'
++        return (host_ok, _hostname, _port, _fingerprint, _fingerprint_type)
+ 
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+                 use_sshproxy=False, sshproxy_host='', sshproxy_user='', sshproxy_password='',
+diff --git a/x2go/client.py b/x2go/client.py
+index ffee146..946515c 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -294,7 +294,7 @@ class X2goClient(object):
+             self.logger('HOOK_printaction_error: incoming print job ,, %s'' on printer %s caused error: %s' % (filename, printer, err_msg), loglevel=log.loglevel_ERROR)
+         else:
+             self.logger('HOOK_printaction_error: incoming print job ,, %s'' caused error: %s' % (filename, err_msg), loglevel=log.loglevel_ERROR)
+-    def HOOK_check_host_dialog(self, profile_name='UNKNOWN', host='UNKNOWN', port=22, fingerprint='no fingerprint'):
++    def HOOK_check_host_dialog(self, profile_name='UNKNOWN', host='UNKNOWN', port=22, fingerprint='no fingerprint', fingerprint_type='RSA'):
+         self.logger('HOOK_check_host_dialog: host check requested for session profile %s: Automatically adding host [%s]:%s with fingerprint: ,,%s\'\' as a known host.' % (profile_name, host, port, fingerprint), loglevel=log.loglevel_WARN)
+         # this HOOK has to return either True (accept host connection) or False (deny host conection)
+         return True
+diff --git a/x2go/session.py b/x2go/session.py
+index 0a15069..d65226f 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -200,15 +200,15 @@ class X2goSession(object):
+         else:
+             self.logger('HOOK_forwarding_tunnel_setup_failed: Forwarding tunnel request to [%s]:%s for session %s (%s) was denied by remote X2go/SSH server. Session startup failed.' % (chain_host, chain_port, self.session_name, self.profile_name), loglevel=log.loglevel_WARN)
+ 
+-    def HOOK_check_host_dialog(self, host, port, fingerprint='no fingerprint'):
++    def HOOK_check_host_dialog(self, host, port, fingerprint='no fingerprint', fingerprint_type='RSA'):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         if self.client_instance:
+-            return self.client_instance.HOOK_check_host_dialog(profile_name=self.profile_name, host=host, port=port, fingerprint=fingerprint)
++            return self.client_instance.HOOK_check_host_dialog(profile_name=self.profile_name, host=host, port=port, fingerprint=fingerprint, fingerprint_type=fingerprint_type)
+         else:
+-            self.logger('HOOK_check_host_dialog: host check requested for [%s]:%s with fingerprint: ,,%s.\'\'. Automatically adding host as known host.' % (host, port, fingerprint), loglevel=log.loglevel_WARN)
++            self.logger('HOOK_check_host_dialog: host check requested for [%s]:%s with %s fingerprint: ,,%s.\'\'. Automatically adding host as known host.' % (host, port, fingerprint_type, fingerprint), loglevel=log.loglevel_WARN)
+             return True
+ 
+     def init_control_session(self):
+@@ -479,8 +479,8 @@ class X2goSession(object):
+             return True
+ 
+         _port = self.control_params['port']
+-        (_valid, _host, _port, _fingerprint) = self.control_session.check_host(self.server, port=_port)
+-        return _valid or self.HOOK_check_host_dialog(host=_host, port=_port, fingerprint=_fingerprint)
++        (_valid, _host, _port, _fingerprint, _fingerprint_type) = self.control_session.check_host(self.server, port=_port)
++        return _valid or self.HOOK_check_host_dialog(host=_host, port=_port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
+     __check_host = check_host
+ 
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False,
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020565.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0
+</A></li>
+	<LI>Next message: <A HREF="020360.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.0.37.0-45-gecd66a9
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20356">[ date ]</a>
+              <a href="thread.html#20356">[ thread ]</a>
+              <a href="subject.html#20356">[ subject ]</a>
+              <a href="author.html#20356">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

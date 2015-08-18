@@ -1,0 +1,380 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-12-g01d8f6f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.44.2-12-g01d8f6f&In-Reply-To=%3C20130914135640.1EE7C5DDC8%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013618.html">
+   <LINK REL="Next"  HREF="013851.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-12-g01d8f6f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.0.44.2-12-g01d8f6f&In-Reply-To=%3C20130914135640.1EE7C5DDC8%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-12-g01d8f6f">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:40 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013618.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-37-gd2ac0cf
+</A></li>
+        <LI>Next message: <A HREF="013851.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-15-g5237fa7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13620">[ date ]</a>
+              <a href="thread.html#13620">[ thread ]</a>
+              <a href="subject.html#13620">[ subject ]</a>
+              <a href="author.html#13620">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  01d8f6f70570b26a460a248b190fe6d4bc2b0a40 (commit)
+      from  6e4e92ff742a8547d2e55b5cd3774d1e7650c8dc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/sftpserver.py |  126 +++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 120 insertions(+), 6 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/sftpserver.py b/x2go/sftpserver.py
+index 189f9d4..b7456f0 100644
+--- a/x2go/sftpserver.py
++++ b/x2go/sftpserver.py
+@@ -47,13 +47,23 @@ import log
+ class _SSHServer(paramiko.ServerInterface):
+     &quot;&quot;&quot;\
+     Implementation of a basic SSH server that is supposed 
+-    to run with his sFTP server implementation.
++    to run with its sFTP server implementation.
+ 
+     &quot;&quot;&quot;
+     def __init__(self, auth_key=None, session_instance=None, logger=None, loglevel=log.loglevel_DEFAULT, *args, **kwargs):
+         &quot;&quot;&quot;\
+         Initialize a new sFTP server interface.
+ 
++        @param: auth_key: Server key that the client has to authenticate against
++        @type auth_key: C{paramiko.RSAKey} instance
++        @param session_instance: the calling L{X2goSession} instance
++        @type session_instance: L{X2goSession} instance
++        @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
+         &quot;&quot;&quot;
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+@@ -71,6 +81,13 @@ class _SSHServer(paramiko.ServerInterface):
+         &quot;&quot;&quot;\
+         Only allow session requests.
+ 
++        @param kind: request type
++        @type kind: C{str}
++        @param chanid: channel id (unused)
++        @type chanid: C{any}
++        @return: returns a Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('detected a channel request for sFTP', loglevel=log.loglevel_DEBUG_SFTPXFER)
+         if kind == 'session':
+@@ -81,6 +98,12 @@ class _SSHServer(paramiko.ServerInterface):
+         &quot;&quot;&quot;\
+         Ensure proper authentication.
+ 
++        @param username: username of incoming authentication request
++        @type username: C{str}
++        @param key: incoming SSH key to be used for authentication
++        @type key: C{paramiko.RSAKey} instance
++        @return: returns a Paramiko/SSH return code
++        @rtype: C{int}
+         &quot;&quot;&quot;
+         if username == self.current_local_user:
+             self.logger('sFTP server %s: username is %s' % (self, self.current_local_user), loglevel=log.loglevel_DEBUG)
+@@ -94,6 +117,11 @@ class _SSHServer(paramiko.ServerInterface):
+         &quot;&quot;&quot;\
+         Only allow public key authentication.
+ 
++        @param username: username of incoming authentication request
++        @type username: C{str}
++        @return: statically returns C{publickey} as auth mechanism
++        @rtype: C{str}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP client asked for support auth methods, answering: publickey', loglevel=log.loglevel_DEBUG_SFTPXFER)
+         return 'publickey'
+@@ -120,6 +148,18 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Make user information accessible as well as set chroot jail directory.
+ 
++        @param server: a C{paramiko.ServerInterface} instance to use with this SFTP server interface
++        @type server: C{paramiko.ServerInterface} instance
++        @param chroot: chroot environment for this SFTP interface
++        @type chroot: C{str}
++        @param logger: you can pass an L{X2goLogger} object to the L{X2goClientXConfig} constructor
++        @type logger: C{instance}
++        @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++        @param server_event: a C{threading.Event} instance that can signal SFTP session termination
++        @type server_event: C{threading.Event} instance
++
+         &quot;&quot;&quot;
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+@@ -133,7 +173,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+     def _realpath(self, path):
+         &quot;&quot;&quot;\
+-        Enforce the chroot jail.
++        Enforce the chroot jail. On Windows systems the drive letter is incorporated in the
++        chroot path name (/windrive/&lt;drive_letter&gt;/path/to/file/or/folder).
++
++        @param path: path name within chroot
++        @type path: C{str}
++        @return: real path name (including drive letter on Windows systems)
++        @rtype: C{str}
+         &quot;&quot;&quot;
+         if defaults.X2GOCLIENT_OS == 'Windows' and path.startswith('/windrive'):
+             _path_components = path.split('/')
+@@ -150,6 +196,12 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         List the contents of a folder.
+ 
++        @param path: path to folder
++        @type path: C{str}
++
++        @return: returns the folder contents, on failure returns a Paramiko/SSH return code
++        @rtype: C{dict} or C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         self.logger('sFTP server: listing files in folder: %s' % path, loglevel=log.loglevel_DEBUG_SFTPXFER)
+@@ -177,6 +229,11 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Stat on a file.
+ 
++        @param path: path to file/folder
++        @type path: C{str}
++        @return: returns the file's stat output, on failure: returns a Paramiko/SSH return code
++        @rtype: C{class} or C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         self.logger('sFTP server %s: calling stat on path: %s' % (self, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+@@ -190,6 +247,11 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         LStat on a file.
+ 
++        @param path: path to folder
++        @type path: C{str}
++        @return: returns the file's lstat output, on failure: returns a Paramiko/SSH return code
++        @rtype: C{class} or C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         self.logger('sFTP server: calling lstat on path: %s' % path, loglevel=log.loglevel_DEBUG_SFTPXFER)
+@@ -201,7 +263,17 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ 
+     def open(self, path, flags, attr):
+         &quot;&quot;&quot;\
+-        Open a file.for reading, writing, appending etc.
++        Open a file for reading, writing, appending etc.
++
++        @param path: path to file
++        @type path: C{str}
++        @param flags: file flags
++        @type flags: C{str}
++        @param attr: file attributes
++        @type attr: C{class}
++        @return fileobj: file handle/object for remote file, on failure: returns a Paramiko/SSH return code
++        @rtype: L{_SFTPHandle} instance or C{int}
++
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         self.logger('sFTP server %s: opening file: %s' % (self, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+@@ -248,6 +320,11 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+     def remove(self, path):
+         &quot;&quot;&quot;\
+         Remove a file.
++
++        @param path: path to file
++        @type path: C{str}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         os.remove(path)
+@@ -258,6 +335,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Rename/Move a file.
+ 
++        @param oldpath: old path/location/file name
++        @type oldpath: C{str}
++        @param newpath: new path/location/file name
++        @type newpath: C{str}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP server %s: renaming path from %s to %s' % (self, oldpath, newpath), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         oldpath = self._realpath(oldpath)
+@@ -273,6 +357,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Make a directory.
+ 
++        @param path: path to new folder
++        @type path: C{str}
++        @param attr: file attributes
++        @type attr: C{class}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP server: creating new dir (perms: %s): %s' % (attr.st_mode, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         path = self._realpath(path)
+@@ -287,6 +378,11 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Remove a directory (if needed recursively).
+ 
++        @param path: folder to be removed
++        @type path: C{str}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP server %s: removing dir: %s' % (self, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         path = self._realpath(path)
+@@ -301,6 +397,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Change file attributes.
+ 
++        @param path: path of file/folder
++        @type path: C{str}
++        @param attr: new file attributes
++        @type attr: C{class}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP server %s: modifying attributes of path: %s' % (self, path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         path = self._realpath(path)
+@@ -318,6 +421,13 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Create a symbolic link.
+ 
++        @param target_path: link shall point to this path
++        @type target_path: C{str}
++        @param path: link location
++        @type path: C{str}
++        @return: returns Paramiko/SSH return code
++        @rtype: C{int}
++
+         &quot;&quot;&quot;
+         self.logger('sFTP server %s: creating symlink from: %s to target: %s' % (self, path, target_path), loglevel=log.loglevel_DEBUG_SFTPXFER)
+         path = self._realpath(path)
+@@ -334,6 +444,10 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+         &quot;&quot;&quot;\
+         Read the target of a symbolic link.
+ 
++        @param path: path of symbolic link
++        @type path: C{str}
++        @return: target location of the symbolic link, on failure: returns a Paramiko/SSH return code
++        @rtype: C{str} or C{int}
+         &quot;&quot;&quot;
+         path = self._realpath(path)
+         try:
+@@ -355,14 +469,14 @@ class _SFTPServerInterface(paramiko.SFTPServerInterface):
+ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+     &quot;&quot;&quot;\
+     A reverse fowarding tunnel with an sFTP server at its endpoint. This blend of a Paramiko/SSH
+-    reverse forwarding tunnel is used to provide access to local X2go client folders 
++    reverse forwarding tunnel is used to provide access to local X2go client folders
+     from within the the remote X2go server session.
+ 
+     &quot;&quot;&quot;
+     def __init__(self, server_port, ssh_transport, auth_key=None, session_instance=None, logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         Start a Paramiko/SSH reverse forwarding tunnel, that has an sFTP server listening at
+-        the end point of the tunnel.
++        the endpoint of the tunnel.
+ 
+         @param server_port: the TCP/IP port on the X2go server (starting point of the tunnel), 
+             normally some number above 30000
+@@ -408,7 +522,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+ 
+         L{X2goRevFwTunnelToSFTP.run()} waits for notifications of an appropriate incoming
+         Paramiko/SSH channel (issued by L{X2goRevFwTunnelToSFTP.notify()}). Appropriate in
+-        this context means, that its start point on the X2go server matches the class's
++        this context means, that its starting point on the X2go server matches the class's
+         property C{server_port}.
+ 
+         Once a new incoming channel gets announced by the L{notify()} method, a new 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013618.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-37-gd2ac0cf
+</A></li>
+	<LI>Next message: <A HREF="013851.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-15-g5237fa7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13620">[ date ]</a>
+              <a href="thread.html#13620">[ thread ]</a>
+              <a href="subject.html#13620">[ subject ]</a>
+              <a href="author.html#13620">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,2493 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-10
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-10&In-Reply-To=%3C20130830142344.0D1505DB3E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011622.html">
+   <LINK REL="Next"  HREF="011627.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-10</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-10&In-Reply-To=%3C20130830142344.0D1505DB3E%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-10">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:23:43 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011622.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-10
+</A></li>
+        <LI>Next message: <A HREF="011627.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11623">[ date ]</a>
+              <a href="thread.html#11623">[ thread ]</a>
+              <a href="subject.html#11623">[ subject ]</a>
+              <a href="author.html#11623">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  1a74e03235ced7003989b8c02bc4d955234431c1 (commit)
+      from  97fe7650e309c529085abef6e6418796b36f421c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/Args.c          |   20 +-
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG       |   93 ++++
+ nx-X11/programs/Xserver/hw/nxagent/Drawable.c      |  116 +++--
+ nx-X11/programs/Xserver/hw/nxagent/Events.c        |  152 ++++++-
+ nx-X11/programs/Xserver/hw/nxagent/Font.c          |  188 +++++++-
+ nx-X11/programs/Xserver/hw/nxagent/Imakefile       |    1 +
+ nx-X11/programs/Xserver/hw/nxagent/Init.c          |    2 +-
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.c      |  463 +++++++++++++++++++-
+ nx-X11/programs/Xserver/hw/nxagent/Keyboard.h      |    4 +
+ nx-X11/programs/Xserver/hw/nxagent/Reconnect.c     |   31 +-
+ nx-X11/programs/Xserver/hw/nxagent/Render.c        |    9 +-
+ nx-X11/programs/Xserver/hw/nxagent/Rootless.c      |   63 ++-
+ nx-X11/programs/Xserver/hw/nxagent/Screen.c        |    3 +-
+ nx-X11/programs/Xserver/hw/nxagent/Window.c        |  127 ++++++
+ nx-X11/programs/Xserver/hw/nxagent/Windows.h       |   18 +
+ nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c    |  119 ++++-
+ .../Xserver/hw/nxagent/X/NXevents.c.NX.original    |  119 ++++-
+ nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c  |    4 +
+ .../Xserver/hw/nxagent/X/NXproperty.c.NX.original  |    4 +
+ 19 files changed, 1399 insertions(+), 137 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Args.c b/nx-X11/programs/Xserver/hw/nxagent/Args.c
+index 5b33627..5d34472 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Args.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Args.c
+@@ -1140,13 +1140,13 @@ static void nxagentParseOptions(char *name, char *value)
+   }
+   else if (!strcmp(name, &quot;resize&quot;))
+   {
+-    if (!strcmp(value, &quot;1&quot;))
++    if (nxagentOption(DesktopResize) == 0 || strcmp(value, &quot;0&quot;) == 0)
+     {
+-      nxagentResizeDesktopAtStartup = True;
++      nxagentResizeDesktopAtStartup = 0;
+     }
+-    else if (!strcmp(value, &quot;0&quot;))
++    else if (strcmp(value, &quot;1&quot;) == 0)
+     {
+-      nxagentResizeDesktopAtStartup = False;
++      nxagentResizeDesktopAtStartup = 1;
+     }
+     else
+     {
+@@ -2080,8 +2080,8 @@ void nxagentSetDeferLevel()
+ 
+       deferTimeout = 200;
+ 
+-      tileWidth  = 65536;
+-      tileHeight = 65536;
++      tileWidth  = 4096;
++      tileHeight = 4096;
+ 
+       break;
+     }
+@@ -2091,8 +2091,8 @@ void nxagentSetDeferLevel()
+ 
+       deferTimeout = 200;
+ 
+-      tileWidth  = 65536;
+-      tileHeight = 65536;
++      tileWidth  = 4096;
++      tileHeight = 4096;
+ 
+       break;
+     }
+@@ -2103,8 +2103,8 @@ void nxagentSetDeferLevel()
+ 
+       deferTimeout = 200;
+ 
+-      tileWidth  = 65536;
+-      tileHeight = 65536;
++      tileWidth  = 4096;
++      tileHeight = 4096;
+ 
+       break;
+     }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index c45c97b..9e746bb 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,98 @@
+ ChangeLog:
+ 
++nxagent-3.3.0-10
++
++- Fixed TR12F02146. Compare the drawable and the bitmap data before
++  realizing the image update, in order to delay the data clean up that
++  caused the memcmp() failure.
++
++- Fixed TR01G02156. Reduce the exposing area by subtracting the ex-
++  posed region.
++
++- Fixed a compile warning in Drawable.c.
++
++- Added detailed logs in the nxagentSynchronizeRegion() function if
++  the data memory allocation fails.
++
++nxagent-3.3.0-9
++
++- Added /usr/NX/share/base to alternate font paths. This would fix
++  TR11F02130 if fonts fixed and cursor are installed there.
++
++- Changed Keyboard initialization and reset. This change should fix
++  TR11F02129, TR11F02131, TR11F02132.
++
++nxagent-3.3.0-8
++
++- Fixed TR12F02144. Image bits of render glyphs are copied before they
++  are cleaned. This will avoid a memory corruption.
++
++- Fixed TR12F02145. When dispatching a MotionNotify event, check if a
++  top-level window has been entered before trying to show the pulldown
++  dialog.
++
++nxagent-3.3.0-7
++
++- Added debug code for pointer input.
++
++nxagent-3.3.0-6
++
++- Fixed compile warnings.
++
++nxagent-3.3.0-5
++
++- Disabled verbose logging in Rootless.c.
++
++nxagent-3.3.0-4
++
++- Fix the XKB map load in the case of 64 bit server.
++
++nxagent-3.3.0-3
++
++- Fixed TR10F02119. If the remote X display is using evdev keyboard
++  then copy maps from remote.
++
++- Upgraded VERSION to 3.3.0.
++
++nxagent-3.3.0-2
++
++- Fixed TR10F02115. Painting errors occurred when screen areas beyond
++  the current viewport became viewable in the NX Client for Windows.
++
++- Using a new struct type nxagentWMHints to avoid type mismatch on
++  64 bit platforms.
++
++- Added debug utilities for pointer input.
++
++nxagent-3.3.0-1
++
++- Opened the 3.3.0 branch based on nxagent-3.2.0-12.
++
++nxagent-3.2.0-12
++
++- Ignore 'resize' option at reconnection if viewport mode is on.
++
++- Fixed TR08E01814. Added shadow keymap initialization in order to
++  enable nxcompshad to translate keycodes across different layouts. 
++
++nxagent-3.2.0-11
++
++- Fixed TR08F02098. Function splitting font names has to be instruct-
++  ed to handle the right number of fields.
++
++nxagent-3.2.0-10
++
++- Extended fix for TR07F02091 to include font names having zero in
++  fields RESOLUTION_X and RESOLUTION_Y.
++
++nxagent-3.2.0-9
++
++- Fixed TR07F02091. Scalable fonts were not correctly listed among
++  available fonts.
++
++- Fixed TR06F02080. Use the corrupted area extents as maximum size of
++  the image data.
++
+ nxagent-3.2.0-8
+ 
+ - Fixed TR07F02082. The agent server could be unable to init core
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Drawable.c b/nx-X11/programs/Xserver/hw/nxagent/Drawable.c
+index abc228e..82723b5 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Drawable.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Drawable.c
+@@ -32,6 +32,7 @@
+ #include &quot;Handlers.h&quot;
+ #include &quot;Pixels.h&quot;
+ #include &quot;Reconnect.h&quot;
++#include &quot;GCOps.h&quot;
+ 
+ #include &quot;NXlib.h&quot;
+ 
+@@ -371,6 +372,7 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+   int nBox;
+   int x, y;
+   int w, h;
++  int extentWidth, extentHeight;
+   int tileWidth, tileHeight;
+   int length, format, leftPad;
+   int i;
+@@ -417,13 +419,14 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+   if (useStoredBitmap != 0)
+   {
+     #ifdef TEST
+-    fprintf(stderr, &quot;nxagentSynchronizeRegion: Drawable [%s] at [%p] has a synchronization bitmap &quot;
++    fprintf(stderr, &quot;nxagentSynchronizeRegion: Drawable [%s] at [%p] has a synchronization bitmap at [%p] &quot;
+                 &quot;[%d,%d,%d,%d] with [%ld] rects.\n&quot;, nxagentDrawableType(pDrawable),
+-                    (void *) pDrawable, nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.x1,
+-                        nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.y1,
+-                            nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.x2,
+-                                nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.y2,
+-                                    REGION_NUM_RECTS(nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable))));
++                    (void *) pDrawable, (void *) nxagentDrawableBitmap(pDrawable),
++                        nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.x1,
++                            nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.y1,
++                                nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.x2,
++                                    nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable)) -&gt; extents.y2,
++                                        REGION_NUM_RECTS(nxagentCorruptedRegion((DrawablePtr) nxagentDrawableBitmap(pDrawable))));
+     #endif
+ 
+     clipRegion = nxagentCreateRegion(pDrawable, NULL, 0, 0, pDrawable -&gt; width, pDrawable -&gt; height);
+@@ -580,8 +583,7 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+ 
+   #ifdef TEST
+   fprintf(stderr, &quot;nxagentSynchronizeRegion: Going to synchronize [%ld] rects of [%s] at [%p].\n&quot;,
+-              REGION_NUM_RECTS(clipRegion), (pDrawable -&gt; type == DRAWABLE_PIXMAP ? &quot;Pixmap&quot; : &quot;Window&quot;),
+-                  (void *) pDrawable);
++              REGION_NUM_RECTS(clipRegion), nxagentDrawableType(pDrawable), (void *) pDrawable);
+ 
+   fprintf(stderr, &quot;nxagentSynchronizeRegion: Extents geometry [%d,%d,%d,%d].\n&quot;,
+           clipRegion -&gt; extents.x1, clipRegion -&gt; extents.y1, clipRegion -&gt; extents.x2, clipRegion -&gt; extents.y2);
+@@ -590,8 +592,20 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+               pDrawable -&gt; x, pDrawable -&gt; y, pDrawable -&gt; width, pDrawable -&gt; height);
+   #endif
+ 
+-  w = tileWidth  = (nxagentOption(TileWidth)  &gt; pDrawable -&gt; width  ? pDrawable -&gt; width  : nxagentOption(TileWidth));
+-  h = tileHeight = (nxagentOption(TileHeight) &gt; pDrawable -&gt; height ? pDrawable -&gt; height : nxagentOption(TileHeight));
++  /*
++   * We are going to synchronize the corrupted
++   * area, so we use the corrupted extents as
++   * maximum size of the image data. It's im-
++   * portant to avoid using the drawable size,
++   * because in case of a huge window it had to
++   * result in a failed data memory allocation.
++   */
++
++  extentWidth  = clipRegion -&gt; extents.x2 - clipRegion -&gt; extents.x1;
++  extentHeight = clipRegion -&gt; extents.y2 - clipRegion -&gt; extents.y1;
++
++  w = tileWidth  = (nxagentOption(TileWidth)  &gt; extentWidth  ? extentWidth  : nxagentOption(TileWidth));
++  h = tileHeight = (nxagentOption(TileHeight) &gt; extentHeight ? extentHeight : nxagentOption(TileHeight));
+ 
+   #ifdef DEBUG
+   fprintf(stderr, &quot;nxagentSynchronizeRegion: Using tiles of size [%dx%d].\n&quot;, tileWidth, tileHeight);
+@@ -602,7 +616,22 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+   if (data == NULL)
+   {
+     #ifdef WARNING
++
+     fprintf(stderr, &quot;nxagentSynchronizeRegion: WARNING! Failed to allocate memory for synchronization.\n&quot;);
++
++    /*
++     * Print detailed informations if the
++     * image length is zero.
++     */
++
++    if (length == 0)
++    {
++      fprintf(stderr, &quot;nxagentSynchronizeRegion: Drawable [%s] at [%p] with region geometry [%ld][%d,%d,%d,%d].\n&quot;,
++                  nxagentDrawableType(pDrawable), (void *) pDrawable, REGION_NUM_RECTS(clipRegion),
++                      clipRegion -&gt; extents.x1, clipRegion -&gt; extents.y1,
++                          clipRegion -&gt; extents.x2, clipRegion -&gt; extents.y2);
++    }
++
+     #endif
+ 
+     goto nxagentSynchronizeRegionFree;
+@@ -657,10 +686,14 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+         if (nxagentDrawableStatus(pDrawable) == Synchronized)
+         {
+           #ifdef WARNING
++
+           if (pDrawable -&gt; type == DRAWABLE_WINDOW &amp;&amp; pSrcDrawable != pDrawable)
++          {
+             fprintf(stderr, &quot;nxagentSynchronizeRegion: WARNING! Trying to synchronize &quot;
+                         &quot;the clean drawable type [%d] at [%p] with source at [%p].\n&quot;,
+                             pDrawable -&gt; type, (void *) pDrawable, (void *) pSrcDrawable);
++          }
++
+           #endif
+ 
+           goto nxagentSynchronizeRegionStop;
+@@ -735,9 +768,6 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+ 
+         nxagentGetImage(pSrcDrawable, x, y, w, h, format, AllPlanes, data);
+ 
+-        nxagentRealizeImage(pDrawable, pGC, pDrawable -&gt; depth,
+-                                x, y, w, h, leftPad, format, data);
+-
+         /*
+          * Going to unmark the synchronized
+          * region.
+@@ -792,6 +822,13 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+ 
+                 nxagentUnmarkCorruptedRegion(pDrawable, &amp;tileRegion);
+               }
++              #ifdef TEST
++              else
++              {
++                fprintf(stderr, &quot;nxagentSynchronizeRegion: Tile [%d,%d,%d,%d] on drawable [%p] doesn't match.\n&quot;,
++                            x, y, x + w, y + h, (void *) pDrawable);
++              }
++              #endif
+             }
+             else
+             {
+@@ -822,6 +859,14 @@ int nxagentSynchronizeRegion(DrawablePtr pDrawable, RegionPtr pRegion, unsigned
+           }
+         }
+ 
++        /*
++         * Realize the image after comparing the
++         * source data with the bitmap data.
++         */
++
++        nxagentRealizeImage(pDrawable, pGC, pDrawable -&gt; depth,
++                                x, y, w, h, leftPad, format, data);
++
+         REGION_UNINIT(pDrawable -&gt; pScreen, &amp;tileRegion);
+ 
+         #if !defined(COLLECTED_UPDATES)
+@@ -2542,16 +2587,13 @@ void nxagentCreateDrawableBitmap(DrawablePtr pDrawable)
+   GCPtr pGC = NULL;
+   RegionPtr pClipRegion = NullRegion;
+ 
+-  char *data = NULL;
+-
+   int x, y;
+   int w, h;
+-  int length, format;
+   int saveTrap;
+ 
+   #ifdef TEST
+-  fprintf(stderr, &quot;nxagentCreateDrawableBitmap: Creating synchronization bitmap for drawable at [%p].\n&quot;,
+-              (void *) pDrawable);
++  fprintf(stderr, &quot;nxagentCreateDrawableBitmap: Creating synchronization bitmap for [%s] at [%p].\n&quot;,
++              nxagentDrawableType(pDrawable), (void *) pDrawable);
+   #endif
+ 
+   /*
+@@ -2613,7 +2655,10 @@ void nxagentCreateDrawableBitmap(DrawablePtr pDrawable)
+    * FIXME: A better way it would be create the bitmap
+    * with the same extents of the clipRegion. This
+    * requires to save the offset with respect to the
+-   * drawable origin like in the backing store.
++   * drawable origin like in the backing store. This
++   * becomes particularly important when the drawable
++   * is a huge window, because the pixmap creation
++   * would fail.
+    */
+ 
+   pBitmap = nxagentCreatePixmap(pDrawable -&gt; pScreen, pDrawable -&gt; width, pDrawable -&gt; height, pDrawable -&gt; depth);
+@@ -2636,24 +2681,8 @@ void nxagentCreateDrawableBitmap(DrawablePtr pDrawable)
+   w = pClipRegion -&gt; extents.x2 - pClipRegion -&gt; extents.x1;
+   h = pClipRegion -&gt; extents.y2 - pClipRegion -&gt; extents.y1;
+ 
+-  data = nxagentAllocateImageData(w, h, pDrawable -&gt; depth, &amp;length, &amp;format);
+-
+-  if (data == NULL)
+-  {
+-    #ifdef WARNING
+-    fprintf(stderr, &quot;nxagentCreateDrawableBitmap: Cannot allocate memory for the bitmap data.\n&quot;);
+-    #endif
+-
+-    nxagentDestroyPixmap(pBitmap);
+-
+-    goto nxagentCreateDrawableBitmapEnd;
+-  }
++  nxagentCopyArea(pDrawable, (DrawablePtr) pBitmap, pGC, x, y, w, h, x, y);
+ 
+-  nxagentGetImage(pDrawable, x, y, w, h, format, AllPlanes, data);
+-
+-  nxagentPutImage((DrawablePtr) pBitmap, pGC, pBitmap -&gt; drawable.depth, x, y, w, h,
+-                      0, format, data);
+- 
+   REGION_UNION(pDrawable -&gt; pScreen, nxagentCorruptedRegion((DrawablePtr) pBitmap),
+                    nxagentCorruptedRegion((DrawablePtr) pBitmap), pClipRegion);
+ 
+@@ -2695,11 +2724,6 @@ nxagentCreateDrawableBitmapEnd:
+     nxagentFreeRegion(pDrawable, pClipRegion);
+   }
+ 
+-  if (data != NULL)
+-  {
+-    xfree(data);
+-  }
+-
+   if (pGC != NULL)
+   {
+     FreeScratchGC(pGC);
+@@ -3075,6 +3099,16 @@ void nxagentSendBackgroundExpose(WindowPtr pWin, PixmapPtr pBackground, RegionPt
+ 
+   REGION_INTERSECT(pWin -&gt; pScreen, &amp;expose, &amp;expose, &amp;pWin -&gt; clipList);
+ 
++  /*
++   * Reduce the overall region to expose.
++   */
++  
++  REGION_TRANSLATE(pWin -&gt; pScreen, &amp;expose, -pWin -&gt; drawable.x, -pWin -&gt; drawable.y);
++  
++  REGION_SUBTRACT(pWin -&gt; pScreen, pExpose, pExpose, &amp;expose);
++  
++  REGION_TRANSLATE(pWin -&gt; pScreen, &amp;expose, pWin -&gt; drawable.x, pWin -&gt; drawable.y);
++
+   miWindowExposures(pWin, &amp;expose, &amp;expose);
+ 
+ nxagentSendBackgroundExposeEnd:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Events.c b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+index b37d81a..3c1458c 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Events.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+@@ -63,7 +63,13 @@
+ #include &quot;NXproto.h&quot;
+ 
+ #include &quot;xfixesproto.h&quot;
++#define Window     XlibWindow
++#define Atom   XlibAtom
++#define Time XlibXID
+ #include &lt;X11/extensions/Xfixes.h&gt;
++#undef Window
++#undef Atom
++#undef Time
+ 
+ #ifdef NXAGENT_FIXKEYS
+ #include &quot;inputstr.h&quot;
+@@ -113,6 +119,10 @@ extern int nxagentSplashCount;
+ 
+ extern int nxagentLastClipboardClient;
+ 
++#ifdef NX_DEBUG_INPUT
++int nxagentDebugInput = 0;
++#endif
++
+ #ifdef DEBUG
+ extern Bool nxagentRootlessTreesMatch(void);
+ #endif
+@@ -172,6 +182,8 @@ static Cursor viewportCursor;
+ 
+ static Mask defaultEventMask;
+ 
++static int lastEventSerial = 0;
++
+ #define MAX_INC 200
+ #define INC_STEP 5
+ #define nextinc(x)  ((x) &lt; MAX_INC ? (x) += INC_STEP : (x))
+@@ -252,6 +264,13 @@ void nxagentRemoveDuplicatedKeys(XEvent *X);
+ 
+ void ProcessInputEvents()
+ {
++  #ifdef NX_DEBUG_INPUT
++  if (nxagentDebugInput == 1)
++  {
++    fprintf(stderr, &quot;ProcessInputEvents: Processing input.\n&quot;);
++  }
++  #endif
++
+   mieqProcessInputEvents();
+ }
+ 
+@@ -282,6 +301,11 @@ void nxagentSwitchResizeMode(ScreenPtr pScreen)
+ 
+     nxagentRRSetScreenConfig(pScreen, nxagentOption(Width), nxagentOption(Height));
+ 
++    if (nxagentOption(ClientOs) == ClientOsWinnt)
++    {
++      NXSetExposeParameters(nxagentDisplay, 0, 0, 0);
++    }
++
+     sizeHints.max_width = WidthOfScreen(DefaultScreenOfDisplay(nxagentDisplay));
+     sizeHints.max_height = HeightOfScreen(DefaultScreenOfDisplay(nxagentDisplay));
+   }
+@@ -771,8 +795,9 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+         }
+ 
+         x.u.u.type = KeyRelease;
+-        x.u.u.detail = X.xkey.keycode;
+-        x.u.keyButtonPointer.time = nxagentLastKeyPressTime + (X.xkey.time - nxagentLastServerTime);
++        x.u.u.detail = nxagentConvertKeycode(X.xkey.keycode);
++        x.u.keyButtonPointer.time = nxagentLastKeyPressTime +
++            (X.xkey.time - nxagentLastServerTime);
+ 
+         nxagentLastServerTime = X.xkey.time;
+ 
+@@ -794,8 +819,11 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+       }
+       case ButtonPress:
+       {
+-        #ifdef TEST
+-        fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonPress event.\n&quot;);
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonPress event.\n&quot;);
++        }
+         #endif
+ 
+         nxagentInputEvent = 1;
+@@ -860,6 +888,13 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+             x.u.keyButtonPointer.rootY = X.xmotion.y - nxagentOption(RootY);
+           }
+ 
++          #ifdef NX_DEBUG_INPUT
++          if (nxagentDebugInput == 1)
++          {
++            fprintf(stderr, &quot;nxagentDispatchEvents: Adding ButtonPress event.\n&quot;);
++          }
++          #endif
++
+           mieqEnqueue(&amp;x);
+ 
+           CriticalOutputPending = 1;
+@@ -887,8 +922,11 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+       }
+       case ButtonRelease:
+       {
+-        #ifdef TEST
+-        fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonRelease event.\n&quot;);
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new ButtonRelease event.\n&quot;);
++        }
+         #endif
+ 
+         nxagentInputEvent = 1;
+@@ -923,6 +961,13 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+             x.u.keyButtonPointer.rootY = X.xmotion.y - nxagentOption(RootY);
+           }
+ 
++          #ifdef NX_DEBUG_INPUT
++          if (nxagentDebugInput == 1)
++          {
++            fprintf(stderr, &quot;nxagentDispatchEvents: Adding ButtonRelease event.\n&quot;);
++          }
++          #endif
++
+           mieqEnqueue(&amp;x);
+ 
+           CriticalOutputPending = 1;
+@@ -956,12 +1001,15 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+         fprintf(stderr, &quot;nxagentDispatchEvents: Going to handle new MotionNotify event.\n&quot;);
+         #endif
+ 
+-        #ifdef TEST
+-        fprintf(stderr, &quot;nxagentDispatchEvents: Handling motion notify window [%ld] root [%ld] child [%ld].\n&quot;,
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;nxagentDispatchEvents: Handling motion notify window [%ld] root [%ld] child [%ld].\n&quot;,
+                     X.xmotion.window, X.xmotion.root, X.xmotion.subwindow);
+ 
+-        fprintf(stderr, &quot;nxagentDispatchEvents: Pointer at [%d][%d] relative root [%d][%d].\n&quot;,
++          fprintf(stderr, &quot;nxagentDispatchEvents: Pointer at [%d][%d] relative root [%d][%d].\n&quot;,
+                     X.xmotion.x, X.xmotion.y, X.xmotion.x_root, X.xmotion.y_root);
++        }
+         #endif
+ 
+         x.u.u.type = MotionNotify;
+@@ -975,18 +1023,17 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+             nxagentLastEnteredWindow = pWin;
+           }
+ 
+-          if (nxagentPulldownDialogPid == 0 &amp;&amp; (X.xmotion.y_root &lt;
+-                  nxagentLastEnteredTopLevelWindow -&gt; drawable.y + 4))
++          if (nxagentPulldownDialogPid == 0 &amp;&amp; nxagentLastEnteredTopLevelWindow &amp;&amp;
++                  (X.xmotion.y_root &lt; nxagentLastEnteredTopLevelWindow -&gt; drawable.y + 4))
+           {
+-            if (pWin &amp;&amp; nxagentLastEnteredTopLevelWindow &amp;&amp;
+-                    nxagentClientIsDialog(wClient(pWin)) == 0 &amp;&amp;
+-                        nxagentLastEnteredTopLevelWindow -&gt; parent == WindowTable[0] &amp;&amp;
+-                            nxagentLastEnteredTopLevelWindow -&gt; overrideRedirect == False &amp;&amp;
+-                                X.xmotion.x_root &gt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
+-                                    (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) - 50) &amp;&amp;
+-                                        X.xmotion.x_root &lt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
+-                                            (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) + 50) &amp;&amp;
+-                                                nxagentOption(Menu) == 1)
++            if (pWin &amp;&amp; nxagentClientIsDialog(wClient(pWin)) == 0 &amp;&amp;
++                    nxagentLastEnteredTopLevelWindow -&gt; parent == WindowTable[0] &amp;&amp;
++                        nxagentLastEnteredTopLevelWindow -&gt; overrideRedirect == False &amp;&amp;
++                            X.xmotion.x_root &gt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
++                                (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) - 50) &amp;&amp;
++                                    X.xmotion.x_root &lt; (nxagentLastEnteredTopLevelWindow -&gt; drawable.x +
++                                        (nxagentLastEnteredTopLevelWindow -&gt; drawable.width &gt;&gt; 1) + 50) &amp;&amp;
++                                            nxagentOption(Menu) == 1)
+             {
+               nxagentPulldownDialog(nxagentLastEnteredTopLevelWindow -&gt; drawable.id);
+             }
+@@ -1008,6 +1055,14 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+                     X.xmotion.window == nxagentDefaultWindows[pScreen -&gt; myNum]
+                         &amp;&amp; X.xmotion.subwindow == None))
+         {
++          #ifdef NX_DEBUG_INPUT
++          if (nxagentDebugInput == 1)
++          {
++            fprintf(stderr, &quot;nxagentDispatchEvents: Adding motion event [%d, %d] to the queue.\n&quot;,
++                        x.u.keyButtonPointer.rootX, x.u.keyButtonPointer.rootY);
++          }
++          #endif
++
+           mieqEnqueue(&amp;x);
+         }
+ 
+@@ -1644,6 +1699,21 @@ void nxagentDispatchEvents(PredicateFuncPtr predicate)
+ 
+     } /* End of switch (X.type) */
+ 
++    if (X.xany.serial &lt; lastEventSerial)
++    {
++      /*
++       * Start over.
++       */
++
++      nxagentDeleteStaticResizedWindow(0);
++    }
++    else
++    {
++      nxagentDeleteStaticResizedWindow(X.xany.serial - 1);
++    }
++
++    lastEventSerial = X.xany.serial;
++
+   } /* End of while (...) */
+ 
+   /*
+@@ -1848,8 +1918,9 @@ int nxagentHandleKeyPress(XEvent *X, enum HandleEventResult *result)
+ 
+   nxagentLastEventTime = nxagentLastKeyPressTime = GetTimeInMillis();
+ 
++  
+   x.u.u.type = KeyPress;
+-  x.u.u.detail = X -&gt; xkey.keycode;
++  x.u.u.detail = nxagentConvertKeycode(X -&gt; xkey.keycode);
+   x.u.keyButtonPointer.time = nxagentLastKeyPressTime;
+ 
+   nxagentLastServerTime = X -&gt; xkey.time;
+@@ -1914,6 +1985,8 @@ int nxagentHandleExposeEvent(XEvent *X)
+   int index = 0;
+   int overlap = 0;
+ 
++  StaticResizedWindowStruct *resizedWinPtr = NULL;
++
+   #ifdef DEBUG
+   fprintf(stderr, &quot;nxagentHandleExposeEvent: Checking remote expose events.\n&quot;);
+   #endif
+@@ -1944,6 +2017,19 @@ FIXME: This can be maybe optimized by consuming the
+       box.x1 = pWin -&gt; drawable.x + wBorderWidth(pWin) + X -&gt; xexpose.x;
+       box.y1 = pWin -&gt; drawable.y + wBorderWidth(pWin) + X -&gt; xexpose.y;
+ 
++      resizedWinPtr = nxagentFindStaticResizedWindow(X -&gt; xany.serial);
++
++      while (resizedWinPtr)
++      {
++        if (resizedWinPtr -&gt; pWin == pWin)
++        {
++          box.x1 += resizedWinPtr -&gt; offX;
++          box.y1 += resizedWinPtr -&gt; offY;
++        }
++
++        resizedWinPtr = resizedWinPtr -&gt; prev;
++      }
++
+       box.x2 = box.x1 + X -&gt; xexpose.width;
+       box.y2 = box.y1 + X -&gt; xexpose.height;
+ 
+@@ -3913,3 +3999,27 @@ int nxagentWaitEvents(Display *dpy, struct timeval *tm)
+ 
+   return 1;
+ }
++
++#ifdef NX_DEBUG_INPUT
++
++void nxagentDumpInputInfo(void)
++{
++  fprintf(stderr, &quot;Dumping input info ON.\n&quot;);
++}
++
++void nxagentGuessDumpInputInfo(ClientPtr client, Atom property, char *data)
++{
++  if (strcmp(validateString(NameForAtom(property)), &quot;NX_DEBUG_INPUT&quot;) == 0)
++  {
++    if (*data != 0)
++    {
++      nxagentDebugInput = 1;
++    }
++    else
++    {
++      nxagentDebugInput = 0;
++    }
++  }
++}
++
++#endif
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Font.c b/nx-X11/programs/Xserver/hw/nxagent/Font.c
+index 6fb34f2..87f9f02 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Font.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Font.c
+@@ -65,26 +65,34 @@ is&quot; without express or implied warranty.
+ #define NXAGENT_ALTERNATE_FONT_DIR    &quot;/usr/share/X11/fonts&quot;
+ #define NXAGENT_ALTERNATE_FONT_DIR_2  &quot;/usr/share/fonts/X11&quot;
+ #define NXAGENT_ALTERNATE_FONT_DIR_3  &quot;/usr/share/fonts&quot;
++#define NXAGENT_ALTERNATE_FONT_DIR_4  &quot;/usr/NX/share/fonts&quot;
+ 
+ #define NXAGENT_DEFAULT_FONT_PATH  \
+ &quot;/usr/X11R6/lib/X11/fonts/misc/,/usr/X11R6/lib/X11/fonts/Speedo/,\
+ /usr/X11R6/lib/X11/fonts/Type1/,/usr/X11R6/lib/X11/fonts/75dpi/,\
+-/usr/X11R6/lib/X11/fonts/100dpi/,/usr/X11R6/lib/X11/fonts/TTF/&quot;
++/usr/X11R6/lib/X11/fonts/100dpi/,/usr/X11R6/lib/X11/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH  \
+ &quot;/usr/share/X11/fonts/misc/,/usr/share/X11/fonts/Speedo/,\
+ /usr/share/X11/fonts/Type1/,/usr/share/X11/fonts/75dpi/,\
+-/usr/share/X11/fonts/100dpi/,/usr/share/X11/fonts/TTF/&quot;
++/usr/share/X11/fonts/100dpi/,/usr/share/X11/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH_2  \
+ &quot;/usr/share/fonts/X11/misc/,/usr/share/fonts/X11/Speedo/,\
+ /usr/share/fonts/X11/Type1/,/usr/share/fonts/X11/75dpi/,\
+-/usr/share/fonts/X11/100dpi/,/usr/share/fonts/X11/TTF/&quot;
++/usr/share/fonts/X11/100dpi/,/usr/share/fonts/X11/TTF/,\
++/usr/NX/share/fonts/base&quot;
+ 
+ #define NXAGENT_ALTERNATE_FONT_PATH_3  \
+ &quot;/usr/share/fonts/misc/,/usr/share/fonts/Speedo/,\
+ /usr/share/fonts/Type1/,/usr/share/fonts/75dpi/,\
+-/usr/share/fonts/100dpi/,/usr/share/fonts/TTF/&quot;
++/usr/share/fonts/100dpi/,/usr/share/fonts/TTF/,\
++/usr/NX/share/fonts/base&quot;
++
++#define NXAGENT_ALTERNATE_FONT_PATH_4  \
++&quot;/usr/NX/share/fonts/base&quot;
+ 
+ #undef NXAGENT_FONTCACHE_DEBUG
+ #undef NXAGENT_RECONNECT_FONT_DEBUG
+@@ -101,6 +109,8 @@ static XFontStruct *nxagentLoadQueryFont(register Display *dpy , char *fontName
+ int nxagentFreeFont(XFontStruct *fs);
+ static Bool nxagentGetFontServerPath(char * fontServerPath);
+ 
++static char * nxagentMakeScalableFontName(const char *fontName, int scalableResolution);
++
+ RESTYPE RT_NX_FONT;
+ 
+ #ifdef NXAGENT_RECONNECT_FONT_DEBUG
+@@ -419,13 +429,59 @@ Bool nxagentFontFind(const char *name, int *pos)
+ Bool nxagentFontLookUp(const char *name)
+ {
+   int i;
+-  if (name)
+-    if (!strlen(name))
+-       return 0;
+-  if (nxagentFontFind(name, &amp;i))
+-    return (nxagentRemoteFontList.list[i]-&gt;status &gt; 0);
+-  else
++  int result;
++
++  char *scalable;
++
++  if (name != NULL &amp;&amp; strlen(name) == 0)
++  {
+     return 0;
++  }
++
++  result = nxagentFontFind(name, &amp;i);
++
++  scalable = NULL;
++
++  /*
++   * Let's try with the scalable font description.
++   */
++
++  if (result == 0)
++  {
++    scalable = nxagentMakeScalableFontName(name, 0); 
++
++    if (scalable != NULL)
++    {
++      result = nxagentFontFind(scalable, &amp;i);
++
++      free(scalable);
++    }
++  }
++
++  /*
++   * Let's try again after replacing zero to xdpi and ydpi in the pattern.
++   */
++
++  if (result == 0)
++  {
++    scalable = nxagentMakeScalableFontName(name, 1); 
++
++    if (scalable != NULL)
++    {
++      result = nxagentFontFind(scalable, &amp;i);
++
++      free(scalable);
++    }
++  }
++
++  if (result == 0)
++  {
++    return 0;
++  }
++  else
++  {
++    return (nxagentRemoteFontList.list[i]-&gt;status &gt; 0);
++  }
+ }
+ 
+ Bool nxagentRealizeFont(ScreenPtr pScreen, FontPtr pFont)
+@@ -700,7 +756,7 @@ static XFontStruct *nxagentLoadBestQueryFont(Display* dpy, char *fontName, FontP
+   substFontBuf = (char *) xalloc(sizeof(char) * 512);
+ 
+ 
+-  numFontFields = nxagentSplitString(fontName, fontNameFields, FIELDS, &quot;-&quot;);
++  numFontFields = nxagentSplitString(fontName, fontNameFields, FIELDS + 1, &quot;-&quot;);
+ 
+   memcpy(substFontBuf, &quot;fixed\0&quot;, strlen(&quot;fixed&quot;) + 1);
+ 
+@@ -1505,6 +1561,31 @@ void nxagentVerifyDefaultFontPath(void)
+     strcat(fontPath, NXAGENT_ALTERNATE_FONT_PATH_3);
+   }
+ 
++  if (stat(NXAGENT_ALTERNATE_FONT_DIR_4, &amp;dirStat) == 0 &amp;&amp;
++          S_ISDIR(dirStat.st_mode) != 0)
++  {
++    /*
++     * Let's use the &quot;/usr/NX/share/fonts&quot; path.
++     */
++
++    #ifdef TEST
++    fprintf(stderr, &quot;nxagentVerifyDefaultFontPath: Assuming fonts in directory [%s].\n&quot;,
++                validateString(NXAGENT_ALTERNATE_FONT_DIR_4));
++    #endif
++
++    if (*fontPath != '\0')
++    {
++      fontPath = realloc(fontPath, strlen(fontPath) + strlen(NXAGENT_ALTERNATE_FONT_PATH_4) + 2);
++      strcat(fontPath, &quot;,&quot;);
++    }
++    else
++    {
++      fontPath = realloc(fontPath, strlen(fontPath) + strlen(NXAGENT_ALTERNATE_FONT_PATH_4) + 1);
++    }
++
++    strcat(fontPath, NXAGENT_ALTERNATE_FONT_PATH_4);
++  }
++
+   if (*fontPath == '\0') 
+   {
+     #ifdef WARNING
+@@ -1698,3 +1779,88 @@ int nxagentSplitString(char *string, char *fields[], int nfields, char *sep)
+   return i;
+ }
+ 
++char *nxagentMakeScalableFontName(const char *fontName, int scalableResolution)
++{
++  char *scalableFontName;
++  const char *s;
++  int len;
++  int field;
++
++  len = strlen(fontName) + 1;
++
++  scalableFontName = malloc(len);
++
++  if (scalableFontName == NULL)
++  {
++    #ifdef PANIC
++    fprintf(stderr, &quot;nxagentMakeScalableFontName: PANIC! malloc() failed.\n&quot;);
++    #endif
++
++    return NULL;
++  }
++
++  scalableFontName[0] = 0;
++
++  if (*fontName != '-')
++  {
++    goto MakeScalableFontNameError;
++  }
++
++  s = fontName;
++
++  field = 0;
++
++  while (s != NULL)
++  {
++    s = strchr(s + 1, '-');
++
++    if (s != NULL)
++    {
++      if (field == 6 || field == 7 || field == 11)
++      {
++        /*
++         * PIXEL_SIZE || POINT_SIZE || AVERAGE_WIDTH
++         */
++
++        strcat(scalableFontName, &quot;-0&quot;);
++      }
++      else if (scalableResolution == 1 &amp;&amp; (field == 8 || field == 9))
++      {
++        /*
++         * RESOLUTION_X || RESOLUTION_Y
++         */
++
++        strcat(scalableFontName, &quot;-0&quot;);
++      }
++      else
++      {
++        strncat(scalableFontName, fontName, s - fontName);
++      }
++
++      fontName = s;
++    }
++    else
++    {
++      strcat(scalableFontName, fontName);
++    }
++
++    field++;
++  }
++
++  if (field != 14)
++  {
++    goto MakeScalableFontNameError;
++  }
++
++  return scalableFontName;
++
++MakeScalableFontNameError:
++
++  free(scalableFontName);
++
++  #ifdef DEBUG
++  fprintf(stderr, &quot;nxagentMakeScalableFontName: Invalid font name.\n&quot;);
++  #endif
++
++  return NULL;
++}
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Imakefile b/nx-X11/programs/Xserver/hw/nxagent/Imakefile
+index 804f95f..633e17a 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Imakefile
++++ b/nx-X11/programs/Xserver/hw/nxagent/Imakefile
+@@ -205,6 +205,7 @@ DEFINES = -g $(OS_DEFINES) $(EXT_DEFINES) $(UPG_DEFINES) \
+           -DNXAGENT_ONSTART \
+           -DNXAGENT_SPLASH \
+           -DNXAGENT_ARTSD \
++          -UNX_DEBUG_INPUT \
+           -UPANORAMIX
+ 
+ all:: $(OBJS)
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Init.c b/nx-X11/programs/Xserver/hw/nxagent/Init.c
+index 4e47f8f..81ed0c4 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Init.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Init.c
+@@ -74,7 +74,7 @@ is&quot; without express or implied warranty.
+ #undef  DEBUG
+ #undef  DUMP
+ 
+-#define NXAGENT_VERSION  &quot;3.2.0&quot;
++#define NXAGENT_VERSION  &quot;3.3.0&quot;
+ 
+ /*
+  * ProcVector array defined in tables.c.
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+index 88e99a1..6c14e20 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.c
+@@ -55,12 +55,28 @@ is&quot; without express or implied warranty.
+ 
+ #include &quot;NXlib.h&quot;
+ 
++#include &quot;Shadow.h&quot;
++
+ #ifdef XKB
+ 
++#include &quot;globals.h&quot;
++#include &quot;property.h&quot;
++
+ #include &lt;X11/extensions/XKB.h&gt;
++
++#define XKBSRV_NEED_FILE_FUNCS
+ #include &lt;X11/extensions/XKBsrv.h&gt;
+ #include &lt;X11/extensions/XKBconfig.h&gt;
+ 
++#include &quot;X11/extensions/XKBrules.h&quot;
++
++#include &quot;Xatom.h&quot;
++
++static int nxagentXkbGetNames(char **rules, char **model, char **layout,
++                                  char **variant, char **options);
++
++static void nxagentKeycodeConversionSetup(void);
++
+ #endif /* XKB */
+ 
+ /*
+@@ -175,6 +191,281 @@ unsigned int nxagentAltMetaMask;
+ 
+ void nxagentCheckAltMetaKeys(CARD8, int);
+ 
++static CARD8 nxagentConvertedKeycodes[] =
++{
++  /* evdev  pc105*/
++  /*   0 */   0,
++  /*   1 */   1,
++  /*   2 */   2,
++  /*   3 */   3,
++  /*   4 */   4,
++  /*   5 */   5,
++  /*   6 */   6,
++  /*   7 */   7,
++  /*   8 */   8,
++  /*   9 */   9,
++  /*  10 */   10,
++  /*  11 */   11,
++  /*  12 */   12,
++  /*  13 */   13,
++  /*  14 */   14,
++  /*  15 */   15,
++  /*  16 */   16,
++  /*  17 */   17,
++  /*  18 */   18,
++  /*  19 */   19,
++  /*  20 */   20,
++  /*  21 */   21,
++  /*  22 */   22,
++  /*  23 */   23,
++  /*  24 */   24,
++  /*  25 */   25,
++  /*  26 */   26,
++  /*  27 */   27,
++  /*  28 */   28,
++  /*  29 */   29,
++  /*  30 */   30,
++  /*  31 */   31,
++  /*  32 */   32,
++  /*  33 */   33,
++  /*  34 */   34,
++  /*  35 */   35,
++  /*  36 */   36,
++  /*  37 */   37,
++  /*  38 */   38,
++  /*  39 */   39,
++  /*  40 */   40,
++  /*  41 */   41,
++  /*  42 */   42,
++  /*  43 */   43,
++  /*  44 */   44,
++  /*  45 */   45,
++  /*  46 */   46,
++  /*  47 */   47,
++  /*  48 */   48,
++  /*  49 */   49,
++  /*  50 */   50,
++  /*  51 */   51,
++  /*  52 */   52,
++  /*  53 */   53,
++  /*  54 */   54,
++  /*  55 */   55,
++  /*  56 */   56,
++  /*  57 */   57,
++  /*  58 */   58,
++  /*  59 */   59,
++  /*  60 */   60,
++  /*  61 */   61,
++  /*  62 */   62,
++  /*  63 */   63,
++  /*  64 */   64,
++  /*  65 */   65,
++  /*  66 */   66,
++  /*  67 */   67,
++  /*  68 */   68,
++  /*  69 */   69,
++  /*  70 */   70,
++  /*  71 */   71,
++  /*  72 */   72,
++  /*  73 */   73,
++  /*  74 */   74,
++  /*  75 */   75,
++  /*  76 */   76,
++  /*  77 */   77,
++  /*  78 */   78,
++  /*  79 */   79,
++  /*  80 */   80,
++  /*  81 */   81,
++  /*  82 */   82,
++  /*  83 */   83,
++  /*  84 */   84,
++  /*  85 */   85,
++  /*  86 */   86,
++  /*  87 */   87,
++  /*  88 */   88,
++  /*  89 */   89,
++  /*  90 */   90,
++  /*  91 */   91,
++  /*  92 */  124,
++  /*  93 */   93,
++  /*  94 */   94,
++  /*  95 */   95,
++  /*  96 */   96,
++  /*  97 */  211,
++  /*  98 */   98,
++  /*  99 */   99,
++  /* 100 */  100,
++  /* 101 */  208,
++  /* 102 */  102,
++  /* 103 */  103,
++  /* 104 */  108,
++  /* 105 */  109,
++  /* 106 */  112,
++  /* 107 */  111,
++  /* 108 */  113,
++  /* 109 */  109,
++  /* 110 */   97,
++  /* 111 */   98,
++  /* 112 */   99,
++  /* 113 */  100,
++  /* 114 */  102,
++  /* 115 */  103,
++  /* 116 */  104,
++  /* 117 */  105,
++  /* 118 */  106,
++  /* 119 */  107,
++  /* 120 */  120,
++  /* 121 */  121,
++  /* 122 */  122,
++  /* 123 */  123,
++  /* 124 */  124,
++  /* 125 */  126,
++  /* 126 */  126,
++  /* 127 */  110,
++  /* 128 */  128,
++  /* 129 */  129,
++  /* 130 */  130,
++  /* 131 */  131,
++  /* 132 */  133,
++  /* 133 */  115,
++  /* 134 */  116,
++  /* 135 */  117,
++  /* 136 */  136,
++  /* 137 */  137,
++  /* 138 */  138,
++  /* 139 */  139,
++  /* 140 */  140,
++  /* 141 */  141,
++  /* 142 */  142,
++  /* 143 */  143,
++  /* 144 */  144,
++  /* 145 */  145,
++  /* 146 */  146,
++  /* 147 */  147,
++  /* 148 */  148,
++  /* 149 */  149,
++  /* 150 */  150,
++  /* 151 */  151,
++  /* 152 */  152,
++  /* 153 */  153,
++  /* 154 */  154,
++  /* 155 */  155,
++  /* 156 */  156,
++  /* 157 */  157,
++  /* 158 */  158,
++  /* 159 */  159,
++  /* 160 */  160,
++  /* 161 */  161,
++  /* 162 */  162,
++  /* 163 */  163,
++  /* 164 */  164,
++  /* 165 */  165,
++  /* 166 */  166,
++  /* 167 */  167,
++  /* 168 */  168,
++  /* 169 */  169,
++  /* 170 */  170,
++  /* 171 */  171,
++  /* 172 */  172,
++  /* 173 */  173,
++  /* 174 */  174,
++  /* 175 */  175,
++  /* 176 */  176,
++  /* 177 */  177,
++  /* 178 */  178,
++  /* 179 */  179,
++  /* 180 */  180,
++  /* 181 */  181,
++  /* 182 */  182,
++  /* 183 */  183,
++  /* 184 */  184,
++  /* 185 */  185,
++  /* 186 */  186,
++  /* 187 */  187,
++  /* 188 */  188,
++  /* 189 */  189,
++  /* 190 */  190,
++  /* 191 */  118,
++  /* 192 */  119,
++  /* 193 */  120,
++  /* 194 */  121,
++  /* 195 */  122,
++  /* 196 */  196,
++  /* 197 */  197,
++  /* 198 */  198,
++  /* 199 */  199,
++  /* 200 */  200,
++  /* 201 */  201,
++  /* 202 */  202,
++  /* 203 */   93,
++  /* 204 */  125,
++  /* 205 */  156,
++  /* 206 */  127,
++  /* 207 */  128,
++  /* 208 */  208,
++  /* 209 */  209,
++  /* 210 */  210,
++  /* 211 */  211,
++  /* 212 */  212,
++  /* 213 */  213,
++  /* 214 */  214,
++  /* 215 */  215,
++  /* 216 */  216,
++  /* 217 */  217,
++  /* 218 */  218,
++  /* 219 */  219,
++  /* 220 */  220,
++  /* 221 */  221,
++  /* 222 */  222,
++  /* 223 */  223,
++  /* 224 */  224,
++  /* 225 */  225,
++  /* 226 */  226,
++  /* 227 */  227,
++  /* 228 */  228,
++  /* 229 */  229,
++  /* 230 */  230,
++  /* 231 */  231,
++  /* 232 */  232,
++  /* 233 */  233,
++  /* 234 */  234,
++  /* 235 */  235,
++  /* 236 */  236,
++  /* 237 */  237,
++  /* 238 */  238,
++  /* 239 */  239,
++  /* 240 */  240,
++  /* 241 */  241,
++  /* 242 */  242,
++  /* 243 */  243,
++  /* 244 */  244,
++  /* 245 */  245,
++  /* 246 */  246,
++  /* 247 */  247,
++  /* 248 */  248,
++  /* 249 */  249,
++  /* 250 */  250,
++  /* 251 */  251,
++  /* 252 */  252,
++  /* 253 */  253,
++  /* 254 */  254,
++  /* 255 */  255
++};
++
++static int nxagentKeycodeConversion = 0;
++
++CARD8 nxagentConvertKeycode(CARD8 k)
++{
++ if (nxagentKeycodeConversion != 0)
++ {
++   return nxagentConvertedKeycodes[k];
++ }
++ else
++ {
++   return k;
++ }
++}
++
+ static int nxagentSaveKeyboardDeviceData(DeviceIntPtr dev, DeviceIntPtr devBackup);
+ 
+ static int nxagentRestoreKeyboardDeviceData(DeviceIntPtr devBackup, DeviceIntPtr dev);
+@@ -655,14 +946,21 @@ XkbError:
+ 
+         xkb = XkbGetKeyboard(nxagentDisplay, XkbGBN_AllComponentsMask, XkbUseCoreKbd);
+ 
++        nxagentKeycodeConversionSetup();
++
+         if (xkb == NULL || xkb-&gt;geom == NULL)
+         {
+           #ifdef TEST
+           fprintf(stderr, &quot;nxagentKeyboardProc: No current keyboard.\n&quot;);
+-          #endif
+-
+-          #ifdef TEST
+-          fprintf(stderr, &quot;nxagentKeyboardProc: No keyboard, going to set rules and init device.\n&quot;);
++          if (xkb == NULL)
++          {
++            fprintf(stderr, &quot;nxagentKeyboardProc: xkb is null.\n&quot;);
++          }
++          else
++          {
++            fprintf(stderr, &quot;nxagentKeyboardProc: xkb-&gt;geom is null.\n&quot;);
++          }
++          fprintf(stderr, &quot;nxagentKeyboardProc: Going to set rules and init device.\n&quot;);
+           #endif
+ 
+           XkbSetRulesDflts(rules, model, layout, variants, options);
+@@ -777,6 +1075,12 @@ XkbError:
+         XkbDDXChangeControls((pointer)pDev, xkb-&gt;ctrls, xkb-&gt;ctrls);
+ 
+ XkbEnd:
++
++        if (nxagentOption(Shadow) == 1 &amp;&amp; pDev &amp;&amp; pDev-&gt;key)
++        {
++          NXShadowInitKeymap(&amp;(pDev-&gt;key-&gt;curKeySyms));
++        }
++
+         if (free_model) 
+         {
+           free_model = 0;
+@@ -790,7 +1094,6 @@ XkbEnd:
+         }
+ 
+         XkbFreeKeyboard(xkb, XkbAllComponentsMask, True);
+-
+         xkb = NULL;
+       }
+ #endif
+@@ -1358,4 +1661,154 @@ void nxagentTuneXkbWrapper(void)
+   }
+ }
+ 
++static int nxagentXkbGetNames(char **rules, char **model, char **layout,
++                                  char **variant, char **options)
++{
++  Atom atom;
++  #ifdef _XSERVER64
++  Atom64 type;
++  #else
++  Atom type;
++  #endif
++  int format;
++  unsigned long n;
++  unsigned long after;
++  char *data;
++  char *name;
++  Status result;
++
++  data = name = NULL;
++
++  *rules = NULL;
++  *model = NULL;
++  *layout = NULL;
++  *variant = NULL;
++  *options = NULL;
++
++  atom = XInternAtom(nxagentDisplay, &quot;_XKB_RULES_NAMES&quot;, 1);
++
++  if (atom == 0)
++  {
++    return 0; 
++  }
++
++  result = XGetWindowProperty(nxagentDisplay, DefaultRootWindow(nxagentDisplay),
++                                  atom, 0, 256, 0, XA_STRING, &amp;type, &amp;format,
++                                      &amp;n, &amp;after, (unsigned char **)&amp;data);
++
++  if (result !=Success || data == NULL)
++  {
++    return 0;
++  }
++
++  if ((after &gt; 0) || (type != XA_STRING) || (format != 8))
++  {
++    if (data != NULL)
++    {
++      XFree(data);
++      return 0;
++    }
++  }
++
++  name = data;
++
++  if (name &lt; data + n)
++  {
++    *rules =  name;
++    name += strlen(name) + 1;
++  }
++
++  if (name &lt; data + n)
++  {
++    *model = name;
++    name += strlen(name) + 1;
++  }
++
++  if (name &lt; data + n)
++  {
++    *layout = name;
++    name += strlen(name) + 1;
++  }
++
++  if (name &lt; data + n)
++  {
++    *variant = name;
++    name += strlen(name) + 1;
++  }
++
++  if (name &lt; data + n)
++  {
++    *options = name;
++    name += strlen(name) + 1;
++  }
++
++  return n;
++}
++
++void nxagentKeycodeConversionSetup(void)
++{
++  char *drules = 0;
++  char *dmodel = 0;
++  char *dlayout = 0;
++  char *dvariant = 0;
++  char *doptions = 0;
++  unsigned int drulesLen;
++
++  nxagentKeycodeConversion = 0;
++
++  drulesLen = nxagentXkbGetNames(&amp;drules, &amp;dmodel, &amp;dlayout,
++                                     &amp;dvariant, &amp;doptions);
++
++  #ifdef DEBUG
++  if (drulesLen != 0 &amp;&amp; drules != NULL &amp;&amp; dmodel != NULL)
++  {
++    fprintf(stderr, &quot;nxagentKeycodeConversionSetup: &quot;
++                &quot;Remote: [%s,%s,%s,%s,%s].\n&quot;, drules, dmodel, dlayout,
++                    dvariant, doptions);
++  }
++  else
++  {
++    fprintf(stderr, &quot;nxagentKeycodeConversionSetup: &quot;
++                &quot;Failed to retrieve remote rules.\n&quot;);
++  }
++  #endif
++
++  if (nxagentOption(ClientOs) == ClientOsLinux &amp;&amp;
++            drules != NULL &amp;&amp; dmodel != NULL &amp;&amp;
++                (strcmp(drules, &quot;evdev&quot;) == 0 ||
++                    strcmp(dmodel, &quot;evdev&quot;) == 0))
++  {
++    nxagentKeycodeConversion = 1;
++  }
++
++  if (drules != NULL)
++  {
++    XFree(drules);
++  }
++}
++
++void nxagentResetKeycodeConversion(void)
++{
++  int result;
++  XkbAgentInfoRec info;
++
++  result = XkbQueryExtension(nxagentDisplay, &amp;info.Opcode, &amp;info.EventBase,
++                                 &amp;info.ErrorBase, &amp;info.MajorVersion,
++                                     &amp;info.MinorVersion);
++
++  if (result != 0)
++  {
++    nxagentKeycodeConversionSetup();
++  }
++  else
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentResetKeycodeConversion: &quot;
++                &quot;WARNING! Failed to query XKB extension.\n&quot;);
++    #endif
++
++    nxagentKeycodeConversion = 0;
++  }
++}
++
+ #endif
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+index f292402..50dd2be 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Keyboard.h
+@@ -109,6 +109,10 @@ void nxagentEnableXkbExtension(void);
+ 
+ void nxagentTuneXkbWrapper(void);
+ 
++void nxagentResetKeycodeConversion(void);
++
+ #endif
+ 
++CARD8 nxagentConvertKeycode(CARD8 k);
++
+ #endif /* __Keyboard_H__ */
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c b/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
+index ce3e6ee..69b73a9 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Reconnect.c
+@@ -547,28 +547,29 @@ Bool nxagentReconnectSession(void)
+     goto nxagentReconnectError;
+   }
+ 
+-  if (nxagentOption(ResetKeyboardAtResume))
++  if (nxagentOption(ResetKeyboardAtResume) == 1 &amp;&amp;
++         (nxagentKeyboard  == NULL || nxagentOldKeyboard == NULL ||
++             strcmp(nxagentKeyboard, nxagentOldKeyboard) != 0 ||
++                 strcmp(nxagentKeyboard, &quot;query&quot;) == 0))
+   {
+-    if (nxagentKeyboard  == NULL || nxagentOldKeyboard == NULL ||
+-           strcmp(nxagentKeyboard, nxagentOldKeyboard) != 0 ||
+-               strcmp(nxagentKeyboard, &quot;query&quot;) == 0)
++    if (nxagentResetKeyboard() == 0)
+     {
+-
+-      if (nxagentResetKeyboard() == 0)
++      #ifdef WARNING
++      if (nxagentVerbose == 1)
+       {
+-        #ifdef WARNING
+-        if (nxagentVerbose == 1)
+-        {
+-          fprintf(stderr, &quot;nxagentReconnect: Failed to reset keyboard device.\n&quot;);
+-        }
+-        #endif
++        fprintf(stderr, &quot;nxagentReconnect: Failed to reset keyboard device.\n&quot;);
++      }
++      #endif
+ 
+-        failedStep = WINDOW_STEP;
++      failedStep = WINDOW_STEP;
+ 
+-        goto nxagentReconnectError;
+-      }
++      goto nxagentReconnectError;
+     }
+   }
++  else
++  {
++    nxagentResetKeycodeConversion();
++  }
+ 
+   nxagentXkbState.Initialized = 0;
+ 
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Render.c b/nx-X11/programs/Xserver/hw/nxagent/Render.c
+index b1ff219..f2d7b15 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Render.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Render.c
+@@ -2270,8 +2270,7 @@ void nxagentAddGlyphs(GlyphSetPtr glyphSet, Glyph *gids, xGlyphInfo *gi,
+ 
+   normalizedImages = NULL;
+ 
+-  if (glyphDepths[glyphSet -&gt; fdepth] == 1 &amp;&amp;
+-          nxagentServerOrder() != BitmapBitOrder(nxagentDisplay))
++  if (sizeImages &gt; 0)
+   {
+     normalizedImages = xalloc(sizeImages);
+ 
+@@ -2279,7 +2278,11 @@ void nxagentAddGlyphs(GlyphSetPtr glyphSet, Glyph *gids, xGlyphInfo *gi,
+     {
+       memcpy(normalizedImages, images, sizeImages);
+ 
+-      BitOrderInvert ((unsigned char *) normalizedImages, sizeImages);
++      if (glyphDepths[glyphSet -&gt; fdepth] == 1 &amp;&amp;
++              nxagentServerOrder() != BitmapBitOrder(nxagentDisplay))
++      {
++        BitOrderInvert ((unsigned char *) normalizedImages, sizeImages);
++      }
+     }
+     else
+     {
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Rootless.c b/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
+index cd69af6..79cb74e 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
+@@ -46,6 +46,20 @@
+  * initialized.
+  */
+ 
++typedef struct
++{
++  CARD32 flags;
++  CARD32 input;
++  CARD32 initial_state;
++  CARD32 icon_pixmap;
++  CARD32 icon_window;
++  INT32  icon_x;
++  INT32  icon_y;
++  CARD32 icon_mask;
++  CARD32 window_group;
++}
++nxagentWMHints;
++
+ WindowPtr nxagentRootlessWindow = NULL;
+ 
+ #define TOP_LEVEL_TABLE_UNIT 100
+@@ -414,7 +428,7 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+   char *propertyS, *typeS;
+   Atom propertyX, typeX;
+   char *output = NULL;
+-  XWMHints wmHints;
++  nxagentWMHints wmHints;
+   Bool export = False;
+   Bool freeMem = False;
+ 
+@@ -470,7 +484,7 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+   else if (strcmp(typeS, &quot;WM_HINTS&quot;) == 0)
+   {
+     ClientPtr pClient = wClient(pWin);
+-    wmHints = *(XWMHints*)value;
++    wmHints = *(nxagentWMHints*)value;
+ 
+     wmHints.flags |= InputHint;
+     wmHints.input = True;
+@@ -497,9 +511,10 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+         wmHints.flags &amp;= ~IconPixmapHint;
+ 
+         #ifdef WARNING
+-        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon pixmap %lx from hint &quot;
++        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon pixmap %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+-                        wmHints.icon_pixmap, propertyS, typeS, (void*)pWin);
++                        (unsigned int) wmHints.icon_pixmap, propertyS, typeS,
++                            (void*)pWin);
+         #endif
+       }
+     }
+@@ -518,9 +533,10 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+         wmHints.flags &amp;= ~IconWindowHint;
+ 
+         #ifdef WARNING
+-        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon window %lx from hint &quot;
++        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon window %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+-                        wmHints.icon_window, propertyS, typeS, (void*)pWin);
++                        (unsigned int) wmHints.icon_window, propertyS, typeS,
++                            (void*)pWin);
+         #endif
+       }
+     }
+@@ -539,9 +555,10 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+         wmHints.flags &amp;= ~IconMaskHint;
+ 
+         #ifdef WARNING
+-        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon mask %lx from hint &quot;
++        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon mask %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+-                        wmHints.icon_mask, propertyS, typeS, (void*)pWin);
++                        (unsigned int) wmHints.icon_mask, propertyS, typeS,
++                            (void*)pWin);
+         #endif
+       }
+     }
+@@ -560,9 +577,10 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+         wmHints.flags &amp;= ~WindowGroupHint;
+ 
+         #ifdef WARNING
+-        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up window group %lx from hint &quot;
++        fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up window group %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+-                        wmHints.window_group, propertyS, typeS, (void*)pWin);
++                        (unsigned int) wmHints.window_group, propertyS, typeS,
++                            (void*)pWin);
+         #endif
+       }
+     }
+@@ -654,7 +672,7 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+   {
+     #ifdef TEST
+     fprintf(stderr, &quot;nxagentExportProperty: WARNING! Ignored ChangeProperty &quot;
+-                &quot;on %swindow %lx property %s type %s nUnits %ld format %d\n&quot;,
++                &quot;on %swindow %x property %s type %s nUnits %ld format %d\n&quot;,
+                     nxagentWindowTopLevel(pWin) ? &quot;toplevel &quot; : &quot;&quot;,
+                         nxagentWindow(pWin), validateString(propertyS), validateString(typeS),
+                             nUnits, format);
+@@ -683,7 +701,7 @@ void nxagentImportProperty(Window window,
+   WindowPtr pWin;
+   Bool import = False;
+   Bool freeMem = False;
+-  XWMHints wmHints;
++  nxagentWMHints wmHints;
+ 
+   typedef struct {
+       CARD32 state;
+@@ -797,7 +815,7 @@ void nxagentImportProperty(Window window,
+   }
+   else if (strcmp(typeS, &quot;WM_HINTS&quot;) == 0)
+   {
+-    wmHints = *(XWMHints*)buffer;
++    wmHints = *(nxagentWMHints*)buffer;
+     output = (char*) &wmHints;
+     import = True;
+ 
+@@ -815,8 +833,9 @@ void nxagentImportProperty(Window window,
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentImportProperty: WARNING! Failed to look up remote icon &quot;
+-                    &quot;pixmap %ld from hint importing property [%ld] type %s on window %p.\n&quot;,
+-                        wmHints.icon_pixmap, (long int) property, typeS, (void *) pWin);
++                    &quot;pixmap %d from hint importing property [%ld] type %s on window %p.\n&quot;,
++                        (unsigned int) wmHints.icon_pixmap, (long int) property,
++                            typeS, (void *) pWin);
+         #endif
+       }
+     }
+@@ -835,8 +854,9 @@ void nxagentImportProperty(Window window,
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagenImportProperty: WARNING! Failed to look up remote icon &quot;
+-                    &quot;window %lx from hint importing property [%ld] type %s on window %p.\n&quot;,
+-                         wmHints.icon_window, (long int) property, typeS, (void *) pWin);
++                    &quot;window %x from hint importing property [%ld] type %s on window %p.\n&quot;,
++                         (unsigned int) wmHints.icon_window,
++                             (long int) property, typeS, (void *) pWin);
+         #endif
+       }
+     }
+@@ -855,8 +875,8 @@ void nxagentImportProperty(Window window,
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentImportProperty: WARNING! Failed to look up remote icon &quot;
+-                    &quot;mask %lx from hint importing property [%ld] type %s on window %p.\n&quot;,
+-                          wmHints.icon_mask, (long int) property, typeS, (void *) pWin);
++                    &quot;mask %x from hint importing property [%ld] type %s on window %p.\n&quot;,
++                          (unsigned int) wmHints.icon_mask, (long int) property, typeS, (void *) pWin);
+         #endif
+       }
+     }
+@@ -875,8 +895,9 @@ void nxagentImportProperty(Window window,
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentImportProperty: WARNING! Failed to look up remote window &quot;
+-                    &quot;group %lx from hint importing property [%ld] type %s on window %p.\n&quot;,
+-                          wmHints.window_group, (long int) property, typeS, (void *) pWin);
++                    &quot;group %x from hint importing property [%ld] type %s on window %p.\n&quot;,
++                          (unsigned int) wmHints.window_group,
++                              (long int) property, typeS, (void *) pWin);
+         #endif
+       }
+     }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Screen.c b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+index 34d498f..524bafd 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Screen.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+@@ -958,7 +958,8 @@ Bool nxagentOpenScreen(int index, ScreenPtr pScreen,
+ 
+     nxagentChangeOption(Fullscreen, True);
+ 
+-    if (nxagentOption(ClientOs) == ClientOsWinnt)
++    if (nxagentOption(ClientOs) == ClientOsWinnt &amp;&amp;
++            (nxagentReconnectTrap == False || nxagentResizeDesktopAtStartup))
+     {
+       NXSetExposeParameters(nxagentDisplay, 0, 0, 0);
+     }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Window.c b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+index ff775f2..8da5d8b 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Window.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+@@ -1136,6 +1136,11 @@ void nxagentConfigureWindow(WindowPtr pWin, unsigned int mask)
+ {
+   unsigned int valuemask;
+   XWindowChanges values;
++  int offX, offY;
++  int i, j;
++
++  offX = nxagentWindowPriv(pWin)-&gt;x - pWin-&gt;origin.x;
++  offY = nxagentWindowPriv(pWin)-&gt;y - pWin-&gt;origin.y;
+ 
+   if (nxagentScreenTrap == 1)
+   {
+@@ -1221,6 +1226,29 @@ void nxagentConfigureWindow(WindowPtr pWin, unsigned int mask)
+                 (void *) pWin, nxagentWindow(pWin), valuemask);
+     #endif
+ 
++    if (pWin-&gt;bitGravity == StaticGravity &amp;&amp;
++            ((mask &amp; CWX) || (mask &amp; CWY)) &amp;&amp;
++                ((mask &amp; CWWidth) || (mask &amp; CWHeight)))
++    {
++      #ifdef TEST
++      fprintf(stderr, &quot;nxagentConfigureWindow: Window has StaticGravity. Going to translate Expose events by offset [%d, %d].\n&quot;,
++                  offX, offY);
++      #endif
++
++      nxagentAddStaticResizedWindow(pWin, XNextRequest(nxagentDisplay), offX, offY);
++
++      for (j = 0; j &lt; nxagentExposeQueue.length; j++)
++      {
++        i = (nxagentExposeQueue.start + j) % EXPOSED_SIZE;
++
++        if (nxagentExposeQueue.exposures[i].pWindow == pWin &amp;&amp;
++                nxagentExposeQueue.exposures[i].remoteRegion != NullRegion)
++        {
++          REGION_TRANSLATE(pWin -&gt; drawable.pScreen, nxagentExposeQueue.exposures[i].remoteRegion, offX, offY);
++        }
++      }
++    }
++
+     XConfigureWindow(nxagentDisplay, nxagentWindow(pWin), valuemask, &amp;values);
+ 
+     MAKE_SYNC_CONFIGURE_WINDOW;
+@@ -3424,6 +3452,105 @@ void nxagentDeleteConfiguredWindow(WindowPtr pWin)
+   return;
+ }
+ 
++void nxagentAddStaticResizedWindow(WindowPtr pWin, unsigned long sequence, int offX, int offY)
++{
++  if (nxagentStaticResizedWindowList == NULL)
++  {
++    nxagentStaticResizedWindowList = malloc(sizeof(StaticResizedWindowStruct));
++    nxagentStaticResizedWindowList -&gt; next = NULL;
++    nxagentStaticResizedWindowList -&gt; prev = NULL;
++  }
++  else
++  {
++    StaticResizedWindowStruct *tmp;
++
++    tmp = malloc(sizeof(StaticResizedWindowStruct));
++
++    tmp -&gt; next = nxagentStaticResizedWindowList;
++    nxagentStaticResizedWindowList -&gt; prev = tmp;
++    tmp -&gt; prev = NULL;
++    nxagentStaticResizedWindowList = tmp;
++  }
++
++  nxagentStaticResizedWindowList -&gt; pWin = pWin;
++  nxagentStaticResizedWindowList -&gt; sequence = sequence;
++  nxagentStaticResizedWindowList -&gt; offX = offX;
++  nxagentStaticResizedWindowList -&gt; offY = offY;
++}
++
++void nxagentDeleteStaticResizedWindow(unsigned long sequence)
++{
++  StaticResizedWindowStruct *index, *previous, *tmp;
++
++  index = nxagentStaticResizedWindowList;
++
++  while (index)
++  {
++    if (index -&gt; sequence &lt;= sequence)
++    {
++      if (index -&gt; prev == NULL &amp;&amp; index -&gt; next == NULL)
++      {
++        free(nxagentStaticResizedWindowList);
++        nxagentStaticResizedWindowList = NULL;
++
++        return;
++      }
++      else if (index -&gt; prev == NULL)
++      {
++        tmp = nxagentStaticResizedWindowList;
++        index = nxagentStaticResizedWindowList = tmp -&gt; next;
++        free(tmp);
++        nxagentStaticResizedWindowList -&gt; prev = NULL;
++
++        continue;
++      }
++      else if (index -&gt; next == NULL)
++      {
++        tmp = index;
++        index = index -&gt; prev;
++        free(tmp);
++        index -&gt; next = NULL;
++
++        return;
++      }
++
++      previous = index -&gt; prev;
++      tmp = index;
++      index = index -&gt; next;
++      previous -&gt; next = index;
++      index -&gt; prev = previous;
++      free(tmp);
++
++      continue;
++    }
++
++    index = index -&gt; next;
++  }
++
++  return;
++}
++
++StaticResizedWindowStruct *nxagentFindStaticResizedWindow(unsigned long sequence)
++{
++  StaticResizedWindowStruct *index;
++  StaticResizedWindowStruct *ret = NULL;
++
++  if (nxagentStaticResizedWindowList == NULL)
++  {
++    return NULL;
++  }
++
++  index = nxagentStaticResizedWindowList;
++
++  while (index &amp;&amp; index -&gt; sequence &gt; sequence)
++  {
++    ret = index;
++    index = index -&gt; next;
++  }
++
++  return ret;
++}
++
+ void nxagentEmptyBackingStoreRegion(pointer param0, XID param1, pointer data_buffer)
+ {
+   WindowPtr pWin = (WindowPtr) param0;
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Windows.h b/nx-X11/programs/Xserver/hw/nxagent/Windows.h
+index 239d558..ca33f14 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Windows.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Windows.h
+@@ -287,6 +287,18 @@ typedef struct _ConfiguredWindow
+ 
+ ConfiguredWindowStruct *nxagentConfiguredWindowList;
+ 
++typedef struct _StaticResizedWindow
++{
++  WindowPtr pWin;
++  struct _StaticResizedWindow *next;
++  struct _StaticResizedWindow *prev;
++  unsigned long sequence;
++  int offX;
++  int offY;
++} StaticResizedWindowStruct;
++
++StaticResizedWindowStruct *nxagentStaticResizedWindowList;
++
+ void nxagentPostValidateTree(WindowPtr pParent, WindowPtr pChild, VTKind kind);
+ 
+ void nxagentFlushConfigureWindow(void);
+@@ -295,6 +307,12 @@ void nxagentAddConfiguredWindow(WindowPtr pWin, unsigned int valuemask);
+ 
+ void nxagentDeleteConfiguredWindow(WindowPtr pWin);
+ 
++void nxagentAddStaticResizedWindow(WindowPtr pWin, unsigned long sequence, int offX, int offY);
++
++void nxagentDeleteStaticResizedWindow(unsigned long sequence);
++
++StaticResizedWindowStruct *nxagentFindStaticResizedWindow(unsigned long sequence);
++
+ void nxagentEmptyAllBackingStoreRegions(void);
+ 
+ #endif /* __Window_H__ */
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
+index 91e2909..a8a2a68 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c
+@@ -189,6 +189,10 @@ xEvent *xeviexE;
+ #include &quot;Windows.h&quot;
+ #include &quot;Args.h&quot;
+ 
++#ifdef NX_DEBUG_INPUT
++extern int nxagentDebugInput;
++#endif
++ 
+ extern Display *nxagentDisplay;
+ 
+ extern WindowPtr nxagentLastEnteredWindow;
+@@ -1682,11 +1686,28 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+     int i;
+     int type;
+ 
+-#ifdef DEBUG
++#ifdef NX_DEBUG_INPUT
++    if (grab &amp;&amp; nxagentDebugInput &amp;&amp; grab-&gt;window)
++    {
++	fprintf(stderr, &quot;TryClientEvents: Grab window is [0x%x].\n&quot;,
++		(unsigned int)grab-&gt;window-&gt;drawable.id);
++	if (!SameClient(grab, client))
++		fprintf(stderr, &quot;TryClientEvents: Events are going to be &quot;
++			    &quot;discarded.\n&quot;);
++    }
++#endif
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
++	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, (unsigned int)mask,
++	client-&gt;index);
++#else
+     if (debug_events) ErrorF(
+ 	&quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
+ 	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, mask, client-&gt;index);
+ #endif
++#endif
+     if ((client) &amp;&amp; (client != serverClient) &amp;&amp; (!client-&gt;clientGone) &amp;&amp;
+ 	((filter == CantBeFiltered) || (mask &amp; filter)))
+     {
+@@ -1700,10 +1721,17 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 		if (WID(inputInfo.pointer-&gt;valuator-&gt;motionHintWindow) ==
+ 		    pEvents-&gt;u.keyButtonPointer.event)
+ 		{
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++    {
++	fprintf(stderr,&quot;\nmotionHintWindow == keyButtonPointer.event\n&quot;);
++    }
++#else
+ 		    if (debug_events) ErrorF(&quot;\n&quot;);
+ 	    fprintf(stderr,&quot;motionHintWindow == keyButtonPointer.event\n&quot;);
+ #endif
++#endif
+ 		    return 1; /* don't send, but pretend we did */
+ 		}
+ 		pEvents-&gt;u.u.detail = NotifyHint;
+@@ -1740,16 +1768,26 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 	}
+ 
+ 	WriteEventsToClient(client, count, pEvents);
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot; delivered\n&quot;);
++#else
+ 	if (debug_events) ErrorF(  &quot; delivered\n&quot;);
+ #endif
++#endif
+ 	return 1;
+     }
+     else
+     {
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;\n&quot;);
++#else
+ 	if (debug_events) ErrorF(&quot;\n&quot;);
+ #endif
++#endif
+ 	return 0;
+     }
+ }
+@@ -3116,6 +3154,12 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+         xevieEventSent = 0;
+       else {
+         xeviemouse = mouse;
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;ProcessPointerEvent: Going to send XEVIE event.\n&quot;);
++        }
++        #endif
+         WriteToClient(clients[xevieClientIndex], sizeof(xEvent), (char *)xE);
+         return;
+       }
+@@ -3170,14 +3214,38 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
++	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonPress.\n&quot;);
++		}
++		return;
++	    }
++	    #else
+ 	    if (xE-&gt;u.u.detail == 0)
+ 		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state |= (Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail;
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+ 	    if (!grab)
++	    #ifdef NX_DEBUG_INPUT
++		if (CheckDeviceGrabs(mouse, xE, 0, count))
++		{
++		    if (nxagentDebugInput == 1)
++		    {
++			fprintf(stderr, &quot;ProcessPointerEvent: CheckDeviceGrabs&quot;
++				&quot; returned True for ButtonPress.\n&quot;);
++		    }
++		    return;
++		}
++	    #else
+ 		if (CheckDeviceGrabs(mouse, xE, 0, count))
+ 		    return;
++	    #endif
+ 	    break;
+ 	case ButtonRelease: 
+ 	    mouse-&gt;valuator-&gt;motionHintWindow = NullWindow;
+@@ -3189,8 +3257,20 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
+ 	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonRelease.\n&quot;);
++		}
+ 		return;
++	    }
++	    #else
++	    if (xE-&gt;u.u.detail == 0)
++		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state &amp;= ~((Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail);
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+@@ -3201,6 +3281,36 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ 	    FatalError(&quot;bogus pointer event from ddx&quot;);
+ 	}
+     }
++    #ifdef NX_DEBUG_INPUT
++    else if (!CheckMotion(xE))
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: CheckMotion returned False&quot;
++		    &quot; for MotionNotify.\n&quot;);
++	}
++	return;
++    }
++    if (grab)
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver grabbed &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverGrabbedEvent(xE, mouse, deactivateGrab, count);
++    }
++    else
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver device &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
++			    mouse, count);
++    }
++    #else
+     else if (!CheckMotion(xE))
+ 	return;
+     if (grab)
+@@ -3208,6 +3318,7 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+     else
+ 	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
+ 			    mouse, count);
++    #endif
+     if (deactivateGrab)
+         (*mouse-&gt;DeactivateGrab)(mouse);
+ }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
+index 91e2909..a8a2a68 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXevents.c.NX.original
+@@ -189,6 +189,10 @@ xEvent *xeviexE;
+ #include &quot;Windows.h&quot;
+ #include &quot;Args.h&quot;
+ 
++#ifdef NX_DEBUG_INPUT
++extern int nxagentDebugInput;
++#endif
++ 
+ extern Display *nxagentDisplay;
+ 
+ extern WindowPtr nxagentLastEnteredWindow;
+@@ -1682,11 +1686,28 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+     int i;
+     int type;
+ 
+-#ifdef DEBUG
++#ifdef NX_DEBUG_INPUT
++    if (grab &amp;&amp; nxagentDebugInput &amp;&amp; grab-&gt;window)
++    {
++	fprintf(stderr, &quot;TryClientEvents: Grab window is [0x%x].\n&quot;,
++		(unsigned int)grab-&gt;window-&gt;drawable.id);
++	if (!SameClient(grab, client))
++		fprintf(stderr, &quot;TryClientEvents: Events are going to be &quot;
++			    &quot;discarded.\n&quot;);
++    }
++#endif
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
++	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, (unsigned int)mask,
++	client-&gt;index);
++#else
+     if (debug_events) ErrorF(
+ 	&quot;Event([%d, %d], mask=0x%x), client=%d&quot;,
+ 	pEvents-&gt;u.u.type, pEvents-&gt;u.u.detail, mask, client-&gt;index);
+ #endif
++#endif
+     if ((client) &amp;&amp; (client != serverClient) &amp;&amp; (!client-&gt;clientGone) &amp;&amp;
+ 	((filter == CantBeFiltered) || (mask &amp; filter)))
+     {
+@@ -1700,10 +1721,17 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 		if (WID(inputInfo.pointer-&gt;valuator-&gt;motionHintWindow) ==
+ 		    pEvents-&gt;u.keyButtonPointer.event)
+ 		{
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++    {
++	fprintf(stderr,&quot;\nmotionHintWindow == keyButtonPointer.event\n&quot;);
++    }
++#else
+ 		    if (debug_events) ErrorF(&quot;\n&quot;);
+ 	    fprintf(stderr,&quot;motionHintWindow == keyButtonPointer.event\n&quot;);
+ #endif
++#endif
+ 		    return 1; /* don't send, but pretend we did */
+ 		}
+ 		pEvents-&gt;u.u.detail = NotifyHint;
+@@ -1740,16 +1768,26 @@ TryClientEvents (ClientPtr client, xEvent *pEvents, int count, Mask mask,
+ 	}
+ 
+ 	WriteEventsToClient(client, count, pEvents);
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot; delivered\n&quot;);
++#else
+ 	if (debug_events) ErrorF(  &quot; delivered\n&quot;);
+ #endif
++#endif
+ 	return 1;
+     }
+     else
+     {
+-#ifdef DEBUG
++#if defined(DEBUG) || defined(NX_DEBUG_INPUT)
++#ifdef NX_DEBUG_INPUT
++    if (nxagentDebugInput == 1)
++	fprintf(stderr, &quot;\n&quot;);
++#else
+ 	if (debug_events) ErrorF(&quot;\n&quot;);
+ #endif
++#endif
+ 	return 0;
+     }
+ }
+@@ -3116,6 +3154,12 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+         xevieEventSent = 0;
+       else {
+         xeviemouse = mouse;
++        #ifdef NX_DEBUG_INPUT
++        if (nxagentDebugInput == 1)
++        {
++          fprintf(stderr, &quot;ProcessPointerEvent: Going to send XEVIE event.\n&quot;);
++        }
++        #endif
+         WriteToClient(clients[xevieClientIndex], sizeof(xEvent), (char *)xE);
+         return;
+       }
+@@ -3170,14 +3214,38 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
++	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonPress.\n&quot;);
++		}
++		return;
++	    }
++	    #else
+ 	    if (xE-&gt;u.u.detail == 0)
+ 		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state |= (Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail;
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+ 	    if (!grab)
++	    #ifdef NX_DEBUG_INPUT
++		if (CheckDeviceGrabs(mouse, xE, 0, count))
++		{
++		    if (nxagentDebugInput == 1)
++		    {
++			fprintf(stderr, &quot;ProcessPointerEvent: CheckDeviceGrabs&quot;
++				&quot; returned True for ButtonPress.\n&quot;);
++		    }
++		    return;
++		}
++	    #else
+ 		if (CheckDeviceGrabs(mouse, xE, 0, count))
+ 		    return;
++	    #endif
+ 	    break;
+ 	case ButtonRelease: 
+ 	    mouse-&gt;valuator-&gt;motionHintWindow = NullWindow;
+@@ -3189,8 +3257,20 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ #if !defined(XFree86Server) || !defined(XINPUT)
+ 	    xE-&gt;u.u.detail = butc-&gt;map[key];
+ #endif
++	    #ifdef NX_DEBUG_INPUT
+ 	    if (xE-&gt;u.u.detail == 0)
++	    {
++		if (nxagentDebugInput == 1)
++		{
++		    fprintf(stderr, &quot;ProcessPointerEvent: WARNING! detail == 0&quot;
++			    &quot; for ButtonRelease.\n&quot;);
++		}
+ 		return;
++	    }
++	    #else
++	    if (xE-&gt;u.u.detail == 0)
++		return;
++	    #endif
+ 	    if (xE-&gt;u.u.detail &lt;= 5)
+ 		butc-&gt;state &amp;= ~((Button1Mask &gt;&gt; 1) &lt;&lt; xE-&gt;u.u.detail);
+ 	    filters[MotionNotify] = Motion_Filter(butc);
+@@ -3201,6 +3281,36 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+ 	    FatalError(&quot;bogus pointer event from ddx&quot;);
+ 	}
+     }
++    #ifdef NX_DEBUG_INPUT
++    else if (!CheckMotion(xE))
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: CheckMotion returned False&quot;
++		    &quot; for MotionNotify.\n&quot;);
++	}
++	return;
++    }
++    if (grab)
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver grabbed &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverGrabbedEvent(xE, mouse, deactivateGrab, count);
++    }
++    else
++    {
++	if (nxagentDebugInput == 1)
++	{
++	    fprintf(stderr, &quot;ProcessPointerEvent: Going to deliver device &quot;
++		    &quot;events (count = %d).\n&quot;, count);
++	}
++	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
++			    mouse, count);
++    }
++    #else
+     else if (!CheckMotion(xE))
+ 	return;
+     if (grab)
+@@ -3208,6 +3318,7 @@ ProcessPointerEvent (register xEvent *xE, register DeviceIntPtr mouse, int count
+     else
+ 	DeliverDeviceEvents(sprite.win, xE, NullGrab, NullWindow,
+ 			    mouse, count);
++    #endif
+     if (deactivateGrab)
+         (*mouse-&gt;DeactivateGrab)(mouse);
+ }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c b/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c
+index f581634..772a1fb 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c
+@@ -336,6 +336,10 @@ ProcChangeProperty(ClientPtr client)
+ 
+       nxagentGuessShadowHint(client, stuff-&gt;property);
+ 
++      #ifdef NX_DEBUG_INPUT
++      nxagentGuessDumpInputInfo(client, stuff-&gt;property, (char *) &amp;stuff[1]);
++      #endif
++
+       return client-&gt;noClientException;
+     }
+ }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c.NX.original b/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c.NX.original
+index f581634..772a1fb 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c.NX.original
++++ b/nx-X11/programs/Xserver/hw/nxagent/X/NXproperty.c.NX.original
+@@ -336,6 +336,10 @@ ProcChangeProperty(ClientPtr client)
+ 
+       nxagentGuessShadowHint(client, stuff-&gt;property);
+ 
++      #ifdef NX_DEBUG_INPUT
++      nxagentGuessDumpInputInfo(client, stuff-&gt;property, (char *) &amp;stuff[1]);
++      #endif
++
+       return client-&gt;noClientException;
+     }
+ }
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011622.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-10
+</A></li>
+	<LI>Next message: <A HREF="011627.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-5
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11623">[ date ]</a>
+              <a href="thread.html#11623">[ thread ]</a>
+              <a href="subject.html#11623">[ subject ]</a>
+              <a href="author.html#11623">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

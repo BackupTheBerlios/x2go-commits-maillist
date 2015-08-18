@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-100-g37cbc1f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-100-g37cbc1f&In-Reply-To=%3C20140107151737.23C895DD37%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020780.html">
+   <LINK REL="Next"  HREF="020766.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-100-g37cbc1f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-100-g37cbc1f&In-Reply-To=%3C20140107151737.23C895DD37%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-100-g37cbc1f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020780.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-97-gda34d5d
+</A></li>
+        <LI>Next message: <A HREF="020766.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-104-gb0cad03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20763">[ date ]</a>
+              <a href="thread.html#20763">[ thread ]</a>
+              <a href="subject.html#20763">[ subject ]</a>
+              <a href="author.html#20763">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  37cbc1fa5f77877a2a7c28f30947e0fe8027601e (commit)
+      from  986103a27f73a8a133b5b5acd10e2d7675da3e7a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    2 ++
+ x2go/backends/terminal/_stdout.py |   26 ++++++++++++++++++++++++++
+ 2 files changed, 28 insertions(+)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 36703a2..c2752f0 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,6 +13,8 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Add default value for new session profile parameter xinerama (ignored by
+       Python X2Go for now).
+     - Replace any non-code string ,,X2go'' by ,,X2Go''.
++    - Add support for session port re-allocation on session resume (feature of
++      x2goserver &gt;= 3.1.0.0).
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index b3c6ba9..4ded9bc 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -1104,6 +1104,32 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+ 
++        # re-allocate (if needed) server-side ports for graphics, sound and sshfs
++        for stdout_line in stdout.read():
++            try:
++                _new_value = stdout_line.split(&quot;=&quot;)[1].strip()
++                if 'gr_port=' in stdout_line and _new_value != str(session_info.graphics_port):
++                    try:
++                        session_info.graphics_port = int(_new_value)
++                        self.logger('re-allocating graphics port for session %s, old server-side port is in use; new graphics port is %s' % (self.session_info, self.session_info.graphics_port), loglevel=log.loglevel_NOTICE)
++                    except TypeError:
++                        # if the re-allocation fails, this is fatal!!!
++                        raise X2goTerminalSessionException('Failed to retrieve new graphics port from server. X2Go Session cannot be resumed.')
++                elif 'sound_port=' in stdout_line and _new_value != str(session_info.snd_port):
++                    try:
++                        session_info.snd_port = int(_new_value)
++                        self.logger('re-allocating sound port for session %s, old server-side port is in use; new sound port is %s' % (self.session_info, self.session_info.snd_port), loglevel=log.loglevel_NOTICE)
++                    except TypeError:
++                        self.logger('Failed to retrieve new sound port from server for session %s, session will be without sound.' % self.session_info, loglevel=log.loglevel_WARN)
++                elif 'fs_port=' in stdout_line and _new_value != str(session_info.sshfs_port):
++                    try:
++                        session_info.sshfs_port = int(_new_value)
++                        self.logger('re-allocating sshfs port for session %s, old server-side port is in use; new sshfs port is %s' % (self.session_info, self.session_info.sshfs_port), loglevel=log.loglevel_NOTICE)
++                    except TypeError:
++                        self.logger('Failed to retrieve new sshfs port from server for session %s, session will be without client-side folder sharing. Neither will there be X2Go printing nor X2Go MIME box support.' % self.session_info, loglevel=log.loglevel_WARN)
++            except IndexError:
++                continue
++
+         self.proxy = self.proxy_backend(session_info=self.session_info, 
+                                         ssh_transport=self.control_session.get_transport(), 
+                                         sessions_rootdir=self.sessions_rootdir,
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020780.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-97-gda34d5d
+</A></li>
+	<LI>Next message: <A HREF="020766.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-104-gb0cad03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20763">[ date ]</a>
+              <a href="thread.html#20763">[ thread ]</a>
+              <a href="subject.html#20763">[ subject ]</a>
+              <a href="author.html#20763">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

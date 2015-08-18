@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	1178e9a44d4a192437a81c09d788ed1ac6c46483
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091178e9a44d4a192437a81c09d788ed1ac6c46483&In-Reply-To=%3C20130427114532.3A2865DB25%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006474.html">
+   <LINK REL="Next"  HREF="006477.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	1178e9a44d4a192437a81c09d788ed1ac6c46483</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%091178e9a44d4a192437a81c09d788ed1ac6c46483&In-Reply-To=%3C20130427114532.3A2865DB25%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	1178e9a44d4a192437a81c09d788ed1ac6c46483">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Apr 27 13:45:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006474.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	b352f976cef3bb3e262bb9b1fa8874db7f9a8378
+</A></li>
+        <LI>Next message: <A HREF="006477.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	c1d37b4bf2191349d7836a4ddfd7b851328e9684
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6475">[ date ]</a>
+              <a href="thread.html#6475">[ thread ]</a>
+              <a href="subject.html#6475">[ subject ]</a>
+              <a href="author.html#6475">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  1178e9a44d4a192437a81c09d788ed1ac6c46483 (commit)
+       via  6e7601e14089a79aec2accfa800c259049449b8e (commit)
+       via  817ff829b60891959d4b947fbd79c7bd3e2e67dd (commit)
+       via  645af42abcb4b3ac922705751d134d31d8959912 (commit)
+       via  edbe36fbccacebc2de6d15d0bfa3d480dd69a135 (commit)
+       via  48df96792e41ff14f101fbb9829a059b0cdd3879 (commit)
+      from  b027ad477e7a42e6cbe3a9485d41e2c2abc57365 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   40 ++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 36 insertions(+), 4 deletions(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index df2f3c5..b6ec769 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -24,6 +24,7 @@
+ #include &lt;sys/types.h&gt;
+ #include &lt;sys/socket.h&gt;
+ #include &lt;sys/stat.h&gt;
++#include &lt;sys/mman.h&gt;
+ #include &lt;sys/un.h&gt;
+ #include &lt;pwd.h&gt;
+ 
+@@ -33,6 +34,13 @@
+ 
+ #define PAM_TYPE_DOMAIN  1234
+ 
++static char * global_domain = NULL;
++/* FIXME? This is a work around to the fact that PAM seems to be clearing
++   the auth token between authorize and open_session.  Which then requires
++   us to save it.  Seems like we're the wrong people to do it, but we have
++   no choice */
++static char * global_password = NULL;
++
+ /* Either grab a value or prompt for it */
+ static char *
+ get_item (pam_handle_t * pamh, int type)
+@@ -44,6 +52,13 @@ get_item (pam_handle_t * pamh, int type)
+ 		if (pam_get_item(pamh, type, (const void **)&amp;value) == PAM_SUCCESS &amp;&amp; value != NULL) {
+ 			return strdup(value);
+ 		}
++		if (type == PAM_AUTHTOK &amp;&amp; global_password != NULL) {
++			return strdup(global_password);
++		}
++	} else {
++		if (global_domain != NULL) {
++			return strdup(global_domain);
++		}
+ 	}
+ 	/* Now we need to prompt */
+ 
+@@ -81,7 +96,7 @@ get_item (pam_handle_t * pamh, int type)
+ 	}
+ 
+ 	struct pam_response * responses = NULL;
+-	if (conv-&gt;conv(1, &amp;pmessage, &amp;responses, conv-&gt;appdata_ptr) != PAM_SUCCESS) {
++	if (conv-&gt;conv(1, &amp;pmessage, &amp;responses, conv-&gt;appdata_ptr) != PAM_SUCCESS || responses == NULL) {
+ 		return NULL;
+ 	}
+ 
+@@ -104,6 +119,26 @@ get_item (pam_handle_t * pamh, int type)
+ 		}
+ 	}
+ 
++	if (retval != NULL) { /* Can't believe it really would be at this point, but let's be sure */
++		if (type != PAM_TYPE_DOMAIN) {
++			pam_set_item(pamh, type, (const void *)retval);
++		} else {
++			if (global_domain != NULL) {
++				free(global_domain);
++			}
++			global_domain = strdup(retval);
++		}
++		if (type == PAM_AUTHTOK) {
++			if (global_password != NULL) {
++				memset(global_password, 0, strlen(global_password));
++				munlock(global_password, strlen(global_password));
++				free(global_password);
++			}
++			global_password = strdup(retval);
++			mlock(global_password, strlen(global_password));
++		}
++	}
++
+ 	return retval;
+ }
+ 
+@@ -113,9 +148,6 @@ get_item (pam_handle_t * pamh, int type)
+ 		goto done; \
+ 	}
+ 
+-/* TODO: Make this a build thing */
+-#define XFREERDP &quot;/usr/bin/xfreerdp&quot;
+-
+ /* Authenticate.  We need to make sure we have a user account, that
+    there are remote accounts and then verify them with FreeRDP */
+ PAM_EXTERN int
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006474.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	b352f976cef3bb3e262bb9b1fa8874db7f9a8378
+</A></li>
+	<LI>Next message: <A HREF="006477.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	c1d37b4bf2191349d7836a4ddfd7b851328e9684
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6475">[ date ]</a>
+              <a href="thread.html#6475">[ thread ]</a>
+              <a href="subject.html#6475">[ subject ]</a>
+              <a href="author.html#6475">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

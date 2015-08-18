@@ -1,0 +1,286 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nxagent/3.4.0-9&In-Reply-To=%3C20130830142203.73E1D5DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011342.html">
+   <LINK REL="Next"  HREF="011339.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nxagent/3.4.0-9&In-Reply-To=%3C20130830142203.73E1D5DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-9">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:22:03 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011342.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-3
+</A></li>
+        <LI>Next message: <A HREF="011339.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11332">[ date ]</a>
+              <a href="thread.html#11332">[ thread ]</a>
+              <a href="subject.html#11332">[ subject ]</a>
+              <a href="author.html#11332">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  e6db7e93608570765b3b6133ebb60d746c81aeeb (commit)
+      from  b7494f082ad56049c24927afdf89abc852fe06bb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG |    8 ++++
+ nx-X11/programs/Xserver/hw/nxagent/Events.c  |   31 ++++++++--------
+ nx-X11/programs/Xserver/hw/nxagent/Screen.c  |   51 --------------------------
+ nx-X11/programs/Xserver/hw/nxagent/Screen.h  |    5 +--
+ nx-X11/programs/Xserver/hw/nxagent/Window.c  |    4 ++
+ 5 files changed, 30 insertions(+), 69 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index 9e067d4..7310959 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,13 @@
+ ChangeLog:
+ 
++nxagent-3.4.0-9
++
++- Fixed TR06H02362. No icon was swown in the task bar.
++
++- Fixed keyboard grab in fullscreen mode.
++
++- Fixed compiler warnings.
++
+ nxagent-3.4.0-8
+ 
+ - Grab the keyboard in fullscreen mode on EnterNotify only if mode is
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Events.c b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+index 33eafa5..40b3030 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Events.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+@@ -1728,14 +1728,11 @@ FIXME: Don't enqueue the KeyRelease event if the key was
+           nxagentLastEnteredWindow = NULL;
+         }
+ 
+-        if (nxagentPointerAndKeyboardGrabbed == 1)
++        if (X.xcrossing.window == nxagentDefaultWindows[0] &amp;&amp;
++                X.xcrossing.detail != NotifyInferior &amp;&amp;
++                    X.xcrossing.mode == NotifyNormal)
+         {
+-          if (X.xcrossing.window == nxagentDefaultWindows[0] &amp;&amp;
+-                  X.xcrossing.detail != NotifyInferior &amp;&amp;
+-                      X.xcrossing.mode == NotifyNormal)
+-          {
+-            nxagentUngrabPointerAndKeyboard(&amp;X);
+-          }
++          nxagentUngrabPointerAndKeyboard(&amp;X);
+         }
+ 
+         if (X.xcrossing.detail != NotifyInferior)
+@@ -2123,14 +2120,8 @@ FIXME: Don't enqueue the KeyRelease event if the key was
+ 
+     if (nxagentWMIsRunning)
+     {
+-      if (nxagentOption(Fullscreen))
+-      {
+-        nxagentMinimizeFromFullScreen(pScreen);
+-      }
+-      else
+-      {
+-        XIconifyWindow(nxagentDisplay, nxagentDefaultWindows[0], DefaultScreen(nxagentDisplay));
+-      }
++      XIconifyWindow(nxagentDisplay, nxagentDefaultWindows[0],
++                         DefaultScreen(nxagentDisplay));
+     }
+   }
+ 
+@@ -3791,6 +3782,11 @@ void nxagentGrabPointerAndKeyboard(XEvent *X)
+ 
+   int resource;
+ 
++  if (nxagentPointerAndKeyboardGrabbed == 1)
++  {
++    return;
++  }
++
+   #ifdef TEST
+   fprintf(stderr, &quot;nxagentGrabPointerAndKeyboard: Grabbing pointer and keyboard with event at [%p].\n&quot;,
+               (void *) X);
+@@ -3856,6 +3852,11 @@ void nxagentUngrabPointerAndKeyboard(XEvent *X)
+ {
+   unsigned long now;
+ 
++  if (nxagentPointerAndKeyboardGrabbed == 0)
++  {
++    return;
++  }
++
+   #ifdef TEST
+   fprintf(stderr, &quot;nxagentUngrabPointerAndKeyboard: Ungrabbing pointer and keyboard with event at [%p].\n&quot;,
+               (void *) X);
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Screen.c b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+index 3522d7e..2db7df8 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Screen.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+@@ -287,57 +287,6 @@ void nxagentSetPixmapFormats(ScreenInfo *screenInfo)
+   }
+ }
+ 
+-void nxagentMinimizeFromFullScreen(ScreenPtr pScreen)
+-{
+-  XUnmapWindow(nxagentDisplay, nxagentFullscreenWindow);
+-}
+-
+-void nxagentMaximizeToFullScreen(ScreenPtr pScreen)
+-{
+-  if(nxagentIpaq)
+-  {
+-    XMapWindow(nxagentDisplay, nxagentFullscreenWindow);
+-  }
+-  else
+-  {
+-/*
+-FIXME: We'll chech for ReparentNotify and LeaveNotify events after XReparentWindow()
+-       in order to avoid the session window is iconified.
+-       We could avoid the sesssion window is iconified when a LeaveNotify event is received,
+-       so this check would be unnecessary.
+-*/
+-    struct timeval timeout;
+-    int i;
+-    XEvent e;
+-
+-    XReparentWindow(nxagentDisplay, nxagentFullscreenWindow,
+-                        RootWindow(nxagentDisplay, DefaultScreen(nxagentDisplay)), 0, 0);
+-
+-    for (i = 0; i &lt; 100 &amp;&amp; nxagentWMIsRunning; i++)
+-    {
+-      #ifdef TEST
+-      fprintf(stderr, &quot;nxagentSwitchFullscreen: WARNING! Going to wait for the ReparentNotify event.\n&quot;);
+-      #endif
+-
+-      if (XCheckTypedWindowEvent(nxagentDisplay, nxagentFullscreenWindow, ReparentNotify, &amp;e))
+-      {
+-        break;
+-      }
+-
+-      XSync(nxagentDisplay, 0);
+-
+-      timeout.tv_sec = 0;
+-      timeout.tv_usec = 50 * 1000;
+-
+-      nxagentWaitEvents(nxagentDisplay, &amp;timeout);
+-    }
+-
+-    XMapRaised(nxagentDisplay, nxagentFullscreenWindow);
+-
+-    while (XCheckTypedWindowEvent(nxagentDisplay, nxagentFullscreenWindow, LeaveNotify, &amp;e));
+-  }
+-}
+-
+ Bool nxagentMagicPixelZone(int x, int y)
+ {
+   return (x &gt;= nxagentOption(Width) - 1 &amp;&amp; y &lt; 1);
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Screen.h b/nx-X11/programs/Xserver/hw/nxagent/Screen.h
+index 3bf66b2..1ab6caa 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Screen.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Screen.h
+@@ -60,6 +60,8 @@ extern short nxagentShadowUid;
+ void nxagentSetScreenInfo(ScreenInfo *screenInfo);
+ void nxagentSetPixmapFormats(ScreenInfo *screenInfo);
+ 
++void nxagentPrintGeometry();
++
+ extern Window nxagentDefaultWindows[MAXSCREENS];
+ extern Window nxagentInputWindows[MAXSCREENS];
+ extern Window nxagentScreenSaverWindows[MAXSCREENS];
+@@ -85,9 +87,6 @@ extern int nxagentBitsPerPixel(int depth);
+ 
+ void nxagentSetScreenSaverTime(void);
+ 
+-void nxagentMinimizeFromFullScreen(ScreenPtr pScreen);
+-void nxagentMaximizeToFullScreen(ScreenPtr pScreen);
+-
+ Bool nxagentMagicPixelZone(int x, int y);
+ 
+ Bool nxagentResizeScreen(ScreenPtr pScreen, int width, int height,
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Window.c b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+index 2403390..2da21b9 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Window.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Window.c
+@@ -768,10 +768,14 @@ void nxagentSwitchFullscreen(ScreenPtr pScreen, Bool switchOn)
+   if (switchOn == 1)
+   {
+     nxagentFullscreenWindow = nxagentDefaultWindows[pScreen -&gt; myNum];
++
++    nxagentGrabPointerAndKeyboard(NULL);
+   }
+   else
+   {
+     nxagentFullscreenWindow = None;
++
++    nxagentUngrabPointerAndKeyboard(NULL);
+   } 
+ }
+ 
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011342.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-3
+</A></li>
+	<LI>Next message: <A HREF="011339.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.4.0-8
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11332">[ date ]</a>
+              <a href="thread.html#11332">[ thread ]</a>
+              <a href="subject.html#11332">[ subject ]</a>
+              <a href="author.html#11332">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

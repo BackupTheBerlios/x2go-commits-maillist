@@ -1,0 +1,325 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] page added: wiki:advanced:tce:install
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20page%20added%3A%20wiki%3Aadvanced%3Atce%3Ainstall&In-Reply-To=%3C20130314223032.376.1645139734.swift%40wiki.x2go.org%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004860.html">
+   <LINK REL="Next"  HREF="004862.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] page added: wiki:advanced:tce:install</H1>
+    <B>wiki-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20page%20added%3A%20wiki%3Aadvanced%3Atce%3Ainstall&In-Reply-To=%3C20130314223032.376.1645139734.swift%40wiki.x2go.org%3E"
+       TITLE="[X2Go-Commits] page added: wiki:advanced:tce:install">wiki-admin at x2go.org
+       </A><BR>
+    <I>Thu Mar 14 23:30:32 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004860.html">[X2Go-Commits] page changed: wiki:advanced:start
+</A></li>
+        <LI>Next message: <A HREF="004862.html">[X2Go-Commits] page changed: sidebar
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4861">[ date ]</a>
+              <a href="thread.html#4861">[ thread ]</a>
+              <a href="subject.html#4861">[ subject ]</a>
+              <a href="author.html#4861">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>A page in your DokuWiki was added or changed. Here are the details:
+
+Date        : 2013/03/14 22:30
+Browser     : Mozilla/5.0 (X11; Linux x86_64; rv:18.0) Gecko/20100101 Firefox/18.0 Iceweasel/18.0.1
+IP-Address  : 46.142.39.109
+Hostname    : 109-39-142-46.pool.kielnet.net
+Old Revision: ---
+New Revision: <A HREF="http://wiki.x2go.org/doku.php/wiki:advanced:tce:install">http://wiki.x2go.org/doku.php/wiki:advanced:tce:install</A>
+Edit Summary: created
+User        : sunweaver
+
+====== Installation of the X2Go TCE based on Debian ======
+
+In the following article we will explain how to set up an X2Go Thin Client environment. In the following we will use three technical terms that we want to define/explain before we start:
+
+  * X2Go Server: a GNU/Linux application server that users can connect to with the ''x2goclient'' software. X2Go servers can be situated in the LAN (local area network) or WAN (wide area network, i.e. the internet).
+  * X2Go Thin Client: a user workstation in your office that boots from the network with minimal software. Only purpose is to
+start the ''x2goclient'' software and provide access to one (or more) X2Go Server(s).
+  * X2Go PXE Server: the server that serves chroot images to X2Go Thin Clients via PXE, TFTP and NFS to thin client boxes. The X2Go PXE Server has to be situated in your LAN. X2Go PXE Server and X2Go Server can be one machine, in production setups we recommend to separate these two functionalities onto two separate (virtual) servers.
+
+&lt;note&gt;The X2Go TCE has been developed on/for Debian GNU/Linux. -- You can surely use any GNU/Linux distribution as X2Go Server (providing that the ''x2goserver'' package is available for the server's distro). The boot environment for the X2Go PXE Server has been developed on Debian GNU/Linux and also been tested on Ubuntu GNU/Linux. The X2Go Thin Client chroot can be configured to use Ubuntu GNU/Linux, but it is __highly recommended__ to leave the defaults and use Debian GNU/Linux for creating the X2Go TCE chroot.&lt;/note&gt;
+
+===== Network setup =====
+
+X2Go TCE requires a
+local area network (LAN) that is at least switched at 100MB/s. The X2Go Thin Client chroot distribution is not designed to work over the internet or on low bandwidth connections, but the X2Go Thin Client can possibly give access to X2Go servers outside of your LAN infrastructure that is: X2Go Thin Clients can be used to work on X2Go servers on the WAN (e.g. on the internet, in a public cloud, etc.).
+
+You can combine X2Go Server and X2Go PXE Server functionality on one system. However, for production setups we highly recommend that you dedicate a separate server as the PXE boot server for the X2Go TCE. If you have the chance of splitting these two functionalities up into two, this is a recommended way of setting up your X2Go Thin Client Environment.
+
+&lt;note important&gt;Please refrain from installing the PXE boot environment for X2Go Thin Clients on your in-house production server, especially for testing X2Go TCE make it a separate system. Maybe you want to use virtualization (KVM, Xen,
+etc.) for setting up a test X2Go infrastructure with X2Go Thin Clients on your LAN.
+&lt;/note&gt;
+
+A normal/recommended setup for testing/deploying X2Go TCE then is:
+
+  * X2Go server (Debian, Ubuntu, etc.)
+  * optional: a separate X2Go PXE server (Debian or Ubuntu)
+  * X2Go Thin Client hardware (can be everything from e.g. Pentium III, AMD Athlon upwards), main requirement is that the thin client hardware box contains a network card that is PXE/Etherboot capable
+
+===== X2Go TCE / Debian squeeze =====
+
+&lt;note&gt;The current X2Go TCE is based and has been tested on Debian GNU/Linux (squeeze). Since June 2011 we have working packages available in our Debian repository on ''packages.X2Go.org''.&lt;/note&gt;
+
+In the following description we will describe a simple X2Go TCE installation, using two separate hosts as X2Go Server and X2Go PXE Server. The explanation presumes that you either install on Debian GNU/Linux (squeeze) or Ubuntu GNU/Linux (lucid, maverick). If you (for testing purposes) use the same
+machine as X2Go Server and X2Go PXE Server, please perform described steps for either of the machines on the same system. 
+
+The resulting X2Go Thin Client chroot will be a Debian GNU/Linux (squeeze) system by default.
+
+:<i>!: **Before you continue!**
+</I>&gt;<i> Please make sure that you have added the X2Go repository to your package management system (on X2Go server and on X2Go PXE server). The required steps are described [[wiki:x2go-repository-debian|here (Debian)]] and [[:wiki:x2go-repository-ubuntu|here (Ubuntu)]].
+</I>
+==== Installing X2Go server ====
+
+The X2Go Server installation is described in detail on [[:wiki:components:x2goserver|this wiki page]]. Please follow instructions there first, then proceed below.
+
+
+==== Installing X2Go PXE server ====
+
+=== Summary ===
+
+In a nutshell, you have to run the following commands from a terminal on the X2Go PXE Server (or X2Go Server if combining both systems in one):
+
+&lt;code&gt;
+$ sudo aptitude install x2gothinclientmanagement
+# take a look at the X2Go TCE
+config and modify to your needs
+$ sudo editor /etc/x2go/x2gothinclient_settings
+$ sudo x2gothinclient_create
+# now you have to wait for some time, a lot of text will pass through your terminal window
+$ sudo x2gothinclient_preptftpboot
+# follow the instructions being shown at the end of the x2gothinclient_preptftpboot script run...
+&lt;/code&gt;
+
+=== Basic installation of the X2go PXE server ===
+
+Now a bit more in detail...
+
+   - Install a minimal Debian GNU/Linux (squeeze) or Ubuntu GNU/Linux Server (lucid, maverick) system from CD/DVD.
+   - Then add the X2go repository to your freshly installed X2go PXE server: [[:wiki:x2go-repository-debian|Debian]] / [[:wiki:x2go-repository-ubuntu|Ubuntu]]. On Debian GNU/Linux make sure that you install the ''x2go-keyring'' package first.
+   - The only X2go related package needed on the X2go PXE server is the ''x2gothinclientmanagement'' package.&lt;code&gt;
+$ sudo aptitude install x2gothinclientmanagement
+&lt;/code&gt;The installation will drag in some other
+required packages onto your system, please confirm with Yes, to start the installation.
+
+=== Building the X2go Thin Client system (the so-called chroot environment) ===
+
+  - After installation of the ''x2gothinclientmanagement'' package (and required dependencies), please edit/introspect the following file with your favourite editor:&lt;code&gt;
+$ sudo editor /etc/x2go/x2gothinclient_settings
+&lt;/code&gt; and apply changes required for your local site setup to the X2go TCE configuration.
+  - When done, start the creation of a fresh X2go Thin Client chroot environment:&lt;code&gt;
+$ sudo x2gothinclient_create
+&lt;/code&gt;
+  - Now you will be able to observe a medium long installation process on your system. This installation process takes place in a chroot jail environment, it does not do anything to the X2go PXE server itself.
+  - During installation you will be asked to configure your thin client's default language and default keyboard settings. Please do so. Hint: make sure you use UTF-8 encoding in
+your language selection (e.g. en_US.UTF-8, de_DE.UTF-8, etc.).
+  - After the X2go TCE installation of your X2go Thin Client (default location: ''/opt/x2gothinclient/chroot'') you will find a complete and minimal X2go TCE GNU/Linux system at the aforenamed chroot location.
+  - Next, you may take a look at the config files in the folder ''/opt/x2gothinclient/etc/'':
+    - ''**x2gothinclient_init**'': No customizations should be necessary for this file. Modify at your own risk... If a modification is necessary here, please report it as a bug/enhancement to the X2go developers.
+    - ''**x2gothinclient_start**'': This file is responsible for actually launching ''x2goclient'' as a login manager on your thin client. The default setting is to start in non-LDAP mode. In non-LDAP mode the ''x2gothinclient_sessions'' file contains the thin clients' list of available X2go session profiles. For LDAP mode there is a commented out stanza that shows possible LDAP options to pass on to the
+''x2goclient'' application. //**Note:** If you edit this file, please make sure that all applications you call from this file are sent to background with the ampersand (&#187;&amp;&#171;) operator, e.g.: '' x2goclient &lt;options&gt; &amp;''//
+    - ''**x2gothinclient_sessions**'': This file contains a list of session profile configurations for your thin clients' ''x2goclient'' (running in non-LDAP logon manager mode). Surely, you can edit/customize the examplary session profiles file that comes with the ''x2gothinclientmanagement'' package in your favourite text editor. --- However, you can also use the ''x2goclient'' application on your local (GNU/Linux) computer to create a set of session profiles for your X2go Thin Client. Start ''x2goclient'' locally, create a set of session profiles and then copy your local ''x2goclient'' session profile configuration to the X2go PXE server:&lt;code&gt;
+$ scp ~/.x2goclient/sessions root@&lt;pxeserver.hostname.domain&gt;:/opt/x2gothinclient/etc/x2gothinclient_sessions
+&lt;/code&gt;
+ 
+- When done with all your customizations execute the ''x2gothinclient_update'' script. This script will incorporate your changes applied the ''/opt/x2gothinclient/etc/x2gothinclient_*'' files into the X2go Thin Clients' chroot environment. Whenever you customize anything in ''/opt/x2gothinclient/etc/'' make sure your run the update command:&lt;code&gt;
+$ sudo x2gothinclient_update
+&lt;/code&gt;
+
+With this last step your X2go Thin Client's chroot environment is basically ready for being booted. The last step, however, is to configure the PXE boot manager itself (PXE, TFTP).
+
+=== Boot environment for your X2go Thin Client system (PXE, TFTP) ===
+
+With the ''x2gothinclient_preptftpboot'' script you can simply set up a PXE boot environment using the ''syslinux'' package. Please take a look at the ''/etc/x2go/x2gothinclient_settings'' configuration file for customization first, then run this script:
+
+&lt;code&gt;
+$ x2gothinclient_preptftpboot
+&lt;/code&gt;
+
+If there already is a PXE boot environment installed at
+the configured location, the script will abort with a warning. If you want to combine X2go PXE with other boot environments (e.g. LTSP), please customize your system manually. Templates for X2go PXE can be found at ''/usr/share/x2go/tce/tftpboot''.
+
+Note: At the end of the ''x2gothinclient_preptftpboot'' script some further instructions (DHCP setup, NFS setup, etc.) of final configuration steps will be shown. Please follow these last steps to complete your X2go TCE setup.
+
+=== Testing X2go TCE ===
+
+You should now be able to start your office PCs as X2go Thin Clients. To do this, configure the computer's BIOS to boot via network (PXE, Etherboot). You will know that you setup has been successful, if a boot menu appears on your computer's screen that shows the X2GO banner that also appears when starting X2go sessions.
+
+=== Purging X2go TCE ===
+
+To get rid of all files related to X2go TCE, please run this script:
+
+&lt;code&gt;
+$ x2gothinclient_cleanup
+&lt;/code&gt;
+
+===== Tweaking your X2go TCE
+=====
+
+==== Configuration of DHCPD ====
+
+If you already have an DHCP server in your network, please make sure that you are able to setup an own range of IP addresses for the boot environment. Because of the conflict between devices that should access the boot environment and normal network nodes (MAC address binding), it is much easier to setup a separate network sub-LAN (in the example below: 192.168.0.0/24) for your thin client systems:
+
+&lt;code&gt;
+$ sudo editor /etc/dhcp3/dhcpd.conf
+&lt;/code&gt;
+
+&lt;file&gt;
+option domain-name &quot;&lt;your-localdomain.org&gt;&quot;;
+option domain-name-servers &lt;ip-of-dns-server&gt;;
+
+# x2go thin client range/group
+subnet 192.168.0.0 netmask 255.255.255.0 {
+range 192.168.0.100 192.168.0.199;
+    filename &quot;/pxelinux.0&quot;;
+    next-server 192.168.0.250;
+}
+&lt;/file&gt;
+
+Restart the DHCPD server to apply the new configuration:
+
+&lt;code&gt;
+# /etc/init.d/dhcp3-server restart
+&lt;/code&gt;
+
+==== Configuration of the NFS share ====
+
+The root file system of the boot environment is mounted using NFSv3 (so
+it can be accessed over the network). You'll need to export the needed directory by editing the NFS configuration file:
+
+&lt;code&gt;
+$ sudo editor /etc/exports
+&lt;/code&gt;
+
+&lt;file&gt;
+/opt/x2gothinclient/chroot 192.168.0.0/24(ro,async,no_root_squash)
+&lt;/file&gt;
+
+Finally restart the NFS daemon:
+
+&lt;code&gt;
+$ sudo /etc/init.d/nfs-kernel-server restart
+&lt;/code&gt;
+
+
+==== Configuration of x2goclient (display manager mode) ====
+
+=== x2goclient in LDAP-mode ===
+
+Please feel free to customize the command line options used by the ''x2goclient''  running in display manager mode. For example you can enable LDAP mode:
+
+&lt;code&gt;
+$ editor /opt/x2gothinclient/etc/x2gothinclient_start
+&lt;/code&gt;
+
+The below example uses LDAP-mode for ''x2goclient'':
+
+&lt;file&gt;
+x2goclient --pgp-card \
+           --ldap=&quot;192.168.1.1:389:dc=&lt;domain&gt;,dc=&lt;tld&gt;&quot; \
+           --external-login=/ramdrive/logins \
+           --no-menu \
+           --maximize \
+           --thinclient \
+           --haltbt \
+           --link=lan \
+           --kbd-layout=de
+\
+           --kbd-type=pc105/de \
+           --set-kbd=1 \
+           --geometry=fullscreen \
+           --add-to-known-hosts \
+           --read-exports-from=/ramdrive/export \
+           --add-to-known-hosts &amp;
+&lt;/file&gt;
+
+After modifying the ''x2gothinclient_start'' file, update the X2go Thin Client configuration:
+
+&lt;code&gt;
+$ x2gothinclient_update
+&lt;/code&gt;
+
+=== x2goclient in non-LDAP mode ===
+
+The Debian GNU/Linux (squeeze) X2go TCE uses non-LDAP mode as default. Edit the default sessions file in ''/opt/x2gothinclient/etc/x2gothinclient_sessions''.
+
+There are two extra commandline arguments that you should be aware in the below configuration. 
+
+  * ''--no-session-edit'' will deny any manipulation of the session by the user.
+  * ''--session=&quot;X2Go.EXAMPLE'' needs to be identical to the name inside the X2go session file.
+
+&lt;file&gt;
+x2goclient --no-session-edit \
+           --session=&quot;X2Go.EXAMPLE&quot; \
+           --pgp-card \
+           --external-login=/ramdrive/logins \
+           --no-menu \
+
+          --maximize \
+           --thinclient \
+           --haltbt \
+           --link=lan \
+           --kbd-layout=de \
+           --kbd-type=pc105/de \
+           --set-kbd=1 \
+           --geometry=fullscreen \
+           --add-to-known-hosts \
+           --read-exports-from=/ramdrive/export \
+           --add-to-known-hosts &amp;
+&lt;/file&gt;
+
+After modifying the ''x2gothinclient_start'' file, update the X2go Thin Client configuration:
+
+&lt;code&gt;
+$ x2gothinclient_update
+&lt;/code&gt;
+
+
+
+
+
+-- 
+This mail was generated by DokuWiki at
+<A HREF="http://wiki.x2go.org/">http://wiki.x2go.org/</A>
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004860.html">[X2Go-Commits] page changed: wiki:advanced:start
+</A></li>
+	<LI>Next message: <A HREF="004862.html">[X2Go-Commits] page changed: sidebar
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4861">[ date ]</a>
+              <a href="thread.html#4861">[ thread ]</a>
+              <a href="subject.html#4861">[ subject ]</a>
+              <a href="author.html#4861">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

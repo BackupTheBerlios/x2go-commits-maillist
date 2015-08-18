@@ -1,0 +1,423 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-53-g907d0d4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-53-g907d0d4&In-Reply-To=%3C20130914135643.0311B5DDF3%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013653.html">
+   <LINK REL="Next"  HREF="013663.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-53-g907d0d4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-53-g907d0d4&In-Reply-To=%3C20130914135643.0311B5DDF3%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-53-g907d0d4">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:42 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013653.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-49-gd7469c3
+</A></li>
+        <LI>Next message: <A HREF="013663.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-35-gd6f3ff3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13659">[ date ]</a>
+              <a href="thread.html#13659">[ thread ]</a>
+              <a href="subject.html#13659">[ subject ]</a>
+              <a href="author.html#13659">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  907d0d4f596483030ff50ff782c3e891e999c721 (commit)
+      from  38e314a38c4c8d6f2fddf1bd0abe19ca4dcf755c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                |    2 +
+ po/POTFILES.in                                  |    1 +
+ pyhoca/wxgui/frontend.py                        |   14 ++
+ pyhoca/wxgui/menus_taskbar.py                   |    7 +
+ pyhoca/wxgui/{listdesktops.py =&gt; serverinfo.py} |  164 ++++++++---------------
+ 5 files changed, 78 insertions(+), 110 deletions(-)
+ copy pyhoca/wxgui/{listdesktops.py =&gt; serverinfo.py} (52%)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 65cd000..70e731e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -31,6 +31,8 @@ pyhoca-gui (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+       4.1.0.0 and above. (Fixes: #37).
+     - Filter out other session types than desktop sessions from the list
+       of sharable desktops.
++    - Add dialog box that shows server information (components, add-ons,
++      features, versions).
+   * /debian/control:
+     + Thanks to Orion's patch in bug #91 we can drop many build dependencies.
+     + Versioned Depend: on python-x2go (&gt;= 0.4.0.0-0~).
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 55cffd0..bb97283 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -12,4 +12,5 @@ pyhoca/wxgui/frontend.py
+ pyhoca/wxgui/messages.py
+ pyhoca/wxgui/printingprefs.py
+ pyhoca/wxgui/sessiontitle.py
++pyhoca/wxgui/serverinfo.py
+ pyhoca-gui
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 8ae0576..232c81b 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -60,6 +60,7 @@ import messages
+ import splash
+ import sessiontitle
+ import listdesktops
++import serverinfo
+ 
+ wx.SetDefaultPyEncoding(&quot;utf-8&quot;)
+ wx.InitAllImageHandlers()
+@@ -986,6 +987,19 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                 self.notifier.send(profile_name, _notify_text, icon='session_cleanall', timeout=10000)
+             gevent.spawn(self._X2GoClient__clean_sessions, session_uuid, published_applications=False)
+ 
++    def OnViewServerInformation(self, evt):
++        &quot;&quot;&quot;\
++        Gets called if the user disconnects from a selected session profile (i.e. X2Go server).
++
++        @param evt: event
++        @type evt: C{obj}
++
++        &quot;&quot;&quot;
++        profile_name = self._eventid_profilenames_map[evt.GetId()]
++
++        serverinfobox = serverinfo.PyHocaGUI_DialogBoxServerInfo(self, profile_name)
++        serverinfobox.ShowModal()
++
+     def OnServerDisconnect(self, evt):
+         &quot;&quot;&quot;\
+         Gets called if the user disconnects from a selected session profile (i.e. X2Go server).
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 21868bb..a813409 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -799,6 +799,13 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+                         _shared_folders.Enable(False)
+ 
+ 
++        if profile_name in self._PyHocaGUI.client_connected_profiles(return_profile_names=True) and not self._PyHocaGUI.restricted_trayicon:
++            self.AppendSeparator()
++            ID_SERVERINFO = wx.NewId()
++            self._PyHocaGUI._eventid_profilenames_map[ID_SERVERINFO] = profile_name
++            self.Append(id=ID_SERVERINFO, text=_(u&quot;Server Information&quot;))
++            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnViewServerInformation, id=ID_SERVERINFO)
++
+         if profile_name in self._PyHocaGUI.client_connected_profiles(return_profile_names=True) and not self._PyHocaGUI.exit_on_disconnect:
+             self.AppendSeparator()
+             ID_DISCONNECT = wx.NewId()
+diff --git a/pyhoca/wxgui/listdesktops.py b/pyhoca/wxgui/serverinfo.py
+similarity index 52%
+copy from pyhoca/wxgui/listdesktops.py
+copy to pyhoca/wxgui/serverinfo.py
+index a64356b..50faa4b 100644
+--- a/pyhoca/wxgui/listdesktops.py
++++ b/pyhoca/wxgui/serverinfo.py
+@@ -40,7 +40,6 @@ gevent.monkey.patch_all()
+ 
+ import wx
+ import os
+-import wx.lib.mixins.listctrl as listmix
+ 
+ # PyHoca-GUI modules
+ # ... NONE ...
+@@ -50,14 +49,14 @@ if os.environ.has_key('DESKTOP_SESSION'):
+ else:
+     WINDOW_MANAGER = 'generic'
+ 
+-class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
++class PyHocaGUI_DialogBoxServerInfo(wx.Dialog):
+     &quot;&quot;&quot;\
+-    Dialog box for selection from a list of sharable desktops.
++    Simple dialog box for showing server information.
+ 
+     &quot;&quot;&quot;
+     def __init__(self, _PyHocaGUI, profile_name): 
+         &quot;&quot;&quot;\
+-        Desktop list and selection dialog box (constructor).
++        Server information dialog box (constructor).
+ 
+         @param _PyHocaGUI: the master/parent object of the application
+         @type _PyHocaGUI: C{obj}
+@@ -67,62 +66,40 @@ class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
+         &quot;&quot;&quot;
+         self._PyHocaGUI = _PyHocaGUI
+         self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
+-        self._pyhoca_logger('desktop list selection box started', loglevel=x2go.loglevel_INFO, )
+-
+-        self.connect = False
+-        self.cancel = False
++        self._pyhoca_logger('server info box started', loglevel=x2go.loglevel_INFO, )
+ 
+         self.current_profile_name = profile_name
+-        self.list_index = 0
+-        self.listed_desktops = {}
+ 
+         wx.Dialog.__init__(self, None, id=-1, title=profile_name, style=wx.DEFAULT_FRAME_STYLE, )
+         self._PyHocaGUI._sub_windows.append(self)
+ 
+-        self.SetTitle(_(u'Share Desktop Session - %s') % profile_name)
++        self.SetTitle(_(u'Server Information - %s') % profile_name)
+ 
+-        self.titleLbl = wx.StaticText(self, wx.ID_ANY, _(u'Select one of the available desktop sessions on this server')+':', size=(-1, -1)) 
+-        self.desktopList = wx.ListCtrl(self, size=(420,140),
+-                                       style=wx.LC_REPORT|wx.BORDER_SUNKEN|wx.LC_SINGLE_SEL)
+-        self.desktopList.InsertColumn(0, 'Display')
+-        self.desktopList.InsertColumn(1, 'User')
++        self.titleLbl = wx.StaticText(self, wx.ID_ANY, _(u'Session Profile: %s\n\nList of X2Go Server components, add-ons and their versions...') % self.current_profile_name, size=(-1, -1)) 
+ 
+-        self.shareMode0 = wx.RadioButton(self, -1, _(u&quot;View session only&quot;), style=wx.RB_GROUP)
+-        self.shareMode1 = wx.RadioButton(self, -1, _(u&quot;Gain full access&quot;))
+-        self.share_mode = 0
++        self.infoArea = wx.TextCtrl(self, id=-1, value=&quot;&quot;, size=(520,300), style=wx.TE_READONLY|wx.TE_MULTILINE|wx.SUNKEN_BORDER)
+ 
+         ID_REFRESH = wx.NewId()
+-        self.okBtn = wx.Button(self, wx.ID_OK, _(u'Share Desktop'), )
+-        self.okBtn.SetDefault()
+-        self.okBtn.Enable(False)
+-        self.refreshBtn = wx.Button(self, ID_REFRESH, _(u'Refresh list'), )
+-        self.cancelBtn = wx.Button(self, wx.ID_CANCEL, _(u'Cancel'), )
+-
+-        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnListClick, self.desktopList)
+-        self.Bind(wx.EVT_BUTTON, self.OnOk, self.okBtn)
+-        self.Bind(wx.EVT_BUTTON, self.OnRefreshDesktopList, self.refreshBtn)
++        self.refreshBtn = wx.Button(self, ID_REFRESH, _(u'Refresh'), )
++        self.cancelBtn = wx.Button(self, wx.ID_CANCEL, _(u'Close'), )
++
++        self.Bind(wx.EVT_BUTTON, self.OnRefreshServerInfo, self.refreshBtn)
+         self.Bind(wx.EVT_BUTTON, self.OnCancel, self.cancelBtn)
+ 
+         titleSizer = wx.BoxSizer(wx.HORIZONTAL)
+-        listSizer = wx.BoxSizer(wx.HORIZONTAL)
+-        modeSizer = wx.BoxSizer(wx.HORIZONTAL)
++        infoSizer = wx.BoxSizer(wx.HORIZONTAL)
+         btnSizer = wx.BoxSizer(wx.HORIZONTAL)
+         mainSizer = wx.BoxSizer(wx.VERTICAL)
+ 
+         titleSizer.Add(self.titleLbl, 0, wx.ALL, 5)
+ 
+-        listSizer.Add(self.desktopList, 0, wx.ALL|wx.EXPAND, 5)
++        infoSizer.Add(self.infoArea, 0, wx.ALL, 5)
+ 
+-        modeSizer.Add(self.shareMode0, 0, wx.ALL, 5)
+-        modeSizer.Add(self.shareMode1, 0, wx.ALL, 5)
++        btnSizer.Add(self.refreshBtn, 0, wx.ALL, 5)
++        btnSizer.Add(self.cancelBtn, 0, wx.ALL, 5)
+ 
+-        btnSizer.Add(self.okBtn, 0, wx.ALL, 5) 
+-        btnSizer.Add(self.refreshBtn, 0, wx.ALL, 5) 
+-        btnSizer.Add(self.cancelBtn, 0, wx.ALL, 5) 
+-
+-        mainSizer.Add(titleSizer, 0, wx.ALL, 5) 
+-        mainSizer.Add(listSizer, 0, wx.ALL|wx.EXPAND, 5) 
+-        mainSizer.Add(modeSizer, 0, wx.ALL, 5) 
++        mainSizer.Add(titleSizer, 0, wx.ALL, 5)
++        mainSizer.Add(infoSizer, 0, wx.ALL, 5)
+         mainSizer.Add(btnSizer, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+ 
+         self.SetSizerAndFit(mainSizer)
+@@ -156,40 +133,45 @@ class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
+             move_y = maxY - (self.GetSize().GetHeight() + 70)
+ 
+         self.Move((move_x, move_y))
+-        self._refreshDesktopList()
++        self._refreshServerInfo()
+ 
+     def ShowModal(self, **kwargs):
+         self._PyHocaGUI._sub_windows.append(self)
+         wx.Dialog.ShowModal(self, **kwargs)
+ 
+-    def add_item(self, display, user):
+-        self.listed_desktops.update({ self.list_index: '%s@%s' % (user, display) })
+-        self.desktopList.InsertStringItem(self.list_index, display)
+-        self.desktopList.SetStringItem(self.list_index, 1, user)
+-        self.list_index += 1
+-
+-    def _refreshDesktopList(self):
+-        self.desktopList.DeleteAllItems()
+-        self.listed_desktops = {}
+-        self.list_index = 0
+-        desktops = self._PyHocaGUI._X2GoClient__list_desktops(profile_name=self.current_profile_name, exclude_session_types=['R', 'S', 'P'])
+-        for desktop in desktops:
+-            if len(desktop.split('@')) &gt;= 2:
+-                display = desktop.split('@')[0]
+-                user = desktop.split('@')[1]
+-                self.add_item(user, display)
+-
+-    def OnListClick(self, evt):
+-        &quot;&quot;&quot;\
+-        Enable the Connect button only if a list item got clicked.
+-
+-        @param evt: event
+-        @type evt: C{obj}
+-
+-        &quot;&quot;&quot;
+-        self.okBtn.Enable(True)
+-
+-    def OnRefreshDesktopList(self, evt):
++    def _refreshServerInfo(self):
++
++        server_components = self._PyHocaGUI.get_server_components(self.current_profile_name, force=True)
++        server_extensions = [ k for k in server_components.keys() if k.startswith('x2goserver-') and k != 'x2goserver-common' ]
++        server_extensions.sort()
++        server_addons = [ k for k in server_components.keys() if not k.startswith('x2goserver') and k != 'x2goagent' ]
++        server_addons.sort()
++        server_features = self._PyHocaGUI.get_server_features(self.current_profile_name, force=True)
++
++        self.infoArea.AppendText(_(u'X2Go Server:\n\n'))
++        self.infoArea.AppendText(_(u'    Server Core:\n'))
++        self.infoArea.AppendText('\n')
++        self.infoArea.AppendText(_(u'        %s (%s)\n' % ('x2goserver', server_components['x2goserver'])))
++        self.infoArea.AppendText(_(u'        %s (%s)\n' % ('x2goserver-common', server_components['x2goserver-common'])))
++        self.infoArea.AppendText(_(u'        %s (%s)\n' % ('x2goagent', server_components['x2goagent'])))
++        self.infoArea.AppendText('\n')
++        if server_extensions:
++            self.infoArea.AppendText(_(u'    Server Extensions:\n'))
++            self.infoArea.AppendText('\n')
++            for comp in server_extensions:
++                self.infoArea.AppendText(_(u'        %s (%s)\n' % (comp, server_components[comp])))
++        self.infoArea.AppendText('\n')
++        if server_addons:
++            self.infoArea.AppendText(_(u'X2Go Server Add-ons:\n\n'))
++            for comp in server_addons:
++                self.infoArea.AppendText(_(u'        %s (%s)\n' % (comp, server_components[comp])))
++        self.infoArea.AppendText('\n')
++        self.infoArea.AppendText(_(u'X2Go Server Features:\n\n'))
++        for feature in server_features:
++            self.infoArea.AppendText(_(u'        %s\n' % (feature)))
++        self.infoArea.ShowPosition(0)
++
++    def OnRefreshServerInfo(self, evt):
+         &quot;&quot;&quot;\
+         Gets called if the Refresh button gets pressed.
+ 
+@@ -197,26 +179,8 @@ class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
+         @type evt: C{obj}
+ 
+         &quot;&quot;&quot;
+-        self._refreshDesktopList()
+-
+-    def OnOk(self, evt):
+-        &quot;&quot;&quot;\
+-        Continue here, if the user clicks the Ok button in the dialog box.
+-
+-        @param evt: event
+-        @type evt: C{obj}
+-
+-        &quot;&quot;&quot;
+-        self.Hide()
+-        self.connect = True
+-        self.share_mode = self.shareMode1.GetValue() and 1 or 0
+-
+-    def GetResult(self):
+-        &quot;&quot;&quot;\
+-        Retrieve the result of the selection in the list box.
+-
+-        &quot;&quot;&quot;
+-        return self.desktopList.GetValue()
++        self.infoArea.Clear()
++        self._refreshServerInfo()
+ 
+     def OnCancel(self, evt):
+         &quot;&quot;&quot;\
+@@ -231,7 +195,7 @@ class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
+ 
+     def Hide(self):
+         &quot;&quot;&quot;\
+-        When hiding the list desktops box, remove it from the list of open windows in the main application instance.
++        When hiding the server info box, remove it from the list of open windows in the main application instance.
+ 
+         &quot;&quot;&quot;
+         try:
+@@ -255,23 +219,3 @@ class PyHocaGUI_DialogBoxListDesktops(wx.Dialog):
+             pass
+         wx.Dialog.Close(self)
+         wx.Dialog.Destroy(self)
+-
+-    def GetSelectedItems(self):
+-        &quot;&quot;&quot;\
+-        Gets the selected items for the list control.
+-        Selection is returned as a list of selected indices,
+-        low to high.
+-
+-        &quot;&quot;&quot;
+-        selection = []
+-        idx = self.desktopList.GetFirstSelected()
+-        selection.append(idx)
+-        while len(selection) != self.desktopList.GetSelectedItemCount():
+-            idx = self.desktopList.GetNextSelected(idx)
+-            selection.append(idx)
+-
+-        return selection
+-
+-    def GetSelectedDesktop(self):
+-        idx = self.GetSelectedItems()[0]
+-        return self.listed_desktops[idx]
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013653.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.2.1.1-49-gd7469c3
+</A></li>
+	<LI>Next message: <A HREF="013663.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.0.44.2-35-gd6f3ff3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13659">[ date ]</a>
+              <a href="thread.html#13659">[ thread ]</a>
+              <a href="subject.html#13659">[ subject ]</a>
+              <a href="author.html#13659">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,412 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%099b06fd4bae1826beada0fb4bfd136df2015e9b03&In-Reply-To=%3C20130914135546.8BA5C5DBBA%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013064.html">
+   <LINK REL="Next"  HREF="013070.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%099b06fd4bae1826beada0fb4bfd136df2015e9b03&In-Reply-To=%3C20130914135546.8BA5C5DBBA%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	9b06fd4bae1826beada0fb4bfd136df2015e9b03">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013064.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-122-g599510c
+</A></li>
+        <LI>Next message: <A HREF="013070.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	baa434a6db77809e7172d7811221f7e3d21ac33d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13069">[ date ]</a>
+              <a href="thread.html#13069">[ thread ]</a>
+              <a href="subject.html#13069">[ subject ]</a>
+              <a href="author.html#13069">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  9b06fd4bae1826beada0fb4bfd136df2015e9b03 (commit)
+      from  b76266a559f5a8aad7470cd5abc7c38b94bdbf70 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   11 +++--
+ x2go/defaults.py                 |    2 +-
+ x2go/registry.py                 |   33 +++++++++++----
+ x2go/session.py                  |   84 ++++++++++++++++++++++++--------------
+ x2go/utils.py                    |   10 ++---
+ 5 files changed, 91 insertions(+), 49 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 7ea520d..cc95e81 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -103,11 +103,12 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.terminated_terminals = []
+ 
+         self.profile_name = profile_name
+-        self.hostname = None
+-        self.port = None
+         self.add_to_known_hosts = add_to_known_hosts
+         self.known_hosts = known_hosts
+ 
++        self.hostname = None
++        self.port = None
++
+         self.use_sshproxy = use_sshproxy
+         self.sshproxy_params = sshproxy_params
+         self.sshproxy_session = None
+@@ -229,6 +230,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self._session_auth_rsakey = paramiko.RSAKey.generate(defaults.RSAKEY_STRENGTH)
+         return self._session_auth_rsakey
+ 
++    def set_profile_name(self, profile_name):
++        self.profile_name = profile_name
++
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+                 sshproxy_user='', sshproxy_password='',
+                 key_filename=None, timeout=None, allow_agent=False, look_for_keys=False,
+@@ -705,7 +709,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             if self.associated_terminals.has_key(session_name):
+                 if self.associated_terminals[session_name] is not None:
+                     self.associated_terminals[session_name].__del__()
+-                del self.associated_terminals[session_name]
++                try: del self.associated_terminals[session_name]
++                except KeyError: pass
+             self.terminated_terminals.append(session_name)
+             _ret = True
+ 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 959d7c0..e58701c 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -235,7 +235,7 @@ else:
+     X2GO_CLIENTXCONFIG_DEFAULTS = {}
+ 
+ X2GO_SESSIONPROFILE_DEFAULTS = {
+-    'speed': 2, 'pack': '16m-jpeg', 'quality': 9, 'link':'ADSL',
++    'speed': 2, 'pack': '16m-jpeg', 'quality': 9,
+     'iconvto': 'UTF-8', 'iconvfrom': 'UTF-8', 'useiconv': False,
+     'usesshproxy': False, 'sshproxyhost': '', 'sshproxyuser': '', 'sshproxytunnel': '', 'sshproxykeyfile': '',
+     'useexports': True, 'fstunnel': True, 'export': '',
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 6ba4e6b..cb3a343 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -169,7 +169,15 @@ class X2goSessionRegistry(object):
+             _profile_name = self(_session_uuid).get_profile_name()
+             _session_name = self(_session_uuid).get_session_name()
+ 
+-            if _last_status['running'] == False and _current_status['running'] == True:
++            if self(_session_uuid).get_server_hostname() != _current_status['server']:
++
++                # if the server (hostname) has changed due to a configuration change we skip all notifications
++                self(_session_uuid).session_cleanup()
++                self(_session_uuid).__del__()
++                if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
++                    del self.registry[_session_uuid]
++
++            elif _last_status['running'] == False and _current_status['running'] == True:
+                 # session has started
+                 if self(_session_uuid).has_terminal_session():
+                     if _last_status['suspended']:
+@@ -212,6 +220,10 @@ class X2goSessionRegistry(object):
+             _ctrl_session = self(_connected_sessions[0])
+             if session_list is None:
+                 session_list = _ctrl_session.list_sessions()
++
++            # make sure the session registry gets updated before registering new session
++            # (if the server name has changed, this will kick out obsolete X2goSessions)
++            self.update_status(profile_name=profile_name, session_list=session_list)
+             for session_name in session_list.keys():
+                 if session_name not in _session_names:
+                     server = _ctrl_session.get_server_hostname()
+@@ -223,13 +235,13 @@ class X2goSessionRegistry(object):
+                     kwargs = {}
+                     kwargs.update(self.client_instance.session_profiles.to_session_params(profile_id))
+                     kwargs['client_instance'] = self.client_instance
+-                    kwargs['control_backend'] = _clone_kwargs['_control_backend']
+-                    kwargs['terminal_backend'] = _clone_kwargs['_terminal_backend']
+-                    kwargs['proxy_backend'] = _clone_kwargs['_proxy_backend']
+-                    kwargs['info_backend'] = _clone_kwargs['_info_backend']
+-                    kwargs['list_backend'] = _clone_kwargs['_list_backend']
+-                    kwargs['settings_backend'] = _clone_kwargs['_settings_backend']
+-                    kwargs['printing_backend'] = _clone_kwargs['_printing_backend']
++                    kwargs['control_backend'] = _clone_kwargs['control_backend']
++                    kwargs['terminal_backend'] = _clone_kwargs['terminal_backend']
++                    kwargs['proxy_backend'] = _clone_kwargs['proxy_backend']
++                    kwargs['info_backend'] = _clone_kwargs['info_backend']
++                    kwargs['list_backend'] = _clone_kwargs['list_backend']
++                    kwargs['settings_backend'] = _clone_kwargs['settings_backend']
++                    kwargs['printing_backend'] = _clone_kwargs['printing_backend']
+                     kwargs['keep_controlsession_alive'] = _clone_kwargs['keep_controlsession_alive']
+                     kwargs['client_rootdir'] = _clone_kwargs['client_rootdir']
+                     kwargs['sessions_rootdir'] = _clone_kwargs['sessions_rootdir']
+@@ -282,8 +294,9 @@ class X2goSessionRegistry(object):
+ 
+             session_uuid = _virgin_sessions[0].get_uuid()
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+-
+             self(session_uuid).update_params(_params)
++            self(session_uuid).set_server(server)
++            self(session_uuid).set_profile_name(profile_name)
+             self.logger('using already initially-registered yet-unused session %s' % session_uuid, log.loglevel_NOTICE)
+             return session_uuid
+ 
+@@ -292,6 +305,8 @@ class X2goSessionRegistry(object):
+             _params = self.client_instance.session_profiles.to_session_params(profile_id)
+ 
+             self(session_uuid).update_params(_params)
++            self(session_uuid).set_server(server)
++            self(session_uuid).set_profile_name(profile_name)
+             self.logger('using already registered-by-session-name session %s' % session_uuid, log.loglevel_NOTICE)
+             return session_uuid
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 64937a2..66ea88f 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -116,7 +116,13 @@ class X2goSession(object):
+         self.terminated = terminated
+         self.keep_controlsession_alive = keep_controlsession_alive
+ 
++        self.profile_id = profile_id
++        self.profile_name = profile_name
++        self.session_name = session_name
++        self.server = server
++
+         self._current_status = {
++            'server': self.server,
+             'virgin': self.virgin,
+             'connected': self.connected,
+             'running': self.running,
+@@ -125,26 +131,23 @@ class X2goSession(object):
+         }
+         self._last_status = None
+ 
+-        self.profile_id = profile_id
+-        self.profile_name = profile_name
+-        self.session_name = session_name
+-        self.server = server
+         self.printing = printing
+         self.allow_share_local_folders = allow_share_local_folders
+         self.share_local_folders = share_local_folders
+         self.allow_dropbox = allow_dropbox
+         self.dropbox_extensions = dropbox_extensions
+         self.dropbox_action = dropbox_action
+-        self._control_backend = control_backend
+-        self._terminal_backend = terminal_backend
+-        self._info_backend = info_backend
+-        self._list_backend = list_backend
+-        self._proxy_backend = proxy_backend
+-        self._settings_backend = settings_backend
+-        self._printing_backend = printing_backend
++        self.control_backend = control_backend
++        self.terminal_backend = terminal_backend
++        self.info_backend = info_backend
++        self.list_backend = list_backend
++        self.proxy_backend = proxy_backend
++        self.settings_backend = settings_backend
++        self.printing_backend = printing_backend
+         self.client_rootdir = client_rootdir
+         self.sessions_rootdir = sessions_rootdir
+         self.ssh_rootdir = ssh_rootdir
++        self.control_session = control_session
+ 
+         # the client instance is not deeply copiable
+         _client_instance=None
+@@ -173,26 +176,41 @@ class X2goSession(object):
+             for p in self.sshproxy_params:
+                 self.logger('    %s: %s' % (p,self.sshproxy_params[p]), loglevel=log.loglevel_DEBUG)
+ 
+-        if control_session is None:
+-            self.logger('initializing X2goControlSession', loglevel=log.loglevel_DEBUG)
+-            self.control_session = control_backend(profile_name=self.profile_name,
+-                                                   add_to_known_hosts=add_to_known_hosts,
+-                                                   known_hosts=known_hosts,
+-                                                   terminal_backend=terminal_backend,
+-                                                   info_backend=info_backend,
+-                                                   list_backend=list_backend,
+-                                                   proxy_backend=proxy_backend,
+-                                                   client_rootdir=client_rootdir,
+-                                                   sessions_rootdir=sessions_rootdir,
+-                                                   ssh_rootdir=ssh_rootdir,
+-                                                   use_sshproxy=use_sshproxy,
+-                                                   sshproxy_params=self.sshproxy_params,
+-                                                   logger=logger)
+-        else:
+-            self.control_session = control_session
++        self.add_to_known_hosts = add_to_known_hosts
++        self.known_hosts = known_hosts
++        self.use_sshproxy = use_sshproxy
+ 
++        self.init_control_session()
+         self.terminal_session = None
+ 
++    def init_control_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        if self.control_session is None:
++            self.logger('initializing X2goControlSession', loglevel=log.loglevel_DEBUG)
++            self.control_session = self.control_backend(profile_name=self.profile_name,
++                                                        add_to_known_hosts=self.add_to_known_hosts,
++                                                        known_hosts=self.known_hosts,
++                                                        terminal_backend=self.terminal_backend,
++                                                        info_backend=self.info_backend,
++                                                        list_backend=self.list_backend,
++                                                        proxy_backend=self.proxy_backend,
++                                                        client_rootdir=self.client_rootdir,
++                                                        sessions_rootdir=self.sessions_rootdir,
++                                                        ssh_rootdir=self.ssh_rootdir,
++                                                        use_sshproxy=self.use_sshproxy,
++                                                        sshproxy_params=self.sshproxy_params,
++                                                        logger=self.logger)
++
++    def set_server(self, server):
++        self.server = server
++
++    def set_profile_name(self, profile_name):
++        self.profile_name = profile_name
++        self.control_session.set_profile_name(profile_name)
++
+     def __str__(self):
+         return self.__get_uuid()
+ 
+@@ -221,6 +239,7 @@ class X2goSession(object):
+                 self.suspended = None
+                 self.terminated = None
+                 self._current_status = {
++                    'server': self.server,
+                     'virgin': self.virgin,
+                     'connected': self.connected,
+                     'running': self.running,
+@@ -342,7 +361,8 @@ class X2goSession(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+-        return self.control_session.hostname
++        self.server = self.control_session.hostname
++        return self.server
+     __get_server_hostname = get_server_hostname
+ 
+     def get_server_port(self):
+@@ -431,7 +451,7 @@ class X2goSession(object):
+         @type force_password_auth: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if self.control_session.is_connected():
++        if self.control_session and self.control_session.is_connected():
+             self.logger('control session is already connected, skipping authentication', loglevel=log.loglevel_DEBUG)
+             self.connected = True
+         else:
+@@ -460,6 +480,7 @@ class X2goSession(object):
+                 # then tidy up...
+                 self.disconnect()
+ 
++            _dummy = self.get_server_hostname()
+         return self.connected
+     __connect = connect
+ 
+@@ -549,6 +570,7 @@ class X2goSession(object):
+                 self.terminated = True
+ 
+         self._current_status = {
++            'server': self.server,
+             'virgin': self.virgin,
+             'connected': self.connected,
+             'running': self.running,
+@@ -757,7 +779,7 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        self.connected = self.control_session.is_connected()
++        self.connected = bool(self.control_session and self.control_session.is_connected())
+         if not self.connected:
+             self.running = None
+             self.suspended = None
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 389127c..af4f0be 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -148,11 +148,11 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+ 
+         }
+         _speed_dict = {
+-            '1': 'modem',
+-            '2': 'isdn',
+-            '3': 'adsl',
+-            '4': 'wan',
+-            '5': 'lan',
++            '0': 'modem',
++            '1': 'isdn',
++            '2': 'adsl',
++            '3': 'wan',
++            '4': 'lan',
+         }
+ 
+         for opt, val in _options.iteritems():
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013064.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-122-g599510c
+</A></li>
+	<LI>Next message: <A HREF="013070.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	baa434a6db77809e7172d7811221f7e3d21ac33d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13069">[ date ]</a>
+              <a href="thread.html#13069">[ thread ]</a>
+              <a href="subject.html#13069">[ subject ]</a>
+              <a href="author.html#13069">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

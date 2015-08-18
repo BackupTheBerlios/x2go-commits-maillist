@@ -1,0 +1,403 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	98bc65e33b9f0a92d8be038482c919d7d87819d5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0998bc65e33b9f0a92d8be038482c919d7d87819d5&In-Reply-To=%3C20140108142936.C896C5DCEB%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024608.html">
+   <LINK REL="Next"  HREF="024623.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	98bc65e33b9f0a92d8be038482c919d7d87819d5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0998bc65e33b9f0a92d8be038482c919d7d87819d5&In-Reply-To=%3C20140108142936.C896C5DCEB%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	98bc65e33b9f0a92d8be038482c919d7d87819d5">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:36 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024608.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.1-21-g1d86929
+</A></li>
+        <LI>Next message: <A HREF="024623.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24613">[ date ]</a>
+              <a href="thread.html#24613">[ thread ]</a>
+              <a href="subject.html#24613">[ subject ]</a>
+              <a href="author.html#24613">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  98bc65e33b9f0a92d8be038482c919d7d87819d5 (commit)
+      from  9687ed3c223ea8ce2f0f79229a2233adc927536c (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/base.py |   18 ++++++++++++------
+ x2go/forward.py             |   37 +++++++++++++++++++++++++++----------
+ 2 files changed, 39 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index d193e60..d11b68c 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -36,6 +36,7 @@ import cStringIO
+ # Python X2go modules
+ import x2go.forward as forward
+ import x2go.log as log
++import x2go.x2go_exceptions as x2go_exceptions
+ 
+ from x2go.defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+ if _X2GOCLIENT_OS in (&quot;Windows&quot;):
+@@ -158,15 +159,20 @@ class X2goProxyBASE(threading.Thread):
+                 pass
+ 
+         local_graphics_port = self.session_info.graphics_port
+-        while self.fw_tunnel is None:
+-            self.fw_tunnel = forward.start_forward_tunnel(local_port=local_graphics_port, remote_port=self.session_info.graphics_port, ssh_transport=self.ssh_transport, logger=self.logger, )
++        count = 0
++        # we will try to bind to 50 different local ports, if that fails, we are lost...
++        while self.fw_tunnel is None and count &lt; 50:
++            self.fw_tunnel = forward.start_forward_tunnel(local_port=local_graphics_port + count, remote_port=self.session_info.graphics_port, ssh_transport=self.ssh_transport, logger=self.logger, )
+             if self.fw_tunnel is None:
+-                self.logger('socket [localhost]:%s is in use, trying local TCP/IP socket port: [localhost]:%s' % (local_graphics_port, local_graphics_port+1), loglevel=log.loglevel_INFO)
+-                local_graphics_port += 1
+-                time.sleep(.5)
++                self.logger('socket [localhost]:%s is in use, trying local TCP/IP socket port: [localhost]:%s' % (local_graphics_port + count, local_graphics_port + count +1), loglevel=log.loglevel_INFO)
++                count += 1
++                time.sleep(.2)
++
++        if count == 50:
++            raise x2go_exceptions.X2goFwTunnelException('local socket bind for forwarding tunnel failed, there are probably too many open connections')
+ 
+         # update the proxy port in PROXY_ARGS
+-        self._update_local_proxy_socket(local_graphics_port)
++        self._update_local_proxy_socket(local_graphics_port + count)
+         cmd_line = self._generate_cmdline()
+ 
+         # resume sessions needs a fraction of time for the forward_tunnel to be created...
+diff --git a/x2go/forward.py b/x2go/forward.py
+index df4a8a9..0fafa8d 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -73,8 +73,21 @@ class X2goFwServer(StreamServer):
+         self.chain_port = remote_port
+         self.ssh_transport = ssh_transport
+ 
++        self._get_channel()
+         StreamServer.__init__(self, listener, self.x2go_forward_tunnel_handle)
+ 
++    def _get_channel(self):
++
++        try:
++            self.chan = self.ssh_transport.open_channel('direct-tcpip',
++                                                        (self.chain_host, self.chain_port),
++                                                        self.ssh_transport.getpeername())
++        except Exception, e:
++            self.logger('incoming request to %s:%d failed: %s' % (self.chain_host,
++                                                                  self.chain_port,
++                                                                  repr(e)), loglevel=log.loglevel_ERROR)
++            raise x2go_exceptions.X2goFwTunnelException('forwarding tunnel setup failed')
++
+     def x2go_forward_tunnel_handle(self, fw_socket, address):
+         &quot;&quot;&quot;\
+         Handle for SSH/Paramiko forwarding tunnel.
+@@ -85,15 +98,14 @@ class X2goFwServer(StreamServer):
+         @type address: C{tuple}
+ 
+         &quot;&quot;&quot;
++
++        if self.chan is None:
++
++            self._get_channel()
++
+         try:
+-            self.chan = self.ssh_transport.open_channel('direct-tcpip',
+-                                                        (self.chain_host, self.chain_port),
+-                                                        fw_socket.getpeername())
+             chan_peername = self.chan.getpeername()
+         except Exception, e:
+-            self.logger('incoming request to %s:%d failed: %s' % (self.chain_host,
+-                                                                  self.chain_port,
+-                                                                  repr(e)), loglevel=log.loglevel_ERROR)
+             raise x2go_exceptions.X2goFwTunnelException('forwarding tunnel setup failed')
+ 
+         if self.chan is None:
+@@ -155,13 +167,18 @@ def start_forward_tunnel(local_host='localhost', local_port=22022,
+     @rtype: C{instance}
+ 
+     &quot;&quot;&quot;
+-    fw_server = X2goFwServer((local_host, local_port), remote_host, remote_port, ssh_transport, logger=logger)
+     try:
+-        fw_server.start()
+-        return fw_server
+-    except socket.error:
++        fw_server = X2goFwServer((local_host, local_port), remote_host, remote_port, ssh_transport, logger=logger)
++        try:
++            fw_server.start()
++            return fw_server
++        except socket.error:
++            pass
++    except x2go_exceptions.X2goFwTunnelException:
+         pass
+ 
++    return None
++
+ 
+ def stop_forward_tunnel(fw_server):
+     &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024608.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.1-21-g1d86929
+</A></li>
+	<LI>Next message: <A HREF="024623.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	9ecbb8f58627e55cc39da03aaf33ba6a88e6c0e6
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24613">[ date ]</a>
+              <a href="thread.html#24613">[ thread ]</a>
+              <a href="subject.html#24613">[ subject ]</a>
+              <a href="author.html#24613">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

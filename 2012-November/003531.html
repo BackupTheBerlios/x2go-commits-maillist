@@ -1,0 +1,309 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] libpam-x2go.git - master (branch) updated:	edd14a06a92de3b1275f4aeb377d8fa3852f823e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20libpam-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%09edd14a06a92de3b1275f4aeb377d8fa3852f823e&In-Reply-To=%3C20121109110524.9E2715DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003530.html">
+   <LINK REL="Next"  HREF="003532.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] libpam-x2go.git - master (branch) updated:	edd14a06a92de3b1275f4aeb377d8fa3852f823e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20libpam-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%09edd14a06a92de3b1275f4aeb377d8fa3852f823e&In-Reply-To=%3C20121109110524.9E2715DB19%40ymir%3E"
+       TITLE="[X2go-Commits] libpam-x2go.git - master (branch) updated:	edd14a06a92de3b1275f4aeb377d8fa3852f823e">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Nov  9 12:05:24 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003530.html">[X2go-Commits] x2goserver.git - backport-lenny (branch) updated:	3.1.1.6-19-gfe1ca49
+</A></li>
+        <LI>Next message: <A HREF="003532.html">[X2go-Commits] libpam-x2go.git - master (branch) updated:	05d95fb0cce001c862e65233793157f5c1033570
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3531">[ date ]</a>
+              <a href="thread.html#3531">[ thread ]</a>
+              <a href="subject.html#3531">[ subject ]</a>
+              <a href="author.html#3531">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  edd14a06a92de3b1275f4aeb377d8fa3852f823e (commit)
+      from  42b8b279e62e6e2f5a7455e30bb0a211763ee187 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit edd14a06a92de3b1275f4aeb377d8fa3852f823e
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 9 12:04:48 2012 +0100
+
+    Adaptations of the forked original to work with X2Go: Check the authentication token via libssh (ssh login to the remote server).
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    2 ++
+ debian/control          |    1 +
+ src/pam-x2go-children.c |    2 +-
+ src/pam-x2go-children.h |    6 ++---
+ src/pam-x2go.c          |   22 ++++-------------
+ src/x2go-auth-check.c   |   60 ++++++++++-------------------------------------
+ 6 files changed, 25 insertions(+), 68 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b9e0630..d11de31 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,5 +1,7 @@
+ libpam-x2go (0.0.0.1-0~x2go1) UNRELEASED; urgency=low
+ 
+   * Initial upstream release. Forked from libpam-freerdp.
++  * Adaptations of the forked original to work with X2Go:
++    - Check the authentication token via libssh (ssh login to the remote server).
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Fri, 09 Nov 2012 01:10:25 +0100
+diff --git a/debian/control b/debian/control
+index d3fe23c..a66b106 100644
+--- a/debian/control
++++ b/debian/control
+@@ -8,6 +8,7 @@ Build-Depends:
+  debhelper (&gt;= 9),
+  libgtest-dev,
+  libpam0g-dev,
++ libssh-dev,
+  pkg-config,
+ Standards-Version: 3.9.3
+ Homepage: <A HREF="http://wiki.x2go.org">http://wiki.x2go.org</A>
+diff --git a/src/pam-x2go-children.c b/src/pam-x2go-children.c
+index ea29c14..51cf048 100644
+--- a/src/pam-x2go-children.c
++++ b/src/pam-x2go-children.c
+@@ -172,7 +172,7 @@ session_socket_handler (struct passwd * pwdent, int readypipe, const char * ruse
+ 	memset(&amp;socket_addr, 0, sizeof(struct sockaddr_un));
+ 	socket_addr.sun_family = AF_UNIX;
+ 	strncpy(socket_addr.sun_path, pwdent-&gt;pw_dir, sizeof(socket_addr.sun_path) - 1);
+-	strncpy(socket_addr.sun_path + strlen(pwdent-&gt;pw_dir), &quot;/.freerdp-socket&quot;, (sizeof(socket_addr.sun_path) - strlen(pwdent-&gt;pw_dir)) - 1);
++	strncpy(socket_addr.sun_path + strlen(pwdent-&gt;pw_dir), &quot;/.x2go-socket&quot;, (sizeof(socket_addr.sun_path) - strlen(pwdent-&gt;pw_dir)) - 1);
+ 
+ 	/* We bind the socket before forking so that we ensure that
+ 	   there isn't a race condition to get to it.  Things will block
+diff --git a/src/pam-x2go-children.h b/src/pam-x2go-children.h
+index cb36312..d300d46 100644
+--- a/src/pam-x2go-children.h
++++ b/src/pam-x2go-children.h
+@@ -16,8 +16,8 @@
+  * Author: Ted Gould &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">ted at canonical.com</A>&gt;
+  */
+ 
+-#ifndef _PAM_FREERDP_CHILDREN_H_
+-#define _PAM_FREERDP_CHILDREN_H_
++#ifndef _PAM_X2GO_CHILDREN_H_
++#define _PAM_X2GO_CHILDREN_H_
+ 
+ #define PAM_TYPE_DOMAIN  1234
+ #define ALL_GOOD_SIGNAL  &quot;Ar, ready to authenticate cap'n&quot;
+@@ -27,4 +27,4 @@ pam_sm_authenticate_helper (int *stdinpipe, const char* username, const char* rh
+ 
+ int
+ session_socket_handler (struct passwd * pwdent, int readypipe, const char * ruser, const char * rhost, const char * rdomain, const char * password);
+-#endif //_PAM_FREERDP_CHILDREN_H_
++#endif //_PAM_X2GO_CHILDREN_H_
+diff --git a/src/pam-x2go.c b/src/pam-x2go.c
+index 8979e6e..8ca5147 100644
+--- a/src/pam-x2go.c
++++ b/src/pam-x2go.c
+@@ -34,7 +34,7 @@
+ #include &lt;security/pam_modutil.h&gt;
+ #include &lt;security/pam_appl.h&gt;
+ 
+-#include &quot;pam-freerdp-children.h&quot;
++#include &quot;pam-x2go-children.h&quot;
+ #include &quot;auth-check-path.h&quot;
+ 
+ static int unpriveleged_kill (struct passwd * pwdent);
+@@ -126,18 +126,6 @@ get_item (pam_handle_t * pamh, int type)
+ 		}
+ 	}
+ 
+-	/* The way that xfreerdp does parsing means that we can't handle
+-	   spaces in the username.  Let's block them as early as possible.
+-	   Though, if the xfreerdp part gets fixed, we want this to disappear
+-	     <A HREF="http://launchpad.net/bugs/1053102">http://launchpad.net/bugs/1053102</A>
+-	*/
+-	if (type == PAM_RUSER) {
+-		if (strstr(promptval, &quot; &quot;) != NULL) {
+-			free(promptval);
+-			return NULL;
+-		}
+-	}
+-
+ 	if (type == PAM_RHOST) {
+ 		char * subloc = strstr(promptval, &quot;://&quot;);
+ 		if (subloc != NULL) {
+@@ -205,7 +193,7 @@ get_item (pam_handle_t * pamh, int type)
+ 	}
+ 
+ /* Authenticate.  We need to make sure we have a user account, that
+-   there are remote accounts and then verify them with FreeRDP */
++   there are remote accounts and then verify them with X2Go */
+ PAM_EXTERN int
+ pam_sm_authenticate (pam_handle_t *pamh, int flags, int argc, const char **argv)
+ {
+@@ -270,7 +258,7 @@ done:
+ pid_t session_pid = 0;
+ /* Open Session.  Here we need to fork a little process so that we can
+    give the credentials to the session itself so that it can startup the
+-   xfreerdp viewer for the login */
++   PyHoca (X2Go) client for the login */
+ PAM_EXTERN int
+ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv)
+ {
+@@ -426,8 +414,8 @@ pam_sm_setcred (pam_handle_t *pamh, int flags, int argc, const char ** argv)
+ 
+ #ifdef PAM_STATIC
+ 
+-struct pam_module _pam_freerdp_modstruct = {
+-     &quot;pam_freerdp&quot;,
++struct pam_module _pam_x2go_modstruct = {
++     &quot;pam_x2go&quot;,
+      pam_sm_authenticate,
+      pam_sm_setcred,
+      NULL,
+diff --git a/src/x2go-auth-check.c b/src/x2go-auth-check.c
+index e5e9d13..524d424 100644
+--- a/src/x2go-auth-check.c
++++ b/src/x2go-auth-check.c
+@@ -16,37 +16,9 @@
+  * Author: Ted Gould &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">ted at canonical.com</A>&gt;
+  */
+ 
+-#include &lt;freerdp/freerdp.h&gt;
+-#include &lt;freerdp/channels/channels.h&gt;
++#include &lt;libssh/libssh.h&gt;
+ #include &lt;string.h&gt;
+ 
+-void
+-auth_context_new (freerdp * instance, rdpContext * context)
+-{
+-	context-&gt;channels = freerdp_channels_new();
+-	return;
+-}
+-
+-void
+-auth_context_free (freerdp * instance, rdpContext * context)
+-{
+-	return;
+-}
+-
+-boolean
+-auth_pre_connect (freerdp * instance)
+-{
+-	freerdp_channels_pre_connect(instance-&gt;context-&gt;channels, instance);
+-	return true;
+-}
+-
+-boolean
+-auth_post_connect (freerdp * instance)
+-{
+-	freerdp_channels_post_connect(instance-&gt;context-&gt;channels, instance);
+-	return true;
+-}
+-
+ int
+ main (int argc, char * argv[])
+ {
+@@ -64,23 +36,12 @@ main (int argc, char * argv[])
+ 		return -1;
+ 	}
+ 
+-	freerdp_channels_global_init();
+-
+-	freerdp * instance = freerdp_new();
++	auth_check_ssh_session = ssh_new();
+ 
+-	instance-&gt;PreConnect = auth_pre_connect;
+-	instance-&gt;PostConnect = auth_post_connect;
++	ssh_options_set ( auth_check_ssh_session, SSH_OPTIONS_HOST, argv[1]; );
++	ssh_options_set ( auth_check_ssh_session, SSH_OPTIONS_USER, argv[2]; );
+ 
+-	instance-&gt;context_size = sizeof(rdpContext);
+-	instance-&gt;ContextNew = auth_context_new;
+-	instance-&gt;ContextFree = auth_context_free;
+-
+-	freerdp_context_new(instance);
+-
+-	instance-&gt;settings-&gt;hostname = argv[1];
+-	instance-&gt;settings-&gt;username = argv[2];
+-	instance-&gt;settings-&gt;domain = argv[3];
+-	instance-&gt;settings-&gt;password = password;
++	rc = ssh_connect (ssh_session);
+ 
+ 	char * colonloc = strstr(argv[1], &quot;:&quot;);
+ 	if (colonloc != NULL) {
+@@ -88,12 +49,17 @@ main (int argc, char * argv[])
+ 		colonloc[0] = '\0';
+ 		colonloc++;
+ 
+-		instance-&gt;settings-&gt;port = strtoul(colonloc, NULL, 10);
++		ssh_options_set ( auth_check_ssh_session, SSH_OPTIONS_PORT, strtoul(colonloc, NULL, 10); );
++	}
++
++	if (ssh_connect (ssh_session)) {
++		int rc = ssh_userauth_password ( auth_check_ssh_session, NULL, password );
++		ssh_disconnect(ssh_session);
+ 	}
+ 
+ 	int retval = -1;
+-	if (freerdp_connect(instance)) {
+-		freerdp_disconnect(instance);
++	if ( rc == SSH_AUTH_SUCCESS )
++	{
+ 		retval = 0;
+ 	}
+ 
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003530.html">[X2go-Commits] x2goserver.git - backport-lenny (branch) updated:	3.1.1.6-19-gfe1ca49
+</A></li>
+	<LI>Next message: <A HREF="003532.html">[X2go-Commits] libpam-x2go.git - master (branch) updated:	05d95fb0cce001c862e65233793157f5c1033570
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3531">[ date ]</a>
+              <a href="thread.html#3531">[ thread ]</a>
+              <a href="subject.html#3531">[ subject ]</a>
+              <a href="author.html#3531">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

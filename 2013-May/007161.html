@@ -1,0 +1,450 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g890debb
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-4-g890debb&In-Reply-To=%3C20130519110328.6D8875DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007160.html">
+   <LINK REL="Next"  HREF="007162.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g890debb</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-4-g890debb&In-Reply-To=%3C20130519110328.6D8875DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g890debb">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:03:28 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007160.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-5-gcd9500b
+</A></li>
+        <LI>Next message: <A HREF="007162.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-2-g5a4f129
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7161">[ date ]</a>
+              <a href="thread.html#7161">[ thread ]</a>
+              <a href="subject.html#7161">[ subject ]</a>
+              <a href="author.html#7161">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  890debb62b31a29ed482d392e7d276c5d9936d90 (commit)
+      from  aea8e30472982caf3be18c73e3175becfc6d6b4a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/uccsjson.py |  241 ++++++++++++++++++++++++++++++++++++++++++++++++
+ x2gobroker/web/uccs.py |   83 +----------------
+ 2 files changed, 244 insertions(+), 80 deletions(-)
+ create mode 100644 x2gobroker/uccsjson.py
+
+The diff of changes is:
+diff --git a/x2gobroker/uccsjson.py b/x2gobroker/uccsjson.py
+new file mode 100644
+index 0000000..779e2ba
+--- /dev/null
++++ b/x2gobroker/uccsjson.py
+@@ -0,0 +1,241 @@
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import json
++
++def convert_to_builtin_type(obj):
++    &quot;&quot;&quot;\
++    Helper function for converting Python objects to dictionaries.
++    Used for doing JSON dumps.
++
++    &quot;&quot;&quot;
++    d = { }
++    d.update(obj.__dict__)
++    return d
++
++class ManagementServer():
++    &quot;&quot;&quot;\
++    Base class for generating UCCS compatible JSON object.
++
++    &quot;&quot;&quot;
++    def __init__(self, url, name):
++        &quot;&quot;&quot;\
++        Initializ instance.
++
++        @param url: URL of the UCCS broker server
++        @type url: C{unicode}
++        @param name: human-readable, descriptive server name
++        @type name: C{unicode}
++
++        &quot;&quot;&quot;
++        self.RemoteDesktopServers = []
++        self.AdditionalManagementServers = []
++        self.URL = url
++        self.Name = name
++
++    def set_default(self, ts_name):
++        &quot;&quot;&quot;\
++        Define the default (terminal) server instance.
++
++        @param ts_name: name of the terminal server that is to be set as default
++        @type ts_name: C{unicode}
++
++        &quot;&quot;&quot;
++        if isinstance(tsName, str):
++            self.DefaultServer = tsName
++        else:
++            raise TypeError(&quot;set_default expects a string argument&quot;)
++
++    def add_terminal_server(self, server):
++        &quot;&quot;&quot;\
++        Add a terminal server to this management server object.
++
++        @param server: instance of class L{RDPServer} or L{X2GoServer}.
++        @type server: C{obj}
++
++        &quot;&quot;&quot;
++        self.RemoteDesktopServers.append(server)
++
++    # NOT USED!!!
++    #def add_additional_management_server(self, amserver):
++    #    if isinstance(amserver, AdditionalManagementServer):
++    #        self.AdditionalManagementServers.append(amserver)
++    #    else:
++    #        raise TypeError(&quot;add_additional_management_server expects a &quot;\
++    #            &quot;AdditionalManagementServer argument&quot;)
++
++    def toJson(self):
++        &quot;&quot;&quot;\
++        Dump this instance as JSON object.
++
++        &quot;&quot;&quot;
++        return json.dumps(self, default=convert_to_builtin_type)
++
++
++# NOT USED!!!
++#class AdditionalManagementServer():
++#    def __init__(self, url, name):
++#        self.URL = url
++#        self.Name = name
++
++
++class RDPServer():
++    &quot;&quot;&quot;\
++    Instantiate a UCCS compatible RDP server session profile object.
++
++    &quot;&quot;&quot;
++    def __init__(self, host, name, username=None, password=None):
++        &quot;&quot;&quot;\
++        @param host: hostname of RDP server host
++        @type host: C{unicode}
++        @param name: session profile name
++        @type name: C{unicode}
++        @param username: username to be used for login
++        @type username: C{unicode}
++        @param password: password to be used for login
++        @type password: C{unicode}
++
++        &quot;&quot;&quot;
++        self.URL = unicode(host)
++        self.Name = unicode(name)
++        self.Protocol = u'freerdp'
++        self.DomainRequired = unicode(True)
++        self.Username = unicode(username)
++        self.Password = unicode(password)
++
++    def set_domain(self, domain):
++        &quot;&quot;&quot;\
++        Set the domain for this RDP server.
++
++        @param domain: the domain name to be set
++        @type domain: C{unicode}
++
++        @raise TypeError: domain has to be C{str} or C{unicode}
++
++        &quot;&quot;&quot;
++        if isinstance(domainName, str):
++            self.WindowsDomain = unicode(domain)
++        elif isinstance(domainName, unicode):
++            self.WindowsDomain = domain
++        else:
++            raise TypeError(&quot;set_domain() expects a string or unicode argument&quot;)
++
++    def toJson(self):
++        &quot;&quot;&quot;\
++        Dump this instance as JSON object.
++
++        &quot;&quot;&quot;
++        return json.dumps(self, default=convert_to_builtin_type)
++
++
++class ICAServer():
++    &quot;&quot;&quot;\
++    Instantiate a UCCS compatible ICA server session profile object.
++
++    &quot;&quot;&quot;
++    def __init__(self, host, name, username=None, password=None):
++        &quot;&quot;&quot;\
++        @param host: hostname of ICA server host
++        @type host: C{unicode}
++        @param name: session profile name
++        @type name: C{unicode}
++        @param username: username to be used for login
++        @type username: C{unicode}
++        @param password: password to be used for login
++        @type password: C{unicode}
++
++        &quot;&quot;&quot;
++        self.URL = unicode(host)
++        self.Name = unicode(name)
++        self.Protocol = u'ica'
++        self.DomainRequired = unicode(True)
++        self.Username = unicode(username)
++        self.Password = unicode(password)
++
++    def set_domain(self, domain):
++        &quot;&quot;&quot;\
++        Set the domain for this ICA server.
++
++        @param domain: the domain name to be set
++        @type domain: C{unicode}
++
++        @raise TypeError: domain has to be C{str} or C{unicode}
++
++        &quot;&quot;&quot;
++        if isinstance(domainName, str):
++            self.WindowsDomain = unicode(domain)
++        elif isinstance(domainName, unicode):
++            self.WindowsDomain = domain
++        else:
++            raise TypeError(&quot;set_domain() expects a string or unicode argument&quot;)
++
++    def toJson(self):
++        &quot;&quot;&quot;\
++        Dump this instance as JSON object.
++
++        &quot;&quot;&quot;
++        return json.dumps(self, default=convert_to_builtin_type)
++
++
++class X2GoServer():
++    &quot;&quot;&quot;\
++    Instantiate a UCCS compatible X2Go Server session profile object.
++
++    &quot;&quot;&quot;
++    def __init__(self, host, name, username=None, password=None):
++        &quot;&quot;&quot;\
++        @param host: hostname of X2Go Server host
++        @type host: C{unicode}
++        @param name: session profile name
++        @type name: C{unicode}
++        @param username: username to be used for login
++        @type username: C{unicode}
++        @param password: password to be used for login
++        @type password: C{unicode}
++
++        &quot;&quot;&quot;
++        self.URL = host
++        self.Name = name
++        self.Protocol = 'x2go'
++        self.SessionTypeRequired = True
++        self.Username = username
++        self.Password = password
++
++    def set_session_type(self, session_type):
++        &quot;&quot;&quot;\
++        Set the session type to be used with this X2Go Server.
++
++        @param session_type: the session type to be set
++        @type session_type: C{unicode}
++
++        @raise TypeError: session_type has to be C{str} or C{unicode}
++
++        &quot;&quot;&quot;
++        if isinstance(domainName, str):
++            self.SessionType = sessiontypeName
++        else:
++            raise TypeError(&quot;set_session_type() expects a string or unicode argument&quot;)
++
++    def toJson(self):
++        &quot;&quot;&quot;\
++        Dump this instance as JSON object.
++
++        &quot;&quot;&quot;
++        return json.dumps(self, default=convert_to_builtin_type)
++
+diff --git a/x2gobroker/web/uccs.py b/x2gobroker/web/uccs.py
+index be63096..b75effa 100644
+--- a/x2gobroker/web/uccs.py
++++ b/x2gobroker/web/uccs.py
+@@ -29,84 +29,7 @@ from tornado.escape import native_str, parse_qs_bytes
+ import x2gobroker.defaults
+ 
+ from x2gobroker.loggers import logger_broker, logger_error
+-
+-
+-def convert_to_builtin_type(obj):
+-    d = { }
+-    d.update(obj.__dict__)
+-    return d
+-
+-
+-class ManagementServer():
+-    def __init__(self, url, name):
+-        self.RemoteDesktopServers = []
+-        self.AdditionalManagementServers = []
+-        self.URL = url
+-        self.Name = name
+-
+-    def set_default(self, tsName):
+-        if isinstance(tsName, str):
+-            self.DefaultServer = tsName
+-        else:
+-            raise TypeError(&quot;set_default expects a string argument&quot;)
+-
+-    def add_terminal_server(self, server):
+-        self.RemoteDesktopServers.append(server)
+-
+-    def add_additional_management_server(self, amserver):
+-        if isinstance(amserver, AdditionalManagementServer):
+-            self.AdditionalManagementServers.append(amserver)
+-        else:
+-            raise TypeError(&quot;add_additional_management_server expects a &quot;\
+-                &quot;AdditionalManagementServer argument&quot;)
+-
+-    def toJson(self):
+-        return json.dumps(self, default=convert_to_builtin_type)
+-
+-
+-class AdditionalManagementServer():
+-    def __init__(self, url, name):
+-        self.URL = url
+-        self.Name = name
+-
+-
+-class RDPServer():
+-    def __init__(self, url, name, username=None, password=None):
+-        self.URL = url
+-        self.Name = name
+-        self.Protocol = 'freerdp'
+-        self.DomainRequired = True
+-        self.Username = username
+-        self.Password = password
+-
+-    def add_domain(self, domainName):
+-        if isinstance(domainName, str):
+-            self.WindowsDomain = domainName
+-        else:
+-            raise TypeError(&quot;add_domain expects a string argument&quot;)
+-
+-    def toJson(self):
+-        return json.dumps(self, default=convert_to_builtin_type)
+-
+-
+-class X2GoServer():
+-    def __init__(self, url, name, username=None, password=None):
+-        self.URL = url
+-        self.Name = name
+-        self.Protocol = 'x2go'
+-        self.SessionTypeRequired = True
+-        self.Username = username
+-        self.Password = password
+-
+-    def add_sessiontype(self, sessiontypeName):
+-        if isinstance(domainName, str):
+-            self.SessionType = sessiontypeName
+-        else:
+-            raise TypeError(&quot;add_sessiontype expects a string argument&quot;)
+-
+-    def toJson(self):
+-        return json.dumps(self, default=convert_to_builtin_type)
+-
++import x2gobroker.uccsjson
+ 
+ class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
+@@ -179,7 +102,7 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
+         profiles = broker_backend.list_profiles(username)
+         if profiles:
+-            ms = ManagementServer('<A HREF="http://localhost:8080/uccs/{backend">http://localhost:8080/uccs/{backend</A>}'.format(backend=backend), 'X2Go Session Broker')
++            ms = x2gobroker.uccsjson.ManagementServer('<A HREF="http://localhost:8080/uccs/{backend">http://localhost:8080/uccs/{backend</A>}'.format(backend=backend), 'X2Go Session Broker')
+ 
+             profile_ids = profiles.keys()
+             profile_ids.sort()
+@@ -189,7 +112,7 @@ class X2GoBrokerWeb(tornado.web.RequestHandler):
+                 if profiles[profile_id]['directrdp']:
+                     pass
+                 else:
+-                    ts = X2GoServer(
++                    ts = x2gobroker.uccsjson.X2GoServer(
+                             url='{hostname}:{port}'.format(hostname=profiles[profile_id]['host'], port=profiles[profile_id]['sshport'])
+                             name=profiles[profile_id]['name']
+                             username=profiles[profile_id]['user']
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007160.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-5-gcd9500b
+</A></li>
+	<LI>Next message: <A HREF="007162.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-2-g5a4f129
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7161">[ date ]</a>
+              <a href="thread.html#7161">[ thread ]</a>
+              <a href="subject.html#7161">[ subject ]</a>
+              <a href="author.html#7161">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

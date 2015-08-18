@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-18-g91df9e9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2godesktopsharing.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.1.2-18-g91df9e9&In-Reply-To=%3C20110928135021.6BA395DD20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001632.html">
+   <LINK REL="Next"  HREF="001634.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-18-g91df9e9</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2godesktopsharing.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.1.2-18-g91df9e9&In-Reply-To=%3C20110928135021.6BA395DD20%40ymir%3E"
+       TITLE="[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-18-g91df9e9">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Sep 28 15:50:21 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001632.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-17-g3c4601b
+</A></li>
+        <LI>Next message: <A HREF="001634.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-316-g028c749
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1633">[ date ]</a>
+              <a href="thread.html#1633">[ thread ]</a>
+              <a href="subject.html#1633">[ subject ]</a>
+              <a href="author.html#1633">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  91df9e9278ea7dcb4bc17d1f8a934af0dfdd909d (commit)
+      from  3c4601b7ec0af5717bdd9e6983e451efd1c4b67f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 91df9e9278ea7dcb4bc17d1f8a934af0dfdd909d
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Sep 28 15:50:17 2011 +0200
+
+    add signal handler for SIGABRT
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ main.cpp      |    9 ++++++++-
+ sharetray.cpp |   24 ++++++++++++++++++++++++
+ sharetray.h   |    4 ++++
+ 3 files changed, 36 insertions(+), 1 deletions(-)
+
+The diff of changes is:
+diff --git a/main.cpp b/main.cpp
+index fa54d3d..b435d48 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -83,7 +83,7 @@ void  client ( const QStringList &amp; cmd )
+ 
+ static int setup_unix_signal_handlers()
+ {
+-	struct sigaction keybint, term;
++	struct sigaction keybint, term, abort;
+ 
+ 	keybint.sa_handler = ShareTray::keybintSignalHandler;
+ 	sigemptyset(&amp;keybint.sa_mask);
+@@ -100,6 +100,13 @@ static int setup_unix_signal_handlers()
+ 	if (sigaction(SIGTERM, &amp;term, 0) &gt; 0)
+ 	return 2;
+ 
++	abort.sa_handler = ShareTray::abortSignalHandler;
++	sigemptyset(&amp;abort.sa_mask);
++	abort.sa_flags |= SA_RESTART;
++
++	if (sigaction(SIGABRT, &amp;abort, 0) &gt; 0)
++	return 3;
++
+ 	return 0;
+ }
+ 
+diff --git a/sharetray.cpp b/sharetray.cpp
+index 9e81db8..7c00b1e 100644
+--- a/sharetray.cpp
++++ b/sharetray.cpp
+@@ -40,6 +40,7 @@
+ //needed to not get an undefined reference to static members
+ int ShareTray::sigkeybintFd[2];
+ int ShareTray::sigtermFd[2];
++int ShareTray::sigabortFd[2];
+ 
+ ShareTray::ShareTray()
+         : QMainWindow()
+@@ -177,10 +178,15 @@ ShareTray::ShareTray()
+ 	if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigtermFd))
+ 		qFatal(&quot;Couldn't create TERM socketpair&quot;);
+ 
++	if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigabortFd))
++		qFatal(&quot;Couldn't create ABRT socketpair&quot;);
++
+ 	snKeybInt = new QSocketNotifier(sigkeybintFd[1], QSocketNotifier::Read, this);
+ 	connect(snKeybInt, SIGNAL(activated(int)), this, SLOT(handleSigKeybInt()));
+ 	snTerm = new QSocketNotifier(sigtermFd[1], QSocketNotifier::Read, this);
+ 	connect(snTerm, SIGNAL(activated(int)), this, SLOT(handleSigTerm()));
++	snAbort = new QSocketNotifier(sigabortFd[1], QSocketNotifier::Read, this);
++	connect(snAbort, SIGNAL(activated(int)), this, SLOT(handleSigAbort()));
+ 
+ 	QTimer *timer = new QTimer ( this );
+ 	connect ( timer, SIGNAL ( timeout() ), this, SLOT ( slotTimer() ) );
+@@ -226,6 +232,18 @@ void ShareTray::handleSigTerm()
+ 	snTerm-&gt;setEnabled(true);
+ }
+ 
++void ShareTray::handleSigAbort()
++{
++	snAbort-&gt;setEnabled(false);
++	char tmp;
++	::read(sigabortFd[1], &amp;tmp, sizeof(tmp));
++
++	// do Qt stuff here
++	slotMenuClose();
++
++	snAbort-&gt;setEnabled(true);
++}
++
+ void ShareTray::keybintSignalHandler(int)
+ {
+ 	char a = 1;
+@@ -238,6 +256,12 @@ void ShareTray::termSignalHandler(int)
+ 	::write(sigtermFd[0], &amp;a, sizeof(a));
+ }
+ 
++void ShareTray::abortSignalHandler(int)
++{
++	char a = 1;
++	::write(sigabortFd[0], &amp;a, sizeof(a));
++}
++
+ void ShareTray::slotStopSharing()
+ {
+ 	if ( serverSocket )
+diff --git a/sharetray.h b/sharetray.h
+index 4119244..c7fe8eb 100644
+--- a/sharetray.h
++++ b/sharetray.h
+@@ -36,6 +36,7 @@ public:
+ 	// Unix signal handlers.
+ 	static void keybintSignalHandler(int unused);
+ 	static void termSignalHandler(int unused);
++	static void abortSignalHandler(int unused);
+ 	// desktop sharing socket
+ 	QString getSocketAnswer(QString message);
+ 	void closeSocket(SimpleLocalSocket* sock);
+@@ -65,6 +66,7 @@ public slots:
+ 	// Qt signal handlers.
+ 	void handleSigKeybInt();
+ 	void handleSigTerm();
++	void handleSigAbort();
+ private slots:
+ 	void slotStopSharing();
+ 	void slotStartSharing();
+@@ -91,8 +93,10 @@ private:
+ 	// unix file sockets for signal handler communication (unix &lt;-&gt; Qt)
+ 	static int sigkeybintFd[2];
+ 	static int sigtermFd[2];
++	static int sigabortFd[2];
+ 	QSocketNotifier *snKeybInt;
+ 	QSocketNotifier *snTerm;
++	QSocketNotifier *snAbort;
+ };
+ 
+ #endif
+
+
+hooks/post-receive
+-- 
+x2godesktopsharing.git (Desktop Sharing for X2go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2godesktopsharing.git&quot; (Desktop Sharing for X2go).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001632.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-17-g3c4601b
+</A></li>
+	<LI>Next message: <A HREF="001634.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.0.99-2-316-g028c749
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1633">[ date ]</a>
+              <a href="thread.html#1633">[ thread ]</a>
+              <a href="subject.html#1633">[ subject ]</a>
+              <a href="author.html#1633">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

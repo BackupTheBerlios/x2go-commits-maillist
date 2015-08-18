@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	cb9bfef10daf5aa3fefef88657d31c9837b738f4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09cb9bfef10daf5aa3fefef88657d31c9837b738f4&In-Reply-To=%3C20130914135600.A88785DBFE%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013138.html">
+   <LINK REL="Next"  HREF="013145.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	cb9bfef10daf5aa3fefef88657d31c9837b738f4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09cb9bfef10daf5aa3fefef88657d31c9837b738f4&In-Reply-To=%3C20130914135600.A88785DBFE%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	cb9bfef10daf5aa3fefef88657d31c9837b738f4">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:56:00 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013138.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-186-g8a1d390
+</A></li>
+        <LI>Next message: <A HREF="013145.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-188-gcd95b03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13139">[ date ]</a>
+              <a href="thread.html#13139">[ thread ]</a>
+              <a href="subject.html#13139">[ subject ]</a>
+              <a href="author.html#13139">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  cb9bfef10daf5aa3fefef88657d31c9837b738f4 (commit)
+       via  70192bc9d919480b84b486c3a6d68ffac30269fa (commit)
+      from  b722ac62c6279bd2072042267741977245d2437e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/client.py     |    6 ++++--
+ x2go/pulseaudio.py |   13 ++++++++++++-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/client.py b/x2go/client.py
+index 855187d..889befe 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -293,10 +293,12 @@ class X2goClient(object):
+         self.logger('HOOK_printaction_error: incoming print job ,, %s'' caused error: %s' % (filename, err_msg), loglevel=log.loglevel_ERROR)
+     def HOOK_on_control_session_death(self, profile_name):
+         self.logger('HOOK_on_control_session_death: the control session of profile %s has died unexpectedly' % profile_name, loglevel=log.loglevel_WARN)
++    def HOOK_pulseaudio_not_supported_in_RDPsession(self):
++        self.logger('HOOK_pulseaudio_not_supported_in_RDPsession: The pulseaudio daemon cannot be used within RDP sessions', loglevel=log.loglevel_WARN)
+     def HOOK_pulseaudio_server_startup_failed(self):
+-        self.logger('HOOK_pulseaudio_server_startup_failed: The pulseaudio daemon could not be started')
++        self.logger('HOOK_pulseaudio_server_startup_failed: The pulseaudio daemon could not be started', loglevel=log.loglevel_ERROR)
+     def HOOK_pulseaudio_server_died(self):
+-        self.logger('HOOK_pulseaudio_server_died: The pulseaudio daemon has just died away')
++        self.logger('HOOK_pulseaudio_server_died: The pulseaudio daemon has just died away', loglevel=log.loglevel_ERROR)
+     def HOOK_on_sound_tunnel_failed(self, profile_name='UNKNOWN', session_name='UNKNOWN'):
+         self.logger('HOOK_on_sound_tunnel_failed: setting up X2go sound for %s (%s) support failed' % (profile_name, session_name))
+     def HOOK_rforward_request_denied(self, profile_name='UNKNOWN', session_name='UNKNOWN', server_port=0):
+diff --git a/x2go/pulseaudio.py b/x2go/pulseaudio.py
+index fe3b0b2..1441669 100644
+--- a/x2go/pulseaudio.py
++++ b/x2go/pulseaudio.py
+@@ -95,7 +95,10 @@ class X2goPulseAudio(threading.Thread):
+         gevent.sleep(5)
+         _is_alive = p and (p.poll() is None)
+         if self.client_instance and not _is_alive:
+-            self.client_instance.HOOK_pulseaudio_server_startup_failed()
++            if os.environ.has_key('CLIENTNAME'):
++                self.client_instance.HOOK_pulseaudio_not_supported_in_RDPsession()
++            else:
++                self.client_instance.HOOK_pulseaudio_server_startup_failed()
+ 
+         while self._keepalive and _is_alive:
+             gevent.sleep(1)
+@@ -109,6 +112,14 @@ class X2goPulseAudio(threading.Thread):
+         except WindowsError:
+             pass
+ 
++        p = subprocess.call(['pulseaudio', '-k', ],
++                             stdin=_stdin,
++                             stdout=subprocess.PIPE,
++                             stderr=subprocess.STDOUT,
++                             shell=_shell,
++                            )
++        
++
+     def stop_thread(self):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013138.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-186-g8a1d390
+</A></li>
+	<LI>Next message: <A HREF="013145.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-188-gcd95b03
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13139">[ date ]</a>
+              <a href="thread.html#13139">[ thread ]</a>
+              <a href="subject.html#13139">[ subject ]</a>
+              <a href="author.html#13139">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

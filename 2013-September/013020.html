@@ -1,0 +1,343 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-110-g8c05a02
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.10-110-g8c05a02&In-Reply-To=%3C20130914135544.E1D905DBA8%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="013017.html">
+   <LINK REL="Next"  HREF="013029.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-110-g8c05a02</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.1.0.10-110-g8c05a02&In-Reply-To=%3C20130914135544.E1D905DBA8%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-110-g8c05a02">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="013017.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	a3aeee64302c605f726415803ea15e41e2e22b3f
+</A></li>
+        <LI>Next message: <A HREF="013029.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-107-g924ed9a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13020">[ date ]</a>
+              <a href="thread.html#13020">[ thread ]</a>
+              <a href="subject.html#13020">[ subject ]</a>
+              <a href="author.html#13020">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  8c05a02a227c58df6f1255ce2f327160a13f916c (commit)
+      from  026c4a15c437cdd2e129b3d4d82f2ef910a626dd (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog              |    1 +
+ pyhoca/wxgui/frontend.py      |    8 +--
+ pyhoca/wxgui/menus_taskbar.py |  157 +++++++++++++----------------------------
+ 3 files changed, 55 insertions(+), 111 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 8ef01f5..51d6f68 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -65,6 +65,7 @@ pyhoca-gui (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+       anymore.
+     - Implement single session profile support (--single-session-profile
+       Boolean command line option).
++    - Move rendering of menu tree partially into Python X2Go.
+   * Depend on Python X2Go 0.1.2.0.
+   * Install GNOME icons via dh_links.
+   * Install X2Go icons with explicit install paths.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index c0fa2a3..1fc6cb1 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -673,10 +673,10 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         if self._X2goClient__server_is_alive(session_uuid):
+             if session_list:
+                 _notify_text = _(u'Cleaning X2Go sessions...')
+-                self._hide_notifications_map[self.current_profile_name] = []
++                if not self._hide_notifications_map.has_key(self.current_profile_name):
++                    self._hide_notifications_map[self.current_profile_name] = []
+                 session_names = session_list.keys()
+-                if self._X2goClient__get_profile_config(self.current_profile_name)['published']:
+-                    session_names = [ _sn for _sn in session_names if not session_list[_sn].is_published_applications_provider() ]
++                session_names = [ _sn for _sn in session_names if not session_list[_sn].is_published_applications_provider() ]
+                 for session_name in session_names:
+                     _notify_text += '\n%s' % session_name
+                     self._hide_notifications_map[self.current_profile_name].append(session_name)
+@@ -697,7 +697,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             if self._X2goClient__server_is_alive(session_uuids[0]) and not self.args.single_session_profile:
+                 self._hide_notifications_map[self.current_profile_name] = self._X2goClient__client_running_sessions_of_profile_name(self.current_profile_name, return_session_names=True)
+ 
+-        self._X2goClient__disconnect_profile(self.current_profile_name)
++        gevent.spawn(self._X2goClient__disconnect_profile, self.current_profile_name)
+         self.notifier.send(_(u'%s - disconnect') % self.current_profile_name, _(u'X2Go Profile is now disconnected.'), icon='auth_disconnect', timeout=4000)
+         if self.exit_on_disconnect:
+             self._pyhoca_logger('Exiting %s because %s got disconnected.' % (self.appname, self.current_profile_name), loglevel=x2go.loglevel_NOTICE)
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 4675976..906b9df 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -334,7 +334,7 @@ class PyHocaGUI_Menu_LaunchSingleApplication(wx.Menu):
+             self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnApplicationStart, id=_app_id)
+ 
+ 
+-def _generate_Menu_PublishedApplications(_PyHocaGUI, caller=None, profile_name=None, session_name=None, menu_items=[]):
++def _generate_Menu_PublishedApplications(_PyHocaGUI, caller=None, profile_name=None, session_name=None):
+     &quot;&quot;&quot;\
+     STILL UNDOCUMENTED
+ 
+@@ -342,123 +342,68 @@ def _generate_Menu_PublishedApplications(_PyHocaGUI, caller=None, profile_name=N
+ 
+     _lang = _PyHocaGUI.lang
+ 
+-    _category_map = {
+-        _(u'Multimedia'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-multimedia.png' % _icons_location)),
+-        _(u'Development'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-development.png' % _icons_location)),
+-        _(u'Education'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-education.png' % _icons_location)),
+-        _(u'Games'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-games.png' % _icons_location)),
+-        _(u'Graphics'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-graphics.png' % _icons_location)),
+-        _(u'Internet'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-internet.png' % _icons_location)),
+-        _(u'Office Applications'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-office.png' % _icons_location)),
+-        _(u'System'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-system.png' % _icons_location)),
+-        _(u'Utilities'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-utilities.png' % _icons_location)),
+-        _(u'Other Applications'): (wx.Menu(), os.path.normpath('%s/PyHoca/22x22/applications-other.png' % _icons_location)),
++    _lang = _PyHocaGUI.lang
++    _pub_app_session = _PyHocaGUI.get_session_of_session_name(session_name, return_object=True)
++    menu_map = _pub_app_session.get_published_applications(lang=_lang)
++    if not menu_map.has_key(_lang):
++        return {}
++
++    if x2go.defaults.X2GOCLIENT_OS == 'Windows':
++        _icon_size = &quot;16x16&quot;
++    else:
++        _icon_size = &quot;22x22&quot;
++
++    _category_name_translator = {
++        'Multimedia': (_(u'Multimedia'), os.path.normpath('%s/PyHoca/%s/applications-multimedia.png' % (_icons_location, _icon_size), ), ),
++        'Development': (_(u'Development'), os.path.normpath('%s/PyHoca/%s/applications-development.png' % (_icons_location, _icon_size), ), ),
++        'Education': (_(u'Education'), os.path.normpath('%s/PyHoca/%s/applications-education.png' % (_icons_location, _icon_size), ), ),
++        'Games': (_(u'Games'), os.path.normpath('%s/PyHoca/%s/applications-games.png' % (_icons_location, _icon_size), ), ),
++        'Graphics': (_(u'Graphics'), os.path.normpath('%s/PyHoca/%s/applications-graphics.png' % (_icons_location, _icon_size), ), ),
++        'Internet': (_(u'Internet'), os.path.normpath('%s/PyHoca/%s/applications-internet.png' % (_icons_location, _icon_size), ), ),
++        'Office': (_(u'Office Applications'), os.path.normpath('%s/PyHoca/%s/applications-office.png' % (_icons_location, _icon_size), ), ),
++        'System': (_(u'System'), os.path.normpath('%s/PyHoca/%s/applications-system.png' % (_icons_location, _icon_size), ), ),
++        'Utilities': (_(u'Utilities'), os.path.normpath('%s/PyHoca/%s/applications-utilities.png' % (_icons_location, _icon_size), ), ),
++        'Other Applications': (_(u'Other Applications'), os.path.normpath('%s/PyHoca/%s/applications-other.png' % (_icons_location, _icon_size), ), ),
+     }
+-    _empty_menus = _category_map.keys()
+ 
+     _PyHocaGUI._eventid_pubapp_execmap[profile_name] = {}
+ 
+-    if menu_items is not None:
+-        for item in menu_items:
+-
+-            _menu_entry_name = ''
+-            _menu_entry_fallback_name = ''
+-            _menu_entry_comment = ''
+-            _menu_entry_fallback_comment = ''
+-            _menu_entry_exec = ''
+-            _menu_entry_cat = ''
+-
+-            lang_regio = _PyHocaGUI.lang
+-            lang_only = lang_regio.split('_')[0]
+-
+-            for line in item['desktop'].split('\n'):
+-                if re.match('^Name\[%s\]=.*' % lang_regio, line) or re.match('Name\[%s\]=.*' % lang_only, line):
+-                    _menu_entry_name = line.split(&quot;=&quot;)[1].strip()
+-                elif re.match('^Comment\[%s\]=.*' % lang_regio, line) or re.match('Comment\[%s\]=.*' % lang_only, line):
+-                    _menu_entry_comment = line.split(&quot;=&quot;)[1].strip()
+-                elif re.match('^Name=.*', line):
+-                    _menu_entry_fallback_name = line.split(&quot;=&quot;)[1].strip()
+-                elif re.match('^Comment=.*', line):
+-                    _menu_entry_fallback_comment = line.split(&quot;=&quot;)[1].strip()
+-                elif re.match('^Exec=.*', line):
+-                    _menu_entry_exec = line.split(&quot;=&quot;)[1].strip()
+-                elif re.match('^Categories=.*', line):
+-                    if 'Audio' in line or 'Video' in line:
+-                        _menu_entry_cat = _(u'Multimedia')
+-                    elif 'Development' in line:
+-                        _menu_entry_cat = _(u'Development')
+-                    elif 'Education' in line:
+-                        _menu_entry_cat = _(u'Education')
+-                    elif 'Game' in line:
+-                        _menu_entry_cat = _(u'Games')
+-                    elif 'Graphics' in line:
+-                        _menu_entry_cat = _(u'Graphics')
+-                    elif 'Network' in line:
+-                        _menu_entry_cat = _(u'Internet')
+-                    elif 'Office' in line:
+-                        _menu_entry_cat = _(u'Office Applications')
+-                    elif 'Settings' in line:
+-                            continue
+-                    elif 'System' in line:
+-                        _menu_entry_cat = _(u'System')
+-                    elif 'Utilities' in line:
+-                            _menu_entry_cat = _(u'Utilities')
+-                    else:
+-                        _menu_entry_cat = _(u'Other Applications')
+-
+-            if not _menu_entry_exec:
+-                continue
+-            else:
+-                # FIXME: strip off any noted options (%f, %F, %u, %U, ...), this can be more intelligent
+-                _menu_entry_exec = _menu_entry_exec.replace('%f', '').replace('%F','').replace('%u','').replace('%U','')
+-
+-            if not _menu_entry_cat:
+-                _menu_entry_cat = _(u'Other Applications')
++    _wx_menu_map = {}
++    if menu_map[_lang].keys():
++        for cat in menu_map[_lang].keys():
+ 
+-            if _menu_entry_cat in _empty_menus:
+-                _empty_menus.remove(_menu_entry_cat)
++            _wx_menu_map[_category_name_translator[cat][0]] = (wx.Menu(), _category_name_translator[cat][1])
+ 
+-            if not _menu_entry_name: _menu_entry_name = _menu_entry_fallback_name
+-            if not _menu_entry_comment: _menu_entry_comment = _menu_entry_fallback_comment
+-            if not _menu_entry_comment: _menu_entry_comment = _menu_entry_name
++            for _item in menu_map[_lang][cat]:
+ 
+-            _menu_entry_icon = item['icon']
++                _pubapp_id = wx.NewId()
++                _PyHocaGUI._eventid_profilenames_map[_pubapp_id] = profile_name
++                _PyHocaGUI._eventid_sessionnames_map[_pubapp_id] = session_name
++                _PyHocaGUI._eventid_pubapp_execmap[profile_name][_pubapp_id] = _item['exec']
+ 
+-            _pubapp_id = wx.NewId()
+-            _PyHocaGUI._eventid_profilenames_map[_pubapp_id] = profile_name
+-            _PyHocaGUI._eventid_sessionnames_map[_pubapp_id] = session_name
+-            _PyHocaGUI._eventid_pubapp_execmap[profile_name][_pubapp_id] = _menu_entry_exec
+-
+-            _menu_item = wx.MenuItem(_category_map[_menu_entry_cat][0], id=_pubapp_id, text=_menu_entry_name, help=_menu_entry_comment)
+-            if not _menu_entry_icon:
+-                if x2go.defaults.X2GOCLIENT_OS == 'Windows':
+-                    _menu_item.SetBitmap(wx.Bitmap(os.path.normpath('%s/PyHoca/16x16/x2go-logo-grey.png' % _icons_location)))
++                _menu_item = wx.MenuItem(_wx_menu_map[_category_name_translator[cat][0]][0], id=_pubapp_id, text=_item['name'], help=_item['comment'])
++                if not _item['icon']:
++                    _menu_item.SetBitmap(wx.Bitmap(os.path.normpath('%s/PyHoca/%s/x2go-logo-grey.png' % (_icons_location, _icon_size))))
+                 else:
+-                    _menu_item.SetBitmap(wx.Bitmap(os.path.normpath('%s/PyHoca/22x22/x2go-logo-grey.png' % _icons_location)))
+-            else:
+-                _menu_entry_icon_decoded = base64.b64decode(_menu_entry_icon)
+-                if not re.match('^&lt;\?(xml|XML).*version=.*encoding=.*standalone=.*\?&gt;.*', _menu_entry_icon_decoded.split('\n')[0]):
+-                    _icon_image = wx.ImageFromStream(StringIO.StringIO(_menu_entry_icon_decoded))
+-                    if x2go.defaults.X2GOCLIENT_OS == 'Windows':
+-                        _icon_bitmap = wx.BitmapFromImage(_icon_image.Scale(16,16))
+-                    else:
+-                        _icon_bitmap = wx.BitmapFromImage(_icon_image.Scale(22,22))
+-                    _menu_item.SetBitmap(_icon_bitmap)
+-            _category_map[_menu_entry_cat][0].AppendItem(_menu_item)
+-
+-            _PyHocaGUI.Bind(wx.EVT_MENU, _PyHocaGUI.OnPubAppExecution, id=_pubapp_id)
+-
+-        for _menu in _empty_menus:
+-            del _category_map[_menu]
++                    _menu_entry_icon_decoded = base64.b64decode(_item['icon'])
++                    if not re.match('^&lt;\?(xml|XML).*version=.*encoding=.*standalone=.*\?&gt;.*', _menu_entry_icon_decoded.split('\n')[0]):
++                        _icon_image = wx.ImageFromStream(StringIO.StringIO(_menu_entry_icon_decoded))
++                        if x2go.defaults.X2GOCLIENT_OS == 'Windows':
++                            _icon_bitmap = wx.BitmapFromImage(_icon_image.Scale(16,16))
++                        else:
++                            _icon_bitmap = wx.BitmapFromImage(_icon_image.Scale(22,22))
++                        _menu_item.SetBitmap(_icon_bitmap)
++                _wx_menu_map[_category_name_translator[cat][0]][0].AppendItem(_menu_item)
+ 
+-        return _category_map
++                _PyHocaGUI.Bind(wx.EVT_MENU, _PyHocaGUI.OnPubAppExecution, id=_pubapp_id)
+ 
+     else:
+         _dummy_menu = wx.Menu()
+         _dummy_item = _dummy_menu.Append(wx.NewId(), text=_(u'still loading'), help=_(u'On slow connections, the loading of the application menu can take a couple of seconds.'))
+         _dummy_item.Enable(False)
+-        _dummy_map = { _(u'Retrieving Application Menu...'): _dummy_menu, }
+-        return _dummy_map
++        _wx_menu_map = { _(u'Retrieving Application Menu...'): (_dummy_menu, os.path.normpath('%s/PyHoca/%s/x2go-logo-grey.png' % (_icons_location, _icon_size))), }
++
++    return _wx_menu_map
+ 
+ 
+ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+@@ -516,9 +461,8 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+                 if _pub_app_sessions:
+                     _pub_app_session = _pub_app_sessions[0]
+                     _pub_app_start_item.Enable(False)
+-                    _menu_items = _pub_app_session.get_published_applications()
+                     _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pub_app_session.get_session_name())
+-                    _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name(), menu_items = _menu_items)
++                    _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name())
+                     _category_names = _category_map.keys()
+                     _category_names.sort()
+                     for cat_name in _category_names:
+@@ -568,9 +512,8 @@ class PyHocaGUI_Menu_TaskbarSessionProfile(wx.Menu):
+                     if _pub_app_sessions:
+                         _pub_app_session = _pub_app_sessions[0]
+                     if _pub_app_session and _pub_app_session.is_running():
+-                        _menu_items = _pub_app_session.get_published_applications()
+                         _session_name_disabled = self._PyHocaGUI.is_session_name_disabled(profile_name, _pub_app_session.get_session_name())
+-                        _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name(), menu_items = _menu_items)
++                        _category_map = _generate_Menu_PublishedApplications(self._PyHocaGUI, caller=self, profile_name=profile_name, session_name=_pub_app_session.get_session_name())
+                         _category_names = _category_map.keys()
+                         _category_names.sort()
+                         for cat_name in _category_names:
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="013017.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	a3aeee64302c605f726415803ea15e41e2e22b3f
+</A></li>
+	<LI>Next message: <A HREF="013029.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-107-g924ed9a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13020">[ date ]</a>
+              <a href="thread.html#13020">[ thread ]</a>
+              <a href="subject.html#13020">[ subject ]</a>
+              <a href="author.html#13020">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

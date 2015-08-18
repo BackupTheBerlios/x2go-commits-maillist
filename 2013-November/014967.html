@@ -1,0 +1,506 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] buildscripts.git - master (branch) updated:	5b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%095b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57&In-Reply-To=%3C20131129132540.D14F35DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014966.html">
+   <LINK REL="Next"  HREF="014968.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] buildscripts.git - master (branch) updated:	5b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%095b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57&In-Reply-To=%3C20131129132540.D14F35DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] buildscripts.git - master (branch) updated:	5b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Nov 29 14:25:40 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014966.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-32-ge0b1342
+</A></li>
+        <LI>Next message: <A HREF="014968.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	1bc4cbefa9662b352e233548ddd12b2d2b59aa38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14967">[ date ]</a>
+              <a href="thread.html#14967">[ thread ]</a>
+              <a href="subject.html#14967">[ subject ]</a>
+              <a href="author.html#14967">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  5b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57 (commit)
+       via  fc18c444b2a96ee14ff1e4359a7205a683dfa0e5 (commit)
+      from  9fc935b9e8a9a0a3d667eb66b7ff609ecbfaf6ba (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5b5fa65bcc452f9ec8c44b4c94dd67f9bce59b57
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 29 14:25:09 2013 +0100
+
+    start working on build-rpm-package script
+
+commit fc18c444b2a96ee14ff1e4359a7205a683dfa0e5
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Nov 29 14:24:53 2013 +0100
+
+    change var name BUILDS_FOR to DEB_BUILDS_FOR
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/build-deb-package                        |   18 +--
+ bin/{build-deb-package =&gt; build-rpm-package} |  174 ++++++++++++--------------
+ home/.buildscripts/itzks.conf                |    2 +-
+ home/.buildscripts/nwt.conf                  |    2 +-
+ home/.buildscripts/x2go.conf                 |   10 +-
+ 5 files changed, 98 insertions(+), 108 deletions(-)
+ copy bin/{build-deb-package =&gt; build-rpm-package} (58%)
+
+The diff of changes is:
+diff --git a/bin/build-deb-package b/bin/build-deb-package
+index b612fb6..dbb7a94 100755
+--- a/bin/build-deb-package
++++ b/bin/build-deb-package
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ 
+-# Copyright (C) 2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2011-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ #
+ # This programme is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+@@ -26,7 +26,7 @@ GPG_KEY=
+ DISTS_SUPPORTED=&quot;debian ubuntu&quot;
+ DEBIAN_DISTROS=&quot;lenny squeeze wheezy jessie sid&quot;
+ UBUNTU_DISTROS=&quot;lucid maverick natty oneiric precise&quot;
+-BUILDS_FOR=&quot;\
++DEB_BUILDS_FOR=&quot;\
+ debian: squeeze wheezy jessie sid\n\
+ ubuntu: lucid precise\n\
+ &quot;
+@@ -94,8 +94,8 @@ set_vars() {
+ }
+ 
+ prepare_workspace() {
+-	# in any case remove the BUILDS_FOR file
+-	rm -f &quot;$PROJECT_DIR/BUILDS_FOR&quot;
++	# in any case remove the DEB_BUILDS_FOR file
++	rm -f &quot;$PROJECT_DIR/DEB_BUILDS_FOR&quot;
+ 
+ 	# make sure our local working copy is up to date...
+ 
+@@ -123,9 +123,9 @@ prepare_workspace() {
+ 
+ 	# by default we build for all current debian versions
+ 	if test -z $ARGV2_CODENAME; then
+-		test -f BUILDS_FOR || echo -e &quot;$BUILDS_FOR&quot; &gt; BUILDS_FOR
++		test -f DEB_BUILDS_FOR || echo -e &quot;$DEB_BUILDS_FOR&quot; &gt; DEB_BUILDS_FOR
+ 	elif echo &quot;$DEBIAN_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+-		echo &quot;debian: $ARGV2_CODENAME&quot; &gt; BUILDS_FOR
++		echo &quot;debian: $ARGV2_CODENAME&quot; &gt; DEB_BUILDS_FOR
+ 	elif echo &quot;$UBUNUT_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+ 		echo &quot;ubuntu: $ARGV2_CODENAME&quot; &gt;/dev/null
+ 	fi
+@@ -134,7 +134,7 @@ prepare_workspace() {
+ 
+ clear_pkgdist() {
+ 	# pkgdist directory cleanup
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/DEB_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+ 		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+@@ -176,7 +176,7 @@ clear_pkgdist() {
+ 
+ build_packages() {
+ 	# use pbuilder for building all variants of this package
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/DEB_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+ 		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+@@ -284,7 +284,7 @@ build_packages() {
+ 
+ upload_packages() {
+ 	# dupload the new packages to the reprepro repository
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/DEB_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])
+ 		l_CODENAMES=${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}
+ 		for l_CODENAME in $l_CODENAMES; do
+diff --git a/bin/build-deb-package b/bin/build-rpm-package
+similarity index 58%
+copy from bin/build-deb-package
+copy to bin/build-rpm-package
+index b612fb6..0c8a49a 100755
+--- a/bin/build-deb-package
++++ b/bin/build-rpm-package
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ 
+-# Copyright (C) 2011 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2011-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+ #
+ # This programme is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+@@ -20,15 +20,15 @@
+ GIT_USER=&quot;gituser&quot;
+ GIT_HOSTNAME=&quot;git.mydomain.org&quot;
+ 
+-DEBEMAIL=&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">firstname.lastname at mydomain.org</A>&quot;
+-DEBFULLNAME=&quot;Firstname Lastname&quot;
++RPMEMAIL=&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">firstname.lastname at mydomain.org</A>&quot;
++RPMFULLNAME=&quot;Firstname Lastname&quot;
+ GPG_KEY=
+-DISTS_SUPPORTED=&quot;debian ubuntu&quot;
+-DEBIAN_DISTROS=&quot;lenny squeeze wheezy jessie sid&quot;
+-UBUNTU_DISTROS=&quot;lucid maverick natty oneiric precise&quot;
+-BUILDS_FOR=&quot;\
+-debian: squeeze wheezy jessie sid\n\
+-ubuntu: lucid precise\n\
++DISTS_SUPPORTED=&quot;fedora epel&quot;
++FEDORA_DISTROS=&quot;fe18 fe19 fe20&quot;
++EPEL_DISTROS=&quot;sl6&quot;
++RPM_BUILDS_FOR=&quot;\
++fedora: $FEDORA_DISTROS\n\
++epel: $EPEL_DISTROS\n\
+ &quot;
+ 
+ COMPONENT_MAIN=&quot;main&quot;
+@@ -46,8 +46,6 @@ test -f ~/.buildscripts/$PREFIX.conf &amp;&amp; . ~/.buildscripts/$PREFIX.conf || { echo
+ set -ex
+ 
+ set_vars() {
+-	USE_SUDO=&quot;yes&quot;
+-	PDEBUILD=&quot;pdebuild --pbuilder qemubuilder&quot;
+ 	TEMP_BASE=&quot;$HOME/tmp/&quot;
+ 	mkdir -p &quot;$TEMP_BASE&quot;
+ 	chmod 2770 &quot;$TEMP_BASE&quot;
+@@ -94,8 +92,8 @@ set_vars() {
+ }
+ 
+ prepare_workspace() {
+-	# in any case remove the BUILDS_FOR file
+-	rm -f &quot;$PROJECT_DIR/BUILDS_FOR&quot;
++	# in any case remove the RPM_BUILDS_FOR file
++	rm -f &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot;
+ 
+ 	# make sure our local working copy is up to date...
+ 
+@@ -123,18 +121,18 @@ prepare_workspace() {
+ 
+ 	# by default we build for all current debian versions
+ 	if test -z $ARGV2_CODENAME; then
+-		test -f BUILDS_FOR || echo -e &quot;$BUILDS_FOR&quot; &gt; BUILDS_FOR
++		test -f RPM_BUILDS_FOR || echo -e &quot;$RPM_BUILDS_FOR&quot; &gt; RPM_BUILDS_FOR
+ 	elif echo &quot;$DEBIAN_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+-		echo &quot;debian: $ARGV2_CODENAME&quot; &gt; BUILDS_FOR
++		echo &quot;fedora: $ARGV2_CODENAME&quot; &gt; RPM_BUILDS_FOR
+ 	elif echo &quot;$UBUNUT_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+-		echo &quot;ubuntu: $ARGV2_CODENAME&quot; &gt;/dev/null
++		echo &quot;epel: $ARGV2_CODENAME&quot; &gt;/dev/null
+ 	fi
+ 	return 0
+ }
+ 
+ clear_pkgdist() {
+ 	# pkgdist directory cleanup
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+ 		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+@@ -176,7 +174,7 @@ clear_pkgdist() {
+ 
+ build_packages() {
+ 	# use pbuilder for building all variants of this package
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+ 		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+@@ -194,87 +192,65 @@ build_packages() {
+ 				git clone --local &quot;$PROJECT_DIR&quot; &quot;$TEMP_DIR/$PROJECT/&quot;
+ 				cd &quot;$TEMP_DIR/$PROJECT&quot;
+ 				git checkout $CHECKOUT || git checkout master
+-				find $PROJECT_DIR/../ -type f -maxdepth 0 -mindepth 0 | grep $PROJECT_*.orig.tar.gz &amp;&gt;/dev/null &amp;&amp; cp $PROJECT_DIR/../$PROJECT_*.orig.tar.gz ..
+-				GITREV=$(gitrevno)
+-
+-				# we always build native packages for our repos
+-				SA_OPTION=&quot;&quot;
+-
+-				# we always build native packages for our repos
+-				SA_OPTION=&quot;&quot;
+-				test -f debian/source/format &amp;&amp; cat debian/source/format | egrep '^3.0.*\(quilt\)$' &gt;/dev/null &amp;&amp; {
+-					git fetch origin upstream:upstream
+-					UPSTREAM_VERSION=$(dpkg-parsechangelog | grep Version: | cut -d &quot; &quot; -f2 | sed -e 's/-.*//' -e 's/^.*://')
+-					REVISION=$(dpkg-parsechangelog | grep Version: | cut -d &quot; &quot; -f2 | sed -e 's/.*-//')
+-					git archive --prefix=${PROJECT}-${UPSTREAM_VERSION}/ -o ../${PROJECT}_${UPSTREAM_VERSION}.orig.tar.gz upstream/${UPSTREAM_VERSION} &amp;&amp; {
+-						SA_OPTION=&quot;--debbuildopts=-sa&quot;
+-					} || echo &quot;1.0&quot; &gt; debian/source/format
+-				}
+ 
+-				# for Ubuntu version is the codename of the distribution release
++				GITREV=$(gitrevno)
+ 				VERSION=$l_CODENAME
+ 
+-				# translate the version name for Debian releases
+-				[ &quot;x$l_CODENAME&quot; = &quot;xsid&quot; ] &amp;&amp; VERSION=unstable
+-				#[ &quot;x$l_CODENAME&quot; = &quot;xjessie&quot; ] &amp;&amp; VERSION=testing
+-				#[ &quot;x$l_CODENAME&quot; = &quot;xwheezy&quot; ] &amp;&amp; VERSION=stable
+-				#[ &quot;x$l_CODENAME&quot; = &quot;xoldstable&quot; ] &amp;&amp; VERSION=oldstable
++				# tar upstream sources from our Git clone
++
++				### TODO: really tar the sources
+ 
+ 				# modify the section for non-main package builds
+-				[ &quot;x$COMPONENT&quot; != &quot;xmain&quot; ] &amp;&amp; {
+-					mv debian/control debian/control.tmp
+-					cat debian/control.tmp | sed  &quot;s#Section:[\ ]*\(.*\)#Section: $COMPONENT/\1#g&quot; &gt; debian/control
+-				}
++
++				### TODO: How to host different builds (releases / nightlies in the same repository???)
++
++				#[ &quot;x$COMPONENT&quot; != &quot;xmain&quot; ] &amp;&amp; {
++				#	mv debian/control debian/control.tmp
++				#	cat debian/control.tmp | sed  &quot;s#Section:[\ ]*\(.*\)#Section: $COMPONENT/\1#g&quot; &gt; debian/control
++				#}
+ 
+ 				# modify changelog for this build
+-				if [ &quot;$COMPONENT&quot; != &quot;$COMPONENT_NIGHTLY&quot; ]; then
+-					dch --distribution $VERSION --force-distribution -l &quot;+git$DATE.$GITREV+$l_CODENAME.$COMPONENT.&quot; &quot;Auto-built $l_DIST $l_CODENAME package for $REPOS_SERVER repository (Git commit: $GIT_OBJECT_ID).&quot;
+-				else
+-					dch --distribution $VERSION --force-distribution -l &quot;~git$DATE.$GITREV+$l_CODENAME.$COMPONENT.&quot; &quot;Development-Snapshot!!! Auto-built $l_DIST $l_CODENAME package for $REPOS_SERVER repository (Git commit: $GIT_OBJECT_ID).&quot;
+-				fi
++
++				### TODO: manipulate the version string in the .spec file
++
++				#if [ &quot;$COMPONENT&quot; != &quot;$COMPONENT_NIGHTLY&quot; ]; then
++				#	dch --distribution $VERSION --force-distribution -l &quot;+git$DATE.$GITREV+$l_CODENAME.$COMPONENT.&quot; &quot;Auto-built $l_DIST $l_CODENAME package for $REPOS_SERVER repository (Git commit: $GIT_OBJECT_ID).&quot;
++				#else
++				#	dch --distribution $VERSION --force-distribution -l &quot;~git$DATE.$GITREV+$l_CODENAME.$COMPONENT.&quot; &quot;Development-Snapshot!!! Auto-built $l_DIST $l_CODENAME package for $REPOS_SERVER repository (Git commit: $GIT_OBJECT_ID).&quot;
++				#fi
++
++
+ 				mkdir -p $PKGDIST/$l_DIST/$l_CODENAME/{amd64,i386}
+-				OTHERMIRROR=&quot;&quot;
+-				if [ &quot;x$COMPONENT&quot; = &quot;x$COMPONENT_NIGHTLY&quot; ]; then
+-					echo $PACKAGE_WITHOUT_OTHERMIRROR | grep $PROJECT &gt;/dev/null || OTHERMIRROR=&quot;deb <A HREF="http://$REPOS_SERVER/$l_DIST">http://$REPOS_SERVER/$l_DIST</A> $l_CODENAME $COMPONENT_MAIN $COMPONENT&quot;
+-				else
+-					echo $PACKAGE_WITHOUT_OTHERMIRROR | grep $PROJECT &gt;/dev/null || OTHERMIRROR=&quot;deb <A HREF="http://$REPOS_SERVER/$l_DIST">http://$REPOS_SERVER/$l_DIST</A> $l_CODENAME $COMPONENT&quot;
+-				fi
+-				if [ $PROJECT = &quot;x2gomatebindings&quot; ]; then
+-					OTHERMIRROR=&quot;deb <A HREF="http://packages.mate-desktop.org/repo/debian">http://packages.mate-desktop.org/repo/debian</A> $l_CODENAME main&quot;
+-				fi
+ 
+-				[ &quot;x$USE_SUDO&quot; != &quot;xyes&quot; ] &amp;&amp; {
+-					[ &quot;x$EXTRA_ARCHS_ONLY&quot; = &quot;x&quot; ] &amp;&amp; {
+-						[ &quot;x$SKIP_ARCH&quot; != &quot;xamd64&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(all|any|amd64)' &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/amd64&quot; -- --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-						[ &quot;x$SKIP_ARCH&quot; != &quot;xi386&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(any|i386)' &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/i386&quot;  -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-					}
+-					for extra_arch in $EXTRA_ARCHS; do
+-						mkdir -p &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot;
+-						cat debian/control | egrep &quot;Architecture.*(any|$extra_arch)&quot; &gt;/dev/null &amp;&amp; {
+-							DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-					done
+-				}
+-				[ &quot;x$USE_SUDO&quot; = &quot;xyes&quot; ] &amp;&amp; {
+-					[ &quot;x$EXTRA_ARCHS_ONLY&quot; = &quot;x&quot; ] &amp;&amp; {
+-						[ &quot;x$SKIP_ARCH&quot; != &quot;xamd64&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(all|any|amd64)' &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/amd64 -- --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-						[ &quot;x$SKIP_ARCH&quot; != &quot;xi386&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(any|i386)' &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult $PKGDIST/$l_DIST/$l_CODENAME/i386  -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-					}
+-					for extra_arch in $EXTRA_ARCHS; do
+-						mkdir -p &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot;
+-						cat debian/control | egrep &quot;Architecture.*(any|$extra_arch)&quot; &gt;/dev/null &amp;&amp; {
+-							sudo GNUPGHOME=$GNUPGHOME DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch OTHERMIRROR=&quot;$OTHERMIRROR&quot; $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
+-						}
+-					done
++				# TODO: obtain packages from our YUM repository???
++
++				#OTHERMIRROR=&quot;&quot;
++				#if [ &quot;x$COMPONENT&quot; = &quot;x$COMPONENT_NIGHTLY&quot; ]; then
++				#	echo $PACKAGE_WITHOUT_OTHERMIRROR | grep $PROJECT &gt;/dev/null || OTHERMIRROR=&quot;deb <A HREF="http://$REPOS_SERVER/$l_DIST">http://$REPOS_SERVER/$l_DIST</A> $l_CODENAME $COMPONENT_MAIN $COMPONENT&quot;
++				#else
++				#	echo $PACKAGE_WITHOUT_OTHERMIRROR | grep $PROJECT &gt;/dev/null || OTHERMIRROR=&quot;deb <A HREF="http://$REPOS_SERVER/$l_DIST">http://$REPOS_SERVER/$l_DIST</A> $l_CODENAME $COMPONENT&quot;
++				#fi
++
++				[ &quot;x$EXTRA_ARCHS_ONLY&quot; = &quot;x&quot; ] &amp;&amp; {
++
++					### TODO: build amd64/i386 packages here
++
++					#[ &quot;x$SKIP_ARCH&quot; != &quot;xamd64&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(all|any|amd64)' &gt;/dev/null &amp;&amp; {
++					#	DIST=$l_DIST CODENAME=$l_CODENAME ARCH=amd64 $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/amd64&quot; -- --allow-untrusted $SA_OPTION 0&lt;&amp;-
++					#}
++					#[ &quot;x$SKIP_ARCH&quot; != &quot;xi386&quot; ] &amp;&amp; cat debian/control | egrep 'Architecture.*(any|i386)' &gt;/dev/null &amp;&amp; {
++					#	DIST=$l_DIST CODENAME=$l_CODENAME ARCH=i386  $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/i386&quot;  -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
++					#}
+ 				}
++				for extra_arch in $EXTRA_ARCHS; do
++					mkdir -p &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot;
++
++					### TODO: build extra-arch packages here
++
++					#cat debian/control | egrep &quot;Architecture.*(any|$extra_arch)&quot; &gt;/dev/null &amp;&amp; {
++					#	DIST=$l_DIST CODENAME=$l_CODENAME ARCH=$extra_arch $PDEBUILD --auto-debsign --debsign-k $GPG_KEY --buildresult &quot;$PKGDIST/$l_DIST/$l_CODENAME/$extra_arch&quot; -- --binary-arch --allow-untrusted $SA_OPTION 0&lt;&amp;-
++					#}
++				done
+ 				rm -Rf &quot;$TEMP_DIR&quot;
+ 			done
+ 		}
+@@ -284,7 +260,7 @@ build_packages() {
+ 
+ upload_packages() {
+ 	# dupload the new packages to the reprepro repository
+-	cat &quot;$PROJECT_DIR/BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+ 		l_DIST=$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])
+ 		l_CODENAMES=${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}
+ 		for l_CODENAME in $l_CODENAMES; do
+@@ -297,15 +273,21 @@ upload_packages() {
+ 				for l_ARCH in amd64 i386; do
+ 					[ &quot;x$SKIP_ARCH&quot; != &quot;x$l_ARCH&quot; ] &amp;&amp; {
+ 						cd &quot;$PKGDIST/$l_DIST/$l_CODENAME/$l_ARCH&quot;
+-						test -f ./dupload.conf || ln -s ~/.dupload.conf.$PREFIX ./dupload.conf
+-						ls $PROJECT_*.changes &amp;&gt;/dev/null &amp;&amp; dupload -c --to $PREFIX-$l_DIST-$l_CODENAME $PROJECT_*.changes 0&lt;&amp;-
++
++						# TODO: upload package
++
++						#test -f ./dupload.conf || ln -s ~/.dupload.conf.$PREFIX ./dupload.conf
++						#ls $PROJECT_*.changes &amp;&gt;/dev/null &amp;&amp; dupload -c --to $PREFIX-$l_DIST-$l_CODENAME $PROJECT_*.changes 0&lt;&amp;-
+ 					}
+ 				done
+ 			fi
+ 			for l_EXTRA_ARCH in $EXTRA_ARCHS; do 
+ 				cd &quot;$PKGDIST/$l_DIST/$l_CODENAME/$l_EXTRA_ARCH&quot;
+-				test -f ./dupload.conf || ln -s ~/.dupload.conf.$PREFIX ./dupload.conf
+-				ls $PROJECT_*.changes &amp;&gt;/dev/null &amp;&amp; dupload -c --to $PREFIX-$l_DIST-$l_CODENAME $PROJECT_*.changes 0&lt;&amp;-
++
++				# TODO: upload package
++
++				#test -f ./dupload.conf || ln -s ~/.dupload.conf.$PREFIX ./dupload.conf
++				#ls $PROJECT_*.changes &amp;&gt;/dev/null &amp;&amp; dupload -c --to $PREFIX-$l_DIST-$l_CODENAME $PROJECT_*.changes 0&lt;&amp;-
+ 			done
+ 		done
+ 	done
+@@ -314,7 +296,7 @@ upload_packages() {
+ 
+ ### MAIN ###
+ set_vars $@ &amp;&amp; {
+-	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build-deb-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-deb-package&quot; ]; then
++	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build-rpm-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-rpm-package&quot; ]; then
+ 		cd $PROJECT_DIR &amp;&amp; pkgneedsbuild $CHECKOUT || [ &quot;$FORCE_BUILD&quot; -eq 0 ] &amp;&amp; {
+ 			prepare_workspace &amp;&amp; {
+ 				clear_pkgdist
+@@ -322,7 +304,7 @@ set_vars $@ &amp;&amp; {
+ 			}
+ 		}
+ 	fi
+-	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-upload-deb-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-deb-package&quot; ]; then
++	if [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-upload-rpm-package&quot; ] || [ &quot;x$(basename $0)&quot; = &quot;x$PREFIX-build+upload-rpm-package&quot; ]; then
+ 		upload_packages
+ 	fi
+ }
+diff --git a/home/.buildscripts/itzks.conf b/home/.buildscripts/itzks.conf
+index 16ad07c..75c44d1 100644
+--- a/home/.buildscripts/itzks.conf
++++ b/home/.buildscripts/itzks.conf
+@@ -8,7 +8,7 @@ DEBFULLNAME=&quot;ITZKS Packages&quot;
+ GPG_KEY=&quot;E41B37C658842183&quot;
+ 
+ DISTS_SUPPORTED=&quot;debian ubuntu&quot;
+-BUILDS_FOR=&quot;\
++DEB_BUILDS_FOR=&quot;\
+ debian: squeeze wheezy jessie sid&quot;
+ 
+ COMPONENT_MAIN=&quot;main&quot;
+diff --git a/home/.buildscripts/nwt.conf b/home/.buildscripts/nwt.conf
+index 37a786f..dd662a6 100644
+--- a/home/.buildscripts/nwt.conf
++++ b/home/.buildscripts/nwt.conf
+@@ -8,7 +8,7 @@ DEBEMAIL=<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">debian at das-netzwerkteam.de</A>
+ DEBFULLNAME=&quot;NWT Packages&quot;
+ GPG_KEY=&quot;4DC41CF116990FF8&quot;
+ DISTS_SUPPORTED=&quot;debian ubuntu&quot;
+-BUILDS_FOR=&quot;\
++DEB_BUILDS_FOR=&quot;\
+ debian: lenny squeeze wheezy jessie sid\n\
+ ubuntu: lucid precise&quot;
+ 
+diff --git a/home/.buildscripts/x2go.conf b/home/.buildscripts/x2go.conf
+index e51baf0..63a0888 100644
+--- a/home/.buildscripts/x2go.conf
++++ b/home/.buildscripts/x2go.conf
+@@ -8,9 +8,17 @@ DEBEMAIL=<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">git-admin at x2go.org</A>
+ DEBFULLNAME=&quot;X2go Git Administrator&quot;
+ GPG_KEY=&quot;F4A7678C9C6B0B2B&quot;
+ DISTS_SUPPORTED=&quot;debian&quot;
+-BUILDS_FOR=&quot;\
++DEB_BUILDS_FOR=&quot;\
+ debian: squeeze wheezy jessie sid&quot;
+ 
++RPMEMAIL=<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">git-admin at x2go.org</A>
++RPMFULLNAME=&quot;X2go Git Administrator&quot;
++GPG_KEY=&quot;F4A7678C9C6B0B2B&quot;
++DISTS_SUPPORTED=&quot;fedora epel&quot;
++RPM_BUILDS_FOR=&quot;\
++fedora: fe18 fe19 fe20\n\
++epel: sl6\n&quot;
++
+ COMPONENT_MAIN=&quot;main&quot;
+ COMPONENT_NIGHTLY=&quot;heuler&quot;
+ COMPONENT_RELEASES=&quot;baikal&quot;
+
+
+hooks/post-receive
+-- 
+buildscripts.git (X2Go packaging scripts)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;buildscripts.git&quot; (X2Go packaging scripts).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014966.html">[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-32-ge0b1342
+</A></li>
+	<LI>Next message: <A HREF="014968.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	1bc4cbefa9662b352e233548ddd12b2d2b59aa38
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14967">[ date ]</a>
+              <a href="thread.html#14967">[ thread ]</a>
+              <a href="subject.html#14967">[ subject ]</a>
+              <a href="author.html#14967">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

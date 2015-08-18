@@ -1,0 +1,530 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-211-g392629e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-211-g392629e&In-Reply-To=%3C20140108142904.D82775DB89%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024145.html">
+   <LINK REL="Next"  HREF="024117.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-211-g392629e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-211-g392629e&In-Reply-To=%3C20140108142904.D82775DB89%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-211-g392629e">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:04 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024145.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-206-g29315a2
+</A></li>
+        <LI>Next message: <A HREF="024117.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-217-gf1f0a7c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24152">[ date ]</a>
+              <a href="thread.html#24152">[ thread ]</a>
+              <a href="subject.html#24152">[ subject ]</a>
+              <a href="author.html#24152">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  392629ed845770798e10870494951c64f4e86aca (commit)
+      from  98ba5f24c29ce9ac2ae4129b2ade74dbb515cd21 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/client.py   |   12 +++++++---
+ x2go/defaults.py |    5 +++++
+ x2go/xserver.py  |   66 +++++++++++++++++++++++++++++++++++++++++-------------
+ 4 files changed, 66 insertions(+), 18 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 87e643a..fa200d6 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -109,6 +109,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Re-use a left behind stray X-server that might have not get killed by
+       a previous instance of Python X2Go Client. This trick is nasty, but works
+       around faulty abortion of client implementations.
++    - Handle detection of free TCP/IP X display port far more intelligently.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/client.py b/x2go/client.py
+index 4ee4c00..a5c4e63 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -302,9 +302,15 @@ class X2goClient(object):
+                 self.HOOK_no_known_xserver_found()
+             else:
+ 
++                _last_display = None
+                 if  type(start_xserver) is types.BooleanType:
+-                    p_xs = self.client_xconfig.preferred_xserver
++                    p_xs_name = self.client_xconfig.preferred_xserver_names[0]
++                    _last_display = self.client_xconfig.get_xserver_config(p_xs_name)['last_display']
++                    self.client_xconfig.detect_unused_xdisplay_port(p_xs_name)
++                    p_xs = self.client_xconfig.get_xserver_config(p_xs_name)
+                 elif type(start_xserver) is types.StringType:
++                    _last_display = self.client_xconfig.get_xserver_config(start_xserver)['last_display']
++                    self.client_xconfig.detect_unused_xdisplay_port(start_xserver)
+                     p_xs = (start_xserver, self.client_xconfig.get_xserver_config(start_xserver))
+ 
+                 if not self.client_xconfig.running_xservers:
+@@ -314,12 +320,12 @@ class X2goClient(object):
+ 
+                 else:
+ 
+-                    if p_xs is not None:
++                    if p_xs is not None and _last_display is not None:
+                         #
+                         # FIXME: this trick is nasty, client implementation should rather cleanly shutdown launch X-server processes
+                         # 
+                         # re-use a left behind X-server instance of a previous/crashed run of Python X2Go Client
+-                        os.environ.update({'DISPLAY': str(p_xs[1]['display'])})
++                        os.environ.update({'DISPLAY': str(_last_display)})
+                     else:
+                         # presume the running XServer listens on :0
+                         os.environ.update({'DISPLAY': 'localhost:0'})
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 095a162..f9b8bf6 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -243,6 +243,7 @@ if X2GOCLIENT_OS == 'Windows':
+         },
+         'Cygwin-X': {
+             'display': 'localhost:40',
++            'last_display': 'localhost:40',
+             'process_name': 'XWin.exe',
+             'test_installed': os.path.join(os.environ['SystemDrive'], '\\', 'cygwin', 'bin', 'XWin.exe'),
+             'run_command': os.path.join(os.environ['SystemDrive'], '\\', 'cygwin', 'bin', 'XWin.exe'),
+@@ -250,6 +251,7 @@ if X2GOCLIENT_OS == 'Windows':
+             },
+         'VcXsrv': {
+             'display': 'localhost:40',
++            'last_display': 'localhost:40',
+             'process_name': 'vcxsrv.exe',
+             'test_installed': os.path.join(os.environ['ProgramFiles'], 'VcXsrv', 'vcxsrv.exe'), 
+             'run_command': os.path.join(os.environ['ProgramFiles'], 'VcXsrv', 'vcxsrv.exe'),
+@@ -257,6 +259,7 @@ if X2GOCLIENT_OS == 'Windows':
+             },
+         'VcXsrv_shipped': {
+             'display': 'localhost:40',
++            'last_display': 'localhost:40',
+             'process_name': 'vcxsrv.exe',
+             'test_installed': os.path.join(os.getcwd(), 'VcXsrv', 'vcxsrv.exe'), 
+             'run_command': os.path.join(os.getcwd(), 'VcXsrv', 'vcxsrv.exe'),
+@@ -264,6 +267,7 @@ if X2GOCLIENT_OS == 'Windows':
+             },
+         'VcXsrv_development': {
+             'display': 'localhost:40',
++            'last_display': 'localhost:40',
+             'process_name': 'vcxsrv.exe',
+             'test_installed': os.path.join(os.getcwd(), '..', 'pyhoca-contrib', 'mswin', 'vcxsrv-mswin', 'VcXsrv-1.12.0.1', 'vcxsrv.exe'), 
+             'run_command': os.path.join(os.getcwd(), '..', 'pyhoca-contrib', 'mswin', 'vcxsrv-mswin', 'VcXsrv-1.12.0.1', 'vcxsrv.exe'), 
+@@ -271,6 +275,7 @@ if X2GOCLIENT_OS == 'Windows':
+             },
+         'Xming': {
+             'display': 'localhost:40',
++            'last_display': 'localhost:40',
+             'process_name': 'Xming.exe',
+             'test_installed': os.path.join(os.environ['ProgramFiles'], 'Xming', 'Xming.exe'), 
+             'run_command': os.path.join(os.environ['ProgramFiles'], 'Xming', 'Xming.exe'),
+diff --git a/x2go/xserver.py b/x2go/xserver.py
+index b2b5a37..859b1c8 100644
+--- a/x2go/xserver.py
++++ b/x2go/xserver.py
+@@ -175,7 +175,10 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+     @property
+     def preferred_xserver(self):
+         &quot;&quot;&quot;\
+-        Renders a list of preferred XServer names (most preferred on top).
++        Returns a tuple of (&lt;xserver_name&gt;, &lt;xserver_config&gt;).
++
++        return: (&lt;xserver_name&gt;, &lt;xserver_config&gt;)
++        rtype: C{tuple}
+ 
+         &quot;&quot;&quot;
+         if self.xserver_launch_possible:
+@@ -183,6 +186,53 @@ class X2goClientXConfig(inifiles.X2goIniFile):
+         else:
+             return None
+ 
++    @property
++    def preferred_xserver_names(self):
++        &quot;&quot;&quot;\
++        Returns the list of preferred XServer names (most preferred first).
++
++        &quot;&quot;&quot;
++        return self.installed_xservers
++
++    def detect_unused_xdisplay_port(self, xserver_name):
++        &quot;&quot;&quot;\
++        Get an unused TCP/IP port for the to-be-launched X server.
++
++        @param xserver_name: name of the XServer application
++        @type xserver_name: C{str}
++
++        &quot;&quot;&quot;
++        _default_display = self.get_xserver_config(xserver_name)['display']
++        _last_display = self.xserver_config(xserver_name)['last_display']
++
++        try:
++            _default_xserver_port = int(_display.split(&quot;:&quot;)[1].split(&quot;.&quot;)[0]) + 6000
++            _last_xserver_port = int(_last_display.split(&quot;:&quot;)[1].split(&quot;.&quot;)[0]) + 6000
++
++            # try the last used $DISPLAY first...
++            if utils.detect_unused_port(preferred_port=_last_xserver_port) == _last_xserver_port:
++                _detect_xserver_port = _last_xserver_port
++
++            # then try the default $DISPLAY...
++            elif utils.detect_unused_port(preferred_port=_default_xserver_port) == _default_xserver_port:
++                _detect_xserver_port = _default_xserver_port
++
++            # otherwise use a detection algorithm to find a free TCP/IP port
++            else:
++                _xserver_port = _default_xserver_port +1
++                while utils.detect_unused_port(preferred_port=_xserver_port) != _xserver_port:
++                        _xserver_port += 1
++                _detect_xserver_port = _xserver_port
++
++            # if the port changed, let's write it to our configuration file
++            if _detect_xserver_port != _last_xserver_port:
++                self.update_value(xserver_name, 'last_display', _last_display.replace(_last_xserver_port, _detect_xserver_port))
++                self.write_user_config = True
++                self.write()
++
++        except TypeError:
++            pass
++
+ 
+ class X2goXServer(threading.Thread):
+     &quot;&quot;&quot;
+@@ -227,20 +277,6 @@ class X2goXServer(threading.Thread):
+ 
+         if self.xserver_config.has_key('display'):
+ 
+-            try:
+-                _configured_display_no = int(self.xserver_config['display'].split(&quot;:&quot;)[1].split(&quot;.&quot;)[0])
+-                _xserver_port = _configured_display_no + 6000
+-                while utils.detect_unused_port(preferred_port=_xserver_port) != _xserver_port:
+-                    _xserver_port += 1
+-                _display_no = _xserver_port - 6000
+-
+-                if _configured_display_no != _display_no:
+-                    self.xserver_config['display'] = self.xserver_config['display'].replace(_configured_display_no, _display_no)
+-                    self.xserver_config['parameters'] = self.xserver_config['parameters'].replace(_configured_display_no, _display_no)
+-
+-            except TypeError:
+-                pass
+-
+             self.logger('setting DISPLAY environment variable to %s' % self.xserver_config['display'], loglevel=log.loglevel_NOTICE)
+             os.environ.update({'DISPLAY': str(self.xserver_config['display'])})
+         threading.Thread.__init__(self)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024145.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-206-g29315a2
+</A></li>
+	<LI>Next message: <A HREF="024117.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-217-gf1f0a7c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24152">[ date ]</a>
+              <a href="thread.html#24152">[ thread ]</a>
+              <a href="subject.html#24152">[ subject ]</a>
+              <a href="author.html#24152">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

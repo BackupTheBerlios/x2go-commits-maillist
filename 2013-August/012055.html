@@ -1,0 +1,389 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-37-gbfe6f43
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.16-37-gbfe6f43&In-Reply-To=%3C20130830142544.8CFC15DB87%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012053.html">
+   <LINK REL="Next"  HREF="012060.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-37-gbfe6f43</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09redist-client/3.5.0.16-37-gbfe6f43&In-Reply-To=%3C20130830142544.8CFC15DB87%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-37-gbfe6f43">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:25:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012053.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-36-g36a2247
+</A></li>
+        <LI>Next message: <A HREF="012060.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-41-g1d76694
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12055">[ date ]</a>
+              <a href="thread.html#12055">[ thread ]</a>
+              <a href="subject.html#12055">[ subject ]</a>
+              <a href="author.html#12055">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  bfe6f4349e15fe2ae70e773552e1dc080f04b68d (commit)
+      from  36a2247e0e65d7b30f95687aaa43f51c373fcc24 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/Makefile.nx-libs                            |   81 ++++++++++++++++++--
+ debian/changelog                                   |    3 +
+ debian/libnx-x11-dev.dirs                          |    2 -
+ debian/libnx-x11-dev.install                       |    3 +-
+ debian/libnx-x11.dirs                              |    1 -
+ debian/libnx-x11.install                           |    5 +-
+ .../patches/030_nx-X11_configure-args.full.patch   |    4 +-
+ debian/post-build-nx.sh                            |   25 ------
+ debian/rules                                       |    5 +-
+ 9 files changed, 87 insertions(+), 42 deletions(-)
+ delete mode 100644 debian/libnx-x11-dev.dirs
+ delete mode 100755 debian/post-build-nx.sh
+
+The diff of changes is:
+diff --git a/debian/Makefile.nx-libs b/debian/Makefile.nx-libs
+index d50d699..5cfc96e 100644
+--- a/debian/Makefile.nx-libs
++++ b/debian/Makefile.nx-libs
+@@ -3,6 +3,7 @@
+ INSTALL_DIR=install -d -m 755
+ INSTALL_FILE=install -m 644
+ INSTALL_PROGRAM=install -m 755
++COPY_SYMLINK=cp -a
+ RM_FILE=rm -f
+ RM_DIR=rmdir -p --ignore-fail-on-non-empty
+ 
+@@ -10,7 +11,9 @@ PREFIX ?= /usr/local
+ BINDIR=$(PREFIX)/bin
+ NXLIBDIR=$(PREFIX)/lib/nx
+ X2GOLIBDIR=$(PREFIX)/lib/x2go
+-CONFIGURE=./configure
++CONFIGURE ?= ./configure
++
++SHELL:=/bin/bash
+ 
+ %:
+ 	if test -f nxcomp/Makefile; then ${MAKE} -C nxcomp $@; fi
+@@ -46,40 +49,108 @@ build:
+ 	fi
+ 
+ install:
++	$(MAKE) install-lite
++	[ ! -d nx-X11 ] || $(MAKE) install-full
++
++install-lite:
+ 	$(INSTALL_DIR) $(DESTDIR)$(BINDIR)
+-	for f in nxagent nxauth nxproxy x2goagent; do \
++	for f in nxproxy; do \
+ 	   $(INSTALL_PROGRAM) bin/$$f $(DESTDIR)$(BINDIR); done
+ 	for d in nxcomp nxproxy; do \
+ 	   $(MAKE) -C $$d install; done
+-	[ ! -d nx-X11 ] || for d in nxcompext nxcompshad; do \
++	$(INSTALL_DIR) $(DESTDIR)$(NXLIBDIR)/bin
++	$(INSTALL_PROGRAM) nxproxy/nxproxy $(DESTDIR)$(NXLIBDIR)/bin
++
++install-full:
++	for f in nxagent nxauth x2goagent; do \
++	   $(INSTALL_PROGRAM) bin/$$f $(DESTDIR)$(BINDIR); done
++	for d in nxcompext nxcompshad; do \
+ 	   $(MAKE) -C $$d install; done
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(X2GOLIBDIR)/bin/
+ 	cd $(DESTDIR)$(X2GOLIBDIR)/bin/ &amp;&amp; ln -sf ../../nx/bin/nxagent x2goagent
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/share/pixmaps
+ 	$(INSTALL_FILE) nx-X11/programs/Xserver/hw/nxagent/x2go.xpm $(DESTDIR)$(PREFIX)/share/pixmaps
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/share/x2go
+ 	$(INSTALL_FILE) rgb $(DESTDIR)$(PREFIX)/share/x2go
++
++	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/share/nx
++	$(INSTALL_FILE) nx-X11/programs/Xserver/Xext/SecurityPolicy $(DESTDIR)$(PREFIX)/share/nx
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/share/x2go/versions
+ 	$(INSTALL_FILE) VERSION.x2goagent $(DESTDIR)$(PREFIX)/share/x2go/versions
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(NXLIBDIR)/bin
+ 	$(INSTALL_PROGRAM) nx-X11/programs/nxauth/nxauth $(DESTDIR)$(NXLIBDIR)/bin
+-	$(INSTALL_PROGRAM) nxproxy/nxproxy $(DESTDIR)$(NXLIBDIR)/bin
++	$(INSTALL_PROGRAM) nx-X11/programs/Xserver/nxagent $(DESTDIR)$(NXLIBDIR)/bin
++
++	# create a clean nx-X11/.build-exports space
++	rm -Rf nx-X11/.build-exports
++	mkdir -p nx-X11/.build-exports/include
++	mkdir -p nx-X11/.build-exports/lib
++
++	# copy headers (for libnx-x11-dev)
++	cp -aL nx-X11/exports/include/* nx-X11/.build-exports/include
++
++	# copy libs (for libnx-x11)
++	find nx-X11/exports/lib/ | egrep &quot;^.*\.so$$&quot; | while read libpath; do \
++	    libfile=$$(basename $$libpath); \
++	    libdir=$$(dirname $$libpath); \
++	\
++	    mkdir -p $${libdir//exports/.build-exports}; \
++	    cp -L $$libpath $${libdir//exports/.build-exports}; \
++	\
++	    find $$libdir/$$libfile.* | while read symlink; do \
++	        ln -s $$libfile $${libdir//exports/.build-exports}/$$(basename $$symlink); \
++	    done; \
++	done;
++
++	$(INSTALL_DIR) $(DESTDIR)$(NXLIBDIR)/X11
++	$(INSTALL_FILE) nx-X11/.build-exports/lib/*.so $(DESTDIR)$(NXLIBDIR)/X11/
++	$(COPY_SYMLINK) nx-X11/.build-exports/lib/*.so.* $(DESTDIR)$(NXLIBDIR)/X11/
++
++	find nx-X11/.build-exports/include/ -type d | grep -v &quot;include/X11/bitmaps&quot; | \
++	    while read dirname; do \
++	        $(INSTALL_DIR) $${dirname//&quot;nx-X11/.build-exports/include&quot;/&quot;$(DESTDIR)$(PREFIX)/include/nx&quot;}; \
++	        $(INSTALL_FILE) $${dirname}/*.h \
++	                        $${dirname//&quot;nx-X11/.build-exports/include&quot;/&quot;$(DESTDIR)$(PREFIX)/include/nx&quot;}/ || true; \
++	    done; \
++
++	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/include/nx/X11/bitmaps
++	$(INSTALL_FILE) nx-X11/.build-exports/include/X11/bitmaps/* \
++	                $(DESTDIR)$(PREFIX)/include/nx/X11/bitmaps/
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/include/nx/extras/Mesa/GL/internal
+ 	$(INSTALL_FILE) nx-X11/extras/Mesa/include/GL/*.h \
+ 	                $(DESTDIR)$(PREFIX)/include/nx/extras/Mesa/GL/
++
+ 	$(INSTALL_FILE) nx-X11/extras/Mesa/include/GL/internal/*.h \
+ 	                $(DESTDIR)$(PREFIX)/include/nx/extras/Mesa/GL/internal/
++
+ 	$(INSTALL_DIR) $(DESTDIR)$(PREFIX)/include/nx/extras/Mesa/GLES/
+ 	$(INSTALL_FILE) nx-X11/extras/Mesa/include/GLES/*.h \
+ 	                $(DESTDIR)$(PREFIX)/include/nx/extras/Mesa/GLES/
+ 
+ uninstall:
+-	for f in nxagent nxauth nxproxy x2goagent; do \
++	$(MAKE) uninstall-lite
++	[ ! -d nx-X11 ] || $(MAKE) uninstall-full
++
++uninstall-lite:
++	for f in nxproxy; do \
+ 	   $(RM_FILE) $(DESTDIR)$(BINDIR)/$$f; done
++
++uninstall-full:
++	for f in nxagent nxauth x2goagent; do \
++	    $(RM_FILE) $(DESTDIR)$(BINDIR)/$$f; done
++
+ 	$(RM_FILE) $(DESTDIR)$(X2GOLIBDIR)/bin/x2goagent
+ 	$(RM_DIR) $(DESTDIR)$(X2GOLIBDIR)/bin/
++
+ 	if test -f nxcomp/Makefile; then ${MAKE} -C nxcomp $@; fi
+ 	if test -f nxproxy/Makefile; then ${MAKE} -C nxproxy $@; fi
++
+ 	if test -d nx-X11; then \
+ 	    if test -f nxcompext/Makefile; then ${MAKE} -C nxcompext $@; fi; \
+ 	    if test -f nxcompshad/Makefile; then ${MAKE} -C nxcompshad $@; fi; \
+diff --git a/debian/changelog b/debian/changelog
+index 335bc7d..a85ed93 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -14,6 +14,9 @@ nx-libs (2:3.5.0.17-0) UNRELEASED; urgency=low
+   * Add README.keystrokes to doc section of bin:package nxagent.
+   * Add libxml2-dev to build dependencies.
+   * Add pkg-config to build dependencies.
++  * Continue Reinhard's work on top-level install/uninstall. Esp.
++    integrate debian/post-nx-build.sh into main Makefile. Make
++    value of CONFIGURE variable traversable through the Makefile tree.
+ 
+   [ Orion Poplawski ]
+   * Add patches: 026_nxcomp*_honour-optflags.full*.patch. (Closes upstream
+diff --git a/debian/libnx-x11-dev.dirs b/debian/libnx-x11-dev.dirs
+deleted file mode 100644
+index 4496244..0000000
+--- a/debian/libnx-x11-dev.dirs
++++ /dev/null
+@@ -1,2 +0,0 @@
+-usr/include/nx/X11
+-usr/include/nx/X11/extensions
+diff --git a/debian/libnx-x11-dev.install b/debian/libnx-x11-dev.install
+index 47fca29..a026d08 100644
+--- a/debian/libnx-x11-dev.install
++++ b/debian/libnx-x11-dev.install
+@@ -1,4 +1,3 @@
+-nx-X11/.build-exports/include/*           usr/include/nx/
+-nx-X11/include/extensions/Xinerama.h      usr/include/nx/X11/extensions/
++usr/include/nx
+ 
+ 
+diff --git a/debian/libnx-x11.dirs b/debian/libnx-x11.dirs
+index 72f9ea3..339b13b 100644
+--- a/debian/libnx-x11.dirs
++++ b/debian/libnx-x11.dirs
+@@ -1,4 +1,3 @@
+-usr/lib/nx/X11
+ usr/lib/nx/X11/Xinerama
+ usr/lib/nx/X11/Xrandr
+ usr/share/nx
+diff --git a/debian/libnx-x11.install b/debian/libnx-x11.install
+index 7838d08..4a17019 100644
+--- a/debian/libnx-x11.install
++++ b/debian/libnx-x11.install
+@@ -1,2 +1,3 @@
+-nx-X11/.build-exports/lib/*                     usr/lib/nx/X11
+-nx-X11/programs/Xserver/Xext/SecurityPolicy     usr/share/nx
++usr/lib/nx/lib*
++usr/lib/nx/X11
++usr/share/nx
+diff --git a/debian/patches/030_nx-X11_configure-args.full.patch b/debian/patches/030_nx-X11_configure-args.full.patch
+index 8304ca7..67184d3 100644
+--- a/debian/patches/030_nx-X11_configure-args.full.patch
++++ b/debian/patches/030_nx-X11_configure-args.full.patch
+@@ -16,7 +16,7 @@ Index: nx-X11/lib/X11/Imakefile
+  
+  includes:: ks_tables.h
+  
+-+CONFIGURE=./configure
+++CONFIGURE ?= ./configure
+ +
+  #if NXLibraries
+  
+@@ -40,7 +40,7 @@ Index: nx-X11/programs/Xserver/Imakefile
+  NX_XSHADOWLIBTARGET = $(NX_XSHADOWLIBDIR)/$(NX_XSHADOWLIBNAME)
+  NX_XSHADOWCONFIGTARGET = $(NX_XSHADOWLIBDIR)/config.status
+  
+-+CONFIGURE=./configure
+++CONFIGURE ?= ./configure
+ +
+  $(NX_XSHADOWCONFIGTARGET):
+  	cd $(NX_XSHADOWLIBDIR) &amp;&amp; \
+diff --git a/debian/post-build-nx.sh b/debian/post-build-nx.sh
+deleted file mode 100755
+index 94f18ac..0000000
+--- a/debian/post-build-nx.sh
++++ /dev/null
+@@ -1,25 +0,0 @@
+-#!/bin/bash
+-
+-set -ex
+-
+-# create nx-X11/.build-exports
+-mkdir -p nx-X11/.build-exports/include
+-mkdir -p nx-X11/.build-exports/lib
+-
+-# copy headers (libnx-x11-dev)
+-cp -aL nx-X11/exports/include/* nx-X11/.build-exports/include
+-
+-# copy libs (libnx-x11)
+-find nx-X11/exports/lib/ | egrep &quot;^.*\.so$&quot; | while read libpath; do
+-    libfile=$(basename $libpath)
+-    libdir=$(dirname $libpath)
+-
+-    mkdir -p ${libdir//exports/.build-exports}
+-    cp -L $libpath ${libdir//exports/.build-exports}
+-
+-    find $libdir/$libfile.* | while read symlink; do
+-        ln -s $libfile ${libdir//exports/.build-exports}/$(basename $symlink)
+-    done
+-done
+-
+-exit 0
+diff --git a/debian/rules b/debian/rules
+index c1f0294..6e0892d 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -9,7 +9,7 @@ else
+ endif
+ 
+ %:
+-	LD_LIBRARY_PATH=`pwd`/debian/libnx-x11/usr/lib/nx/X11:$$LD_LIBRARY_PATH dh $@ --with quilt
++	CONFIGURE=&quot;./configure --prefix=/usr&quot; LD_LIBRARY_PATH=`pwd`/debian/libnx-x11/usr/lib/nx/X11:$$LD_LIBRARY_PATH dh $@ --with quilt
+ 
+ override_dh_auto_clean:
+ 	rm -Rf nx-X11/.build-exports
+@@ -20,7 +20,7 @@ override_dh_clean:
+ 	rm -f nx*/changelog
+ 	rm -f nx-X11/programs/Xserver/hw/nxagent/changelog
+ 	rm -f nx-X11/programs/nxauth/changelog
+-	rm -f Makefile bin rgb VERSION.x2goagent
++	rm -Rf Makefile bin rgb VERSION.x2goagent
+ 	dh_clean
+ 
+ override_dh_auto_install:
+@@ -40,7 +40,6 @@ override_dh_auto_build:
+ 	ln -s debian/rgb
+ 	ln -s debian/VERSION.x2goagent
+ 	LD_LIBRARY_PATH=`pwd`/debian/libnx-x11/usr/lib/nx/X11:$$LD_LIBRARY_PATH dh_auto_build --with quilt --parallel
+-	debian/post-build-nx.sh
+ 
+ override_dh_strip:
+ 	dh_strip --dbg-package=nx-x11-dbg
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012053.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-36-g36a2247
+</A></li>
+	<LI>Next message: <A HREF="012060.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	redist-client/3.5.0.16-41-g1d76694
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12055">[ date ]</a>
+              <a href="thread.html#12055">[ thread ]</a>
+              <a href="subject.html#12055">[ subject ]</a>
+              <a href="author.html#12055">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

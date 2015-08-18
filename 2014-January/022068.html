@@ -1,0 +1,438 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-83-g2e69094
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-83-g2e69094&In-Reply-To=%3C20140107152132.AC2135DCC9%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022061.html">
+   <LINK REL="Next"  HREF="022069.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-83-g2e69094</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.0.10-83-g2e69094&In-Reply-To=%3C20140107152132.AC2135DCC9%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-83-g2e69094">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:32 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022061.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-79-gdd46f32
+</A></li>
+        <LI>Next message: <A HREF="022069.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-82-g8d835dc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22068">[ date ]</a>
+              <a href="thread.html#22068">[ thread ]</a>
+              <a href="subject.html#22068">[ subject ]</a>
+              <a href="author.html#22068">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  2e69094ec995acd4f217f0af6e9f2b24e673f555 (commit)
+      from  8d835dcdec07d7f620a25cbcd4aafd88a1a044c7 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/session.py |  123 ++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 62 insertions(+), 61 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/session.py b/x2go/session.py
+index 31d7aea..5027a64 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -568,6 +568,10 @@ class X2goSession(object):
+         self.logger('Using session %s as master session for profile %s.' % (self.get_session_name(), self.get_profile_name()), loglevel=log.loglevel_NOTICE)
+         self.master_session = True
+ 
++        # retrieve an up-to-date list of sharable local folders from the client instance
++        if self.client_instance:
++            self.share_local_folders = self.client_instance.get_profile_config(self.profile_name, 'export').keys()
++
+         i = 0
+         while i &lt; max_wait:
+             i += 1
+@@ -2116,10 +2120,6 @@ class X2goSession(object):
+         @raise X2goSessionException: if the session could not be suspended
+ 
+         &quot;&quot;&quot;
+-        _store_shared_folders = {}
+-        for folder in self.shared_folders:
+-            _store_shared_folders.update({ folder: True })
+-
+         self._lock.acquire()
+         try:
+             _retval = self._suspend()
+@@ -2452,14 +2452,11 @@ class X2goSession(object):
+ 
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session():
+-                # append local_path to list of shared folders before mounting
+-                self.shared_folders.append(local_path)
+                 if self.terminal_session.share_local_folder(local_path=local_path):
++                    self.shared_folders.append(local_path)
+                     if update_exported_folders:
+                         self._update_restore_exported_folders()
+                     return True
+-                # if we failed remove the local_path element again...
+-                self.shared_folders.remove(local_path)
+                 return False
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+@@ -2477,23 +2474,23 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        _retval = False
++        retval = False
+         if self.is_running() and not self.faulty  and self._SUPPORTED_FOLDERSHARING and self.share_local_folders and self.allow_share_local_folders and self.has_terminal_session():
+             if self.is_master_session():
+                 if self.is_folder_sharing_available():
+-                    if self.control_session.get_transport().reverse_tunnels[self.terminal_session.get_session_name()]['sshfs'][1] is not None:
+-                        _retval = True
+-                        for _folder in self.share_local_folders:
+-                            try:
+-                                _retval = self.share_local_folder(_folder, update_exported_folders=False) and _retval
+-                            except x2go_exceptions.X2goUserException, e:
+-                                self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+-                        if update_exported_folders:
+-                            self._update_restore_exported_folders()
++                    retval = True
++                    for _folder in self.share_local_folders:
++                        try:
++                            retval = self.share_local_folder(_folder, update_exported_folders=False) and retval
++                        except x2go_exceptions.X2goUserException, e:
++                            retval = False
++                            self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
++                    if update_exported_folders:
++                        self._update_restore_exported_folders()
+ 
+                 else:
+                     self.HOOK_foldersharing_not_available()
+-        return _retval
++        return retval
+     __share_all_local_folders = share_all_local_folders
+ 
+     def unshare_all_local_folders(self, force_all=False, update_exported_folders=True):
+@@ -2516,15 +2513,17 @@ class X2goSession(object):
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session():
+                 if force_all:
+-                    self.shared_folders = []
+                     retval = self.terminal_session.unshare_all_local_folders()
++                    if retval:
++                        self.shared_folders = []
+                     return retval
+                 else:
+-                    _shared_folders = copy.deepcopy(self.shared_folders)
+-                    self.shared_folders = []
+-                    retval = 0
+-                    for _shared_folder in _shared_folders:
+-                        retval = retval | self.terminal_session.unshare_local_folder(_shared_folder)
++                    retval = True
++                    for _shared_folder in self.shared_folders:
++                        if self.terminal_session.unshare_local_folder(_shared_folder):
++                            self.shared_folders.remove(_shared_folder)
++                        else:
++                            retval = False
+                     if update_exported_folders:
+                         self._update_restore_exported_folders()
+                     return retval
+@@ -2551,20 +2550,18 @@ class X2goSession(object):
+         @raise X2goSessionException: if this L{X2goSession} does not have an associated terminal session
+ 
+         &quot;&quot;&quot;
++        retval = False
+         if self.has_terminal_session():
+             if self.is_folder_sharing_available() and self.is_master_session() and local_path in self.shared_folders:
+-                # update shared_folders before(!) unmounting...
+-                self.shared_folders.remove(local_path)
+-                _retval = self.terminal_session.unshare_local_folder(local_path=local_path)
+-                # unmounting failed? Re-add local_patch to shared_folders for now...
+-                if not _retval:
+-                    self.shared_folders.append(local_path)
+-                if _retval and update_exported_folders:
++                if self.terminal_session.unshare_local_folder(local_path=local_path):
++                    self.shared_folders.remove(local_path)
++                    retval = True
++                if retval and update_exported_folders:
+                     self._update_restore_exported_folders()
+         else:
+             raise x2go_exceptions.X2goSessionException('this X2goSession object does not have any associated terminal')
+ 
+-        return _retval
++        return retval
+     __unshare_local_folder = unshare_local_folder
+ 
+     def get_shared_folders(self, check_list_mounts=False, mounts=None):
+@@ -2586,39 +2583,43 @@ class X2goSession(object):
+             unshared_folders = []
+             if mounts is None:
+                 mounts = self.list_mounts()
++            _defacto_mounts = [ unicode(m.split('|')[1].split('/')[-1]) for m in mounts ]
+ 
++            _expected_mounts = {}
+             for shared_folder in self.shared_folders:
+ 
+-                _found = False
+-
+-                for mount in mounts:
+-                    if _found: continue
+-                    mount = mount.split('|')[1]
+-                    if _X2GOCLIENT_OS == 'Windows':
+-
+-                        _driveletter, _path = os.path.splitdrive(shared_folder)
+-                        _mount_point = '_windrive_%s%s' % (_driveletter[0], _path.replace('\\', '_'))
+-                        _mount_point = _mount_point.replace(' ', '_')
+-
+-                        if mount.lower().endswith(_mount_point.lower()):
+-                            _found = True
+-
+-                    else:
+-                        _mount_point = shared_folder.replace('/', '_')
+-                        _mount_point = _mount_point.replace(' ', '_')
+-                        if mount.endswith(_mount_point):
+-                            _found = True
++                if _X2GOCLIENT_OS == 'Windows':
+ 
+-                if not _found:
+-                    unshared_folders.append(shared_folder)
++                    _driveletter, _path = os.path.splitdrive(shared_folder)
++                    _mount_point = '_windrive_%s%s' % (_driveletter[0], _path.replace('\\', '_'))
++                    _mount_point = _mount_point.replace(' ', '_')
+ 
+-            for unshared_folder in unshared_folders:
+-                try:
+-                    self.shared_folders.remove(unshared_folder)
+-                    self._update_restore_exported_folders()
+-                    self.logger('Detected server-side unsharing of client-side folder for profile %s: %s:' % (self.get_profile_name(), shared_folder), loglevel=log.loglevel_INFO)
+-                except IndexError:
+-                    pass
++                else:
++                    _mount_point = shared_folder.replace('/', '_')
++                    _mount_point = _mount_point.replace(' ', '_')
++
++                _expected_mounts[unicode(_mount_point)] = shared_folder
++
++            ### such a feature as below would be nice but the mapping between a mountpoint and the related
++            ### local folder path is not bijective
++            #
++            # add any new found mount reported by the server
++            #for m in _defacto_mounts:
++            #    if m not in _expected_mounts.keys():
++            #        self.shared_folders.append(_expected_mounts[m])
++
++            unshared_folders = False
++            for m in _expected_mounts.keys():
++                if m not in _defacto_mounts:
++                    try:
++                        self.shared_folders.remove(_expected_mounts[m])
++                        unshared_folders = True
++                        self.logger('Detected server-side unsharing of client-side folder for profile %s: %s:' % (self.get_profile_name(), _expected_mounts[m]), loglevel=log.loglevel_INFO)
++                    except IndexError:
++                        pass
++
++            if unshared_folders:
++                self._update_restore_exported_folders()
+ 
+         return [ unicode(s) for s in self.shared_folders ]
+     __get_shared_folders = get_shared_folders
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022061.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-79-gdd46f32
+</A></li>
+	<LI>Next message: <A HREF="022069.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.0.10-82-g8d835dc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22068">[ date ]</a>
+              <a href="thread.html#22068">[ thread ]</a>
+              <a href="subject.html#22068">[ subject ]</a>
+              <a href="author.html#22068">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

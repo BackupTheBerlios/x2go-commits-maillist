@@ -1,0 +1,150 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-68-gd1bd661
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.1.1-68-gd1bd661&In-Reply-To=%3C20131213122511.460EE5DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016853.html">
+   <LINK REL="Next"  HREF="016855.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-68-gd1bd661</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%094.0.1.1-68-gd1bd661&In-Reply-To=%3C20131213122511.460EE5DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - master (branch) updated:	4.0.1.1-68-gd1bd661">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Dec 13 13:25:11 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016853.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-8-g8aa290a
+</A></li>
+        <LI>Next message: <A HREF="016855.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-9-g7bdf15e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16854">[ date ]</a>
+              <a href="thread.html#16854">[ thread ]</a>
+              <a href="subject.html#16854">[ subject ]</a>
+              <a href="author.html#16854">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  d1bd66113a64e188083f32ef00164c82be3d6e6d (commit)
+      from  6f9ead7cf9184799f0b6ae9ff1efd0c7b879d0c6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit d1bd66113a64e188083f32ef00164c82be3d6e6d
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Fri Dec 13 13:24:58 2013 +0100
+
+    c121b7e2d3d83abdc2d7a29637bc3294e38b2ec3 broke checking if remote command produce only stderr and not stdout. It made x2goclient crash if x2gostartagent send LIMIT error. Current commit fixes this issue.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    3 +++
+ sshprocess.cpp   |   17 +++++++----------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9ddf90f..dad3af4 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -63,6 +63,9 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+     - Support for ChallengeResponseAuthentication (Google Authenticator)
+     - Setting main window focus on mac (Fixes: #139).   
+     - Additional check if authentication with GSSApi successfull 
++    - c121b7e2d3d83abdc2d7a29637bc3294e38b2ec3 broke checking if remote
++      command produce only stderr and not stdout. It made x2goclient crash
++      if x2gostartagent send LIMIT error. Current commit fixes this issue. 
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/sshprocess.cpp b/sshprocess.cpp
+index 96d73e7..3aaad4b 100644
+--- a/sshprocess.cpp
++++ b/sshprocess.cpp
+@@ -276,7 +276,7 @@ void SshProcess::startTunnel(const QString&amp; forwardHost, uint forwardPort, const
+ #ifdef Q_OS_WIN
+         QString sshString=&quot;plink -batch -P &quot;+
+ #else
+-	        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +&quot;-o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
++        QString sshString=QString::null+&quot;ssh&quot;+ KEEPALIVE_OPTION +&quot;-o GSSApiAuthentication=yes -o PasswordAuthentication=no -p &quot;+
+ #endif
+                           QString::number(masterCon-&gt;getPort())+&quot; &quot;+
+                           masterCon-&gt;getUser()+&quot;@&quot;+
+@@ -374,7 +374,12 @@ void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+     }
+     else
+     {
+-        if ( stdOutString.length()&lt;=0 &amp;&amp;  stdErrString.length() &gt;0 )
++        QString begin_marker = &quot;X2GODATABEGIN:&quot;+uuid+&quot;\n&quot;;
++        QString end_marker = &quot;X2GODATAEND:&quot;+uuid+&quot;\n&quot;;
++        int output_begin=stdOutString.indexOf(begin_marker) + begin_marker.length();
++        int output_end=stdOutString.indexOf(end_marker);
++        output = stdOutString.mid(output_begin, output_end-output_begin);
++        if ( output.length()&lt;=0 &amp;&amp;  stdErrString.length() &gt;0 )
+         {
+             normalExited=false;
+             output=stdErrString;
+@@ -382,14 +387,6 @@ void SshProcess::slotChannelClosed(SshProcess* creator, QString uuid)
+             x2goDebug&lt;&lt;&quot;have only stderr, something must be wrong&quot;&lt;&lt;endl;
+ #endif
+         }
+-        else
+-        {
+-            QString begin_marker = &quot;X2GODATABEGIN:&quot;+uuid+&quot;\n&quot;;
+-            QString end_marker = &quot;X2GODATAEND:&quot;+uuid+&quot;\n&quot;;
+-            int output_begin=stdOutString.indexOf(begin_marker) + begin_marker.length();
+-            int output_end=stdOutString.indexOf(end_marker);
+-            output = stdOutString.mid(output_begin, output_end-output_begin);
+-        }
+     }
+ #ifdef DEBUG
+     x2goDebug&lt;&lt;&quot;ssh finished:&quot;&lt;&lt;normalExited&lt;&lt;&quot; - &quot;&lt;&lt;output&lt;&lt;uuid&lt;&lt;endl;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016853.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-8-g8aa290a
+</A></li>
+	<LI>Next message: <A HREF="016855.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-9-g7bdf15e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16854">[ date ]</a>
+              <a href="thread.html#16854">[ thread ]</a>
+              <a href="subject.html#16854">[ subject ]</a>
+              <a href="author.html#16854">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

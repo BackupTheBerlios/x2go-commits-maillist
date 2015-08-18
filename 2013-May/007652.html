@@ -1,0 +1,421 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g17d8471
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-4-g17d8471&In-Reply-To=%3C20130519110503.D2A245DB27%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007651.html">
+   <LINK REL="Next"  HREF="007653.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g17d8471</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-4-g17d8471&In-Reply-To=%3C20130519110503.D2A245DB27%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-4-g17d8471">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:05:03 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007651.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-12-g0beb662
+</A></li>
+        <LI>Next message: <A HREF="007653.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-10-g8130c9d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7652">[ date ]</a>
+              <a href="thread.html#7652">[ thread ]</a>
+              <a href="subject.html#7652">[ subject ]</a>
+              <a href="author.html#7652">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  17d847151ef8803f9e973ddbe9e8b47c56d30623 (commit)
+      from  3eece58572d42b888f3f922eac9ca7f64937a2da (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    3 +-
+ debian/control                                     |   65 +++++++++++---------
+ debian/x2gobroker-agent.postrm                     |    8 ++-
+ debian/x2gobroker-daemon.postrm                    |    9 +--
+ debian/x2gobroker-wsgi.install                     |    1 +
+ debian/x2gobroker-wsgi.links                       |    1 +
+ ...er-daemon.postinst =&gt; x2gobroker-wsgi.postinst} |    0
+ ...broker-daemon.postrm =&gt; x2gobroker-wsgi.postrm} |    9 +--
+ etc/x2gobroker-wsgi.apache.conf                    |   43 +++++++++++++
+ sbin/x2gobroker                                    |   26 ++++++--
+ 10 files changed, 122 insertions(+), 43 deletions(-)
+ delete mode 100644 debian/x2gobroker-cgi.install
+ create mode 100644 debian/x2gobroker-wsgi.install
+ create mode 100644 debian/x2gobroker-wsgi.links
+ copy debian/{x2gobroker-daemon.postinst =&gt; x2gobroker-wsgi.postinst} (100%)
+ copy debian/{x2gobroker-daemon.postrm =&gt; x2gobroker-wsgi.postrm} (84%)
+ create mode 100644 etc/x2gobroker-wsgi.apache.conf
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 760df8a..caddae8 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,7 +1,8 @@
+ x2gobroker (0.0.1.1-0~x2go1) UNRELEASED; urgency=low
+ 
+   * New upstream version (0.0.1.1):
+-    - Continue development...
++    - Add WSGI support to X2Go Session Broker. Allows plugging into
++      Apache2 by using the mod_wsgi module.
+   * /debian/control:
+     + Fix --root parameter in DEB_PYTHON_INSTALL_ARGS.
+ 
+diff --git a/debian/control b/debian/control
+index 545adac..45e0eae 100644
+--- a/debian/control
++++ b/debian/control
+@@ -21,6 +21,7 @@ Architecture: all
+ Depends:
+  ${python:Depends},
+  ${misc:Depends},
++ python,
+  python-pampy,
+  python-netaddr,
+  python-tornado,
+@@ -53,6 +54,7 @@ Architecture: all
+ Depends:
+  ${python:Depends},
+  ${misc:Depends},
++ python,
+  python-argparse,
+  python-setproctitle,
+  python-tornado,
+@@ -85,6 +87,7 @@ Architecture: all
+ Depends:
+  ${python:Depends},
+  ${misc:Depends},
++ python,
+  python-argparse,
+  python-setproctitle,
+ Suggests:
+@@ -142,35 +145,38 @@ Description: X2Go http(s) based session broker (daemon)
+  installs the X2Go Session Broker as standalone
+  daemon.
+ 
+-#Package: x2gobroker-cgi
+-#Architecture: all
+-#Depends:
+-# ${misc:Depends},
+-# ${python:Depends},
+-#Suggests:
+-# apache2 | httpd,
+-#Description: X2Go http(s) based session broker (CGI)
+-# X2Go is a server based computing environment with
+-#    - session resuming
+-#    - low bandwidth support
+-#    - LDAP support
+-#    - client side mass storage mounting support
+-#    - client side printing support
+-#    - audio support
+-#    - authentication by smartcard and USB stick
+-# .
+-# The session broker is a server tool for X2Go that
+-# tells your X2Go Client application in a terminal
+-# server cluster what servers and session types are
+-# most appropriate for the user in front of the
+-# X2Go terminal.
+-# .
+-# A session broker is most useful in load balanced
+-# X2Go server farms.
+-# .
+-# This package contains a configuration that installs
+-# the X2Go Session Broker as a CGI script so it
+-# can be run from within an existing httpd server.
++Package: x2gobroker-wsgi
++Architecture: all
++Depends:
++ ${misc:Depends},
++ ${python:Depends},
++ python,
++ adduser,
++ python-wsgilog,
++Suggests:
++ apache2,
++Description: X2Go http(s) based session broker (CGI)
++ X2Go is a server based computing environment with
++    - session resuming
++    - low bandwidth support
++    - LDAP support
++    - client side mass storage mounting support
++    - client side printing support
++    - audio support
++    - authentication by smartcard and USB stick
++ .
++ The session broker is a server tool for X2Go that
++ tells your X2Go Client application in a terminal
++ server cluster what servers and session types are
++ most appropriate for the user in front of the
++ X2Go terminal.
++ .
++ A session broker is most useful in load balanced
++ X2Go server farms.
++ .
++ This package contains an Apache2 configuration that
++ installs the X2Go Session Broker as a WSGI application
++ into a running Apache2 httpd.
+ 
+ Package: x2gobroker-agent
+ Architecture: any
+@@ -178,6 +184,7 @@ Depends:
+  ${shlibs:Depends},
+  ${python:Depends},
+  ${misc:Depends},
++ python,
+  python-setproctitle,
+  python-argparse,
+  python-paramiko,
+diff --git a/debian/x2gobroker-agent.postrm b/debian/x2gobroker-agent.postrm
+index bc535ee..9b74861 100755
+--- a/debian/x2gobroker-agent.postrm
++++ b/debian/x2gobroker-agent.postrm
+@@ -18,11 +18,17 @@ set -e
+ 
+ case &quot;$1&quot; in
+ 	purge)
++
+ 		if dpkg-statoverride --list /usr/lib/x2go/x2gobroker-agent 1&gt;/dev/null; then
+ 			dpkg-statoverride --remove /usr/lib/x2go/x2gobroker-agent
+ 		fi
+ 
+-		if [ ! -d /usr/share/doc/x2gobroker-daemon ]; then
++		if [ ! -d /usr/share/doc/x2gobroker-daemon ] &amp;&amp; [ ! -d /usr/share/doc/x2gobroker-wsgi ]; then
++
++			if dpkg-statoverride --list /var/log/x2gobroker 1&gt;/dev/null; then
++				dpkg-statoverride --remove /var/log/x2gobroker
++			fi
++
+ 			# remove user/group x2gobroker from system (if not in use by x2gobroker-daemon
+ 			getent passwd x2gobroker 1&gt;/dev/null &amp;&amp; deluser x2gobroker
+ 			getent group x2gobroker 1&gt;/dev/null &amp;&amp; delgroup x2gobroker
+diff --git a/debian/x2gobroker-cgi.install b/debian/x2gobroker-cgi.install
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/debian/x2gobroker-daemon.postrm b/debian/x2gobroker-daemon.postrm
+index 34a8687..a1e2845 100755
+--- a/debian/x2gobroker-daemon.postrm
++++ b/debian/x2gobroker-daemon.postrm
+@@ -19,11 +19,12 @@ set -e
+ case &quot;$1&quot; in
+ 	purge)
+ 
+-		if dpkg-statoverride --list /var/log/x2gobroker 1&gt;/dev/null; then
+-			dpkg-statoverride --remove /var/log/x2gobroker
+-		fi
++		if [ ! -d /usr/share/doc/x2gobroker-agent ] &amp;&amp; [ ! -d /usr/share/doc/x2gobroker-wsgi ]; then
++
++			if dpkg-statoverride --list /var/log/x2gobroker 1&gt;/dev/null; then
++				dpkg-statoverride --remove /var/log/x2gobroker
++			fi
+ 
+-		if [ ! -d /usr/share/doc/x2gobroker-agent ]; then
+ 			# remove user/group x2gobroker from system (only if not in use by x2gobroker-agent
+ 			getent passwd x2gobroker 1&gt;/dev/null &amp;&amp; deluser x2gobroker
+ 			getent group x2gobroker 1&gt;/dev/null &amp;&amp; delgroup x2gobroker
+diff --git a/debian/x2gobroker-wsgi.install b/debian/x2gobroker-wsgi.install
+new file mode 100644
+index 0000000..d85d699
+--- /dev/null
++++ b/debian/x2gobroker-wsgi.install
+@@ -0,0 +1 @@
++etc/x2gobroker-apache.conf /etc/x2go/
+\ No newline at end of file
+diff --git a/debian/x2gobroker-wsgi.links b/debian/x2gobroker-wsgi.links
+new file mode 100644
+index 0000000..99e592a
+--- /dev/null
++++ b/debian/x2gobroker-wsgi.links
+@@ -0,0 +1 @@
++/etc/x2go/x2gobroker-wsgi.apache.conf /etc/apache2/conf.d/x2gobroker-wsgi
+\ No newline at end of file
+diff --git a/debian/x2gobroker-daemon.postinst b/debian/x2gobroker-wsgi.postinst
+similarity index 100%
+copy from debian/x2gobroker-daemon.postinst
+copy to debian/x2gobroker-wsgi.postinst
+diff --git a/debian/x2gobroker-daemon.postrm b/debian/x2gobroker-wsgi.postrm
+similarity index 84%
+copy from debian/x2gobroker-daemon.postrm
+copy to debian/x2gobroker-wsgi.postrm
+index 34a8687..006022f 100755
+--- a/debian/x2gobroker-daemon.postrm
++++ b/debian/x2gobroker-wsgi.postrm
+@@ -19,11 +19,12 @@ set -e
+ case &quot;$1&quot; in
+ 	purge)
+ 
+-		if dpkg-statoverride --list /var/log/x2gobroker 1&gt;/dev/null; then
+-			dpkg-statoverride --remove /var/log/x2gobroker
+-		fi
++		if [ ! -d /usr/share/doc/x2gobroker-agent ] &amp;&amp; [ ! -d /usr/share/doc/x2gobroker-daemon ]; then
++
++			if dpkg-statoverride --list /var/log/x2gobroker 1&gt;/dev/null; then
++				dpkg-statoverride --remove /var/log/x2gobroker
++			fi
+ 
+-		if [ ! -d /usr/share/doc/x2gobroker-agent ]; then
+ 			# remove user/group x2gobroker from system (only if not in use by x2gobroker-agent
+ 			getent passwd x2gobroker 1&gt;/dev/null &amp;&amp; deluser x2gobroker
+ 			getent group x2gobroker 1&gt;/dev/null &amp;&amp; delgroup x2gobroker
+diff --git a/etc/x2gobroker-wsgi.apache.conf b/etc/x2gobroker-wsgi.apache.conf
+new file mode 100644
+index 0000000..92c432f
+--- /dev/null
++++ b/etc/x2gobroker-wsgi.apache.conf
+@@ -0,0 +1,43 @@
++# enable debugging
++#SetEnv X2GOBROKER_DEBUG off
++
++# the default user/group that this WSGI application runs as
++#X2GOBROKER_DAEMON_USER=x2gobroker
++#X2GOBROKER_DAEMON_GROUP=x2gobroker
++WSGIDaemonProcess x2gobroker user=x2gobroker group=x2gobroker processes=5 threads=15
++
++# default broker backend (default: zeroconf)
++SetEnv X2GOBROKER_DEFAULT_BACKEND zeroconf
++#SetEnv X2GOBROKER_DEFAULT_BACKEND inifile
++#SetEnv X2GOBROKER_DEFAULT_BACKEND ldap
++#SetEnv X2GOBROKER_DEFAULT_BACKEND &lt;some-other-broker-backend&gt;
++
++# path to the X2Go Session Broker's configuration file
++#SetEnv X2GOBROKER_CONFIG /etc/x2go/x2gobroker.conf
++
++# path to the X2Go Session Broker's session profiles file (when using the inifile backend)
++#SetEnv X2GOBROKER_SESSIONPROFILES /etc/x2go/broker/x2gobroker-sessionprofiles.conf
++
++# path to the X2Go Session Broker's agent command
++#SetEnv X2GOBROKER_AGENT_CMD /usr/lib/x2go/x2gobroker-agent
++
++# authentication socket of the X2Go Broker's PAM Authentication Service
++#SetEnv X2GOBROKER_AUTHSOCKET /run/x2gobroker/x2gobroker-authservice.socket
++
++# if you have to-be-statically-served files somewhere below the broker URL
++#Alias /x2gobroker/static /some/static/path/
++
++WSGIScriptAlias /x2gobroker /usr/sbin/x2gobroker
++WSGIProcessGroup x2gobroker
++
++&lt;Directory /usr/sbin/x2gobroker&gt;
++    Order deny,allow
++    Deny from all
++
++    # grant explicit access below
++    Allow from localhost
++    Allow from localhost-ip6
++
++    Options +FollowSymLinks
++    Options -Indexes
++&lt;/Directory&gt;
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index 3951539..a092172 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -27,9 +27,6 @@ import argparse
+ import socket
+ import logging
+ import thread
+-import tornado.web
+-import tornado.httpserver
+-import tornado.ioloop
+ 
+ try:
+     import x2gobroker.defaults
+@@ -124,10 +121,13 @@ urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
+ settings = {
+     'log_function': tornado_log_request,
+ }
+-application = tornado.web.Application(urls, **settings)
+ 
+ # run the web.py standalone daemon...
+ if __name__ == &quot;__main__&quot;:
++    import tornado.web
++    import tornado.httpserver
++    import tornado.ioloop
++    application = tornado.web.Application(urls, **settings)
+     try:
+         if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
+             # switch on <A HREF="https://">https://</A> mode
+@@ -144,3 +144,21 @@ if __name__ == &quot;__main__&quot;:
+         tornado.ioloop.IOLoop.instance().start()
+     except socket.error, e:
+         print (e)
++else:
++    import tornado.wsgi
++    import wsgilog
++    _tornado_application = tornado.wsgi.WSGIApplication(urls, **settings)
++
++    def _application(environ, start_response):
++
++        # some WSGI implementations do not like the SCRIPT_NAME env var
++        if 'SCRIPT_NAME' in environ:
++            del environ['SCRIPT_NAME']
++
++        # make sure the httpd server's environment is set as os.environ
++        os.environ = environ
++        reload(x2gobroker.defaults)
++
++        return _tornado_application(environ, start_response)
++
++    application = wsgilog.WsgiLog(_application, tohtml=True, tofile=True, tostream=False, toprint=False, file='/var/log/x2gobroker/wsgi.log', )
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007651.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-12-g0beb662
+</A></li>
+	<LI>Next message: <A HREF="007653.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-10-g8130c9d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7652">[ date ]</a>
+              <a href="thread.html#7652">[ thread ]</a>
+              <a href="subject.html#7652">[ subject ]</a>
+              <a href="author.html#7652">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

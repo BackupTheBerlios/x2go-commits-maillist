@@ -1,0 +1,501 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.2-4-gf457a2a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.2-4-gf457a2a&In-Reply-To=%3C20140108143029.3A1B05DE3C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024906.html">
+   <LINK REL="Next"  HREF="024940.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.2-4-gf457a2a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.2-4-gf457a2a&In-Reply-To=%3C20140108143029.3A1B05DE3C%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.2-4-gf457a2a">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:29 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024906.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-4-g2eb1547
+</A></li>
+        <LI>Next message: <A HREF="024940.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.2-5-g0a3dd9e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24917">[ date ]</a>
+              <a href="thread.html#24917">[ thread ]</a>
+              <a href="subject.html#24917">[ subject ]</a>
+              <a href="author.html#24917">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  f457a2a390e7b06c7f7194f59bf7f3ccf225cdc4 (commit)
+      from  4a6442089ce241a377969707a9a6ec0c4e4ba509 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/proxy/_nx3.py       |   49 ++++++++++++++++++++++++++++++++++---
+ x2go/backends/terminal/_stdout.py |    6 ++++-
+ 2 files changed, 50 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index abed34c..38786af 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -34,6 +34,7 @@ import threading
+ 
+ # Python X2go modules
+ import x2go.forward as forward
++import x2go.utils as utils
+ import x2go.log as log
+ import base
+ 
+@@ -119,10 +120,50 @@ class X2goProxyNX3(base.X2goProxyBASE):
+         cmd_line.append(_proxy_options)
+         return cmd_line
+ 
+-#    def process_proxy_options():
+-#
+-#        for opt in self.proxy_options:
+-            
++    def process_proxy_options(self):
++
++        if self.proxy_options.has_key('defkeymap') and self.proxy_options['defkeymap']:
++
++            # first: draw in xkb_rules_names from xprop output
++            xkb_rules_names = utils.xkb_rules_names()
++            _proxy_options = {
++                'xkbrules': xkb_rules_names['rules'],
++                'xkbmodel': xkb_rules_names['model'],
++                'xkblayout': xkb_rules_names['layout'],
++                'xkbvariant': xkb_rules_names['variant'],
++                'xkboptions': xkb_rules_names['options'],
++            }
++
++            # merge self.proxy_options into the proxy_options we obtained from xprop
++            _proxy_options.update(self.proxy_options)
++            self.proxy_options = _proxy_options
++
++            del self.proxy_options['defkeymap']
++
++            # create keyboard file
++            _keyboard = &quot;&quot;&quot;\
++rules=%s
++model=%s
++layout=%s
++variant=%s
++options=%s&quot;&quot;&quot; % ( self.proxy_options['xkbrules'],
++                  self.proxy_options['xkbmodel'],
++                  self.proxy_options['xkblayout'],
++                  self.proxy_options['xkbvariant'],
++                  self.proxy_options['xkboptions'], )
++
++            # remove processed options from self.process_options
++            del self.proxy_options['xkbrules']
++            del self.proxy_options['xkbmodel']
++            del self.proxy_options['xkblayout']
++            del self.proxy_options['xkbvariant']
++            del self.proxy_options['xkboptions']
++
++            # write the keyboard file into the remote session directory
++            self.session_instance.control_session._x2go_sftp_write('%s/keyboard' % self.session_info.remote_container, _keyboard)
++
++        # run the base variant of this method (basically for logging of ignored process_options)
++        base.X2goProxyBASE.process_proxy_options(self)
+ 
+     def start_proxy(self):
+         self.logger('starting local NX3 proxy...', loglevel=log.loglevel_INFO)
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 6fa8fd1..b2bf621 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -177,7 +177,7 @@ class X2goTerminalSessionSTDOUT(object):
+     &quot;&quot;&quot;
+     def __init__(self, control_session, session_info=None,
+                  geometry=&quot;800x600&quot;, depth=24, link=&quot;adsl&quot;, pack=&quot;16m-jpeg-9&quot;, 
+-                 cache_type=&quot;unix-kde&quot;, kblayout='us', kbtype='pc105/us',
++                 cache_type=&quot;unix-kde&quot;, kblayout='defkeymap', kbtype='pc105/defkeymap',
+                  session_type=&quot;application&quot;, snd_system='pulse', snd_port=4713, cmd=None,
+                  rdp_server=None, rdp_options=None,
+                  xdmcp_server=None,
+@@ -833,6 +833,10 @@ class X2goTerminalSessionSTDOUT(object):
+                                                                 self.session_info.name,
+                                                                )
+ 
++        # let the proxy backend know that we want to define a very special keymap
++        if (self.params.kbtype.endswith('defkeymap') and self.params.kblayout.endswith('defkeymap')) or (self.params.kbtype == '' and self.params.kblayout == ''):
++            self.proxy_options.update({'defkeymap': True, })
++
+         # set up SSH tunnel for X11 graphical elements
+         self.proxy = self.proxy_backend(session_info=self.session_info, 
+                                         ssh_transport=self.control_session.get_transport(),
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024906.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-4-g2eb1547
+</A></li>
+	<LI>Next message: <A HREF="024940.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.2-5-g0a3dd9e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24917">[ date ]</a>
+              <a href="thread.html#24917">[ thread ]</a>
+              <a href="subject.html#24917">[ subject ]</a>
+              <a href="author.html#24917">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

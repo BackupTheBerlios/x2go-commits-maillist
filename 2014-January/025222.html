@@ -1,0 +1,1180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-130-g0eff893
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-130-g0eff893&In-Reply-To=%3C20140108143053.1734F5DEE4%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025205.html">
+   <LINK REL="Next"  HREF="025299.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-130-g0eff893</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-130-g0eff893&In-Reply-To=%3C20140108143053.1734F5DEE4%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-130-g0eff893">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:53 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025205.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-134-ga34ffe9
+</A></li>
+        <LI>Next message: <A HREF="025299.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-132-g58289bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25222">[ date ]</a>
+              <a href="thread.html#25222">[ thread ]</a>
+              <a href="subject.html#25222">[ subject ]</a>
+              <a href="author.html#25222">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  0eff893ffaa6c3358e4ca2184bebe5b471d529f0 (commit)
+      from  f2e8361dc164f7ae5215745fe7d56ac9cf25fca0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/control/_stdout.py  |   43 +++++++++++++++-
+ x2go/backends/info/_stdout.py     |    5 ++
+ x2go/backends/terminal/_stdout.py |  103 ++++++++++++++++++++++++++++++-------
+ x2go/client.py                    |   56 +++++++++++++++++++-
+ x2go/defaults.py                  |    3 +-
+ x2go/registry.py                  |   35 ++++++++++++-
+ x2go/session.py                   |   94 ++++++++++++++++++++++++++++++---
+ x2go/utils.py                     |   10 ++--
+ 9 files changed, 313 insertions(+), 37 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 65571f2..8097dc9 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -39,6 +39,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Amend list of default session options.
+     - Update list of unsupported session options.
+     - Retrieve feature list from X2Go server per session.
++    - Add published applications support.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index fc345d9..6b3dd1f 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -141,6 +141,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self.sessions_rootdir = sessions_rootdir
+         self.ssh_rootdir = ssh_rootdir
+ 
++        self._published_applications_menu = None
++
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+         if self.add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+@@ -591,6 +593,39 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             return True
+         return False
+ 
++    def get_published_applications(self):
++        &quot;&quot;&quot;\
++        Retrieve the menu tree of published applications from X2Go server.
++
++        &quot;&quot;&quot;
++        if 'X2GO_PUBLISHED_APPLICATIONS' in self._x2go_server_features:
++            if self._published_applications_menu is None:
++                self.logger('querying server (%s) for list of published applications' % self.profile_name, loglevel=log.loglevel_NOTICE)
++                (stdin, stdout, stderr) = self._x2go_exec_command('which x2gogetapps &gt;/dev/null &amp;&amp; x2gogetapps')
++                _raw_menu_items = stdout.read().split('&lt;/desktop&gt;\n')
++                _raw_menu_items = [ i.replace('&lt;desktop&gt;\n', '') for i in _raw_menu_items ]
++                _menu = []
++                for _raw_menu_item in _raw_menu_items:
++                    if '&lt;icon&gt;\n' in _raw_menu_item and '&lt;/icon&gt;' in _raw_menu_item:
++                        _menu_item = _raw_menu_item.split('&lt;icon&gt;\n')[0] + _raw_menu_item.split('&lt;/icon&gt;\n')[1]
++                        _icon_base64 = _raw_menu_item.split('&lt;icon&gt;\n')[1].split('&lt;/icon&gt;\n')[0].replace('\n', '')
++                    else:
++                        _menu_item = _raw_menu_item
++                        _icon_base64 = None
++                    if _menu_item:
++                        _menu.append({ 'desktop': _menu_item, 'icon': _icon_base64, })
++                        _menu_item = None
++                        _icon_base64 = None
++
++                self._published_applications_menu = _menu
++                self.logger('published applications query for %s finished' % self.profile_name, loglevel=log.loglevel_NOTICE)
++                return self._published_applications_menu
++            else:
++                return self._published_applications_menu
++        else:
++            # FIXME: ignoring the absence of the published applications feature for now, handle it appropriately later
++            pass
++
+     def start(self, **kwargs):
+         &quot;&quot;&quot;\
+         Start a new X2Go session. 
+@@ -826,14 +861,18 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+             return _listsessions
+ 
+-    def clean_sessions(self, destroy_terminals=True):
++    def clean_sessions(self, destroy_terminals=True, published_applications=False):
+         &quot;&quot;&quot;\
+         Find X2Go terminals that have previously been started by the
+         connected user on the remote X2Go server and terminate them.
+ 
+         &quot;&quot;&quot;
+         session_list = self.list_sessions()
+-        for session_name in session_list.keys():
++        if published_applications:
++            session_names = session_list.keys()
++        else:
++            session_names = [ _sn for _sn in session_list.keys() if not session_list[_sn].is_published_applications_provider() ]
++        for session_name in session_names:
+             self.terminate(session_name=session_name, destroy_terminals=destroy_terminals)
+ 
+     def is_connected(self):
+diff --git a/x2go/backends/info/_stdout.py b/x2go/backends/info/_stdout.py
+index ae6046c..c316ec7 100644
+--- a/x2go/backends/info/_stdout.py
++++ b/x2go/backends/info/_stdout.py
+@@ -30,6 +30,7 @@ __NAME__ = 'x2goserversessioninfo-pylib'
+ 
+ # modules
+ import types
++import re
+ 
+ 
+ class X2goServerSessionInfoSTDOUT(object):
+@@ -83,6 +84,10 @@ class X2goServerSessionInfoSTDOUT(object):
+             print x2go_output
+             raise e
+ 
++    def is_published_applications_provider(self):
++
++        return re.match('.*_stRPUBLISHED_.*', self.name)
++
+     def is_running(self):
+ 
+         return self.status == 'R'
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 5179bdc..aee28b0 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -77,6 +77,10 @@ def _rewrite_cmd(cmd, params=None):
+     # place quot marks around cmd if not empty string
+     if cmd:
+         cmd = '&quot;%s&quot;' % cmd
++
++    if ((type(params) == X2goSessionParams) and params.published_applications and cmd == ''):
++        cmd = 'PUBLISHED'
++
+     return cmd
+ 
+ 
+@@ -108,24 +112,33 @@ class X2goSessionParams(object):
+ 
+         &quot;&quot;&quot;
+         cmd = self.cmd
++        published = self.published_applications
+ 
+-        if cmd == 'RDP':
+-            self.session_type = 'R'
+-        elif cmd.startswith('rdesktop'):
+-            self.session_type = 'R'
+-        elif cmd == 'XDMCP':
+-            self.session_type = 'D'
+-        elif cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
+-            self.session_type = 'D'
+-        elif os.path.basename(cmd) in defaults.X2GO_DESKTOPSESSIONS.values():
+-            self.session_type = 'D'
+-        elif self.session_type not in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
+-            self.session_type = 'R'
++        if published and self.cmd in ('', 'PUBLISHED'):
++            self.session_type = 'P'
++            self.cmd = 'PUBLISHED'
++        else:
++            if cmd == 'RDP':
++                self.session_type = 'R'
++            elif cmd.startswith('rdesktop'):
++                self.session_type = 'R'
++            elif cmd == 'XDMCP':
++                self.session_type = 'D'
++            elif cmd in defaults.X2GO_DESKTOPSESSIONS.keys():
++                self.session_type = 'D'
++            elif os.path.basename(cmd) in defaults.X2GO_DESKTOPSESSIONS.values():
++                self.session_type = 'D'
++            elif self.session_type not in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
++                self.session_type = 'R'
+ 
+         if self.session_type in (&quot;D&quot;, &quot;desktop&quot;):
+             self.session_type = 'D'
+         elif self.session_type in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
+             self.session_type = 'S'
++        elif self.session_type in (&quot;R&quot;, &quot;rootless&quot;):
++            self.session_type = 'R'
++        elif self.session_type in (&quot;P&quot;, &quot;published&quot;, &quot;published_applications&quot;):
++            self.session_type = 'P'
+ 
+     def update(self, properties_to_be_updated={}):
+         &quot;&quot;&quot;\
+@@ -174,6 +187,7 @@ class X2goTerminalSessionSTDOUT(object):
+                  cache_type=&quot;unix-kde&quot;, 
+                  keyboard='', kblayout='null', kbtype='null/null',
+                  session_type=&quot;application&quot;, snd_system='pulse', snd_port=4713, cmd=None,
++                 published_applications=False,
+                  set_session_title=False, session_title=&quot;&quot;, applications=[],
+                  rdp_server=None, rdp_options=None,
+                  xdmcp_server=None,
+@@ -280,6 +294,9 @@ class X2goTerminalSessionSTDOUT(object):
+         self.params.cmd = str(cmd)
+         self.params.depth = str(depth)
+ 
++        self.params.published_applications = published_applications
++        self.published_applications = published_applications
++
+         self.params.rdp_server = str(rdp_server)
+         self.params.rdp_options = str(rdp_options)
+         self.params.xdmcp_server = str(xdmcp_server)
+@@ -375,6 +392,13 @@ class X2goTerminalSessionSTDOUT(object):
+         &quot;&quot;&quot;
+         return self.session_info.name
+ 
++    def get_session_cmd(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.params.cmd
++
+     def start_sound(self):
+         &quot;&quot;&quot;\
+         Initialize Paramiko/SSH reverse forwarding tunnel for X2Go sound.
+@@ -870,6 +894,8 @@ class X2goTerminalSessionSTDOUT(object):
+             return True
+         elif 'XSHAD' in cmd:
+             return True
++        elif 'PUBLISHED' in cmd and 'X2GO_PUBLISHED_APPLICATIONS' in self.control_session.get_server_features():
++            return True
+         elif cmd and cmd.startswith('/'):
+             # check if full path is correct _and_ if application is in server path
+             test_cmd = 'test -x %s &amp;&amp; which %s &amp;&amp; echo OK' % (cmd, os.path.basename(cmd.split()[0]))
+@@ -900,7 +926,7 @@ class X2goTerminalSessionSTDOUT(object):
+         @rtype: tuple of str
+ 
+         &quot;&quot;&quot;
+-        if not self.has_command(_rewrite_cmd(self.params.cmd)):
++        if not self.has_command(_rewrite_cmd(self.params.cmd, params=self.params)):
+             if self.client_instance:
+                 self.client_instance.HOOK_no_such_command(profile_name=self.profile_name, session_name=self.session_info.name, cmd=self.params.cmd)
+             return False
+@@ -947,6 +973,32 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         return stdout.read(), stderr.read()
+ 
++    def is_published_applications_provider(self):
++        &quot;&quot;&quot;\
++        Returns true if this session runs in published applications mode.
++
++        @return: Returns C{True} is this session is a provider session for published applications.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.session_info and self.is_running():
++            return self.session_info.is_published_applications_provider()
++        return False
++
++    def exec_published_application(self, exec_name):
++        &quot;&quot;&quot;\
++        Executed a published application.
++
++        @param exec_name: application to be executed
++        @type exec_name: C{str}
++        &quot;&quot;&quot;
++        cmd_line = [ &quot;export DISPLAY=:%s &amp;&amp; &quot; % str(self.session_info.display),
++                     &quot;setsid %s&quot; % exec_name, 
++                     &quot;&amp;&gt; /dev/null &amp; exit&quot;,
++                   ]
++        self.logger('executing published application %s for %s with command line: %s' % (exec_name, self.profile_name, cmd_line), loglevel=log.loglevel_NOTICE)
++        (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
++
+     def ok(self):
+         &quot;&quot;&quot;\
+         Returns C{True} if this X2Go session is up and running, 
+@@ -999,7 +1051,9 @@ class X2goTerminalSessionSTDOUT(object):
+         that can be passed to the class constructor.
+ 
+         &quot;&quot;&quot;
+-        if not self.has_command(_rewrite_cmd(self.params.cmd)):
++        self.params.rewrite_session_type()
++
++        if not self.has_command(_rewrite_cmd(self.params.cmd, params=self.params)):
+             if self.client_instance:
+                 self.client_instance.HOOK_no_such_command(profile_name=self.profile_name, session_name=self.session_info.name, cmd=self.params.cmd)
+             return False
+@@ -1069,9 +1123,13 @@ class X2goTerminalSessionSTDOUT(object):
+         self.proxy_subprocess = self.proxy.start_proxy()
+         self.active_threads.append(self.proxy)
+ 
+-        self.find_session_window()
+-        self.auto_session_window_title()
+-        #self.raise_session_window()
++        if self.params.session_type in ('D', 'S'):
++            self.find_session_window()
++            self.auto_session_window_title()
++            #self.raise_session_window()
++
++        if self.params.published_applications:
++            self.control_session.get_published_applications()
+ 
+         return self.ok()
+ 
+@@ -1145,9 +1203,14 @@ class X2goTerminalSessionSTDOUT(object):
+         # on a session resume the user name comes in as a user ID. We have to translate this...
+         self.session_info.username = self.control_session.remote_username()
+ 
+-        self.find_session_window()
+-        self.auto_session_window_title()
+-        #self.raise_session_window()
++        if self.params.session_type in ('D', 'S'):
++            self.find_session_window()
++            self.auto_session_window_title()
++            #self.raise_session_window()
++
++        if self.is_published_applications_provider():
++            self.control_session.get_published_applications()
++            self.published_applications = True
+ 
+         return self.ok()
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index 4adfb01..4ff1e26 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1991,6 +1991,55 @@ class X2goClient(object):
+         return self.session_registry.associated_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
+     __client_associated_sessions_of_profile_name = client_associated_sessions_of_profile_name
+ 
++    def client_pubapp_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
++        &quot;&quot;&quot;\
++        Retrieve X2Go sessions of profile name &lt;profile_name&gt; that provide published applications .
++
++        @param profile_name: profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of X2Go session objects
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of session names
++        @type return_session_names: C{bool}
++        @return: list of application publishing sessions of profile name
++        @rtype: C{list}
++        &quot;&quot;&quot;
++        return self.session_registry.pubapp_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
++    __client_pubapp_sessions_of_profile_name = client_pubapp_sessions_of_profile_name
++
++
++    def client_running_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
++        &quot;&quot;&quot;\
++        Retrieve running X2Go sessions of profile name &lt;profile_name&gt;.
++
++        @param profile_name: profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of X2Go session objects
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of session names
++        @type return_session_names: C{bool}
++        @return: list of running sessions of profile name
++        @rtype: C{list}
++        &quot;&quot;&quot;
++        return self.session_registry.running_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
++    __client_running_sessions_of_profile_name = client_running_sessions_of_profile_name
++
++    def client_suspended_sessions_of_profile_name(self, profile_name, return_objects=False, return_session_names=False):
++        &quot;&quot;&quot;\
++        Retrieve suspended X2Go sessions of profile name &lt;profile_name&gt;.
++
++        @param profile_name: profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of X2Go session objects
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of session names
++        @type return_session_names: C{bool}
++        @return: list of suspended sessions of profile name
++        @rtype: C{list}
++        &quot;&quot;&quot;
++        return self.session_registry.suspended_sessions_of_profile_name(profile_name, return_objects=return_objects, return_session_names=return_session_names)
++    __client_suspended_sessions_of_profile_name = client_suspended_sessions_of_profile_name
++
+     ###
+     ### Provide access to the X2Go server's sessions DB
+     ### 
+@@ -2131,7 +2180,7 @@ class X2goClient(object):
+     ### CLIENT OPERATIONS ON SESSIONS (listing sessions, terminating non-associated sessions etc.)
+     ###
+ 
+-    def clean_sessions(self, session_uuid):
++    def clean_sessions(self, session_uuid, published_applications=None):
+         &quot;&quot;&quot;\
+         Find running X2Go sessions that have previously been started by the
+         connected user on the remote X2Go server and terminate them.
+@@ -2147,7 +2196,10 @@ class X2goClient(object):
+         &quot;&quot;&quot;
+         _destroy_terminals = not ( self.auto_update_sessionregistry == True)
+         session = self.session_registry(session_uuid)
+-        session.clean_sessions(destroy_terminals=_destroy_terminals)
++        profile_name = session.get_profile_name()
++        if published_applications is None:
++            published_applications = self.session_profiles.get_profile_config(profile_name)['published']
++        session.clean_sessions(destroy_terminals=_destroy_terminals, published_applications=published_applications)
+     __clean_sessions = clean_sessions
+ 
+     def list_sessions(self, session_uuid=None, 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 57e30a3..ce9190f 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -283,7 +283,7 @@ X2GO_SESSIONPROFILE_DEFAULTS = {
+     'sound': False, 'soundsystem': 'pulse', 'startsoundsystem': False, 'soundtunnel':True, 'defsndport':True, 'sndport':4713,
+     'name': 'NEW_PROFILE', 'icon': ':icons/128x128/x2gosession.png',
+     'host': '', 'user': CURRENT_LOCAL_USER, 'key': '', 'sshport': 22, 'krblogin': False,
+-    'rootless': True, 'applications': X2GO_GENERIC_APPLICATIONS, 'command':'TERMINAL',
++    'rootless': True, 'applications': X2GO_GENERIC_APPLICATIONS, 'command':'TERMINAL', 'published': False,
+     'rdpoptions': '-u X2GO_USER -p X2GO_PASSWORD', 'rdpserver': '',
+     'print': False,
+     'xdmcpserver': 'localhost',
+@@ -406,3 +406,4 @@ X2GO_MIMEBOX_EXTENSIONS_BLACKLIST = [
+ # X2Go desktop sharing
+ X2GO_SHARE_VIEWONLY=0
+ X2GO_SHARE_FULLACCESS=1
++
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 4fe08a0..0d06a03 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -283,6 +283,11 @@ class X2goSessionRegistry(object):
+                             self.master_sessions[_profile_name] = self(_session_uuid)
+                             self(_session_uuid).set_master_session()
+ 
++                        elif self(_session_uuid).published_applications:
++                            self(self.master_sessions[_profile_name]()).unset_master_session()
++                            self.master_sessions[_profile_name] = self(_session_uuid)
++                            self(_session_uuid).set_master_session()
++
+                         if _last_status['suspended']:
+                             # from a suspended state
+                             self.client_instance.HOOK_on_session_has_resumed_by_me(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+@@ -327,9 +332,13 @@ class X2goSessionRegistry(object):
+                 if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
+                     self.forget(_session_uuid)
+ 
+-        for _profile_name in self.connected_profiles(return_profile_names=True):
++        for _profile_name in [ p for p in self.connected_profiles(return_profile_names=True) if p not in self.master_sessions.keys() ]:
+             _running_sessions = self.running_sessions_of_profile_name(_profile_name)
+-            if _profile_name not in self.master_sessions.keys() and _running_sessions:
++            _pubapp_sessions = [ _s for _s in self.pubapp_sessions_of_profile_name(_profile_name) if _s in _running_sessions ]
++            if _pubapp_sessions:
++                self.master_sessions[_profile_name] = _pubapp_sessions[0]
++                _pubapp_sessions[0].set_master_session()
++            elif _running_sessions:
+                 self.master_sessions[_profile_name] = _running_sessions[0]
+                 _running_sessions[0].set_master_session()
+ 
+@@ -805,6 +814,28 @@ class X2goSessionRegistry(object):
+         else:
+             return self.associated_sessions() and [ s.get_uuid() for s in self.associated_sessions() if s.profile_name == profile_name ]
+ 
++    def pubapp_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
++        &quot;&quot;&quot;\
++        For a given session profile name retrieve a list of sessions that can be providers for published application list.
++        If none of the C{return_*} options is specified a list of session UUID hashes will be returned.
++
++        @param profile_name: session profile name
++        @type profile_name: C{str}
++        @param return_objects: return as list of L{X2goSession} instances
++        @type return_objects: C{bool}
++        @param return_session_names: return as list of X2Go session names
++        @type return_session_names: C{bool}
++        @return: a session list (as UUID hashes, objects or session names)
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if return_objects:
++            return self.associated_sessions() and [ s for s in self.associated_sessions() if s.published_applications ]
++        elif return_session_names:
++            return self.associated_sessions() and [ s.session_name for s in self.associated_sessions() if s.published_applications ]
++        else:
++            return self.associated_sessions() and [ s.get_uuid() for s in self.associated_sessions() if s.published_applications ]
++
+     def registered_sessions_of_profile_name(self, profile_name, return_objects=True, return_session_names=False):
+         &quot;&quot;&quot;\
+         For a given session profile name retrieve a list of sessions that are currently registered with this L{X2goClient} instance.
+diff --git a/x2go/session.py b/x2go/session.py
+index 4fe945c..fa83111 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -34,6 +34,7 @@ import types
+ import uuid
+ import time
+ import gevent
++import re
+ 
+ # Python X2Go modules
+ import log
+@@ -66,7 +67,7 @@ _X2GO_SESSION_PARAMS = ('geometry', 'depth', 'link', 'pack',
+                         'rootdir', 'loglevel', 'profile_name', 'profile_id',
+                         'print_action', 'print_action_args',
+                         'convert_encoding', 'client_encoding', 'server_encoding',
+-                        'proxy_options', 
++                        'proxy_options', 'published_applications',
+                         'logger',
+                         'control_backend', 'terminal_backend', 'proxy_backend',
+                         'profiles_backend', 'settings_backend', 'printing_backend',
+@@ -230,6 +231,21 @@ class X2goSession(object):
+         self.ssh_rootdir = ssh_rootdir
+         self.control_session = control_session
+ 
++        if params.has_key('published_applications'):
++            self.published_applications = params['published_applications']
++            if self.published_applications:
++                params['cmd'] = 'PUBLISHED'
++        else:
++            self.published_applications = params['published_applications'] = False
++
++        if params.has_key('cmd') and params['cmd'] != 'PUBLISHED':
++            self.published_applications = params['published_applications'] = False
++        self.published_applications_menu = None
++
++        if self.session_name:
++            if not re.match('.*_stRPUBLISHED_.*',self.session_name):
++                self.published_applications = params['published_applications'] = False
++
+         self.control_params = {}
+         self.terminal_params = {}
+         self.sshproxy_params = {}
+@@ -279,6 +295,10 @@ class X2goSession(object):
+         self.init_control_session()
+         self.terminal_session = None
+ 
++        if self.is_connected():
++            self.retrieve_server_features()
++
++
+     def HOOK_session_startup_failed(self):
+         &quot;&quot;&quot;\
+         HOOK method: called if the startup of a session failed.
+@@ -683,6 +703,8 @@ class X2goSession(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
++        if self.has_terminal_session():
++            return self.terminal_session.get_session_cmd()
+         if self.terminal_params.has_key('cmd'):
+             return self.terminal_params['cmd']
+         return None
+@@ -954,6 +976,18 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         return self.server_features
+ 
++    def has_server_feature(self, feature):
++        &quot;&quot;&quot;\
++        Check if C{feature} is a present feature of the connected X2Go server.
++
++        @param feature: an X2Go server feature as found in C{$SHAREDIR/x2go/feature.d/*}
++        @type feature: C{str}
++        @return: C{True} if the feature is presend
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return feature in self.get_server_features()
++
+     def set_session_window_title(self, title=''):
+         &quot;&quot;&quot;\
+         Modify session window title. If the session ID does not occur in the
+@@ -1011,7 +1045,7 @@ class X2goSession(object):
+         return self.connected
+     __is_alive = is_alive
+ 
+-    def clean_sessions(self, destroy_terminals=True):
++    def clean_sessions(self, destroy_terminals=True, published_applications=False):
+         &quot;&quot;&quot;\
+         Clean all running sessions for the authenticated user on the remote X2Go server.
+ 
+@@ -1024,7 +1058,7 @@ class X2goSession(object):
+             except x2go_exceptions.X2goSessionException:
+                 pass
+ 
+-            self.control_session.clean_sessions(destroy_terminals=destroy_terminals)
++            self.control_session.clean_sessions(destroy_terminals=destroy_terminals, published_applications=published_applications)
+         else:
+             self._X2goSession__disconnect()
+     __clean_sessions = clean_sessions
+@@ -1138,14 +1172,13 @@ class X2goSession(object):
+                     self.terminated = not (self.running or self.suspended)
+                 else:
+                     self.terminated = None
+-            except KeyError:
++            except KeyError, e:
+                 self.running = False
+                 self.suspended = False
+                 if not self.virgin:
+                     self.terminated = True
+             self.faulty = not (self.running or self.suspended or self.terminated or self.virgin)
+ 
+-
+         self._current_status = {
+             'timestamp': time.time(),
+             'server': self.server,
+@@ -1161,9 +1194,46 @@ class X2goSession(object):
+             raise e
+ 
+         return True
+-
+     __update_status = update_status
+ 
++    def is_published_applications_provider(self):
++        &quot;&quot;&quot;\
++        Returns true if this session runs in published applications mode.
++
++        @return: Returns C{True} is this session is a provider session for published applications.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.is_running() and self.has_terminal_session():
++            return self.terminal_session.is_published_applications_provider()
++        return False
++
++    def get_published_applications(self):
++        &quot;&quot;&quot;\
++        Return a list of published menu items from the X2Go server
++        for session type published applications.
++
++        @return: A C{list} of C{dict} elements. Each C{dict} elements has a 
++            C{desktop} key containing the text output of a .desktop file and
++            an C{icon} key which contains the desktop icon data base64 encoded 
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return self.control_session.get_published_applications()
++
++    def exec_published_application(self, exec_name):
++        &quot;&quot;&quot;\
++        Execute an application while in published application mode.
++
++        @param exec_name: command to execute on server
++        @type exec_name: C{str}
++
++        &quot;&quot;&quot;
++        if self.terminal_session is not None:
++            self.logger('for %s executing published application: %s' % (self.profile_name, exec_name), loglevel=log.loglevel_NOTICE)
++            self.terminal_session.exec_published_application(exec_name)
++    __exec_published_application = exec_published_application
++
+     def resume(self, session_name=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2Go session on the
+@@ -1189,7 +1259,14 @@ class X2goSession(object):
+             # sockets, thus  we plainly have to wait a while
+             if self.is_running():
+                 self.suspend()
+-                gevent.sleep(10)
++                gevent.sleep(5)
++
++            try:
++                if self.published_applications:
++                    self.published_applications_menu = self.get_published_applications()
++            except:
++                # FIXME: test the code to see what exceptions may occur here...
++                raise
+ 
+             self.terminal_session = _control.resume(session_name=self.session_name,
+                                                     session_instance=self,
+@@ -1209,6 +1286,9 @@ class X2goSession(object):
+                 if _new_session:
+                     self.terminal_session.run_command(env=self.session_environment)
+ 
++                if self.get_session_cmd() != 'PUBLISHED':
++                    self.published_applications = False
++
+                 if self._SUPPORTED_SOUND and self.terminal_session.params.snd_system is not 'none':
+                     self.terminal_session and not self.faulty and self.terminal_session.start_sound()
+                 else:
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 8bec574..1b23cdc 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -166,6 +166,7 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sshproxytunnel': 'sshproxy_tunnel',
+             'sessiontitle': 'session_title',
+             'setsessiontitle': 'set_session_title',
++            'published': 'published_applications',
+     }
+     _speed_dict = {
+             '0': 'modem',
+@@ -505,9 +506,12 @@ def set_session_window_title(session_window, session_title):
+ 
+     &quot;&quot;&quot;
+     if _X2GOCLIENT_OS != 'Windows':
+-        session_window.set_wm_name(str(session_title))
+-        session_window.set_wm_icon_name(str(session_title))
+-        _X_DISPLAY.sync()
++        try:
++            session_window.set_wm_name(str(session_title))
++            session_window.set_wm_icon_name(str(session_title))
++            _X_DISPLAY.sync()
++        except Xlib.error.BadWindow:
++            pass
+ 
+ def raise_session_window(session_window):
+     &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025205.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-134-ga34ffe9
+</A></li>
+	<LI>Next message: <A HREF="025299.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-132-g58289bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25222">[ date ]</a>
+              <a href="thread.html#25222">[ thread ]</a>
+              <a href="subject.html#25222">[ subject ]</a>
+              <a href="author.html#25222">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

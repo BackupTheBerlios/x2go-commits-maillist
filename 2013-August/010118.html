@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-3-gd08b602
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.4.0.6-3-gd08b602&In-Reply-To=%3C20130827112020.182C75DB18%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010114.html">
+   <LINK REL="Next"  HREF="010115.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-3-gd08b602</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.4.0.6-3-gd08b602&In-Reply-To=%3C20130827112020.182C75DB18%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-3-gd08b602">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:20:19 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010114.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-2-gc2c9d03
+</A></li>
+        <LI>Next message: <A HREF="010115.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-4-g527741c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10118">[ date ]</a>
+              <a href="thread.html#10118">[ thread ]</a>
+              <a href="subject.html#10118">[ subject ]</a>
+              <a href="author.html#10118">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  d08b602e0ba1c0b143c4875a77b074180fe607cf (commit)
+      from  c2c9d034a3449c45572bdab775082a93097807e1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog              |    2 +
+ pyhoca/wxgui/frontend.py      |   88 ++++++++++++++++++++++++++++++++++++++---
+ pyhoca/wxgui/menus_taskbar.py |    6 +++
+ 3 files changed, 91 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index d192e7a..1a8b8db 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,5 +1,7 @@
+ pyhoca-gui (0.4.0.7-0~x2go1) UNRELEASED; urgency=low
+ 
++  * New upstream version (0.4.0.7):
++    - Add import feature to the session profile manager.
+   * /debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+ 
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 3bc6574..9b7c44d 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -1116,9 +1116,87 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                 pass
+         self._temp_disabled_profile_names.remove(profile_name)
+ 
++    def OnProfileImport(self, evt):#
++        &quot;&quot;&quot;\
++        Gets called if the user requests a session profile (group) import.
++
++        @param evt: event
++        @type evt: C{obj}
++
++        &quot;&quot;&quot;
++        dlg = wx.FileDialog(
++            self.about, message=_(u&quot;import session profile(s)&quot;), wildcard=&quot;*.x2go&quot;, style=wx.FD_OPEN)
++
++        # Show the dialog and retrieve the user response. If it is the OK response,
++        # process the data.
++        if dlg.ShowModal() == wx.ID_OK:
++
++            _import_file = dlg.GetPath()
++
++            try:
++                imported_session_profiles = x2go.X2GoSessionProfiles(config_files=[_import_file])
++            except:
++                m = messages.PyHoca_MessageWindow_Ok(self,
++                                                     title=_(u'%s: Import of session profile(s) failed') % self.appname,
++                                                     msg=_(u&quot;The selected session profile(s) could not be imported from \nfile &#187;%s&#171;.\n\nAre you sure the session profiles file has the correct format?&quot;) % os.path.normpath(_import_file),
++                                                     icon='error')
++                m.ShowModal()
++                return
++
++
++            failed_profiles = []
++            for profile_name in imported_session_profiles.profile_names:
++                this_profile = imported_session_profiles.get_profile_config(profile_name)
++
++                # clean up session profile options that are unknown to Python X2Go
++                for key in copy.deepcopy(this_profile).keys():
++                    if key not in x2go.defaults.X2GO_SESSIONPROFILE_DEFAULTS:
++                        del this_profile[key]
++
++                try:
++                    self.session_profiles.add_profile(**this_profile)
++                except x2go.x2go_exceptions.X2GoProfileException, e:
++                    self._pyhoca_logger('Importing session profile %s failed. Reason: %s' % (profile_name, str(e)), loglevel=x2go.loglevel_ERROR)
++                    failed_profiles.append(profile_name)
++
++            self.session_profiles.write_user_config = True
++            if not self.session_profiles.write():
++                m = messages.PyHoca_MessageWindow_Ok(self,
++                                                     title=_(u'%s: Write failure after import') % self.appname,
++                                                     msg=_(u&quot;The session profiles configuration could not be written to file after import\n\nCheck for common problems (disk full, insufficient access, etc.).&quot;),
++                                                     icon='error',
++                                                     profile_name=profile_name)
++                m.ShowModal()
++            elif len(failed_profiles) == len(imported_session_profiles.profile_names):
++                _notify_text = _(u'None of the session profiles could be imported...') + '\n'
++                for failed_profile in failed_profiles:
++                    _notify_text += '\n  %s' % failed_profile
++                _notify_text += '\n\n' + _(u'For details, start %s from the command line and retry the import.') % self.appname
++                self.notifier.send(u'Session Profile Import (Failure)', _notify_text, icon='profile_error', timeout=10000)
++
++            elif 0 &lt; len(failed_profiles) &lt; len(imported_session_profiles.profile_names):
++                _notify_text = _(u'Only these session profiles could be imported...') + '\n'
++                for profile_name in [ pn for pn in imported_session_profiles.profile_names if pn not in failed_profiles ]:
++                    _notify_text += '\n  %s' % profile_name
++                _notify_text += '\n\n' + (u'Whereas these session profiles failed to import...') + '\n'
++                for failed_profile in failed_profiles:
++                    _notify_text += '\n  %s' % failed_profile
++                _notify_text += '\n\n' + _(u'For details, start %s from the command line and retry the import.') % self.appname
++                self.notifier.send(u'Session Profile Import (Warning)', _notify_text, icon='profile_warning', timeout=10000)
++            elif 1 &lt; len(imported_session_profiles.profile_names):
++                _notify_text = _(u'New session profiles have been imported...') + '\n'
++                for profile_name in imported_session_profiles.profile_names:
++                    _notify_text += '\n  %s' % profile_name
++                self.notifier.send(u'Session Profile Import (Success)', _notify_text, icon='profile_add', timeout=10000)
++            elif 1 == len(imported_session_profiles.profile_names):
++                _notify_text = _(u'New session profile has been imported...') + '\n'
++                for profile_name in imported_session_profiles.profile_names:
++                    _notify_text += '\n  %s' % profile_name
++                self.notifier.send(u'Session Profile Import (Success)', _notify_text, icon='profile_add', timeout=10000)
++
+     def OnProfileExport(self, evt):
+         &quot;&quot;&quot;\
+-        Gets called if the user request a session profile (group) export.
++        Gets called if the user requests a session profile (group) export.
+ 
+         @param evt: event
+         @type evt: C{obj}
+@@ -1165,7 +1243,7 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                 if not m.Yes(): return
+                 else: os.remove(_export_file)
+ 
+-            exported_sessions = x2go.X2GoSessionProfiles(config_files=[_export_file])
++            exported_session_profiles = x2go.X2GoSessionProfiles(config_files=[_export_file])
+             for profile_name in filtered_profile_names:
+                 this_profile = self._X2GoClient__get_profile_config(profile_name)
+ 
+@@ -1174,10 +1252,10 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+                     if key not in x2go.defaults.X2GO_SESSIONPROFILE_DEFAULTS:
+                         del this_profile[key]
+ 
+-                exported_sessions.add_profile(**this_profile)
++                exported_session_profiles.add_profile(**this_profile)
+ 
+-            exported_sessions.write_user_config = True
+-            if exported_sessions.write():
++            exported_session_profiles.write_user_config = True
++            if exported_session_profiles.write():
+                 if profile_group:
+                     self.notifier.send(_(u'%s - profiles exported') % profile_group, _(u'Successfully exported session profile group &#187;%s&#171; to file &#187;%s&#171;.') % (profile_group, os.path.basename(_export_file)), icon='success', timeout=10000)
+                 elif profile_name:
+diff --git a/pyhoca/wxgui/menus_taskbar.py b/pyhoca/wxgui/menus_taskbar.py
+index 5815454..413b4c0 100644
+--- a/pyhoca/wxgui/menus_taskbar.py
++++ b/pyhoca/wxgui/menus_taskbar.py
+@@ -968,6 +968,12 @@ class PyHocaGUI_Menu_TaskbarProfileNames(wx.Menu):
+                     self.Append(text=_(u'Export Profile Group'), id=_export_id)
+                 self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileExport, id=_export_id)
+ 
++        if bind_method is None and not group_name:
++            _import_id = wx.NewId()
++            self.AppendSeparator()
++            self.Append(text=_(u'Import Session Profiles'), id=_import_id)
++            self._PyHocaGUI.Bind(wx.EVT_MENU, self._PyHocaGUI.OnProfileImport, id=_import_id)
++
+     def OnUpdateUI(self, evt):
+         profile_name = self._PyHocaGUI._eventid_profilenames_map[evt.GetId()]
+         if profile_name in self._PyHocaGUI._temp_disabled_profile_names:
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010114.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-2-gc2c9d03
+</A></li>
+	<LI>Next message: <A HREF="010115.html">[X2Go-Commits] pyhoca-gui.git - build-main (branch) updated:	0.4.0.6-4-g527741c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10118">[ date ]</a>
+              <a href="thread.html#10118">[ thread ]</a>
+              <a href="subject.html#10118">[ subject ]</a>
+              <a href="author.html#10118">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

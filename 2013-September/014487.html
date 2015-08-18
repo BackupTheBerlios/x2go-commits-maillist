@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] page changed:	wiki:advanced:multi-node:x2goserver-pgsql
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20page%20changed%3A%0A%09wiki%3Aadvanced%3Amulti-node%3Ax2goserver-pgsql&In-Reply-To=%3C20130923192016.12823.246941873.swift%40wiki.x2go.org%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014486.html">
+   <LINK REL="Next"  HREF="014488.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] page changed:	wiki:advanced:multi-node:x2goserver-pgsql</H1>
+    <B>wiki-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20page%20changed%3A%0A%09wiki%3Aadvanced%3Amulti-node%3Ax2goserver-pgsql&In-Reply-To=%3C20130923192016.12823.246941873.swift%40wiki.x2go.org%3E"
+       TITLE="[X2Go-Commits] page changed:	wiki:advanced:multi-node:x2goserver-pgsql">wiki-admin at x2go.org
+       </A><BR>
+    <I>Mon Sep 23 21:20:16 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014486.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	4.0.0.5
+</A></li>
+        <LI>Next message: <A HREF="014488.html">[X2Go-Commits] page changed:	wiki:advanced:multi-node:x2goserver-pgsql
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14487">[ date ]</a>
+              <a href="thread.html#14487">[ thread ]</a>
+              <a href="subject.html#14487">[ subject ]</a>
+              <a href="author.html#14487">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>A page in your DokuWiki was added or changed. Here are the details:
+
+Date        : 2013/09/23 19:20
+Browser     : Mozilla/5.0 (X11; Linux x86_64; rv:23.0) Gecko/20100101 Firefox/23.0 Iceweasel/23.0
+IP-Address  : 217.233.231.190
+Hostname    : pD9E9E7BE.dip0.t-ipconnect.de
+Old Revision: <A HREF="http://wiki.x2go.org/doku.php/wiki:advanced:multi-node:x2goserver-pgsql?rev=1363120776">http://wiki.x2go.org/doku.php/wiki:advanced:multi-node:x2goserver-pgsql?rev=1363120776</A>
+New Revision: <A HREF="http://wiki.x2go.org/doku.php/wiki:advanced:multi-node:x2goserver-pgsql">http://wiki.x2go.org/doku.php/wiki:advanced:multi-node:x2goserver-pgsql</A>
+Edit Summary: 
+User        : sunweaver
+
+@@ -114,6 +114,100 @@
+  $ x2godbadmin --addgroup x2gousers
+  &lt;/code&gt;
+  
+  After that step users of the posix group ''x2gousers'' can create X2Go sessions. Of course, any other group could be used here, as well.
++ 
++ ===== Database Structure and Troubleshooting =====
++ 
++ In case it becomes necessary to edit the X2Go session database on the PostgreSQL server by hand, connect to the DB with this command:
++ 
++ ==== Connect to the database ====
++ 
++ &lt;code&gt;
++ $ psql --user x2godbuser --password -h
+localhost --dbname x2go_sessions
++ &lt;/code&gt;
++ 
++ As password use the password found in ''/etc/x2go/x2gosql/passwords/x2goadmin''.
++ 
++ 
++ After successful login, the ''psql'' PostgreSQL client shows these lines:
++ 
++ &lt;file&gt;
++ ts-01:~ # psql --user x2godbuser --password -h localhost --dbname x2go_sessions
++ Password for user x2godbuser: &lt;hidden&gt;
++ Welcome to psql &lt;version&gt;, the PostgreSQL interactive terminal.
++ 
++ Type:  \copyright for distribution terms
++        \h for help with SQL commands
++        \? for help with psql commands
++        \g or terminate with semicolon to execute query
++        \q to quit
++ 
++ x2go_sessions=&gt;
++ &lt;/file&gt;
++ 
++ ==== Database structure ====
++ 
++ The database has five tables:
++ 
++ &lt;file&gt;
++ x2go_sessions=&gt; \dt
++              List of relations
++  Schema |     Name      | Type  |  Owner   
++ --------+---------------+-------+----------
++  public | messages      | table | postgres
++  public | mounts        | table | postgres
++  public | sessions      | table |
+postgres
++  public | used_ports    | table | postgres
++  public | user_messages | table | postgres
++ (5 rows)
++ &lt;/file&gt;
++ 
++ Three of them are important for session management: sessions, used_ports, mounts.
++ 
++ Furthermore, the database defined four views:
++ 
++ &lt;file&gt;
++ x2go_sessions=&gt; \dv
++             List of relations
++  Schema |     Name      | Type |  Owner   
++ --------+---------------+------+----------
++  public | mounts_view   | view | postgres
++  public | ports_view    | view | postgres
++  public | servers_view  | view | postgres
++  public | sessions_view | view | postgres
++ (4 rows)
++ 
++ x2go_sessions=&gt; 
++ &lt;/file&gt;
++ 
++ If you want to show the content of a table or view, evoke this SQL command:
++ 
++ &lt;file&gt;
++ x2go_sessions=&gt; select * from used_ports;
++     server    |              session_id               |   creator_id    | port  
++ --------------+---------------------------------------+-----------------+-------
++  ts-01 | mike-57-1379961697_stRTERMINAL_dp24 | x2gouser_mike
+|<i> 30019
+</I>+  ts-01 | mike-57-1379961697_stRTERMINAL_dp24 | x2gouser_mike | 30018
++  ts-01 | mike-57-1379961697_stRTERMINAL_dp24 | x2gouser_mike | 30020
++ (3 rows)
++ &lt;/file&gt;
++ 
++ ==== Troubleshooting ====
++ 
++ If you want to remove these entries (because they are there but they by some reason should not be there), use this command set:
++ 
++ &lt;code&gt;
++ x2go_sessions=&gt; delete from used_ports where port=30020;
++ DELETE 1
++ &lt;/code&gt;
++ 
++ ... or ...
++ 
++ &lt;code&gt;
++ x2go_sessions=&gt; delete from used_ports where session_id=mike-57-1379961697_stRTERMINAL_dp24;
++ DELETE 3
++ &lt;/code&gt;
++ 
++ For further input on manipulating PostgreSQL database via the ''psql'' client tool, see the PostgreSQL reference.
+  
+  
+
+
+
+-- 
+This mail was generated by DokuWiki at
+<A HREF="http://wiki.x2go.org/">http://wiki.x2go.org/</A>
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014486.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	4.0.0.5
+</A></li>
+	<LI>Next message: <A HREF="014488.html">[X2Go-Commits] page changed:	wiki:advanced:multi-node:x2goserver-pgsql
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14487">[ date ]</a>
+              <a href="thread.html#14487">[ thread ]</a>
+              <a href="subject.html#14487">[ subject ]</a>
+              <a href="author.html#14487">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

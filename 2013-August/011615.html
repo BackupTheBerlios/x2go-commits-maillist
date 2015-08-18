@@ -1,0 +1,562 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-18
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-18&In-Reply-To=%3C20130830142344.440035DB40%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011627.html">
+   <LINK REL="Next"  HREF="011617.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-18</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxagent/3.3.0-18&In-Reply-To=%3C20130830142344.440035DB40%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-18">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:23:44 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011627.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-5
+</A></li>
+        <LI>Next message: <A HREF="011617.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-13
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11615">[ date ]</a>
+              <a href="thread.html#11615">[ thread ]</a>
+              <a href="subject.html#11615">[ subject ]</a>
+              <a href="author.html#11615">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  22914447019845ba3ba238e5814b59939e744f19 (commit)
+      from  fc05e5e04843762820effb5b5bb145536ddd41f0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG   |   32 +++++++++
+ nx-X11/programs/Xserver/hw/nxagent/Clipboard.c |   24 +++++++
+ nx-X11/programs/Xserver/hw/nxagent/Colormap.c  |   17 ++++-
+ nx-X11/programs/Xserver/hw/nxagent/Dialog.h    |    2 +-
+ nx-X11/programs/Xserver/hw/nxagent/Display.c   |   15 ++++
+ nx-X11/programs/Xserver/hw/nxagent/GCOps.c     |   87 ++++++++++++++++++++++++
+ nx-X11/programs/Xserver/hw/nxagent/Rootless.c  |   64 +++++++++++++----
+ nx-X11/programs/Xserver/hw/nxagent/Screen.c    |   19 ++++--
+ 8 files changed, 237 insertions(+), 23 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index 90f4949..1adbcb9 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,37 @@
+ ChangeLog:
+ 
++nxagent-3.3.0-18
++
++- The area to restore from the backing store is limited by the screen
++  size instead of the visible screen.
++
++nxagent-3.3.0-17
++
++- Fixed TR12F02150. The agent could crash when copying text from VNC
++  viewer. Fixed by aborting the procedure in case the retrieved pro-
++  perty has not a valid format.
++
++nxagent-3.3.0-16
++
++- Fixed TR07G02247. Don't try to call XSetWindowColormap() if the
++  window has no colormap, e.g. if its class is InputOnly.
++
++nxagent-3.3.0-15
++
++- Fixed TR04G02210. Region is cut to the visible screen before re-
++  storing areas from the backing store.
++
++- Fixed TR07G02246. Box is shrinked if bounds can't stay in a short
++  signed integer.
++
++nxagent-3.3.0-14
++
++- Fixed TR03G02206. waitpid() call was missing for the &quot;Fonts replace-
++  ment&quot; dialog type.
++
++- Fixed TR03G02195. Added a properties structure compatible with 32
++  and 64 bit platform types.
++
+ nxagent-3.3.0-13
+ 
+ - Handle the window unmap immediately. Don't add it to the configure
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Clipboard.c b/nx-X11/programs/Xserver/hw/nxagent/Clipboard.c
+index a575cab..febfe70 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Clipboard.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Clipboard.c
+@@ -680,6 +680,30 @@ void nxagentCollectPropertyEvent(int resource)
+ 
+     return;
+   }
++ 
++  if (resultFormat != 8 &amp;&amp; resultFormat != 16 &amp;&amp; resultFormat != 32)
++  {
++
++    #ifdef DEBUG
++    fprintf (stderr, &quot;nxagentCollectPropertyEvent: WARNING! Invalid property &quot;
++                 &quot;value.\n&quot;);
++    #endif
++
++    if (lastClientClientPtr != NULL)
++    {
++      nxagentSendSelectionNotify(None);
++    }
++
++    lastClientWindowPtr = NULL;
++    lastClientStage = SelectionStageNone;
++
++    if (pszReturnData != NULL)
++    {
++      XFree(pszReturnData);
++    }
++
++    return;
++  }
+ 
+   switch (lastClientStage)
+   {
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Colormap.c b/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
+index 7575867..fe0e567 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Colormap.c
+@@ -291,9 +291,20 @@ void nxagentSetInstalledColormapWindows(ScreenPtr pScreen)
+ 	  pCmap = (ColormapPtr)LookupIDByType(pScreen-&gt;defColormap,
+ 					      RT_COLORMAP);
+ 
+-	XSetWindowColormap(nxagentDisplay,
+-			   nxagentDefaultWindows[pScreen-&gt;myNum],
+-			   nxagentColormap(pCmap));
++        if (pCmap != NULL)
++        {
++          XSetWindowColormap(nxagentDisplay,
++	                         nxagentDefaultWindows[pScreen-&gt;myNum],
++                                     nxagentColormap(pCmap));
++        }
++        #ifdef WARNING
++        else
++        {
++          fprintf(stderr, &quot;nxagentSetInstalledColormapWindows: WARNING! &quot;
++                      &quot;Window at [%p] has no colormap with class [%d].\n&quot;,
++                          pWin, pWin -&gt; drawable.class);
++        }
++        #endif
+       }
+ #endif /* DUMB_WINDOW_MANAGERS */
+   }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Dialog.h b/nx-X11/programs/Xserver/hw/nxagent/Dialog.h
+index 135cd2d..a283294 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Dialog.h
++++ b/nx-X11/programs/Xserver/hw/nxagent/Dialog.h
+@@ -42,7 +42,7 @@ extern int nxagentKillDialogPid;
+ extern int nxagentSuspendDialogPid;
+ extern int nxagentRootlessDialogPid;
+ extern int nxagentPulldownDialogPid;
+-extern int nxagentFontsReplacement;
++extern int nxagentFontsReplacementDialogPid;
+ extern int nxagentEnableRandRModeDialogPid;
+ extern int nxagentDisableRandRModeDialogPid;
+ extern int nxagentEnableDeferModePid;
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Display.c b/nx-X11/programs/Xserver/hw/nxagent/Display.c
+index 9f257e5..8d72654 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Display.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Display.c
+@@ -453,6 +453,21 @@ static void nxagentSigchldHandler(int signal)
+     }
+   }
+ 
++  if (pid == 0 &amp;&amp; nxagentFontsReplacementDialogPid)
++  {
++    pid = waitpid(nxagentFontsReplacementDialogPid, &amp;status, options);
++
++    if (pid == -1 &amp;&amp; errno == ECHILD)
++    {
++      #ifdef WARNING
++      fprintf(stderr, &quot;nxagentSigchldHandler: Got ECHILD waiting for child %d (Fonts replacement).\n&quot;,
++                  nxagentFontsReplacementDialogPid);
++      #endif
++
++      pid = nxagentFontsReplacementDialogPid = 0;
++    }
++  }
++
+   if (pid == 0 &amp;&amp; nxagentEnableRandRModeDialogPid)
+   {
+     pid = waitpid(nxagentEnableRandRModeDialogPid, &amp;status, options);
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/GCOps.c b/nx-X11/programs/Xserver/hw/nxagent/GCOps.c
+index 83aa04f..9afd6e3 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/GCOps.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/GCOps.c
+@@ -594,6 +594,8 @@ RegionPtr nxagentCopyArea(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawable,
+   unsigned int format;
+   unsigned long planeMask = 0xffffffff;
+ 
++  int oldDstxyValue;
++
+   RegionPtr pDstRegion;
+ 
+   int skip = 0;
+@@ -605,6 +607,91 @@ RegionPtr nxagentCopyArea(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawable,
+                           (void *) pDstDrawable, srcx, srcy, dstx, dsty, width, height);
+   #endif
+ 
++ /*
++  * Here, before using fbDoCopy() called by fbCopyArea(),
++  * it should be provided that the cast in fbDoCopy() from
++  * int to short int would not cut off significative bits.
++  */
++
++  if (dstx + pDstDrawable-&gt;x + width &gt; 32767)
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentCopyArea: x2 exceeding short int.\n&quot;);
++    #endif
++
++    width = 32767 - dstx - pDstDrawable-&gt;x;
++
++    if (width &lt;= 0)
++    {
++      #ifdef TEST
++      fprintf(stderr, &quot;nxagentCopyArea: Returning null on x2 check.\n&quot;);
++      #endif
++
++      return NullRegion;
++    }
++  }
++
++  if (dstx + pDstDrawable-&gt;x &lt; -32768)
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentCopyArea: x1 exceeding short int.\n&quot;);
++    #endif
++
++    width += pDstDrawable-&gt;x + dstx + 32768;
++    srcx  -= pDstDrawable-&gt;x + dstx + 32768;
++    dstx = -32768 - pDstDrawable-&gt;x;
++
++    if (width &lt;= 0)
++    {
++      #ifdef TEST
++      fprintf(stderr, &quot;nxagentCopyArea: Returning null on x1 check.\n&quot;);
++      #endif
++
++      return NullRegion;
++    }
++  }
++
++    oldDstxyValue = dsty;
++
++  if (dsty + pDstDrawable-&gt;y + height &gt; 32767)
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentCopyArea: y2 exceeding short int.\n&quot;);
++    #endif
++
++    height = 32767 - dsty - pDstDrawable-&gt;y;
++
++    if (height &lt;= 0)
++    {
++      #ifdef TEST
++      fprintf(stderr, &quot;nxagentCopyArea: Returning null on y2 check.\n&quot;);
++      #endif
++
++      return NullRegion;
++    }
++  }
++
++  if (dsty + pDstDrawable-&gt;y &lt; -32768)
++  {
++    #ifdef WARNING
++    fprintf(stderr, &quot;nxagentCopyArea: y1 exceeding short int.\n&quot;);
++    #endif
++
++    height += 32768 + pDstDrawable-&gt;y + dsty;
++    srcy   -= 32768 + pDstDrawable-&gt;y + dsty;
++    dsty = -32768 - pDstDrawable-&gt;y;
++
++    if (height &lt;= 0)
++    {
++      #ifdef TEST
++      fprintf(stderr, &quot;nxagentCopyArea: Returning null on y1 check.\n&quot;);
++      #endif
++
++      return NullRegion;
++    }
++  }
++
++
+   if (nxagentGCTrap == 1 || nxagentShmTrap == 1)
+   {
+     if (pSrcDrawable -&gt; type == DRAWABLE_PIXMAP &amp;&amp;
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Rootless.c b/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
+index 79cb74e..e192cd2 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Rootless.c
+@@ -60,6 +60,27 @@ typedef struct
+ }
+ nxagentWMHints;
+ 
++/*
++ * This structure is compatible with 32
++ * and 64 bit library interface. It has
++ * been copied from Xatomtype.h and it's
++ * a parameter of XChangeProperty().
++ */
++
++typedef struct
++{
++  unsigned long flags;
++  long          input;
++  long          initialState;
++  unsigned long iconPixmap;
++  unsigned long iconWindow;
++  long          iconX;
++  long          iconY;
++  unsigned long iconMask;
++  unsigned long windowGroup;
++}
++nxagentPropWMHints;
++
+ WindowPtr nxagentRootlessWindow = NULL;
+ 
+ #define TOP_LEVEL_TABLE_UNIT 100
+@@ -429,6 +450,7 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+   Atom propertyX, typeX;
+   char *output = NULL;
+   nxagentWMHints wmHints;
++  nxagentPropWMHints propHints;
+   Bool export = False;
+   Bool freeMem = False;
+ 
+@@ -489,8 +511,22 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+     wmHints.flags |= InputHint;
+     wmHints.input = True;
+ 
+-    output = (char*) &wmHints;
+-    export  = True;
++    /*
++     * Initialize the structure used in XChangeProperty().
++     */
++
++    propHints.flags = wmHints.flags;
++    propHints.input = (wmHints.input == True ? 1 : 0);
++    propHints.initialState = wmHints.initial_state;
++    propHints.iconPixmap = wmHints.icon_pixmap;
++    propHints.iconWindow = wmHints.icon_window;
++    propHints.iconX = wmHints.icon_x;
++    propHints.iconY = wmHints.icon_y;
++    propHints.iconMask = wmHints.icon_mask;
++    propHints.windowGroup = wmHints.window_group;
++
++    output = (char*) &propHints;
++    export = True;
+ 
+     if ((wmHints.flags &amp; IconPixmapHint) &amp;&amp; (wmHints.icon_pixmap != None))
+     {
+@@ -504,17 +540,17 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+           nxagentSynchronizeRegion((DrawablePtr) icon, NullRegion, NEVER_BREAK, NULL);
+         }
+ 
+-        wmHints.icon_pixmap = nxagentPixmap(icon);
++        propHints.iconPixmap = nxagentPixmap(icon);
+       }
+       else
+       {
+-        wmHints.flags &amp;= ~IconPixmapHint;
++        propHints.flags &amp;= ~IconPixmapHint;
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon pixmap %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+                         (unsigned int) wmHints.icon_pixmap, propertyS, typeS,
+-                            (void*)pWin);
++                            (void *) pWin);
+         #endif
+       }
+     }
+@@ -526,17 +562,17 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+ 
+       if (icon)
+       {
+-        wmHints.icon_window = nxagentWindow(icon);
++        propHints.iconWindow = nxagentWindow(icon);
+       }
+       else
+       {
+-        wmHints.flags &amp;= ~IconWindowHint;
++        propHints.flags &amp;= ~IconWindowHint;
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon window %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+                         (unsigned int) wmHints.icon_window, propertyS, typeS,
+-                            (void*)pWin);
++                            (void *) pWin);
+         #endif
+       }
+     }
+@@ -548,17 +584,17 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+ 
+       if (icon)
+       {
+-        wmHints.icon_mask = nxagentPixmap(icon);
++        propHints.iconMask = nxagentPixmap(icon);
+       }
+       else
+       {
+-        wmHints.flags &amp;= ~IconMaskHint;
++        propHints.flags &amp;= ~IconMaskHint;
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up icon mask %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+                         (unsigned int) wmHints.icon_mask, propertyS, typeS,
+-                            (void*)pWin);
++                            (void *) pWin);
+         #endif
+       }
+     }
+@@ -570,17 +606,17 @@ int nxagentExportProperty(pWin, property, type, format, mode, nUnits, value)
+ 
+       if (window)
+       {
+-        wmHints.window_group = nxagentWindow(window);
++        propHints.windowGroup = nxagentWindow(window);
+       }
+       else
+       {
+-        wmHints.flags &amp;= ~WindowGroupHint;
++        propHints.flags &amp;= ~WindowGroupHint;
+ 
+         #ifdef WARNING
+         fprintf(stderr, &quot;nxagentExportProperty: WARNING! Failed to look up window group %x from hint &quot;
+                     &quot;exporting property %s type %s on window %p.\n&quot;,
+                         (unsigned int) wmHints.window_group, propertyS, typeS,
+-                            (void*)pWin);
++                            (void *) pWin);
+         #endif
+       }
+     }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Screen.c b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+index fa08e05..f643cb9 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Screen.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Screen.c
+@@ -3045,7 +3045,7 @@ void nxagentShadowAdaptDepth(unsigned int width, unsigned int height,
+     #ifdef WARNING
+     fprintf(stderr, &quot;nxagentCorrectDepthShadow: WARNING! Visual not found. Using default visual.\n&quot;);
+     #endif
+-    
++
+     pVisual = nxagentVisuals[nxagentDefaultVisualIndex].visual;
+   }
+ 
+@@ -3472,10 +3472,10 @@ int nxagentRRSetScreenConfig(ScreenPtr pScreen, int width, int height)
+     RRScreenSizePtr oldSizes;
+ 
+     pScrPriv = rrGetScrPriv(pScreen);
+-   
++
+     oldWidth = pScreen-&gt;width;
+     oldHeight = pScreen-&gt;height;
+-    
++
+     if (!pScrPriv)
+     {
+       return 1;
+@@ -3555,7 +3555,7 @@ int nxagentRRSetScreenConfig(ScreenPtr pScreen, int width, int height)
+     }
+ 
+     RREditConnectionInfo (pScreen);
+-    
++
+     /*
+      * Fix pointer bounds and location
+      */
+@@ -3693,7 +3693,8 @@ void nxagentSaveAreas(PixmapPtr pPixmap, RegionPtr prgnSave, int xorg, int yorg,
+   return;
+ }
+ 
+-void nxagentRestoreAreas(PixmapPtr pPixmap, RegionPtr prgnRestore, int xorg, int yorg, WindowPtr pWin)
++void nxagentRestoreAreas(PixmapPtr pPixmap, RegionPtr prgnRestore, int xorg,
++                             int yorg, WindowPtr pWin)
+ {
+   PixmapPtr pVirtualPixmap;
+   RegionPtr clipRegion;
+@@ -3709,6 +3710,14 @@ void nxagentRestoreAreas(PixmapPtr pPixmap, RegionPtr prgnRestore, int xorg, int
+   BoxRec extents;
+   miBSWindowPtr pBackingStore;
+ 
++  /*
++   * Limit the area to restore to the
++   * root window size.
++   */
++
++  REGION_INTERSECT(pWin -&gt; pScreen, prgnRestore, prgnRestore,
++                       &amp;WindowTable[pWin -&gt; drawable.pScreen -&gt; myNum] -&gt; winSize);
++
+   pBackingStore = (miBSWindowPtr) pWin -&gt; backStorage;
+ 
+   pVirtualPixmap = nxagentVirtualPixmap(pPixmap);
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011627.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.2.0-5
+</A></li>
+	<LI>Next message: <A HREF="011617.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxagent/3.3.0-13
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11615">[ date ]</a>
+              <a href="thread.html#11615">[ thread ]</a>
+              <a href="subject.html#11615">[ subject ]</a>
+              <a href="author.html#11615">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

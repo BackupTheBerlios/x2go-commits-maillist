@@ -1,0 +1,189 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-67-g6f9ead7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-67-g6f9ead7&In-Reply-To=%3C20140108212011.4371F5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026045.html">
+   <LINK REL="Next"  HREF="026020.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-67-g6f9ead7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-67-g6f9ead7&In-Reply-To=%3C20140108212011.4371F5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-67-g6f9ead7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 22:20:11 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026045.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-63-ga77d761
+</A></li>
+        <LI>Next message: <A HREF="026020.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-66-g3aa8227
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26015">[ date ]</a>
+              <a href="thread.html#26015">[ thread ]</a>
+              <a href="subject.html#26015">[ subject ]</a>
+              <a href="author.html#26015">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  6f9ead7cf9184799f0b6ae9ff1efd0c7b879d0c6 (commit)
+      from  3aa82279301216509425bdd10bd8ef41c3f795cb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog        |    1 +
+ sshmasterconnection.cpp |   26 +++++++++++++++++++++-----
+ 2 files changed, 22 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2d010f7..9ddf90f 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -62,6 +62,7 @@ x2goclient (4.0.1.2-0x2go2) UNRELEASED; urgency=low
+       on Linux and Mac and plink/pscp on Windows.
+     - Support for ChallengeResponseAuthentication (Google Authenticator)
+     - Setting main window focus on mac (Fixes: #139).   
++    - Additional check if authentication with GSSApi successfull 
+ 
+   [ Heinrich Schuchardt ]
+   * New upstream version (4.0.1.2):
+diff --git a/sshmasterconnection.cpp b/sshmasterconnection.cpp
+index d705f7c..37673ea 100644
+--- a/sshmasterconnection.cpp
++++ b/sshmasterconnection.cpp
+@@ -32,6 +32,8 @@
+ #endif
+ #include &lt;math.h&gt;
+ 
++#include &lt;QUuid&gt;
++
+ #ifndef Q_OS_WIN
+ #include &lt;sys/socket.h&gt; /* for socket(), connect(), send(), and recv() */
+ #include &lt;arpa/inet.h&gt;  /* for sockaddr_in and inet_addr() */
+@@ -1106,12 +1108,17 @@ bool SshMasterConnection::userAuthKrb()
+     QProcess ssh;
+     QString sshCmd;
+ 
++    QUuid uuid = QUuid::createUuid();
++    QString uuidStr = uuid.toString().mid(1, 36).toLower();
++
++    QString shcmd = &quot; echo X2GODATABEGIN:&quot; + uuidStr + &quot;; whoami; echo X2GODATAEND:&quot; + uuidStr ;
++
+ #ifdef Q_OS_WIN
+     sshCmd=&quot;plink -batch &quot;+user+&quot;@&quot;+host+&quot; -P &quot;+
+-           QString::number(port)+ &quot; whoami&quot;;
++           QString::number(port)+ shcmd;
+ #else
+     sshCmd=&quot;ssh -o GSSApiAuthentication=yes &quot;+user+&quot;@&quot;+host+&quot; -p &quot;+
+-           QString::number(port)+ &quot; -o PasswordAuthentication=no whoami&quot;;
++           QString::number(port)+ &quot; -o PasswordAuthentication=no &quot;+shcmd;
+ #endif
+ 
+ #ifdef DEBUG
+@@ -1132,10 +1139,12 @@ bool SshMasterConnection::userAuthKrb()
+     if (!ssh.waitForFinished(20000))
+     {
+         sshProcErrString=ssh.errorString();
++        authErrors&lt;&lt;tr(&quot;Failed to start SSH Client. Please check your installation and GSSApi configuration&quot;);
+         authErrors&lt;&lt;sshProcErrString;
+ #ifdef DEBUG
+         x2goDebug&lt;&lt;&quot;ssh not finished:&quot; &lt;&lt;sshProcErrString&lt;&lt;endl;
+ #endif
++
+         return false;
+     }
+     QString outp=ssh.readAllStandardOutput();
+@@ -1146,10 +1155,17 @@ bool SshMasterConnection::userAuthKrb()
+     x2goDebug&lt;&lt;&quot;stderr - &quot;&lt;&lt;err&lt;&lt;endl;
+     x2goDebug&lt;&lt;&quot;code - &quot;&lt;&lt;ssh.exitCode()&lt;&lt;&quot;, status - &quot;&lt;&lt;ssh.exitStatus()&lt;&lt;endl;
+ #endif
+-    if (ssh.exitCode() == 0 &amp;&amp; ssh.exitStatus() == 0)
++
++    QString begin_marker = &quot;X2GODATABEGIN:&quot;+uuidStr+&quot;\n&quot;;
++    QString end_marker = &quot;X2GODATAEND:&quot;+uuidStr+&quot;\n&quot;;
++    int output_begin=outp.indexOf(begin_marker) + begin_marker.length();
++    int output_end=outp.indexOf(end_marker);
++    outp = outp.mid(output_begin, output_end-output_begin);
++    outp.replace(&quot;\n&quot;,&quot;&quot;);
++
++    if (ssh.exitCode() == 0 &amp;&amp; ssh.exitStatus() == 0 &amp;&amp; outp== user)
+         return true;
+-    sshProcErrString=err;
+-    authErrors&lt;&lt;sshProcErrString;
++    authErrors&lt;&lt;tr(&quot;Check your GSSApi configuration or choose another authentication method&quot;);
+     return false;
+ }
+ 
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026045.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-63-ga77d761
+</A></li>
+	<LI>Next message: <A HREF="026020.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-66-g3aa8227
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26015">[ date ]</a>
+              <a href="thread.html#26015">[ thread ]</a>
+              <a href="subject.html#26015">[ subject ]</a>
+              <a href="author.html#26015">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

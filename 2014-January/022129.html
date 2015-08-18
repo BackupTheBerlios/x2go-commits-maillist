@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-105-g5fd3692
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.40.0-105-g5fd3692&In-Reply-To=%3C20140107152022.57F845DFCB%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022126.html">
+   <LINK REL="Next"  HREF="022147.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-105-g5fd3692</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.0.40.0-105-g5fd3692&In-Reply-To=%3C20140107152022.57F845DFCB%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-105-g5fd3692">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:20:22 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022126.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-108-g98740c3
+</A></li>
+        <LI>Next message: <A HREF="022147.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-107-g0d27cd4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22129">[ date ]</a>
+              <a href="thread.html#22129">[ thread ]</a>
+              <a href="subject.html#22129">[ subject ]</a>
+              <a href="author.html#22129">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  5fd36925787861001bdb4d64fe86e45173871e3b (commit)
+      from  e8dde8692042b1134e9583b1e3f72ad77cd69a2f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/dropbox.py    |   15 +++++++++------
+ x2go/printqueue.py |   31 +++++++++++++++++--------------
+ 2 files changed, 26 insertions(+), 20 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/dropbox.py b/x2go/dropbox.py
+index b38395d..1169056 100644
+--- a/x2go/dropbox.py
++++ b/x2go/dropbox.py
+@@ -139,13 +139,16 @@ class X2goDropboxQueue(threading.Thread):
+ 
+     @property
+     def _incoming_dropbox_jobs(self):
+-        l = os.listdir(self.dropbox_dir)
+-        dropbox_jobs = []
+-        for _ext in self.dropbox_extensions:
+-            dropbox_jobs.extend([ dj for dj in l if dj.upper().endswith(_ext.upper()) ])
++        if os.path.exists(self.dropbox_dir):
++            l = os.listdir(self.dropbox_dir)
++            dropbox_jobs = []
++            for _ext in self.dropbox_extensions:
++                dropbox_jobs.extend([ dj for dj in l if dj.upper().endswith(_ext.upper()) ])
++            else:
++                dropbox_jobs = l
++            return [ dj for dj in dropbox_jobs if dj not in self.active_jobs.keys() ]
+         else:
+-            dropbox_jobs = l
+-        return [ dj for dj in dropbox_jobs if dj not in self.active_jobs.keys() ]
++            return []
+ 
+     def set_dropbox_action(self, dropbox_action, **kwargs):
+         &quot;&quot;&quot;\
+diff --git a/x2go/printqueue.py b/x2go/printqueue.py
+index 8e7940b..a71f636 100644
+--- a/x2go/printqueue.py
++++ b/x2go/printqueue.py
+@@ -136,20 +136,23 @@ class X2goPrintQueue(threading.Thread):
+     @property
+     def _incoming_print_jobs(self):
+ 
+-        l = os.listdir(self.spool_dir)
+-        job_files = [ jf for jf in l if jf.endswith('.ready') ]
+-        jobs = []
+-        for _job_file in job_files:
+-            j = open(os.path.join(self.spool_dir, _job_file), 'r')
+-            content = j.read()
+-            try:
+-                (pdf_filename, job_title) = content.split('\n')[0:2]
+-            except ValueError:
+-                pdf_filename = content
+-                job_title = 'X2go Print Job'
+-            j.close()
+-            jobs.append((_job_file, pdf_filename, job_title))
+-        return [ j for j in jobs if j[1] not in self.active_jobs.keys() ]
++        if os.path.exists(self.spool_dir):
++            l = os.listdir(self.spool_dir)
++            job_files = [ jf for jf in l if jf.endswith('.ready') ]
++            jobs = []
++            for _job_file in job_files:
++                j = open(os.path.join(self.spool_dir, _job_file), 'r')
++                content = j.read()
++                try:
++                    (pdf_filename, job_title) = content.split('\n')[0:2]
++                except ValueError:
++                    pdf_filename = content
++                    job_title = 'X2go Print Job'
++                j.close()
++                jobs.append((_job_file, pdf_filename, job_title))
++            return [ j for j in jobs if j[1] not in self.active_jobs.keys() ]
++        else:
++            return []
+ 
+     def set_print_action(self, print_action, **kwargs):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022126.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-108-g98740c3
+</A></li>
+	<LI>Next message: <A HREF="022147.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.0.40.0-107-g0d27cd4
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22129">[ date ]</a>
+              <a href="thread.html#22129">[ thread ]</a>
+              <a href="subject.html#22129">[ subject ]</a>
+              <a href="author.html#22129">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

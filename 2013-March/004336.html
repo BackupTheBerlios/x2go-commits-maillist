@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-54-g93a9f3f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20tornado%20%28branch%29%20updated%3A%0A%090.0.0.5-54-g93a9f3f&In-Reply-To=%3C20130305203303.46D625DB14%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="004335.html">
+   <LINK REL="Next"  HREF="004337.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-54-g93a9f3f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2gobroker.git%20-%20tornado%20%28branch%29%20updated%3A%0A%090.0.0.5-54-g93a9f3f&In-Reply-To=%3C20130305203303.46D625DB14%40ymir%3E"
+       TITLE="[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-54-g93a9f3f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Mar  5 21:33:03 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="004335.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-53-g4a05d34
+</A></li>
+        <LI>Next message: <A HREF="004337.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-55-ge9fd179
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4336">[ date ]</a>
+              <a href="thread.html#4336">[ thread ]</a>
+              <a href="subject.html#4336">[ subject ]</a>
+              <a href="author.html#4336">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, tornado has been updated
+       via  93a9f3f41318e472eb0ac964126a7189f4c80897 (commit)
+      from  4a05d3411c0da68f013201e68b396f77a082344e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 93a9f3f41318e472eb0ac964126a7189f4c80897
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Tue Mar 5 21:32:54 2013 +0100
+
+    Divert tornado log requests into the broker's logger instances.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog      |    1 +
+ sbin/x2gobroker       |    6 +++++-
+ x2gobroker/loggers.py |   19 +++++++++++++++++++
+ 3 files changed, 25 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0bfda42..4d452a2 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -9,6 +9,7 @@ x2gobroker (0.0.0.6-0~x2go1) UNRELEASED; urgency=low
+       fallback to direct PAM authentication (only works if x2gobroker
+       runs as super-user root).
+     - Switch from webpy to using tornado as http engine.
++    - Divert tornado log requests into the broker's logger instances.
+   * /debian/*.default:
+     - Be more explanatory about the X2GOBROKER_DEBUG option and allow
+       to enable debug mode for the different services independently.
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index d9420b0..76173b8 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -125,9 +125,13 @@ application = tornado.web.Application(urls)
+ # run the web.py standalone daemon...
+ if __name__ == &quot;__main__&quot;:
+     try:
++        settings = {
++            'log_function': x2gobroker.loggers.tornado_log_request,
++        }
+         if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
+             # switch on <A HREF="https://">https://</A> mode
+             http_server = tornado.httpserver.HTTPServer(application,
++                                                        settings=settings,
+                                                         ssl_options={
+                                                             &quot;certfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE,
+                                                             &quot;keyfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE,
+@@ -135,7 +139,7 @@ if __name__ == &quot;__main__&quot;:
+             )
+         else:
+             # run without https
+-            http_server = tornado.httpserver.HTTPServer(application)
++            http_server = tornado.httpserver.HTTPServer(application, settings=settings)
+         http_server.listen(bind_port, address=bind_address)
+         tornado.ioloop.IOLoop.instance().start()
+     except socket.error, e:
+diff --git a/x2gobroker/loggers.py b/x2gobroker/loggers.py
+index 5be50f3..fa0e3b1 100644
+--- a/x2gobroker/loggers.py
++++ b/x2gobroker/loggers.py
+@@ -70,3 +70,22 @@ else:
+     logger_error = logging.getLogger('error')
+     logger_error.addHandler(stderr_handler)
+     logger_error.propagate = 0
++
++def tornado_log_request(self, handler):
++    &quot;&quot;&quot;\
++    Function for overriding the log_request method in
++    C{tornado.web.RequestHandler}.
++
++    @param handler: handler
++    @type handler: C{obj}
++
++    &quot;&quot;&quot;
++    if handler.get_status() &lt; 400:
++        log_method = logger_access.info
++    elif handler.get_status() &lt; 500:
++        log_method = logger_access.warning
++    else:
++        log_method = logger_error.error
++    request_time = 1000.0 * handler.request.request_time()
++    log_method(&quot;%d %s %.2fms&quot;, handler.get_status(),
++               handler._request_summary(), request_time)
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="004335.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-53-g4a05d34
+</A></li>
+	<LI>Next message: <A HREF="004337.html">[X2go-Commits] x2gobroker.git - tornado (branch) updated:	0.0.0.5-55-ge9fd179
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4336">[ date ]</a>
+              <a href="thread.html#4336">[ thread ]</a>
+              <a href="subject.html#4336">[ subject ]</a>
+              <a href="author.html#4336">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

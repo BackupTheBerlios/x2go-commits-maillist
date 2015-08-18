@@ -1,0 +1,387 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-27-gc94349b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-27-gc94349b&In-Reply-To=%3C20140108142718.694AD5DB3F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023471.html">
+   <LINK REL="Next"  HREF="023479.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-27-gc94349b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-27-gc94349b&In-Reply-To=%3C20140108142718.694AD5DB3F%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-27-gc94349b">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:18 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023471.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	fcb891c13b7e1d434c9f40ad522e6a52215f2f21
+</A></li>
+        <LI>Next message: <A HREF="023479.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	df35eae6552bb6f03757ece2da849efa90ad536b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23477">[ date ]</a>
+              <a href="thread.html#23477">[ thread ]</a>
+              <a href="subject.html#23477">[ subject ]</a>
+              <a href="author.html#23477">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  c94349b46c7749705dce1047fd048437baac8518 (commit)
+      from  4f9151805b10d30f2d5f6c241a20c8748337fdec (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   12 ++--
+ x2go/client.py                   |    2 +-
+ x2go/paramiko.py                 |  126 --------------------------------------
+ x2go/session.py                  |    6 +-
+ x2go/sshproxy.py                 |    6 +-
+ x2go/utils.py                    |    9 ++-
+ 6 files changed, 22 insertions(+), 139 deletions(-)
+ delete mode 100644 x2go/paramiko.py
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index a3506ae..616415c 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -54,8 +54,8 @@ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
+ from x2go.backends.proxy import X2goProxy as _X2goProxy
+ 
+-import x2go.paramiko
+-x2go.paramiko.monkey_patch_paramiko()
++import x2go._paramiko
++x2go._paramiko.monkey_patch_paramiko()
+ 
+ def _rerewrite_blanks(cmd):
+     &quot;&quot;&quot;\
+@@ -167,7 +167,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @param loglevel: if no L{X2goLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+         @type loglevel: C{int}
+-        @param kwargs: parameters passed through to C{SSHClient.__init__()}
++        @param kwargs: catch any non-defined parameters in C{kwargs}
+         @type kwargs: C{dict}
+ 
+         &quot;&quot;&quot;
+@@ -209,7 +209,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         self._published_applications_menu = {}
+ 
+-        paramiko.SSHClient.__init__(self, **kwargs)
++        paramiko.SSHClient.__init__(self)
+         if self.add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+@@ -781,7 +781,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+                 t = self.get_transport()
+-                if x2go.paramiko.PARAMIKO_FEATURES['use-compression']:
++                if x2go._paramiko.PARAMIKO_FEATURE['use-compression']:
+                     t.use_compression(compress=True)
+ 
+             except paramiko.AuthenticationException, e:
+@@ -850,7 +850,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             self.session_died = False
+             self.query_server_features(force=True)
+             if self.forward_sshagent:
+-                if x2go.paramiko.PARAMIKO_FEATURE['forward-ssh-agent']:
++                if x2go._paramiko.PARAMIKO_FEATURE['forward-ssh-agent']:
+                     self.agent_chan = ssh_transport.open_session()
+                     self.agent_handler = paramiko.agent.AgentRequestHandler(self.agent_chan)
+                     self.logger('Requesting SSH agent forwarding for control session of connected session profile %s' % self.profile_name, loglevel=log.loglevel_INFO)
+diff --git a/x2go/client.py b/x2go/client.py
+index a22df3a..beb4469 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -977,6 +977,7 @@ class X2goClient(object):
+             _params['mimebox_action'] = mimebox_action
+             _params['client_instance'] = self
+             _params['proxy_options'] = proxy_options
++            _params['forward_sshagent'] = forward_sshagent
+ 
+         session_uuid = self.session_registry.register(server=server,
+                                                       profile_id=_profile_id, profile_name=_profile_name,
+@@ -994,7 +995,6 @@ class X2goClient(object):
+                                                       keep_controlsession_alive=True,
+                                                       add_to_known_hosts=add_to_known_hosts,
+                                                       known_hosts=known_hosts,
+-                                                      forward_sshagent=forward_sshagent,
+                                                       **_params)
+ 
+         self.logger('initializing X2Go session...', log.loglevel_NOTICE, tag=self._logger_tag)
+diff --git a/x2go/paramiko.py b/x2go/paramiko.py
+deleted file mode 100644
+index caafb5f..0000000
+--- a/x2go/paramiko.py
++++ /dev/null
+@@ -1,126 +0,0 @@
+-# -*- coding: utf-8 -*-
+-
+-# Copyright (C) 2010-2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+-#
+-# Python X2Go is free software; you can redistribute it and/or modify
+-# it under the terms of the GNU Affero General Public License as published by
+-# the Free Software Foundation; either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# Python X2Go is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU Affero General Public License for more details.
+-#
+-# You should have received a copy of the GNU Affero General Public License
+-# along with this program; if not, write to the
+-# Free Software Foundation, Inc.,
+-# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+-
+-&quot;&quot;&quot;\
+-Monkey Patch and feature map for Python Paramiko
+-
+-&quot;&quot;&quot;
+-
+-import paramiko
+-from x2go.utils import compare_versions
+-
+-PARAMIKO_VERSION = paramiko.__version__.split()[0]
+-PARAMIKO_FEATURE = {
+-    'forward-ssh-agent': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '1.8'),
+-    'use-compression': compare_versions(PARAMIKO_VERSION, &quot;&gt;=&quot;, '1.7.7.1'),
+-}
+-
+-def _SSHClient_save_host_keys(self, filename):
+-    &quot;&quot;&quot;\
+-    FIXME!!! --- this method should become part of Paramiko
+-
+-    This method has been taken from SSHClient class in Paramiko and
+-    has been improved and adapted to latest SSH implementations.
+-
+-    Save the host keys back to a file.
+-    Only the host keys loaded with
+-    L{load_host_keys} (plus any added directly) will be saved -- not any
+-    host keys loaded with L{load_system_host_keys}.
+-
+-    @param filename: the filename to save to
+-    @type filename: str
+-
+-    @raise IOError: if the file could not be written 
+-
+-    &quot;&quot;&quot;
+-    # update local host keys from file (in case other SSH clients
+-    # have written to the known_hosts file meanwhile.
+-    if self.known_hosts is not None:
+-        self.load_host_keys(self.known_hosts)
+-
+-    f = open(filename, 'w')
+-    #f.write('# SSH host keys collected by paramiko\n')
+-    _host_keys = self.get_host_keys()
+-    for hostname, keys in _host_keys.iteritems():
+-
+-        for keytype, key in keys.iteritems():
+-            f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
+-
+-    f.close()
+-
+-
+-def _HostKeys_load(self, filename):
+-    &quot;&quot;&quot;\
+-    Read a file of known SSH host keys, in the format used by openssh.
+-    This type of file unfortunately doesn't exist on Windows, but on
+-    posix, it will usually be stored in
+-    C{os.path.expanduser(&quot;~/.ssh/known_hosts&quot;)}.
+-
+-    If this method is called multiple times, the host keys are merged,
+-    not cleared. So multiple calls to C{load} will just call L{add},
+-    replacing any existing entries and adding new ones.
+-
+-    @param filename: name of the file to read host keys from
+-    @type filename: str
+-
+-    @raise IOError: if there was an error reading the file
+-
+-    &quot;&quot;&quot;
+-    f = open(filename, 'r')
+-    for line in f:
+-        line = line.strip()
+-        if (len(line) == 0) or (line[0] == '#'):
+-            continue
+-        e = paramiko.hostkeys.HostKeyEntry.from_line(line)
+-        if e is not None:
+-            _hostnames = e.hostnames
+-            for h in _hostnames:
+-                if self.check(h, e.key):
+-                    e.hostnames.remove(h)
+-            if len(e.hostnames):
+-                self._entries.append(e)
+-    f.close() 
+-
+-
+-def _HostKeys_add(self, hostname, keytype, key, hash_hostname=True):
+-    &quot;&quot;&quot;\
+-    Add a host key entry to the table. Any existing entry for a
+-    C{(hostname, keytype)} pair will be replaced.
+-
+-    @param hostname: the hostname (or IP) to add
+-    @type hostname: str
+-    @param keytype: key type (C{&quot;ssh-rsa&quot;} or C{&quot;ssh-dss&quot;})
+-    @type keytype: str
+-    @param key: the key to add
+-    @type key: L{PKey}
+-
+-    &quot;&quot;&quot;
+-    for e in self._entries:
+-        if (hostname in e.hostnames) and (e.key.get_name() == keytype):
+-            e.key = key
+-            return
+-    if not hostname.startswith('|1|') and hash_hostname:
+-        hostname = self.hash_host(hostname)
+-    self._entries.append(paramiko.hostkeys.HostKeyEntry([hostname], key))
+-
+-
+-def monkey_patch_paramiko():
+-    paramiko.SSHClient.save_host_keys = _SSHClient_save_host_keys
+-    paramiko.hostkeys.HostKeys.load = _HostKeys_load
+-    paramiko.hostkeys.HostKeys.add = _HostKeys_add
+diff --git a/x2go/session.py b/x2go/session.py
+index a8d4469..0330015 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -91,7 +91,7 @@ _X2GO_SESSION_PARAMS = ('use_sshproxy', 'sshproxy_reuse_authinfo',
+                         'allow_share_local_folders', 'share_local_folders',
+                         'control_backend', 'terminal_backend', 'info_backend', 'list_backend', 'proxy_backend', 'settings_backend', 'printing_backend',
+                         'client_rootdir', 'sessions_rootdir', 'ssh_rootdir',
+-                        'keep_controlsession_alive', 'add_to_known_hosts', 'known_hosts'
++                        'keep_controlsession_alive', 'add_to_known_hosts', 'known_hosts', 'forward_sshagent',
+                         'connected', 'virgin', 'running', 'suspended', 'terminated', 'faulty'
+                         'client_instance',
+                        )
+@@ -748,6 +748,10 @@ class X2goSession(object):
+             del params['auto_connect']
+         except KeyError: pass
+         try:
++            self.forward_sshagent = params['forward_sshagent']
++            del params['forward_sshagent']
++        except KeyError: pass
++        try:
+             self.auto_start_or_resume = params['auto_start_or_resume']
+             del params['auto_start_or_resume']
+         except KeyError: pass
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 3728950..b11bed3 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -44,8 +44,8 @@ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+ from x2go.defaults import X2GO_SSH_ROOTDIR as _X2GO_SSH_ROOTDIR
+ 
+-import x2go.paramiko
+-x2go.paramiko.monkey_patch_paramiko()
++import x2go._paramiko
++x2go._paramiko.monkey_patch_paramiko()
+ 
+ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+     &quot;&quot;&quot;\
+@@ -243,7 +243,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+                 t = self.get_transport()
+-                if x2go.paramiko.PARAMIKO_FEATURES['use-compression']:
++                if x2go._paramiko.PARAMIKO_FEATURE['use-compression']:
+                     t.use_compression(compress=True)
+ 
+             # if there is no private key, we will use the given password, if any
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 137a76b..23e3184 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -211,7 +211,8 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+             'autostart': 'auto_start_or_resume',
+             'autoconnect': 'auto_connect',
+             'forwardsshagent': 'forward_sshagent',
+-
++            'autologin': 'look_for_keys',
++            'sshproxyautologin': 'sshproxy_look_for_keys',
+     }
+     _speed_dict = {
+             '0': 'modem',
+@@ -249,6 +250,11 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+                 else:
+                     _params[opt] = []
+ 
++    if _params['look_for_keys']:
++        _params['allow_agent'] = True
++    if _params['sshproxy_look_for_keys']:
++        _params['sshproxy_allow_agent'] = True
++
+     # append value for quality to value for pack method
+     if _params['quality']:
+         _params['pack'] = '%s-%s' % (_params['pack'], _params['quality'])
+@@ -334,7 +340,6 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+             'rdpclient',
+             'rdpport',
+             'sshproxytype',
+-            'sshproxyautologin',
+     ]
+     for i in _ignored_options:
+         del _params[i]
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023471.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	fcb891c13b7e1d434c9f40ad522e6a52215f2f21
+</A></li>
+	<LI>Next message: <A HREF="023479.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	df35eae6552bb6f03757ece2da849efa90ad536b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23477">[ date ]</a>
+              <a href="thread.html#23477">[ thread ]</a>
+              <a href="subject.html#23477">[ subject ]</a>
+              <a href="author.html#23477">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

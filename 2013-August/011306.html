@@ -1,0 +1,595 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nx-X11/3.3.0-6&In-Reply-To=%3C20130830142146.D58E15DB20%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011308.html">
+   <LINK REL="Next"  HREF="011307.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nx-X11/3.3.0-6&In-Reply-To=%3C20130830142146.D58E15DB20%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-6">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:21:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011308.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-4
+</A></li>
+        <LI>Next message: <A HREF="011307.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11306">[ date ]</a>
+              <a href="thread.html#11306">[ thread ]</a>
+              <a href="subject.html#11306">[ subject ]</a>
+              <a href="author.html#11306">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  bd433c6487a52f95e6bb949d5698dc5ea0923713 (commit)
+      from  55a9311fb1df3b58f73efa575318e7341243392b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/CHANGELOG                                   |    8 +++
+ nx-X11/CHANGELOG.NX.original                       |    8 +++
+ nx-X11/lib/X11/XlibInt.c                           |   61 +++++++++++++++++++-
+ nx-X11/lib/X11/XlibInt.c.NX.original               |   61 +++++++++++++++++++-
+ nx-X11/programs/Xserver/os/xprintf.c               |   59 +++++++++++++++++++
+ .../os/{xprintf.c =&gt; xprintf.c.NX.original}        |   59 +++++++++++++++++++
+ .../Xserver/os/{xprintf.c =&gt; xprintf.c.X.original} |    0
+ nx-X11/programs/Xserver/xkb/ddxLoad.c              |    7 ++-
+ nx-X11/programs/Xserver/xkb/ddxLoad.c.NX.original  |    7 ++-
+ 9 files changed, 266 insertions(+), 4 deletions(-)
+ copy nx-X11/programs/Xserver/os/{xprintf.c =&gt; xprintf.c.NX.original} (75%)
+ copy nx-X11/programs/Xserver/os/{xprintf.c =&gt; xprintf.c.X.original} (100%)
+
+The diff of changes is:
+diff --git a/nx-X11/CHANGELOG b/nx-X11/CHANGELOG
+index a6c169d..7b410fd 100644
+--- a/nx-X11/CHANGELOG
++++ b/nx-X11/CHANGELOG
+@@ -1,5 +1,13 @@
+ ChangeLog:
+ 
++nx-X11-3.3.0-6
++
++- Fixed TR03G02198. Reimplemented Xvprintf() in Xserver/os to handle
++  the case in which vsnprintf returned -1.
++
++- Returning from _XSeqSyncFunction() and _XReply() if an I/O error is
++  detected.
++
+ nx-X11-3.3.0-5
+ 
+ - Fixed TR01G02163. Signals need to be blocked before the call to
+diff --git a/nx-X11/CHANGELOG.NX.original b/nx-X11/CHANGELOG.NX.original
+index a6c169d..7b410fd 100644
+--- a/nx-X11/CHANGELOG.NX.original
++++ b/nx-X11/CHANGELOG.NX.original
+@@ -1,5 +1,13 @@
+ ChangeLog:
+ 
++nx-X11-3.3.0-6
++
++- Fixed TR03G02198. Reimplemented Xvprintf() in Xserver/os to handle
++  the case in which vsnprintf returned -1.
++
++- Returning from _XSeqSyncFunction() and _XReply() if an I/O error is
++  detected.
++
+ nx-X11-3.3.0-5
+ 
+ - Fixed TR01G02163. Signals need to be blocked before the call to
+diff --git a/nx-X11/lib/X11/XlibInt.c b/nx-X11/lib/X11/XlibInt.c
+index 97758e7..6dcd1f0 100644
+--- a/nx-X11/lib/X11/XlibInt.c
++++ b/nx-X11/lib/X11/XlibInt.c
+@@ -877,6 +877,19 @@ int _XSeqSyncFunction(
+     xGetInputFocusReply rep;
+     register xReq *req;
+ 
++#ifdef NX_TRANS_SOCKET
++#ifdef NX_TRANS_DEBUG
++    fprintf(stderr, &quot;_XSeqSyncFunction: Going to synchronize the display.\n&quot;);
++#endif
++    if (dpy-&gt;flags &amp; XlibDisplayIOError)
++    {
++#ifdef NX_TRANS_DEBUG
++        fprintf(stderr, &quot;_XSeqSyncFunction: Returning 0 with I/O error detected.\n&quot;);
++#endif
++        return 0;
++    }
++#endif
++
+     LockDisplay(dpy);
+     if ((dpy-&gt;request - dpy-&gt;last_request_read) &gt;= (BUFSIZE / SIZEOF(xReq))) {
+ 	GetEmptyReq(GetInputFocus, req);
+@@ -930,6 +943,10 @@ static void _XFlushInt(
+         int congestion;
+ #endif
+ 
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++        fprintf(stderr, &quot;_XFlushInt: Entering flush with [%d] bytes to write.\n&quot;,
++                    (dpy-&gt;bufptr - dpy-&gt;buffer));
++#endif
+ 	/* This fix resets the bufptr to the front of the buffer so
+ 	 * additional appends to the bufptr will not corrupt memory. Since
+ 	 * the server is down, these appends are no-op's anyway but 
+@@ -937,6 +954,9 @@ static void _XFlushInt(
+ 	 */
+ 	if (dpy-&gt;flags &amp; XlibDisplayIOError)
+ 	{
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++        fprintf(stderr, &quot;_XFlushInt: Returning with I/O error detected.\n&quot;);
++#endif
+ 	    dpy-&gt;bufptr = dpy-&gt;buffer;
+ 	    dpy-&gt;last_req = (char *)&amp;_dummy_request;
+ 	    return;
+@@ -1404,6 +1424,15 @@ void _XReadEvents(
+ 	    dpy-&gt;flags |= XlibDisplayReadEvents;
+ 	    i = _XRead (dpy, read_buf, (long) len);
+ 	    dpy-&gt;flags &amp;= ~XlibDisplayReadEvents;
++#ifdef NX_TRANS_SOCKET
++            if (dpy-&gt;flags &amp; XlibDisplayIOError)
++            {
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++                fprintf(stderr, &quot;_XReadEvents: Returning with I/O error detected.\n&quot;);
++#endif
++                return;
++            }
++#endif
+ 	    if (i == -2) {
+ 		/* special flag from _XRead to say that internal connection has
+ 		   done XPutBackEvent.  Which we can use so we're done. */
+@@ -1841,10 +1870,17 @@ _XSend (
+ #endif
+ 
+ #ifdef NX_TRANS_SOCKET
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++    fprintf(stderr, &quot;_XSend: Sending data with [%d] bytes to write.\n&quot;,
++                (dpy-&gt;bufptr - dpy-&gt;buffer));
++#endif
+         if (!size || (dpy-&gt;flags &amp; XlibDisplayIOError))
+         {
+             if (dpy-&gt;flags &amp; XlibDisplayIOError)
+             {
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++                fprintf(stderr, &quot;_XSend: Returning with I/O error detected.\n&quot;);
++#endif
+ 	        dpy-&gt;bufptr = dpy-&gt;buffer;
+ 	        dpy-&gt;last_req = (char *)&amp;_dummy_request;
+             }
+@@ -2222,8 +2258,18 @@ _XReply (
+     fprintf(stderr, &quot;_XReply: Going to wait for an X reply.\n&quot;);
+ #endif
+ 
++#ifdef NX_TRANS_SOCKET
++    if (dpy-&gt;flags &amp; XlibDisplayIOError)
++    {
++#ifdef NX_TRANS_DEBUG
++        fprintf(stderr, &quot;_XReply: Returning 0 with I/O error detected.\n&quot;);
++#endif
++        return 0;
++    }
++#else
+     if (dpy-&gt;flags &amp; XlibDisplayIOError)
+ 	return 0;
++#endif
+ 
+ #ifdef XTHREADS
+     /* create our condition variable and append to list */
+@@ -2239,6 +2285,9 @@ _XReply (
+ 	   XThread_Self(), cvl);
+ #endif
+ 
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++    fprintf(stderr, &quot;_XReply: Going to flush the display buffer.\n&quot;);
++#endif
+     _XFlushInt(dpy, cvl ? cvl-&gt;cv : NULL);
+     /* if it is not our turn to read a reply off the wire,
+      * wait til we're at head of list.  if there is an event waiter,
+@@ -3583,11 +3632,21 @@ _XIOError (
+      */
+ 
+ #ifdef NX_TRANS_TEST
+-    fprintf(stderr, &quot;_XIOError: Resetting the display buffers.\n&quot;);
++    fprintf(stderr, &quot;_XIOError: Resetting the display buffer.\n&quot;);
+ #endif
+ 
+     dpy-&gt;bufptr = dpy-&gt;buffer;
+     dpy-&gt;last_req = (char *) &amp;_dummy_request;
++
++#ifdef NX_TRANS_TEST
++    fprintf(stderr, &quot;_XIOError: Resetting the display flags.\n&quot;);
++#endif
++
++    dpy-&gt;flags &amp;= ~XlibDisplayProcConni;
++    dpy-&gt;flags &amp;= ~XlibDisplayPrivSync;
++    dpy-&gt;flags &amp;= ~XlibDisplayReadEvents;
++    dpy-&gt;flags &amp;= ~XlibDisplayWriting;
++    dpy-&gt;flags &amp;= ~XlibDisplayReply;
+ #else
+     exit (1);
+ #endif
+diff --git a/nx-X11/lib/X11/XlibInt.c.NX.original b/nx-X11/lib/X11/XlibInt.c.NX.original
+index 97758e7..6dcd1f0 100644
+--- a/nx-X11/lib/X11/XlibInt.c.NX.original
++++ b/nx-X11/lib/X11/XlibInt.c.NX.original
+@@ -877,6 +877,19 @@ int _XSeqSyncFunction(
+     xGetInputFocusReply rep;
+     register xReq *req;
+ 
++#ifdef NX_TRANS_SOCKET
++#ifdef NX_TRANS_DEBUG
++    fprintf(stderr, &quot;_XSeqSyncFunction: Going to synchronize the display.\n&quot;);
++#endif
++    if (dpy-&gt;flags &amp; XlibDisplayIOError)
++    {
++#ifdef NX_TRANS_DEBUG
++        fprintf(stderr, &quot;_XSeqSyncFunction: Returning 0 with I/O error detected.\n&quot;);
++#endif
++        return 0;
++    }
++#endif
++
+     LockDisplay(dpy);
+     if ((dpy-&gt;request - dpy-&gt;last_request_read) &gt;= (BUFSIZE / SIZEOF(xReq))) {
+ 	GetEmptyReq(GetInputFocus, req);
+@@ -930,6 +943,10 @@ static void _XFlushInt(
+         int congestion;
+ #endif
+ 
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++        fprintf(stderr, &quot;_XFlushInt: Entering flush with [%d] bytes to write.\n&quot;,
++                    (dpy-&gt;bufptr - dpy-&gt;buffer));
++#endif
+ 	/* This fix resets the bufptr to the front of the buffer so
+ 	 * additional appends to the bufptr will not corrupt memory. Since
+ 	 * the server is down, these appends are no-op's anyway but 
+@@ -937,6 +954,9 @@ static void _XFlushInt(
+ 	 */
+ 	if (dpy-&gt;flags &amp; XlibDisplayIOError)
+ 	{
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++        fprintf(stderr, &quot;_XFlushInt: Returning with I/O error detected.\n&quot;);
++#endif
+ 	    dpy-&gt;bufptr = dpy-&gt;buffer;
+ 	    dpy-&gt;last_req = (char *)&amp;_dummy_request;
+ 	    return;
+@@ -1404,6 +1424,15 @@ void _XReadEvents(
+ 	    dpy-&gt;flags |= XlibDisplayReadEvents;
+ 	    i = _XRead (dpy, read_buf, (long) len);
+ 	    dpy-&gt;flags &amp;= ~XlibDisplayReadEvents;
++#ifdef NX_TRANS_SOCKET
++            if (dpy-&gt;flags &amp; XlibDisplayIOError)
++            {
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++                fprintf(stderr, &quot;_XReadEvents: Returning with I/O error detected.\n&quot;);
++#endif
++                return;
++            }
++#endif
+ 	    if (i == -2) {
+ 		/* special flag from _XRead to say that internal connection has
+ 		   done XPutBackEvent.  Which we can use so we're done. */
+@@ -1841,10 +1870,17 @@ _XSend (
+ #endif
+ 
+ #ifdef NX_TRANS_SOCKET
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++    fprintf(stderr, &quot;_XSend: Sending data with [%d] bytes to write.\n&quot;,
++                (dpy-&gt;bufptr - dpy-&gt;buffer));
++#endif
+         if (!size || (dpy-&gt;flags &amp; XlibDisplayIOError))
+         {
+             if (dpy-&gt;flags &amp; XlibDisplayIOError)
+             {
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++                fprintf(stderr, &quot;_XSend: Returning with I/O error detected.\n&quot;);
++#endif
+ 	        dpy-&gt;bufptr = dpy-&gt;buffer;
+ 	        dpy-&gt;last_req = (char *)&amp;_dummy_request;
+             }
+@@ -2222,8 +2258,18 @@ _XReply (
+     fprintf(stderr, &quot;_XReply: Going to wait for an X reply.\n&quot;);
+ #endif
+ 
++#ifdef NX_TRANS_SOCKET
++    if (dpy-&gt;flags &amp; XlibDisplayIOError)
++    {
++#ifdef NX_TRANS_DEBUG
++        fprintf(stderr, &quot;_XReply: Returning 0 with I/O error detected.\n&quot;);
++#endif
++        return 0;
++    }
++#else
+     if (dpy-&gt;flags &amp; XlibDisplayIOError)
+ 	return 0;
++#endif
+ 
+ #ifdef XTHREADS
+     /* create our condition variable and append to list */
+@@ -2239,6 +2285,9 @@ _XReply (
+ 	   XThread_Self(), cvl);
+ #endif
+ 
++#if defined(NX_TRANS_SOCKET) &amp;&amp; defined(NX_TRANS_DEBUG)
++    fprintf(stderr, &quot;_XReply: Going to flush the display buffer.\n&quot;);
++#endif
+     _XFlushInt(dpy, cvl ? cvl-&gt;cv : NULL);
+     /* if it is not our turn to read a reply off the wire,
+      * wait til we're at head of list.  if there is an event waiter,
+@@ -3583,11 +3632,21 @@ _XIOError (
+      */
+ 
+ #ifdef NX_TRANS_TEST
+-    fprintf(stderr, &quot;_XIOError: Resetting the display buffers.\n&quot;);
++    fprintf(stderr, &quot;_XIOError: Resetting the display buffer.\n&quot;);
+ #endif
+ 
+     dpy-&gt;bufptr = dpy-&gt;buffer;
+     dpy-&gt;last_req = (char *) &amp;_dummy_request;
++
++#ifdef NX_TRANS_TEST
++    fprintf(stderr, &quot;_XIOError: Resetting the display flags.\n&quot;);
++#endif
++
++    dpy-&gt;flags &amp;= ~XlibDisplayProcConni;
++    dpy-&gt;flags &amp;= ~XlibDisplayPrivSync;
++    dpy-&gt;flags &amp;= ~XlibDisplayReadEvents;
++    dpy-&gt;flags &amp;= ~XlibDisplayWriting;
++    dpy-&gt;flags &amp;= ~XlibDisplayReply;
+ #else
+     exit (1);
+ #endif
+diff --git a/nx-X11/programs/Xserver/os/xprintf.c b/nx-X11/programs/Xserver/os/xprintf.c
+index 07eaa1f..a1ee213 100644
+--- a/nx-X11/programs/Xserver/os/xprintf.c
++++ b/nx-X11/programs/Xserver/os/xprintf.c
+@@ -43,6 +43,63 @@
+ # endif
+ #endif
+     
++#ifdef NXAGENT_SERVER
++
++#define PANIC
++#define WARNING
++#undef  TEST
++#undef  DEBUG
++
++#define START_SIZE  256
++#define END_SIZE   2048
++
++char *
++Xvprintf(const char *format, va_list va)
++{
++    char *ret;
++    char *newret;
++    int size;
++    int r;
++
++    size = 0;
++
++    for (;;)
++    {
++      if (size == 0)
++      {
++        ret = (char *)malloc(START_SIZE);
++        if (ret == NULL)
++          return NULL;
++        size = START_SIZE;
++      }
++      else if (size &lt; END_SIZE &amp;&amp;
++                   (newret = (char *) realloc(ret, 2 * size)) != NULL)
++      {
++        ret = newret;
++        size = 2 * size;
++      }
++      else
++      {
++        free(ret);
++        return NULL;
++      }
++
++      r = vsnprintf(ret, size, format, va);
++
++      if (r == -1 || r == size || r &gt; size || r == size - 1)
++      {
++        continue;
++      }
++      else
++      {
++        ret[r] = 0;
++        return ret;
++      }
++    }
++}
++
++#else
++
+ char *
+ Xvprintf(const char *format, va_list va)
+ {
+@@ -63,6 +120,8 @@ Xvprintf(const char *format, va_list va)
+     return ret;
+ }
+ 
++#endif
++
+ char *Xprintf(const char *format, ...)
+ {
+     char *ret;
+diff --git a/nx-X11/programs/Xserver/os/xprintf.c b/nx-X11/programs/Xserver/os/xprintf.c.NX.original
+similarity index 75%
+copy from nx-X11/programs/Xserver/os/xprintf.c
+copy to nx-X11/programs/Xserver/os/xprintf.c.NX.original
+index 07eaa1f..a1ee213 100644
+--- a/nx-X11/programs/Xserver/os/xprintf.c
++++ b/nx-X11/programs/Xserver/os/xprintf.c.NX.original
+@@ -43,6 +43,63 @@
+ # endif
+ #endif
+     
++#ifdef NXAGENT_SERVER
++
++#define PANIC
++#define WARNING
++#undef  TEST
++#undef  DEBUG
++
++#define START_SIZE  256
++#define END_SIZE   2048
++
++char *
++Xvprintf(const char *format, va_list va)
++{
++    char *ret;
++    char *newret;
++    int size;
++    int r;
++
++    size = 0;
++
++    for (;;)
++    {
++      if (size == 0)
++      {
++        ret = (char *)malloc(START_SIZE);
++        if (ret == NULL)
++          return NULL;
++        size = START_SIZE;
++      }
++      else if (size &lt; END_SIZE &amp;&amp;
++                   (newret = (char *) realloc(ret, 2 * size)) != NULL)
++      {
++        ret = newret;
++        size = 2 * size;
++      }
++      else
++      {
++        free(ret);
++        return NULL;
++      }
++
++      r = vsnprintf(ret, size, format, va);
++
++      if (r == -1 || r == size || r &gt; size || r == size - 1)
++      {
++        continue;
++      }
++      else
++      {
++        ret[r] = 0;
++        return ret;
++      }
++    }
++}
++
++#else
++
+ char *
+ Xvprintf(const char *format, va_list va)
+ {
+@@ -63,6 +120,8 @@ Xvprintf(const char *format, va_list va)
+     return ret;
+ }
+ 
++#endif
++
+ char *Xprintf(const char *format, ...)
+ {
+     char *ret;
+diff --git a/nx-X11/programs/Xserver/os/xprintf.c b/nx-X11/programs/Xserver/os/xprintf.c.X.original
+similarity index 100%
+copy from nx-X11/programs/Xserver/os/xprintf.c
+copy to nx-X11/programs/Xserver/os/xprintf.c.X.original
+diff --git a/nx-X11/programs/Xserver/xkb/ddxLoad.c b/nx-X11/programs/Xserver/xkb/ddxLoad.c
+index 8e35ab8..e69d956 100644
+--- a/nx-X11/programs/Xserver/xkb/ddxLoad.c
++++ b/nx-X11/programs/Xserver/xkb/ddxLoad.c
+@@ -719,7 +719,12 @@ char tmpname[PATH_MAX];
+     }
+     
+     #ifdef TEST
+-    fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: Executing command [%s].\n&quot;, buf);
++    if (buf != NULL)
++        fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: &quot;
++                    &quot;Executing command [%s].\n&quot;, buf);
++    else
++        fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: &quot;
++                    &quot;Callin Popen() with null command.\n&quot;);
+     #endif
+ 
+ #ifndef WIN32
+diff --git a/nx-X11/programs/Xserver/xkb/ddxLoad.c.NX.original b/nx-X11/programs/Xserver/xkb/ddxLoad.c.NX.original
+index 8e35ab8..e69d956 100644
+--- a/nx-X11/programs/Xserver/xkb/ddxLoad.c.NX.original
++++ b/nx-X11/programs/Xserver/xkb/ddxLoad.c.NX.original
+@@ -719,7 +719,12 @@ char tmpname[PATH_MAX];
+     }
+     
+     #ifdef TEST
+-    fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: Executing command [%s].\n&quot;, buf);
++    if (buf != NULL)
++        fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: &quot;
++                    &quot;Executing command [%s].\n&quot;, buf);
++    else
++        fprintf(stderr, &quot;XkbDDXCompileKeymapByNames: &quot;
++                    &quot;Callin Popen() with null command.\n&quot;);
+     #endif
+ 
+ #ifndef WIN32
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011308.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-4
+</A></li>
+	<LI>Next message: <A HREF="011307.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nx-X11/3.3.0-7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11306">[ date ]</a>
+              <a href="thread.html#11306">[ thread ]</a>
+              <a href="subject.html#11306">[ subject ]</a>
+              <a href="author.html#11306">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

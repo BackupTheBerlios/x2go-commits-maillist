@@ -1,0 +1,430 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-51-ge6d43d9
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.10-51-ge6d43d9&In-Reply-To=%3C20130914135748.8F5145DB77%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014231.html">
+   <LINK REL="Next"  HREF="014235.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-51-ge6d43d9</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.0.10-51-ge6d43d9&In-Reply-To=%3C20130914135748.8F5145DB77%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-51-ge6d43d9">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:48 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014231.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-52-g9006f4a
+</A></li>
+        <LI>Next message: <A HREF="014235.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-50-gd89340e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14234">[ date ]</a>
+              <a href="thread.html#14234">[ thread ]</a>
+              <a href="subject.html#14234">[ subject ]</a>
+              <a href="author.html#14234">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  e6d43d971febfb231c2cd4fbbc1a3045fbde6937 (commit)
+      from  d89340ec8c50cc600be22be8c1335ca8f8e1de76 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ .../x2go_start_session_with_progress_status.py     |   22 +++++--
+ x2go/client.py                                     |   10 +++
+ x2go/session.py                                    |   65 +++++++++++++++++++-
+ x2go/utils.py                                      |   24 +++++++-
+ 4 files changed, 111 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/examples/x2go_start_session_with_progress_status.py b/examples/x2go_start_session_with_progress_status.py
+index 72916a6..8e7b0e6 100644
+--- a/examples/x2go_start_session_with_progress_status.py
++++ b/examples/x2go_start_session_with_progress_status.py
+@@ -32,10 +32,17 @@ import threading
+ 
+ # modify to your needs...
+ server   = &quot;server.mydomain.tld&quot;
+-port     = 22
++port     = 222
+ username = &quot;foo&quot;
+ command  = &quot;GNOME&quot;
+ 
++def my_progress_bar(ps):
++
++    for status in ps:
++        print '---------------'
++        print 'SESSION STATUS: ' + '#' * status + &quot;(&quot; + str(status) + &quot;%%)&quot;
++        print '---------------'
++
+ password = getpass.getpass()
+ 
+ cli = x2go.X2goClient(use_cache=False, loglevel=x2go.log.loglevel_DEBUG)
+@@ -53,12 +60,15 @@ cli.clean_sessions(s_uuid)
+ progress_event = threading.Event()
+ progress_status = x2go.utils.ProgressStatus(progress_event, cli.get_session(s_uuid).get_progress_status)
+ 
+-# start the session and run a command
++# start the status bar
++gevent.spawn(my_progress_bar, progress_status)
++
++# start the session
+ gevent.spawn(cli.start_session, s_uuid, progress_event=progress_event)
+-for status in progress_status:
+-    print '---------------'
+-    print 'SESSION STATUS: ' + '#' * status + &quot;(&quot; + str(status) + &quot;%%)&quot;
+-    print '---------------'
++
++# wait long enough for session to come up completely
++while (cli.get_session(s_uuid).get_progress_status() &lt; 100) and (cli.get_session(s_uuid).get_progress_status() != -1):
++    gevent.sleep(1)
+ 
+ try:
+     while cli.session_ok(s_uuid):
+diff --git a/x2go/client.py b/x2go/client.py
+index 42a9956..91a11a3 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1427,6 +1427,8 @@ class X2goClient(object):
+ 
+         @param session_uuid: the X2Go session's UUID registry hash
+         @type session_uuid: C{str}
++        @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.start()} method
++        @type sessionopts: C{dict}
+ 
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+@@ -1463,6 +1465,8 @@ class X2goClient(object):
+         @type display: C{str}
+         @param share_mode: desktop sharing mode, 0 is VIEW-ONLY, 1 is FULL-ACCESS.
+         @type share_mode: C{int}
++        @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.share_desktop()} method
++        @type sessionopts: C{dict}
+ 
+         @return: True if the session could be successfully shared.
+         @rtype: C{bool}
+@@ -1498,6 +1502,8 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         @param session_name: the server-side name of an X2Go session
+         @type session_name: C{str}
++        @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.resume()} method
++        @type sessionopts: C{dict}
+ 
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+@@ -1543,6 +1549,8 @@ class X2goClient(object):
+         @param session_name: the server-side name of an X2Go session (for 
+             non-associated session suspend)
+         @type session_name: C{str}
++        @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.suspend()} method
++        @type sessionopts: C{dict}
+ 
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+@@ -1583,6 +1591,8 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         @param session_name: the server-side name of an X2Go session
+         @type session_name: C{str}
++        @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.terminate()} method
++        @type sessionopts: C{dict}
+ 
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+diff --git a/x2go/session.py b/x2go/session.py
+index 21969c5..e67fa93 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -1602,7 +1602,7 @@ class X2goSession(object):
+             self.terminal_session.exec_published_application(exec_name, timeout=timeout, env=self.session_environment)
+     __exec_published_application = exec_published_application
+ 
+-    def do_auto_start_or_resume(self, newest=True, oldest=False, all_suspended=False, start=True, redirect_to_client=True):
++    def do_auto_start_or_resume(self, newest=True, oldest=False, all_suspended=False, start=True, redirect_to_client=True, wait_for_progress_query=False):
+         &quot;&quot;&quot;\
+         Automatically start or resume this session, if already associated with a server session. Otherwise
+         resume a server-side available/suspended session (see options to declare which session to resume).
+@@ -1669,6 +1669,9 @@ class X2goSession(object):
+         @param cmd: if starting a new session, manually hand over the command to be launched in
+             the new session
+         @type cmd: C{str}
++        @param progress_event: a C{thread.Event} object that notifies a status object like the one in
++            L{utils.ProgressStatus}.
++        @type progress_event: C{obj}
+ 
+         @return: returns C{True} if resuming the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+@@ -1678,7 +1681,6 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         # initialize a dummy event to avoid many if clauses further down in the code
+         self.reset_progress_status()
+-        print type(progress_event)
+         _dummy_event = threading.Event()
+         if type(progress_event) != type(_dummy_event):
+             progress_event = _dummy_event
+@@ -1732,6 +1734,10 @@ class X2goSession(object):
+                     self.published_applications_menu = gevent.spawn(self.get_published_applications)
+             except:
+                 # FIXME: test the code to see what exceptions may occur here...
++
++                self._progress_status = -1
++                progress_event.set()
++
+                 raise
+ 
+             if cmd is not None:
+@@ -1752,6 +1758,10 @@ class X2goSession(object):
+                 except AttributeError:
+                     # if self.terminal_session is None, we end up with a session failure...
+                     self.HOOK_session_startup_failed()
++
++                    self._progress_status = -1
++                    progress_event.set()
++
+                     return False
+ 
+             self._progress_status = 30
+@@ -1841,10 +1851,18 @@ class X2goSession(object):
+ 
+             else:
+                 self.terminal_session = None
++
++                self._progress_status = -1
++                progress_event.set()
++
+                 return False
+ 
+             return self.running
+         else:
++
++            self._progress_status = -1
++            progress_event.set()
++
+             self._X2goSession__disconnect()
+             return False
+ 
+@@ -1856,6 +1874,12 @@ class X2goSession(object):
+ 
+         @param cmd: manually hand over the command that is to be launched in the new session
+         @type cmd: C{str}
++        @param progress_event: a C{thread.Event} object that notifies a status object like the one in
++            L{utils.ProgressStatus}.
++        @type progress_event: C{obj}
++        @param wait_for_progress_query: wait for the progress status notification code to get ready before
++            launching the session
++        @type wait_for_progress_query: C{bool}
+ 
+         @return: returns C{True} if starting the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+@@ -1883,6 +1907,12 @@ class X2goSession(object):
+         @param check_desktop_list: check if the given desktop is available on the X2Go server; handle with care as
+             the server-side C{x2golistdesktops} command might block client I/O.
+         @type check_desktop_list: C{bool}
++        @param progress_event: a C{thread.Event} object that notifies a status object like the one in
++            L{utils.ProgressStatus}.
++        @type progress_event: C{obj}
++        @param wait_for_progress_query: wait for the progress status notification code to get ready before
++            launching the session
++        @type wait_for_progress_query: C{bool}
+ 
+         @return: returns C{True} if starting the session has been successful, C{False} otherwise
+         @rtype: C{bool}
+@@ -1897,6 +1927,9 @@ class X2goSession(object):
+         if type(progress_event) != type(_dummy_event):
+             progress_event = _dummy_event
+ 
++        self._progress_status = 5
++        progress_event.set()
++
+         self.terminal_session = 'PENDING'
+ 
+         _desktop = desktop or '%s@%s' % (user, display)
+@@ -1907,23 +1940,39 @@ class X2goSession(object):
+                 if not _desktop in self._X2goSession__list_desktops():
+                     raise x2go_exceptions.X2goDesktopSharingException('No such desktop ID: %s' % _orig_desktop)
+ 
++        self._progress_status = 33
++        progress_event.set()
++
+         _session_owner = _desktop.split('@')[0]
+-        #_display = _desktop.split('@')[1]
+ 
+         if self.is_alive():
+             if self.get_username() != _session_owner:
+                 self.logger('waiting for user ,,%s\'\' to interactively grant you access to his/her desktop session...' % _session_owner, loglevel=log.loglevel_NOTICE)
+                 self.logger('THIS MAY TAKE A WHILE!', loglevel=log.loglevel_NOTICE)
+ 
++                self._progress_status = 50
++                progress_event.set()
++
+             _control = self.control_session
+             try:
+                 self.terminal_session = _control.share_desktop(desktop=_desktop, share_mode=share_mode,
+                                                                logger=self.logger, **self.terminal_params)
++
++                self._progress_status = 80
++                progress_event.set()
++
+             except ValueError:
+                 # x2gostartagent output parsing will result in a ValueError. This one we will catch
+                 # here and change it into an X2goSessionException
++
++                self._progress_status = -1
++                progress_event.set()
++
+                 raise x2go_exceptions.X2goSessionException('the session on desktop %s is seemingly dead' % _desktop)
+ 
++            self._progress_status = 90
++            progress_event.set()
++
+             if self.has_terminal_session():
+                 self.session_name = self.terminal_session.session_info.name
+ 
+@@ -1937,11 +1986,21 @@ class X2goSession(object):
+                 self.terminated = False
+                 self.faulty = False
+ 
++                self._progress_status = 100
++                progress_event.set()
++
+                 return self.running
+             else:
+                 self.terminal_session = None
+ 
++                self._progress_status = -1
++                progress_event.set()
++
+         else:
++
++            self._progress_status = -1
++            progress_event.set()
++
+             self._X2goSession__disconnect()
+ 
+         return False
+diff --git a/x2go/utils.py b/x2go/utils.py
+index a9174c6..637b4f2 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -751,17 +751,39 @@ def compare_versions(version_a, op, version_b):
+     return eval(&quot;ver_a %s ver_b&quot; % op)
+ 
+ class ProgressStatus(object):
++    &quot;&quot;&quot;\
++    A simple progress status iterator class.
+ 
++    &quot;&quot;&quot;
+     def __init__(self, progress_event, progress_func=range(0, 100, 10)):
++        &quot;&quot;&quot;\
++        @param progress_event: a threading.Event() object that gets notified on progress
++        @type progress_event: C{obj}
++        @param progress_func: a function that delivers a value between 0 and 100 (progress percentage value)
++        @type progress_func: C{func}
++
++        &quot;&quot;&quot;
+         self.ev = progress_event
+         self.progress_func = progress_func
+ 
+     def __iter__(self):
++        &quot;&quot;&quot;\
++        Intialize the L{ProgresStatus} iterator object.
++
++        &quot;&quot;&quot;
+         self.status = self.progress_func()
+         return self
+ 
+     def next(self):
+-        if self.status &lt; 100:
++        &quot;&quot;&quot;\
++        On each iteration wait for the progress event to get triggered from an outside
++        part of the application.
++
++        Once the event fires read the progress status from the progress retrieval function
++        and clear the event afterwards (so we wait for the next firing of the event).
++
++        &quot;&quot;&quot;
++        if self.status &lt; 100 and self.status != -1:
+             self.ev.wait()
+             self.status = self.progress_func()
+             self.ev.clear()
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014231.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-52-g9006f4a
+</A></li>
+	<LI>Next message: <A HREF="014235.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.0.10-50-gd89340e
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14234">[ date ]</a>
+              <a href="thread.html#14234">[ thread ]</a>
+              <a href="subject.html#14234">[ subject ]</a>
+              <a href="author.html#14234">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

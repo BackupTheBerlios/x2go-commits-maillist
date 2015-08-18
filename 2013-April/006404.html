@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-74-gcd6780f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-74-gcd6780f&In-Reply-To=%3C20130427110414.129675DB40%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006397.html">
+   <LINK REL="Next"  HREF="006406.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-74-gcd6780f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.1.0-74-gcd6780f&In-Reply-To=%3C20130427110414.129675DB40%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-74-gcd6780f">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Apr 27 13:04:13 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006397.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-68-g87e42dc
+</A></li>
+        <LI>Next message: <A HREF="006406.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-70-g81642aa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6404">[ date ]</a>
+              <a href="thread.html#6404">[ thread ]</a>
+              <a href="subject.html#6404">[ subject ]</a>
+              <a href="author.html#6404">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  cd6780f54b5ad4df8e3d83d7ecdfaca58d78cfdd (commit)
+      from  f0ad3869aa976cfef4472c0a1137d01ea956fce0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                     |    1 +
+ debian/control                       |    1 +
+ sbin/x2gobroker-authservice          |   29 +++++++++++++++++++++++++++++
+ x2gobroker/authmechs/pam_authmech.py |    1 +
+ x2gobroker/authservice.py            |   30 ------------------------------
+ 5 files changed, 32 insertions(+), 30 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e38e86b..b2f1fdf 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -21,6 +21,7 @@ x2gobroker (0.0.1.1-0~x2go1) UNRELEASED; urgency=low
+     - Add forgotten file: x2gobroker-authservice-logger.conf. (Fixes: #180).
+     - Add script: x2gobroker-testauth.
+     - Add enable()/disable() methods to broker backends.
++    - Move complete authservice logic into x2gobroker-authservice script.
+   * /debian/control:
+     + Fix --root parameter in DEB_PYTHON_INSTALL_ARGS.
+     + Let bin:package x2gobroker-authservice depend on python-x2gobroker (of the
+diff --git a/debian/control b/debian/control
+index 21554ca..cfe63c6 100644
+--- a/debian/control
++++ b/debian/control
+@@ -92,6 +92,7 @@ Depends:
+  python,
+  python-argparse,
+  python-setproctitle,
++ python-pampy,
+  python-x2gobroker (&gt;= ${source:Version}), python-x2gobroker (&lt;&lt; ${source:Version}.1~),
+ Suggests:
+  x2gobroker-daemon,
+diff --git a/sbin/x2gobroker-authservice b/sbin/x2gobroker-authservice
+index 28084fd..391211a 100755
+--- a/sbin/x2gobroker-authservice
++++ b/sbin/x2gobroker-authservice
+@@ -30,6 +30,7 @@ import asyncore
+ import socket
+ import getpass
+ import logging.config
++import pam
+ 
+ from pwd import getpwnam
+ from grp import getgrnam
+@@ -42,6 +43,34 @@ from x2gobroker import __VERSION__
+ from x2gobroker import __AUTHOR__
+ 
+ 
++class AuthClient(asyncore.dispatcher_with_send):
++
++    def __init__(self, sock):
++        asyncore.dispatcher_with_send.__init__(self, sock)
++        self._buf = ''
++
++    def handle_read(self):
++        data = self._buf + self.recv(1024)
++        if not data:
++            self.close()
++            return
++        reqs, data = data.rsplit('\n', 1)
++        self._buf = data
++        for req in reqs.split('\n'):
++            try:
++                user, passwd, service = req.split()
++            except:
++                self.send('bad\n')
++            else:
++                if pam.authenticate(user, passwd, service):
++                    self.send('ok\n')
++                else:
++                    self.send('fail\n')
++
++    def handle_close(self):
++        self.close()
++
++
+ class AuthService(asyncore.dispatcher_with_send):
+ 
+     def __init__(self, socketfile, owner='root', group_owner='root', permissions='0660'):
+diff --git a/x2gobroker/authmechs/pam_authmech.py b/x2gobroker/authmechs/pam_authmech.py
+index 7ea2023..3eb0b3c 100644
+--- a/x2gobroker/authmechs/pam_authmech.py
++++ b/x2gobroker/authmechs/pam_authmech.py
+@@ -36,6 +36,7 @@ class X2GoBrokerAuthMech(object):
+                     return True
+ 
+             except error:
++                logger_error.error('Authentication against authentication service failed, trying direct PAM authentication (which is likely to fail on most PAM setups).'.format(username=username, service=service))
+                 # fallback to direct PAM authentication against the PAM service ,,x2gobroker''
+                 if pam.authenticate(username, password, service=&quot;x2gobroker&quot;):
+                     return True
+diff --git a/x2gobroker/authservice.py b/x2gobroker/authservice.py
+index 26c841e..bcfc99a 100644
+--- a/x2gobroker/authservice.py
++++ b/x2gobroker/authservice.py
+@@ -21,43 +21,13 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ import os
+-import asyncore
+ import socket
+-import getpass
+ 
+ # X2Go Session Broker modules
+ import x2gobroker.defaults
+ from x2gobroker.loggers import logger_broker
+ 
+ 
+-class AuthClient(asyncore.dispatcher_with_send):
+-
+-    def __init__(self, sock):
+-        asyncore.dispatcher_with_send.__init__(self, sock)
+-        self._buf = ''
+-
+-    def handle_read(self):
+-        data = self._buf + self.recv(1024)
+-        if not data:
+-            self.close()
+-            return
+-        reqs, data = data.rsplit('\n', 1)
+-        self._buf = data
+-        for req in reqs.split('\n'):
+-            try:
+-                user, passwd, service = req.split()
+-            except:
+-                self.send('bad\n')
+-            else:
+-                if pam.authenticate(user, passwd, service):
+-                    self.send('ok\n')
+-                else:
+-                    self.send('fail\n')
+-
+-    def handle_close(self):
+-        self.close()
+-
+-
+ def authenticate(username, password, service=&quot;x2gobroker&quot;):
+     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+     logger_broker.debug('connecting to authentication service socket {socket}'.format(socket=x2gobroker.defaults.X2GOBROKER_AUTHSERVICE_SOCKET))
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006397.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-68-g87e42dc
+</A></li>
+	<LI>Next message: <A HREF="006406.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.1.0-70-g81642aa
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6404">[ date ]</a>
+              <a href="thread.html#6404">[ thread ]</a>
+              <a href="subject.html#6404">[ subject ]</a>
+              <a href="author.html#6404">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

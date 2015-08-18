@@ -1,0 +1,343 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-8-g6efedf0
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.1.0-8-g6efedf0&In-Reply-To=%3C20140108142727.C720A5DB3D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="023605.html">
+   <LINK REL="Next"  HREF="023610.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-8-g6efedf0</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.1.0-8-g6efedf0&In-Reply-To=%3C20140108142727.C720A5DB3D%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-8-g6efedf0">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:27:27 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="023605.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-5-gb82e7b9
+</A></li>
+        <LI>Next message: <A HREF="023610.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-6-g3622a7f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23608">[ date ]</a>
+              <a href="thread.html#23608">[ thread ]</a>
+              <a href="subject.html#23608">[ subject ]</a>
+              <a href="author.html#23608">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  6efedf038a16505e6cd6c20656b5b9c688da3d6a (commit)
+      from  a68e15b9694d2319af2881e7aefa5f24527e05a1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    4 ++++
+ x2go/client.py   |   54 +++++++++++++++++++++++++++++++++++++-----------------
+ x2go/registry.py |   19 +++++++++++++------
+ 3 files changed, 54 insertions(+), 23 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 4e5ad3c..36e4a9a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,10 @@ python-x2go (0.2.1.1-0~x2go1) UNRELEASED; urgency=low
+       Relevant for X2Go-proxied RDP sessions started with PyHoca-GUI under
+       Windows.
+     - Handle control sessions being None in session list cache.
++    - In cases where several session profiles connect to the same machine
++      under the same user ID, we have to strictly differentiate between
++      running/suspend sessions associated to the several connected session
++      profiles.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 13 Dec 2012 13:32:30 +0100
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index 0e37573..d160e74 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -935,27 +935,31 @@ class X2goClient(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
++        # detect profile name and profile id properly
++        if profile_id and self.session_profiles.has_profile_id(profile_id):
++            _p = profile_id
++        elif profile_name and self.session_profiles.has_profile_name(profile_name):
++            _p = profile_name
++        else:
++            _p = None
++
++        if _p:
++
++            _profile_id = self.session_profiles.check_profile_id_or_name(_p)
++            _profile_name = self.session_profiles.to_profile_name(_profile_id)
+ 
+         # test if session_name has already been registered. If yes, return it immediately.
+         if type(session_name) is types.StringType:
+-            _retval = self.get_session_of_session_name(session_name, return_object=return_object)
++            _retval = self.get_session_of_session_name(session_name, return_object=return_object, match_profile_name=profile_name)
+             if _retval is not None:
+                 return _retval
+ 
+         if known_hosts is None:
+             known_hosts = os.path.join(_LOCAL_HOME, self.ssh_rootdir, 'known_hosts')
+ 
+-        if profile_id and self.session_profiles.has_profile_id(profile_id):
+-            _p = profile_id
+-        elif profile_name and self.session_profiles.has_profile_name(profile_name):
+-            _p = profile_name
+-        else:
+-            _p = None
+ 
+         if _p:
+ 
+-            _profile_id = self.session_profiles.check_profile_id_or_name(_p)
+-            _profile_name = self.session_profiles.to_profile_name(_profile_id)
+             _params = self.session_profiles.to_session_params(profile_id=_profile_id)
+             del _params['profile_name']
+ 
+@@ -1094,7 +1098,7 @@ class X2goClient(object):
+     with_session = __get_session
+     &quot;&quot;&quot;Alias for L{get_session()}.&quot;&quot;&quot;
+ 
+-    def get_session_of_session_name(self, session_name, return_object=False):
++    def get_session_of_session_name(self, session_name, return_object=False, match_profile_name=None):
+         &quot;&quot;&quot;\
+         Retrieve session UUID or L{X2goSession} for session name
+         &lt;session_name&gt; from the session registry.
+@@ -1103,13 +1107,15 @@ class X2goClient(object):
+         @type session_name: C{str}
+         @param return_object: session UUID hash or L{X2goSession} instance wanted?
+         @type return_object: C{bool}
++        @param match_profile_name: only return sessions that match this profile name
++        @type match_profile_name: C{str}
+ 
+         @return: the X2Go session's UUID registry hash or L{X2goSession} instance
+         @rtype: C{str} or L{X2goSession} instance
+ 
+         &quot;&quot;&quot;
+         try:
+-            return self.session_registry.get_session_of_session_name(session_name=session_name, return_object=return_object)
++            return self.session_registry.get_session_of_session_name(session_name=session_name, return_object=return_object, match_profile_name=match_profile_name)
+         except x2go_exceptions.X2goSessionRegistryException:
+             return None
+     __get_session_of_session_name = get_session_of_session_name
+@@ -1503,7 +1509,7 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).share_desktop(desktop=_desktop, share_mode=share_mode, check_desktop_list=False, **sessionopts)
+     __share_desktop_session = share_desktop_session
+ 
+-    def resume_session(self, session_uuid=None, session_name=None, **sessionopts):
++    def resume_session(self, session_uuid=None, session_name=None, match_profile_name=None, **sessionopts):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2Go session on a
+         remote X2Go server (as specified when L{register_session} was
+@@ -1513,6 +1519,8 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         @param session_name: the server-side name of an X2Go session
+         @type session_name: C{str}
++        @param match_profile_name: only resume a session if this profile name matches
++        @type match_profile_name: C{str}
+         @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.resume()} method
+         @type sessionopts: C{dict}
+ 
+@@ -1528,7 +1536,7 @@ class X2goClient(object):
+             if session_name is None and self.session_registry(session_uuid).session_name is None:
+                 raise x2go_exceptions.X2goClientException('don\'t know which session to resume')
+             if session_uuid is None:
+-                session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False)
++                session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False, match_profile_name=match_profile_name)
+                 return self.session_registry(session_uuid).resume(session_list=self._X2goClient__list_sessions(session_uuid=session_uuid), **sessionopts)
+             else:
+                 return self.session_registry(session_uuid).resume(session_name=session_name, session_list=self._X2goClient__list_sessions(session_uuid=session_uuid), **sessionopts)
+@@ -1538,7 +1546,7 @@ class X2goClient(object):
+             self.disconnect_profile(profile_name)
+     __resume_session = resume_session
+ 
+-    def suspend_session(self, session_uuid, session_name=None, **sessionopts):
++    def suspend_session(self, session_uuid, session_name=None, match_profile_name=None, **sessionopts):
+         &quot;&quot;&quot;\
+         Suspend an X2Go session.
+ 
+@@ -1560,6 +1568,8 @@ class X2goClient(object):
+         @param session_name: the server-side name of an X2Go session (for 
+             non-associated session suspend)
+         @type session_name: C{str}
++        @param match_profile_name: only suspend a session if this profile name matches
++        @type match_profile_name: C{str}
+         @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.suspend()} method
+         @type sessionopts: C{dict}
+ 
+@@ -1575,7 +1585,11 @@ class X2goClient(object):
+ 
+                 return self.session_registry(session_uuid).suspend(**sessionopts)
+             else:
+-                for session in self.session_registry.running_sessions():
++                if match_profile_name is None:
++                    running_sessions = self.session_registry.running_sessions()
++                else:
++                    running_sessions = self.session_registry.running_sessions_of_profile_name(match_profile_name)
++                for session in running_sessions:
+                     if session_name == session.get_session_name():
+                         return session.suspend()
+             return self.session_registry(session_uuid).control_session.suspend(session_name=session_name, **sessionopts)
+@@ -1585,7 +1599,7 @@ class X2goClient(object):
+             self.disconnect_profile(profile_name)
+     __suspend_session = suspend_session
+ 
+-    def terminate_session(self, session_uuid, session_name=None, **sessionopts):
++    def terminate_session(self, session_uuid, session_name=None, match_profile_name=None, **sessionopts):
+         &quot;&quot;&quot;\
+         Terminate an X2Go session.
+ 
+@@ -1606,6 +1620,8 @@ class X2goClient(object):
+         @type session_uuid: C{str}
+         @param session_name: the server-side name of an X2Go session
+         @type session_name: C{str}
++        @param match_profile_name: only terminate a session if this profile name matches
++        @type match_profile_name: C{str}
+         @param sessionopts: pass-through of options directly to the session instance's L{X2goSession.terminate()} method
+         @type sessionopts: C{dict}
+ 
+@@ -1621,7 +1637,11 @@ class X2goClient(object):
+ 
+                 return self.session_registry(session_uuid).terminate(**sessionopts)
+             else:
+-                for session in self.session_registry.running_sessions() + self.session_registry.suspended_sessions():
++                if match_profile_name is None:
++                    terminatable_sessions = self.session_registry.running_sessions() + self.session_registry.suspended_sessions()
++                else:
++                    terminatable_sessions = self.session_registry.running_sessions_of_profile_name(match_profile_name) + self.session_registry.suspended_sessions_of_profile_name(match_profile_name)
++                for session in terminatable_sessions:
+                     if session_name == session.get_session_name():
+                         return session.terminate()
+             return self.session_registry(session_uuid).control_session.terminate(session_name=session_name, **sessionopts)
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 5b4d67f..4669ea2 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -553,7 +553,7 @@ class X2goSessionRegistry(object):
+             self.logger('using already initially-registered yet-unused session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+ 
+         else:
+-            session_uuid = self.get_session_of_session_name(session_name)
++            session_uuid = self.get_session_of_session_name(session_name, match_profile_name=profile_name)
+             if session_uuid is not None: self.logger('using already registered-by-session-name session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+ 
+         if session_uuid is not None:
+@@ -606,20 +606,22 @@ class X2goSessionRegistry(object):
+         self._profile_locks[profile_id].release()
+         return session_uuid
+ 
+-    def has_session_of_session_name(self, session_name):
++    def has_session_of_session_name(self, session_name, match_profile_name=None):
+         &quot;&quot;&quot;\
+         Detect if we know about an L{X2goSession} of name C{&lt;session_name&gt;}.
+ 
+         @param session_name: name of session to be searched for
+         @type session_name: C{str}
++        @param match_profile_name: a session's profile_name must match this profile name
++        @type match_profile_name: C{str}
+ 
+         @return: C{True} if a session of C{&lt;session_name&gt;} has been found
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        return bool(self.get_session_of_session_name(session_name))
++        return bool(self.get_session_of_session_name(session_name, match_profile_name=match_profile_name))
+ 
+-    def get_session_of_session_name(self, session_name, return_object=False):
++    def get_session_of_session_name(self, session_name, return_object=False, match_profile_name=None):
+         &quot;&quot;&quot;\
+         Retrieve the L{X2goSession} instance with session name C{&lt;session_name&gt;}.
+ 
+@@ -627,6 +629,8 @@ class X2goSessionRegistry(object):
+         @type session_name: C{str}
+         @param return_object: if C{False} the session UUID hash will be returned, if C{True} the L{X2goSession} instance will be returned
+         @type return_object: C{bool}
++        @param match_profile_name: returned sessions must match this profile name
++        @type match_profile_name: C{str}
+ 
+         @return: L{X2goSession} object or its representing session UUID hash
+         @rtype: L{X2goSession} instance or C{str}
+@@ -635,7 +639,11 @@ class X2goSessionRegistry(object):
+             the same L{X2goClient} instance. This should never happen!
+ 
+         &quot;&quot;&quot;
+-        found_sessions = [ s for s in self.registered_sessions() if s.session_name == session_name and s.session_name is not None ]
++        if match_profile_name is None:
++            reg_sessions = self.registered_sessions()
++        else:
++            reg_sessions = self.registered_sessions_of_profile_name(match_profile_name)
++        found_sessions = [ s for s in reg_sessions if s.session_name == session_name and s.session_name is not None ]
+         if len(found_sessions) == 1:
+             session = found_sessions[0]
+             if return_object:
+@@ -938,7 +946,6 @@ class X2goSessionRegistry(object):
+         @rtype: C{list}
+ 
+         &quot;&quot;&quot;
+-
+         if return_objects:
+             return self.registered_sessions() and [ s for s in self.registered_sessions() if s.get_profile_name() == profile_name ]
+         elif return_session_names:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="023605.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-5-gb82e7b9
+</A></li>
+	<LI>Next message: <A HREF="023610.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.1.0-6-g3622a7f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#23608">[ date ]</a>
+              <a href="thread.html#23608">[ thread ]</a>
+              <a href="subject.html#23608">[ subject ]</a>
+              <a href="author.html#23608">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

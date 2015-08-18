@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	0f1fce81e56f13852b79db0ca40879547cb1a6af
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090f1fce81e56f13852b79db0ca40879547cb1a6af&In-Reply-To=%3C20130427114532.8001A5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006477.html">
+   <LINK REL="Next"  HREF="006480.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	0f1fce81e56f13852b79db0ca40879547cb1a6af</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090f1fce81e56f13852b79db0ca40879547cb1a6af&In-Reply-To=%3C20130427114532.8001A5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	0f1fce81e56f13852b79db0ca40879547cb1a6af">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Apr 27 13:45:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006477.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	c1d37b4bf2191349d7836a4ddfd7b851328e9684
+</A></li>
+        <LI>Next message: <A HREF="006480.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	d3eea7ac32b46236e27d337b7a1b712de61dd0d7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6479">[ date ]</a>
+              <a href="thread.html#6479">[ thread ]</a>
+              <a href="subject.html#6479">[ subject ]</a>
+              <a href="author.html#6479">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  0f1fce81e56f13852b79db0ca40879547cb1a6af (commit)
+       via  829831debae6d31f199056444739f90b0f9e996d (commit)
+      from  c1d37b4bf2191349d7836a4ddfd7b851328e9684 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   43 +++++++++++++++++++------------------------
+ 1 file changed, 19 insertions(+), 24 deletions(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index 02524fb..4714165 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -50,14 +50,14 @@ get_item (pam_handle_t * pamh, int type)
+ 	if (type != PAM_TYPE_DOMAIN) {
+ 		char * value = NULL;
+ 		if (pam_get_item(pamh, type, (const void **)&amp;value) == PAM_SUCCESS &amp;&amp; value != NULL) {
+-			return strdup(value);
++			return value;
+ 		}
+ 		if (type == PAM_AUTHTOK &amp;&amp; global_password != NULL) {
+-			return strdup(global_password);
++			return global_password;
+ 		}
+ 	} else {
+ 		if (global_domain != NULL) {
+-			return strdup(global_domain);
++			return global_domain;
+ 		}
+ 	}
+ 	/* Now we need to prompt */
+@@ -100,13 +100,13 @@ get_item (pam_handle_t * pamh, int type)
+ 		return NULL;
+ 	}
+ 
+-	char * retval = responses-&gt;resp;
++	char * promptval = responses-&gt;resp;
+ 	free(responses);
+ 
+ 	if (type == PAM_RHOST) {
+-		char * subloc = strstr(retval, &quot;://&quot;);
++		char * subloc = strstr(promptval, &quot;://&quot;);
+ 		if (subloc != NULL) {
+-			char * original = retval;
++			char * original = promptval;
+ 			char * newish = subloc + strlen(&quot;://&quot;);
+ 			char * endslash = strstr(newish, &quot;/&quot;);
+ 
+@@ -114,19 +114,23 @@ get_item (pam_handle_t * pamh, int type)
+ 				endslash[0] = '\0';
+ 			}
+ 
+-			retval = strdup(newish);
++			promptval = strdup(newish);
+ 			free(original);
+ 		}
+ 	}
+ 
+-	if (retval != NULL) { /* Can't believe it really would be at this point, but let's be sure */
++	char * retval = NULL;
++	if (promptval != NULL) { /* Can't believe it really would be at this point, but let's be sure */
+ 		if (type != PAM_TYPE_DOMAIN) {
+-			pam_set_item(pamh, type, (const void *)retval);
++			pam_set_item(pamh, type, (const void *)promptval);
++			/* We're returning the value saved by PAM so we can clear promptval */
++			pam_get_item(pamh, type, (const void **)&amp;retval);
+ 		} else {
+ 			if (global_domain != NULL) {
+ 				free(global_domain);
+ 			}
+-			global_domain = strdup(retval);
++			global_domain = strdup(promptval);
++			retval = global_domain;
+ 		}
+ 		if (type == PAM_AUTHTOK) {
+ 			if (global_password != NULL) {
+@@ -134,9 +138,12 @@ get_item (pam_handle_t * pamh, int type)
+ 				munlock(global_password, strlen(global_password));
+ 				free(global_password);
+ 			}
+-			global_password = strdup(retval);
++			global_password = strdup(promptval);
+ 			mlock(global_password, strlen(global_password));
++			retval = global_password;
+ 		}
++
++		free(promptval);
+ 	}
+ 
+ 	return retval;
+@@ -227,14 +234,8 @@ pam_sm_authenticate (pam_handle_t *pamh, int flags, int argc, const char **argv)
+ 	}
+ 	}
+ 
+-	/* Free Memory and return our status */
++	/* Return our status */
+ done:
+-	if (username != NULL) { free(username); }
+-	if (password != NULL) { free(password); }
+-	if (ruser != NULL)    { free(ruser); }
+-	if (rhost != NULL)    { free(rhost); }
+-	if (rdomain != NULL)  { free(rdomain); }
+-
+ 	return retval;
+ }
+ 
+@@ -365,12 +366,6 @@ pam_sm_open_session (pam_handle_t *pamh, int flags, int argc, const char ** argv
+ 	free(buffer);
+ 
+ done:
+-	if (username != NULL) { free(username); }
+-	if (password != NULL) { free(password); }
+-	if (ruser != NULL)    { free(ruser); }
+-	if (rhost != NULL)    { free(rhost); }
+-	if (rdomain != NULL)  { free(rdomain); }
+-
+     return retval;
+ }
+ 
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006477.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	c1d37b4bf2191349d7836a4ddfd7b851328e9684
+</A></li>
+	<LI>Next message: <A HREF="006480.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	d3eea7ac32b46236e27d337b7a1b712de61dd0d7
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6479">[ date ]</a>
+              <a href="thread.html#6479">[ thread ]</a>
+              <a href="subject.html#6479">[ subject ]</a>
+              <a href="author.html#6479">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

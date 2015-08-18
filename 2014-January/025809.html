@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-72-gbda44ea
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-72-gbda44ea&In-Reply-To=%3C20140108143122.924215DFD3%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025727.html">
+   <LINK REL="Next"  HREF="025062.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-72-gbda44ea</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-72-gbda44ea&In-Reply-To=%3C20140108143122.924215DFD3%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-72-gbda44ea">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:31:22 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025727.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-69-gb37028b
+</A></li>
+        <LI>Next message: <A HREF="025062.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-78-g5035773
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25809">[ date ]</a>
+              <a href="thread.html#25809">[ thread ]</a>
+              <a href="subject.html#25809">[ subject ]</a>
+              <a href="author.html#25809">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  bda44ea56d0e45b4b5ced3b25aed52aa70baa5ff (commit)
+      from  c0080475df80c728c9b5d1a44e60a2105327c73b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/session.py  |   27 ++++++++++++++++++++++++++-
+ 2 files changed, 27 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 60103f2..9ef6745 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -46,6 +46,7 @@ python-x2go (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+       on MS Windows).
+     - Use threading.Lock to prohibit simultaneous calls of
+       get_published_applications() of control sessions.
++    - Implement some internal locking for X2goSession objects.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+   * /debian/control:
+diff --git a/x2go/session.py b/x2go/session.py
+index e841565..d6ae740 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -362,6 +362,7 @@ class X2goSession(object):
+             self.retrieve_server_features()
+ 
+         self._progress_status = 0
++        self._lock = threading.Lock()
+ 
+     def get_client_instance(self):
+         &quot;&quot;&quot;\
+@@ -883,6 +884,8 @@ class X2goSession(object):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
++        self._lock.release()
+         return self.session_name
+     __get_session_name = get_session_name
+ 
+@@ -1701,6 +1704,8 @@ class X2goSession(object):
+         @raise Exception: any exception that occurs during published application menu retrieval is passed through
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
++
+         # initialize a dummy event to avoid many if clauses further down in the code
+         self.reset_progress_status()
+         _dummy_event = threading.Event()
+@@ -1784,6 +1789,7 @@ class X2goSession(object):
+                     self._progress_status = -1
+                     progress_event.set()
+ 
++                    self._lock.release()
+                     return False
+ 
+             self._progress_status = 30
+@@ -1869,6 +1875,7 @@ class X2goSession(object):
+                 progress_event.set()
+ 
+                 self.has_terminal_session() and self.terminal_session.session_info_unprotect()
++                self._lock.release()
+                 return True
+ 
+             else:
+@@ -1877,15 +1884,16 @@ class X2goSession(object):
+                 self._progress_status = -1
+                 progress_event.set()
+ 
++                self._lock.release()
+                 return False
+ 
+-            return self.running
+         else:
+ 
+             self._progress_status = -1
+             progress_event.set()
+ 
+             self._X2goSession__disconnect()
++            self._lock.release()
+             return False
+ 
+     __resume = resume
+@@ -1937,6 +1945,8 @@ class X2goSession(object):
+         @raise X2goSessionException: if the available desktop session appears to be dead, in fact
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
++
+         # initialize a dummy event to avoid many if clauses further down in the code
+         self.reset_progress_status()
+         _dummy_event = threading.Event()
+@@ -2005,6 +2015,7 @@ class X2goSession(object):
+                 self._progress_status = 100
+                 progress_event.set()
+ 
++                self._lock.release()
+                 return self.running
+             else:
+                 self.terminal_session = None
+@@ -2019,6 +2030,7 @@ class X2goSession(object):
+ 
+             self._X2goSession__disconnect()
+ 
++        self._lock.release()
+         return False
+     __share_desktop = share_desktop
+ 
+@@ -2032,6 +2044,7 @@ class X2goSession(object):
+         @raise X2goSessionException: if the session could not be suspended
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
+         if self.is_alive():
+             if self.has_terminal_session():
+ 
+@@ -2051,6 +2064,7 @@ class X2goSession(object):
+                     self.session_cleanup()
+                     del self.terminal_session
+                     self.terminal_session = None
++                    self._lock.release()
+                     return True
+ 
+             elif self.has_control_session() and self.session_name:
+@@ -2062,14 +2076,17 @@ class X2goSession(object):
+                     self.faulty = False
+                     self.active = False
+                     self.session_cleanup()
++                    self._lock.release()
+                     return True
+ 
+             else:
++                self._lock.release()
+                 raise x2go_exceptions.X2goSessionException('cannot suspend session')
+ 
+         else:
+             self._X2goSession__disconnect()
+ 
++        self._lock.release()
+         return False
+     __suspend = suspend
+ 
+@@ -2083,6 +2100,7 @@ class X2goSession(object):
+         @raise X2goSessionException: if the session could not be terminated
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
+         if self.is_alive():
+             if self.has_terminal_session():
+ 
+@@ -2101,6 +2119,7 @@ class X2goSession(object):
+                     self.session_cleanup()
+                     del self.terminal_session
+                     self.terminal_session = None
++                    self._lock.release()
+                     return True
+ 
+             elif self.has_control_session() and self.session_name:
+@@ -2112,13 +2131,16 @@ class X2goSession(object):
+                     self.faulty = False
+                     self.active = False
+                     self.session_cleanup()
++                    self._lock.release()
+                     return True
+             else:
++                self._lock.release()
+                 raise x2go_exceptions.X2goSessionException('cannot terminate session')
+ 
+         else:
+             self._X2goSession__disconnect()
+ 
++        self._lock.release()
+         return False
+     __terminate = terminate
+ 
+@@ -2157,8 +2179,11 @@ class X2goSession(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
++        self._lock.acquire()
+         if self.has_terminal_session():
++            self._lock.release()
+             return self.terminal_session.ok()
++        self._lock.release()
+         return False
+     __session_ok = session_ok
+ 
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025727.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-69-gb37028b
+</A></li>
+	<LI>Next message: <A HREF="025062.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-78-g5035773
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25809">[ date ]</a>
+              <a href="thread.html#25809">[ thread ]</a>
+              <a href="subject.html#25809">[ subject ]</a>
+              <a href="author.html#25809">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

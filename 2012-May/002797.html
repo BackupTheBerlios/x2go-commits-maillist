@@ -1,0 +1,250 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-10-g4f41b16
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.0-10-g4f41b16&In-Reply-To=%3C20120507135344.A3B155DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002796.html">
+   <LINK REL="Next"  HREF="002798.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-10-g4f41b16</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.2.0-10-g4f41b16&In-Reply-To=%3C20120507135344.A3B155DB19%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.2.0-10-g4f41b16">git-admin at x2go.org
+       </A><BR>
+    <I>Mon May  7 15:53:44 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002796.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-14-gea35506
+</A></li>
+        <LI>Next message: <A HREF="002798.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.4-2-g6ffe45d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2797">[ date ]</a>
+              <a href="thread.html#2797">[ thread ]</a>
+              <a href="subject.html#2797">[ subject ]</a>
+              <a href="author.html#2797">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  4f41b1600794e06c5a9ec5e14b1621c52f867ae0 (commit)
+      from  8c41c073e281b7a7d6a876381096b45458748ec1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 4f41b1600794e06c5a9ec5e14b1621c52f867ae0
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+Date:   Mon May 7 15:53:37 2012 +0200
+
+    command line options for username and autostart application
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    4 ++++
+ onmainwindow.cpp |   34 ++++++++++++++++++++++++++++++++--
+ onmainwindow.h   |    2 ++
+ 3 files changed, 38 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a54b5c2..126827b 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -7,6 +7,10 @@ x2goclient (3.99.2.1-0~x2go1) UNRELEASED; urgency=low
+     - Support recent pulseuadio on windows
+     - removing %USERPROFILE%\.x2go\pulse\.pulse\%COMPUTERNAME%-runtime\pid
+       if exists under windows
++    - --user=&lt;username&gt; set username in session mode if this field is blank
++      in session settings.
++    - --autostart=&lt;app&gt; launch &quot;app&quot; by session start in &quot;published
++      applications&quot; mode
+ 
+   [ Daniel Lindgren ]
+   * New upstream version (3.99.2.1):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 6879c39..9a55755 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2581,6 +2581,9 @@ void ONMainWindow::slotSelectedFromList ( SessionButton* session )
+         userName=st.setting()-&gt;value (
+                      sid+&quot;/user&quot;,
+                      ( QVariant ) QString::null ).toString();
++        if (defaultUser &amp;&amp; userName.length()&lt;1)
++            userName=defaultUserName;
++
+         sshPort=st.setting()-&gt;value (
+                     sid+&quot;/sshport&quot;,
+                     ( QVariant ) defaultSshPort ).toString();
+@@ -3235,6 +3238,7 @@ void ONMainWindow::startNewSession()
+     QString xdmcpServer;
+     runRemoteCommand=true;
+     QString host=QString::null;
++    runStartApp=true;
+     removeAppsFromTray();
+     if ( useLdap )
+     {
+@@ -3545,6 +3549,7 @@ void ONMainWindow::startNewSession()
+ void ONMainWindow::resumeSession ( const x2goSession&amp; s )
+ {
+     newSession=false;
++    runStartApp=false;
+     applications.clear();
+     removeAppsFromTray();
+     QString passwd=getCurrentPass();
+@@ -4991,9 +4996,13 @@ void ONMainWindow::slotProxyStderr()
+                 localGraphicPort+&quot;' established&quot; ) !=-1 )
+     {
+         if ( newSession )
++        {
+             setStatStatus ( tr ( &quot;starting&quot; ) );
++        }
+         else
++        {
+             setStatStatus ( tr ( &quot;resuming&quot; ) );
++        }
+     }
+ 
+     if ( stInfo-&gt;toPlainText().indexOf (
+@@ -5599,6 +5608,7 @@ void ONMainWindow::slotReadApplications(bool result, QString output,
+     applications.clear();
+     QString locallong=QLocale::system().name();
+     QString localshort=QLocale::system().name().split(&quot;_&quot;)[0];
++    bool startAppFound=false;
+ 
+     foreach(QString appstr, output.split(&quot;&lt;/desktop&gt;&quot;,QString::SkipEmptyParts))
+     {
+@@ -5625,6 +5635,8 @@ void ONMainWindow::slotReadApplications(bool result, QString output,
+             if (line.indexOf(&quot;Name=&quot;)!=-1 &amp;&amp; !localname)
+             {
+                 app.name=line.split(&quot;=&quot;)[1];
++                if (app.name==autostartApp)
++                    startAppFound=true;
+ //                 x2goDebug&lt;&lt;&quot;name: &quot;&lt;&lt;app.name&lt;&lt;endl;
+             }
+             if (line.indexOf(&quot;Comment=&quot;)!=-1 &amp;&amp; !localcomment)
+@@ -5635,8 +5647,12 @@ void ONMainWindow::slotReadApplications(bool result, QString output,
+             if (line.indexOf(&quot;Exec=&quot;)!=-1)
+             {
+                 app.exec=line.split(&quot;=&quot;)[1];
++                app.exec.replace(&quot; %f&quot;,&quot;&quot;,Qt::CaseInsensitive);
++                app.exec.replace(&quot; %u&quot;,&quot;&quot;,Qt::CaseInsensitive);
+                 app.exec.replace(&quot;%f&quot;,&quot;&quot;,Qt::CaseInsensitive);
+                 app.exec.replace(&quot;%u&quot;,&quot;&quot;,Qt::CaseInsensitive);
++                if (app.exec==autostartApp)
++                    startAppFound=true;
+ //                 x2goDebug&lt;&lt;&quot;exec: &quot;&lt;&lt;app.exec&lt;&lt;endl;
+             }
+             if (line.indexOf(&quot;Categories=&quot;)!=-1)
+@@ -5702,6 +5718,13 @@ void ONMainWindow::slotReadApplications(bool result, QString output,
+ 
+     qSort(applications.begin(), applications.end(),Application::lessThen);
+     plugAppsInTray();
++    if (runStartApp &amp;&amp; autostartApp.length()&gt;1)
++    {
++        if (!startAppFound)
++            x2goDebug&lt;&lt;&quot;Autostart application &quot;&lt;&lt;autostartApp&lt;&lt; &quot; not found in Desktop files&quot;&lt;&lt;endl;
++        else
++            runApplication(autostartApp);
++    }
+ }
+ 
+ 
+@@ -5921,6 +5944,11 @@ bool ONMainWindow::parseParameter ( QString param )
+         config.brokerName=value;
+         return true;
+     }
++    if ( setting == &quot;--autostart&quot;)
++    {
++        autostartApp=value;
++        return true;
++    }
+     if ( setting == &quot;--auth-id&quot;)
+     {
+         QFile file(value);
+@@ -6230,7 +6258,7 @@ void ONMainWindow::showHelp()
+         &quot;default 22\n&quot;
+         &quot;--command=&lt;cmd&gt;\t\t\t Set default command, default value 'KDE'\n&quot;
+         &quot;--session=&lt;session&gt;\t\t Start session 'session'\n&quot;
+-        &quot;--user=&lt;username&gt;\t\t in LDAP mode, select user 'username'\n&quot;
++        &quot;--user=&lt;username&gt;\t\t select user 'username'\n&quot;
+         &quot;--geomerty=&lt;W&gt;x&lt;H&gt;|fullscreen\t set default geometry, default &quot;
+         &quot;value '800x600'\n&quot;
+         &quot;--dpi=&lt;dpi&gt;\t\t\t set dpi of x2goagent to dpi, default not set\n&quot;
+@@ -6243,7 +6271,9 @@ void ONMainWindow::showHelp()
+         &quot;--kbd-type=&lt;typed&gt;\t\t set default keyboard type\n&quot;
+         &quot;--home=&lt;dir&gt;\t\t\t set users home directory\n&quot;
+         &quot;--set-kbd=&lt;0|1&gt;\t\t\t overwrite current keyboard settings\n&quot;
+-        &quot;--session-conf=&lt;file&gt;\t\t\t path to alternative session config\n&quot;;
++        &quot;--autostart=&lt;app&gt; \t\t launch \&quot;app\&quot; by session start in \&quot;published &quot;
++        &quot;applications\&quot; mode\n&quot;
++        &quot;--session-conf=&lt;file&gt;\t\t path to alternative session config\n&quot;;
+     qCritical ( &quot;%s&quot;,helpMsg.toLocal8Bit().data() );
+     QMessageBox::information ( this,tr ( &quot;Options&quot; ),helpMsg );
+ }
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 7e9cb94..66b21e8 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -506,6 +506,7 @@ private:
+     bool embedMode;
+     bool thinMode;
+     QString statusString;
++    QString autostartApp;
+     int defaultLink;
+     int defaultQuality;
+     int defaultWidth;
+@@ -664,6 +665,7 @@ private:
+     bool showToolBar;
+     bool showHaltBtn;
+     bool newSession;
++    bool runStartApp;
+     bool ldapOnly;
+     bool isScDaemonOk;
+     bool parecTunnelOk;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002796.html">[X2go-Commits] x2goserver.git - master (branch) updated:	3.1.1.0-14-gea35506
+</A></li>
+	<LI>Next message: <A HREF="002798.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.4-2-g6ffe45d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2797">[ date ]</a>
+              <a href="thread.html#2797">[ thread ]</a>
+              <a href="subject.html#2797">[ subject ]</a>
+              <a href="author.html#2797">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

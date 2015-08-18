@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-14-g1a4504a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-14-g1a4504a&In-Reply-To=%3C20131217144330.7075E5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016941.html">
+   <LINK REL="Next"  HREF="016944.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-14-g1a4504a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-14-g1a4504a&In-Reply-To=%3C20131217144330.7075E5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-14-g1a4504a">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:30 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016941.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-11-gcf33d55
+</A></li>
+        <LI>Next message: <A HREF="016944.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-18-g2f53855
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16942">[ date ]</a>
+              <a href="thread.html#16942">[ thread ]</a>
+              <a href="subject.html#16942">[ subject ]</a>
+              <a href="author.html#16942">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  1a4504aefb145446c9011fb34743aa8535db3b7b (commit)
+      from  2053e46bfda54ca967f01e637576c65697427952 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog      |    3 +++
+ httpbrokerclient.cpp  |   30 ++++++++++++++++++++----------
+ httpbrokerclient.h    |    2 ++
+ man/man1/x2goclient.1 |    3 +++
+ onmainwindow.cpp      |    5 +++++
+ onmainwindow.h        |    1 +
+ 6 files changed, 34 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e069591..78908d6 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -11,6 +11,9 @@ x2goclient (4.0.1.2-0~x2go2) UNRELEASED; urgency=low
+     + Perform sanity checks on data that comes in from X2Go Servers.
+       Prohibit the execution of arbitrary code via the ~/.bashrc file.
+       (Fixes: #333).
++    + Add option --broker-cacertfile. Allow usage of non-system-wide
++      installed (self-signed) SSL certificate chains for https (SSL)
++      session broker connections. (Fixes: #311).
+   * Pull-in packaging changes from Debian.
+ 
+   [ Ricardo D&#237;az Mart&#237;n ]
+diff --git a/httpbrokerclient.cpp b/httpbrokerclient.cpp
+index 6d16b7b..5bf9caf 100644
+--- a/httpbrokerclient.cpp
++++ b/httpbrokerclient.cpp
+@@ -21,6 +21,7 @@
+ #include &lt;QTextStream&gt;
+ #include &lt;QFile&gt;
+ #include &lt;QDir&gt;
++#include &lt;QSslSocket&gt;
+ #include &quot;x2gologdebug.h&quot;
+ #include &lt;QMessageBox&gt;
+ #include &lt;QDateTime&gt;
+@@ -41,10 +42,6 @@ HttpBrokerClient::HttpBrokerClient ( ONMainWindow* wnd, ConfigFile* cfg )
+     QUrl lurl ( config-&gt;brokerurl );
+     if(lurl.userName().length()&gt;0)
+         config-&gt;brokerUser=lurl.userName();
+-    /*
+-     * load self-signed / custome (root-)CA certificate
+-     * see. <A HREF="http://www.thomaskeller.biz/blog/2009/01/03/ssl-verification-with-qt-and-a-custom-ca-certificate/">http://www.thomaskeller.biz/blog/2009/01/03/ssl-verification-with-qt-and-a-custom-ca-certificate/</A>
+-     */
+ 
+     if(config-&gt;brokerurl.indexOf(&quot;<A HREF="ssh://">ssh://</A>&quot;)==0)
+     {
+@@ -58,18 +55,31 @@ HttpBrokerClient::HttpBrokerClient ( ONMainWindow* wnd, ConfigFile* cfg )
+     else
+     {
+         sshBroker=false;
++
+         http=new QHttp ( this );
+-        if ( config-&gt;brokerurl.indexOf ( &quot;<A HREF="https://">https://</A>&quot; ) ==0 )
++
++        if ( config-&gt;brokerurl.indexOf ( &quot;<A HREF="https://">https://</A>&quot; ) ==0 ) {
++            if ((config-&gt;brokerCaCertFile.length() &gt;0) &amp;&amp; (QFile::exists(config-&gt;brokerCaCertFile))) {
++
++                sslSocket = new QSslSocket(this);
++                connect ( sslSocket, SIGNAL ( sslErrors ( const QList&lt;QSslError&gt;&amp; ) ),this,
++                          SLOT ( slotSslErrors ( const QList&lt;QSslError&gt;&amp; ) ) );
++                http-&gt;setSocket(sslSocket);
++                sslSocket-&gt;addCaCertificates(config-&gt;brokerCaCertFile, QSsl::Pem);
++                x2goDebug&lt;&lt;&quot;Custom CA certificate file loaded into HTTPS broker client: &quot;&lt;&lt;config-&gt;brokerCaCertFile;
++
++            } else {
++                connect ( http, SIGNAL ( sslErrors ( const QList&lt;QSslError&gt;&amp; ) ),this,
++                          SLOT ( slotSslErrors ( const QList&lt;QSslError&gt;&amp; ) ) );
++            }
+             http-&gt;setHost ( lurl.host(),QHttp::ConnectionModeHttps,
+                             lurl.port ( 443 ) );
+-        else
++        } else {
+             http-&gt;setHost ( lurl.host(),QHttp::ConnectionModeHttp,
+                             lurl.port ( 80 ) );
+-
++        }
+         connect ( http,SIGNAL ( requestFinished ( int,bool ) ),this,
+                   SLOT ( slotRequestFinished ( int,bool ) ) );
+-        connect ( http,SIGNAL ( sslErrors ( const QList&lt;QSslError&gt;&amp; ) ),this,
+-                  SLOT ( slotSslErrors ( const QList&lt;QSslError&gt;&amp; ) ) );
+     }
+ }
+ 
+@@ -520,7 +530,7 @@ void HttpBrokerClient::slotSslErrors ( const QList&lt;QSslError&gt; &amp; errors )
+     QSslCertificate cert;
+     for ( int i=0; i&lt;errors.count(); ++i )
+     {
+-        x2goDebug&lt;&lt;&quot;sslError ,code:&quot;&lt;&lt;errors[i].error() &lt;&lt;&quot;:&quot;;
++        x2goDebug&lt;&lt;&quot;sslError, code:&quot;&lt;&lt;errors[i].error() &lt;&lt;&quot;:&quot;;
+         err&lt;&lt;errors[i].errorString();
+         if ( !errors[i].certificate().isNull() )
+             cert=errors[i].certificate();
+diff --git a/httpbrokerclient.h b/httpbrokerclient.h
+index 78218dc..fc4115d 100644
+--- a/httpbrokerclient.h
++++ b/httpbrokerclient.h
+@@ -22,6 +22,7 @@
+ #include &lt;QBuffer&gt;
+ #include &lt;QObject&gt;
+ #include &lt;QDateTime&gt;
++#include &lt;QSslSocket&gt;
+ #include &quot;sshmasterconnection.h&quot;
+ /**
+ 	@author Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
+@@ -43,6 +44,7 @@ private:
+     QBuffer httpCmdAnswer;
+     QBuffer httpSessionAnswer;
+     QHttp* http;
++    QSslSocket* sslSocket;
+     int sessionsRequest;
+     int selSessRequest;
+     int chPassRequest;
+diff --git a/man/man1/x2goclient.1 b/man/man1/x2goclient.1
+index 9eb69ae..8f77f87 100644
+--- a/man/man1/x2goclient.1
++++ b/man/man1/x2goclient.1
+@@ -106,6 +106,9 @@ In case you want to retrieve \fBx2goclient\fR session profiles from an X2Go Sess
+ \*(T&lt;\fB\-\-broker-url=&lt;URL&gt;\fR\*(T&gt;
+ Specify the &lt;URL&gt; of the X2Go Session Broker. X2Go Client can access <A HREF="http://">http://</A> and <A HREF="ssh://">ssh://</A> style URLs.
+ .TP
++\*(T&lt;\fB\-\-broker-cacertfile=&lt;/path/to/cafile.crt&gt;\fR\*(T&gt;
++Specify a special (self-signed) root-CACert file that shall get used when connecting to an X2Go Session Broker via https (SSL).
++.TP
+ \*(T&lt;\fB\-\-broker-noauth\fR\*(T&gt;
+ The X2Go Session Broker is accessible without authentication.
+ .TP
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 3036ecd..d0a3108 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -6597,6 +6597,11 @@ bool ONMainWindow::parseParameter ( QString param )
+         config.brokerurl=value;
+         return true;
+     }
++    if ( setting == &quot;--broker-cacertfile&quot;)
++    {
++        config.brokerCaCertFile=value;
++        return true;
++    }
+     if ( setting == &quot;--broker-ssh-key&quot;)
+     {
+         config.brokerSshKey=value;
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 70504d2..7e1d02c 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -168,6 +168,7 @@ struct ConfigFile
+     bool brokerAutologin;
+     bool brokerAutologoff;
+     QString brokerSshKey;
++    QString brokerCaCertFile;
+     QString iniFile;
+     QString server;
+     QString serverIp;//Can be different from server (use for loadballancing)
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016941.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-11-gcf33d55
+</A></li>
+	<LI>Next message: <A HREF="016944.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-18-g2f53855
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16942">[ date ]</a>
+              <a href="thread.html#16942">[ thread ]</a>
+              <a href="subject.html#16942">[ subject ]</a>
+              <a href="author.html#16942">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

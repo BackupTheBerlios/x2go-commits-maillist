@@ -1,0 +1,199 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.2.0-6
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nxagent/3.2.0-6&In-Reply-To=%3C20130830142200.E086B5DB24%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011320.html">
+   <LINK REL="Next"  HREF="011324.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.2.0-6</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09nxagent/3.2.0-6&In-Reply-To=%3C20130830142200.E086B5DB24%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.2.0-6">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:22:00 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011320.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.1.0-7
+</A></li>
+        <LI>Next message: <A HREF="011324.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.2.0-10
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11323">[ date ]</a>
+              <a href="thread.html#11323">[ thread ]</a>
+              <a href="subject.html#11323">[ subject ]</a>
+              <a href="author.html#11323">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  c9983230f1f37db868f628856122739566a9286d (commit)
+      from  b79164001d1eb06f4591c59b7a7c2c0fb29e992b (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nx-X11/programs/Xserver/hw/nxagent/CHANGELOG |    9 +++++
+ nx-X11/programs/Xserver/hw/nxagent/Events.c  |   56 +++-----------------------
+ nx-X11/programs/Xserver/hw/nxagent/Image.c   |    2 +-
+ 3 files changed, 15 insertions(+), 52 deletions(-)
+
+The diff of changes is:
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+index 4d930b9..e3b71e6 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
++++ b/nx-X11/programs/Xserver/hw/nxagent/CHANGELOG
+@@ -1,5 +1,14 @@
+ ChangeLog:
+ 
++nxagent-3.2.0-6
++
++- Fixed TR05F02063. Ignore ReparentNotify events for non-rootless
++  sessions.
++
++- Fixed TR06F02068. Try to pack images only if format is ZPixmap.
++
++- Don't require reparent on close of NX window.
++
+ nxagent-3.2.0-5
+ 
+ - Fixed TR04F02044. Restored the original MakeRootTile() function in
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Events.c b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+index 90fb764..b37d81a 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Events.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Events.c
+@@ -2261,7 +2261,11 @@ int nxagentHandleClientMessageEvent(XEvent *X, enum HandleEventResult *result)
+         {
+           pScreen = nxagentScreen(X -&gt; xmap.window);
+ 
+-          nxagentMaximizeToFullScreen(pScreen);
++          XMapRaised(nxagentDisplay, nxagentFullscreenWindow);
++
++          XIconifyWindow(nxagentDisplay, nxagentIconWindow,
++                             DefaultScreen(nxagentDisplay));
++
+         }
+ 
+         if (X -&gt; xclient.window == (nxagentOption(Fullscreen) ?
+@@ -3058,56 +3062,6 @@ int nxagentHandleReparentNotify(XEvent* X)
+ 
+     return 1;
+   }
+-  else
+-  {
+-    /*
+-     * This code is supposed to detect if a window manager
+-     * is running but in some cases it may be unreliable.
+-     * Each window manager behaves differently so the check
+-     * can fail for some less common WMs.
+-     */
+-
+-    if (!nxagentWMIsRunning &amp;&amp; nxagentOption(Fullscreen) &amp;&amp;
+-            X -&gt; xreparent.window == nxagentDefaultWindows[pScreen -&gt; myNum])
+-    {
+-      #ifdef WARNING
+-      fprintf(stderr, &quot;Warning: The agent window was reparented. Is a &quot;
+-                  &quot;window manager running?\n&quot;);
+-      #endif
+-
+-      /*
+-       * If no window manager is running and we are supposed to
+-       * be in fullscreen mode then don't wait for the reparent
+-       * event. We can assume that there is an undetected window
+-       * manager and, as switching to fullscreen could have fail-
+-       * ed, we try it again.
+-       */
+-
+-      nxagentSwitchFullscreen(pScreen, True);
+-
+-      nxagentWMIsRunning = True;
+-    }
+-    else if (nxagentWMIsRunning &amp;&amp; X -&gt; xreparent.window ==
+-                 nxagentDefaultWindows[pScreen -&gt; myNum] &amp;&amp; X -&gt; xreparent.parent ==
+-                     RootWindow(nxagentDisplay, (pScreen -&gt; myNum)))
+-    {
+-      #ifdef WARNING
+-
+-      fprintf(stderr, &quot;Warning: The agent window has been reparented to the root.\n&quot;);
+-
+-      fprintf(stderr, &quot;Warning: No window manager seems to be running.\n&quot;);
+-
+-      #endif
+-
+-      /*
+-       * The agent window was unexpectedly reparented
+-       * to the root window. We assume that the window
+-       * manager was terminated.
+-       */
+-
+-      nxagentWMIsRunning = False;
+-    }
+-  }
+ 
+   return 1;
+ }
+diff --git a/nx-X11/programs/Xserver/hw/nxagent/Image.c b/nx-X11/programs/Xserver/hw/nxagent/Image.c
+index 5b40f32..4e08f6b 100644
+--- a/nx-X11/programs/Xserver/hw/nxagent/Image.c
++++ b/nx-X11/programs/Xserver/hw/nxagent/Image.c
+@@ -1176,7 +1176,7 @@ FIXME: Should use an unpack resource here.
+    */
+ 
+   pack = (nxagentOption(LinkType) != LINK_TYPE_NONE &amp;&amp;
+-              packMethod != PACK_NONE &amp;&amp; depth &gt; 8);
++              packMethod != PACK_NONE &amp;&amp; depth &gt; 8 &amp;&amp; format == ZPixmap);
+ 
+   lossless = (packMethod == nxagentPackLossless);
+ 
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011320.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.1.0-7
+</A></li>
+	<LI>Next message: <A HREF="011324.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	nxagent/3.2.0-10
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11323">[ date ]</a>
+              <a href="thread.html#11323">[ thread ]</a>
+              <a href="subject.html#11323">[ subject ]</a>
+              <a href="author.html#11323">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

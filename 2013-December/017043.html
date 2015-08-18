@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-23-gb06196d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.0-23-gb06196d&In-Reply-To=%3C20131218104134.BF0BE5DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="017042.html">
+   <LINK REL="Next"  HREF="017044.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-23-gb06196d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2godesktopsharing.git%20-%20master%20%28branch%29%20updated%3A%0A%093.1.1.0-23-gb06196d&In-Reply-To=%3C20131218104134.BF0BE5DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-23-gb06196d">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec 18 11:41:34 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="017042.html">[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-22-ge4ec07e
+</A></li>
+        <LI>Next message: <A HREF="017044.html">[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-24-g0466cb3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17043">[ date ]</a>
+              <a href="thread.html#17043">[ thread ]</a>
+              <a href="subject.html#17043">[ subject ]</a>
+              <a href="author.html#17043">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  b06196d55c25a7e3b9cfa9ab21a67b9f4e35eec9 (commit)
+      from  e4ec07e660ed436acefb7ef2322f864a4c1b6ee9 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit b06196d55c25a7e3b9cfa9ab21a67b9f4e35eec9
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Dec 18 11:41:30 2013 +0100
+
+    Different Linux distros have pidof installed in different locations. If pidof is not available, we brutally kill all instances of x2godesktopsharing when a session suspends.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/x2goterminate-desktopsharing |   14 +++++++++++++-
+ debian/changelog                 |    3 +++
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+
+The diff of changes is:
+diff --git a/bin/x2goterminate-desktopsharing b/bin/x2goterminate-desktopsharing
+index 986ef0b..7792582 100755
+--- a/bin/x2goterminate-desktopsharing
++++ b/bin/x2goterminate-desktopsharing
+@@ -29,11 +29,23 @@ fi
+ 
+ X2GO_LIB_PATH=`x2gopath libexec`
+ 
++if type -p pidof 1&gt;/dev/null 2&gt;/dev/null; then
++    PIDOF=pidof
++elif [ -x /sbin/pidof ]; then
++    PIDOF=/sbin/pidof
++elif [ -x /usr/sbin/pidof ]; then
++    PIDOF=/usr/sbin/pidof
++else
++	# no pidof utility found, get out the big hammer!!!
++	killall x2godesktopsharing
++	exit 0
++fi
++
+ $X2GO_LIB_PATH/x2gosyslog &quot;$0&quot; &quot;info&quot; &quot;$(basename $0) called with options: $@&quot;
+ 
+ 
+ X2GO_DISPLAY=$(echo $SESSION_NAME | cut -d&quot;-&quot; -f2)
+-for process_id in `pidof x2godesktopsharing`; do
++for process_id in `$PIDOF x2godesktopsharing`; do
+ 	env_of_process=$(cat -A /proc/$process_id/environ)
+ 	env_of_process=${env_of_process//^@/\\n}
+ 	display=$(echo -e $env_of_process | egrep &quot;^DISPLAY=.*$&quot; | cut -d&quot;=&quot; -f2)
+diff --git a/debian/changelog b/debian/changelog
+index 24f2191..3d12002 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -4,6 +4,9 @@ x2godesktopsharing (3.1.1.1-0x2go1) UNRELEASED; urgency=low
+     - Update man pages (Fixes: #281).
+     - Fix FSF address in COPYING file.
+     - Use x2gopath in scripts rather than deprecated x2gobasepath.
++    - Different Linux distros have pidof installed in different
++      locations. If pidof is not available, we brutally kill all instances
++      of x2godesktopsharing when a session suspends.
+   * debian/control:
+     + Replace LDAP support with session brokerage support in LONG_DESCRIPTION.
+     + Rework LONG_DESCRIPTION in several other aspects.
+
+
+hooks/post-receive
+-- 
+x2godesktopsharing.git (Desktop Sharing for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2godesktopsharing.git&quot; (Desktop Sharing for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="017042.html">[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-22-ge4ec07e
+</A></li>
+	<LI>Next message: <A HREF="017044.html">[X2Go-Commits] x2godesktopsharing.git - master (branch) updated:	3.1.1.0-24-g0466cb3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17043">[ date ]</a>
+              <a href="thread.html#17043">[ thread ]</a>
+              <a href="subject.html#17043">[ subject ]</a>
+              <a href="author.html#17043">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

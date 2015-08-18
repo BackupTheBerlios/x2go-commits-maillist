@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] [x2goclient] 02/03: set mod map from client to server on Mac, hide keyboard settings on Mac
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2002/03%3A%20set%20mod%20map%20from%20client%20to%0A%20server%20on%20Mac%2C%20hide%20keyboard%20settings%20on%20Mac&In-Reply-To=%3C20140124102205.75B9A5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="026125.html">
+   <LINK REL="Next"  HREF="026127.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] [x2goclient] 02/03: set mod map from client to server on Mac, hide keyboard settings on Mac</H1>
+    <B>git-admin at x2go.org</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20%5Bx2goclient%5D%2002/03%3A%20set%20mod%20map%20from%20client%20to%0A%20server%20on%20Mac%2C%20hide%20keyboard%20settings%20on%20Mac&In-Reply-To=%3C20140124102205.75B9A5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] [x2goclient] 02/03: set mod map from client to server on Mac, hide keyboard settings on Mac">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Jan 24 11:22:05 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="026125.html">[X2Go-Commits] [x2goclient] 01/02: Revrite SSH Classes to support	libssh fix
+</A></li>
+        <LI>Next message: <A HREF="026127.html">[X2Go-Commits] [x2goclient] 03/03: - Set mod map from client to server on Mac, hide keyboard settings on Mac - Fix mod map on Mac with kerberos - Fix focus on pass form
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26126">[ date ]</a>
+              <a href="thread.html#26126">[ thread ]</a>
+              <a href="subject.html#26126">[ subject ]</a>
+              <a href="author.html#26126">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>This is an automated email from the git hooks/post-receive script.
+
+x2go pushed a commit to branch revtunnel
+in repository x2goclient.
+
+commit 5791109f7f8f4ea6260c8b195420f2ca4be23d3c
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">o.shneyder at phoca-gmbh.de</A>&gt;
+Date:   Thu Jan 23 17:52:41 2014 +0100
+
+    set mod map from client to server on Mac, hide keyboard settings on Mac
+---
+ debian/changelog   |    1 +
+ onmainwindow.cpp   |   28 ++++++++++++++++++++++++++++
+ onmainwindow.h     |    6 ++++++
+ settingswidget.cpp |    1 +
+ 4 files changed, 36 insertions(+)
+
+diff --git a/debian/changelog b/debian/changelog
+index 5a2ac3b..bffb4be 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -9,6 +9,7 @@ x2goclient (4.0.1.3-0x2go1) UNRELEASED; urgency=low
+     - Update Russian translation file.
+     - Rewrite SSH Classes to support libssh fix
+     - Increase timeout in ssh_select 
++    - set mod map from client to server on Mac, hide keyboard settings on Mac  
+ 
+   [ Orion Poplawski ]
+   * New upstream version (4.0.1.3):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index ae3eefa..fa8c51e 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -5468,6 +5468,24 @@ void ONMainWindow::slotSndTunnelFailed ( bool result,  QString output,
+ }
+ 
+ 
++#ifdef Q_OS_DARWIN
++void ONMainWindow::slotSetModMap()
++{
++    if(!nxproxy)
++    {
++        return;
++    }
++    if(kbMap.length()&lt;=0)
++    {
++        x2goDebug&lt;&lt;&quot;get keyboard map&quot;;
++        QProcess pr(this);
++        pr.start(&quot;xmodmap -pke&quot;);
++        pr.waitForFinished();
++        kbMap=pr.readAllStandardOutput();
++    }
++    sshConnection-&gt;executeCommand(&quot;export DISPLAY=:&quot;+resumingSession.display+&quot;; echo \\\&quot;&quot;+kbMap+&quot;\\\&quot; | xmodmap -&quot;);
++}
++#endif
+ 
+ void ONMainWindow::slotProxyError ( QProcess::ProcessError )
+ {
+@@ -5479,6 +5497,10 @@ void ONMainWindow::slotProxyFinished ( int,QProcess::ExitStatus )
+ {
+ 
+ #ifdef Q_OS_DARWIN
++    disconnect(modMapTimer, SIGNAL(timeout()), this, SLOT(slotSetModMap()));
++    delete modMapTimer;
++    modMapTimer=0;
++    kbMap=QString::null;
+ //fixes bug, when mainwindow inputs not accepting focus under mac
+     setFocus();
+ #endif
+@@ -5722,6 +5744,12 @@ void ONMainWindow::slotProxyStderr()
+             }
+         }
+         sbSusp-&gt;setToolTip ( tr ( &quot;Suspend&quot; ) );
++#ifdef Q_OS_DARWIN
++        modMapTimer=new QTimer(this);
++        connect(modMapTimer, SIGNAL(timeout()), this, SLOT (slotSetModMap()));
++        modMapTimer-&gt;start(30000);
++        slotSetModMap();
++#endif
+         if ( newSession )
+         {
+             runCommand();
+diff --git a/onmainwindow.h b/onmainwindow.h
+index d18fef1..5e0f6bc 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -1064,6 +1064,12 @@ private slots:
+     void slotReconnectSession();
+     void slotStartBroker();
+     void slotStartNewBrokerSession ();
++#ifdef Q_OS_DARWIN
++    void slotSetModMap();
++private:
++    QTimer* modMapTimer;
++    QString kbMap;
++#endif
+ 
+ private:
+     void resizeProxyWinOnDisplay(int display);
+diff --git a/settingswidget.cpp b/settingswidget.cpp
+index 5ffdd01..4add99c 100644
+--- a/settingswidget.cpp
++++ b/settingswidget.cpp
+@@ -236,6 +236,7 @@ SettingsWidget::SettingsWidget ( QString id, ONMainWindow * mw,
+     arts-&gt;hide();
+     pulse-&gt;hide();
+     esd-&gt;setChecked ( true );
++    kgb-&gt;hide();
+ #endif
+ #ifndef Q_WS_HILDON
+     setLay-&gt;addWidget ( dgb );
+
+--
+Alioth's /srv/git/_hooks_/post-receive-email on /srv/git/code.x2go.org/x2goclient.git
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="026125.html">[X2Go-Commits] [x2goclient] 01/02: Revrite SSH Classes to support	libssh fix
+</A></li>
+	<LI>Next message: <A HREF="026127.html">[X2Go-Commits] [x2goclient] 03/03: - Set mod map from client to server on Mac, hide keyboard settings on Mac - Fix mod map on Mac with kerberos - Fix focus on pass form
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26126">[ date ]</a>
+              <a href="thread.html#26126">[ thread ]</a>
+              <a href="subject.html#26126">[ subject ]</a>
+              <a href="author.html#26126">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

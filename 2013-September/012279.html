@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	7a8808f258f6a417a9fe4d73b84a03e803841155
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%097a8808f258f6a417a9fe4d73b84a03e803841155&In-Reply-To=%3C20130914135411.1FB5F5DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012288.html">
+   <LINK REL="Next"  HREF="012280.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	7a8808f258f6a417a9fe4d73b84a03e803841155</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%097a8808f258f6a417a9fe4d73b84a03e803841155&In-Reply-To=%3C20130914135411.1FB5F5DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	7a8808f258f6a417a9fe4d73b84a03e803841155">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:11 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012288.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593
+</A></li>
+        <LI>Next message: <A HREF="012280.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	48069d455581d22d4e48283f5056cfa325ef53ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12279">[ date ]</a>
+              <a href="thread.html#12279">[ thread ]</a>
+              <a href="subject.html#12279">[ subject ]</a>
+              <a href="author.html#12279">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  7a8808f258f6a417a9fe4d73b84a03e803841155 (commit)
+      from  98924c78afc15ae5fd4a1fe449892c33e5055008 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca-gui.py |   10 +++++++++
+ x2goLogon.py  |   68 ++++++++++++++++++++++++---------------------------------
+ 2 files changed, 38 insertions(+), 40 deletions(-)
+
+The diff of changes is:
+diff --git a/pyhoca-gui.py b/pyhoca-gui.py
+index 60fafed..7136187 100644
+--- a/pyhoca-gui.py
++++ b/pyhoca-gui.py
+@@ -45,6 +45,7 @@ import os
+ import sys
+ import platform
+ import exceptions
++from subprocess import Popen, PIPE
+ 
+ class notsupportedError(exceptions.StandardError): pass
+ 
+@@ -154,9 +155,18 @@ def version():
+     sys.stderr.write (&quot;%s\n&quot; % VERSION_TEXT)
+     sys.exit(0)
+ 
++def check_running(logger):
++    if platform.system() in ('Linux', 'Mac'):
++        p = Popen(['ps', '-A'], stdout=PIPE)
++        psA_out = p.communicate()
++        logger('psa_out %s' % (psA_out,), x2go.loglevel_INFO )
++        return psA_out[0].count(PROG_NAME) &gt; 1
++    elif platform.system() == 'Windows':
++        return False
+ 
+ def main():
+     args, logger, liblogger = parseargs()
++    if check_running(logger): sys.exit(0)
+     pgui = pyhocagui(args, logger, liblogger)
+     pgui.MainLoop()
+ 
+diff --git a/x2goLogon.py b/x2goLogon.py
+index c1e1f89..92960bf 100644
+--- a/x2goLogon.py
++++ b/x2goLogon.py
+@@ -32,7 +32,6 @@ import time
+ import sys
+ import wx.lib.scrolledpanel as scrolled
+ import wx.lib.mixins.listctrl as listmix
+-import SessionProfile
+ import X2goMaintProfile
+ from Message import Message
+ import x2go
+@@ -197,7 +196,7 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         if the screen is iconized, but an error occurs, the screen is displayed
+         and the user can enter another userid/password
+         &quot;&quot;&quot;
+-        captionText = &quot;X2go Profile &quot; + parent.SessionProfiles.current_profile.name
++        captionText = &quot;X2go Profile &quot; + parent.current_profile.name
+         sc.SizedFrame.__init__(self, None, -1, captionText,
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+         self.CentreOnScreen()
+@@ -206,7 +205,7 @@ class X2GoPasswordScrn(sc.SizedFrame):
+ 
+         self.settingsProfile = parent.settingsProfile
+         self.SessionProfiles = parent.SessionProfiles
+-        self.current_profile = parent.SessionProfiles.current_profile
++        self.current_profile = parent.current_profile
+         self.printProfile = parent.printProfile
+         self.parent = parent
+         self.logger = parent.logger
+@@ -305,7 +304,8 @@ class X2GoChooseSessionScrn(wx.Frame):
+         self.logger = parent.logger
+         self.settingsProfile = parent.settingsProfile
+         self.SessionProfiles = parent.SessionProfiles
+-        self.current_profile = parent.SessionProfiles.current_profile
++        self.current_profile = parent.current_profile
++        self.registeredSessions = parent.registeredSessions
+         self.selected_profile = None
+         self.currentItem = None
+         self.printProfile = parent.printProfile
+@@ -360,7 +360,7 @@ class X2GoChooseSessionScrn(wx.Frame):
+         self.list.SetDimensions(0, 0, w, h)
+ 
+     def PopulateList(self):
+-        sessions = self.parent.SessionProfiles.listAllAvailableSessions()
++        sessions = self.parent.SessionProfiles.profile_names
+         info = wx.ListItem()
+         info.m_mask = wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT
+         info.m_image = -1
+@@ -529,44 +529,32 @@ def startX2Go(parent):
+     &quot;&quot;&quot;
+     parent.logger('starting a new X2go GUI session', x2go.loglevel_INFO, )
+ 
+-    parent.printProfile = SessionProfile.Printing(parent.logger)
+-    parent.settingsProfile = SessionProfile.Settings(parent.logger)
++    parent.printProfile = x2go.printing.X2goClientPrinting(logger=parent.liblogger)
++    parent.settingsProfile = x2go.settings.X2goClientSettings(logger=parent.liblogger)
+     if platform.system() == 'Windows':
+-        parent.settingsProfile = SessionProfile.XServer(parent.logger)
++        #parent.settingsProfile = SessionProfile.XServer(parent.liblogger)
+         import X2goXserver
+         X2goXserver.startXserver(parent)
+ 
+-    if parent.args.profile:
+-        parent.SessionProfiles = SessionProfile.x2goProfiles(parent.logger, parent.liblogger, parent.args.profile)
+-    else:
+-        parent.SessionProfiles = SessionProfile.x2goProfiles(parent.logger, parent.liblogger)
+-    noSessionsDefined = len(parent.SessionProfiles.x2goprofs) == 0
+-    moreSessionsDefined = len(parent.SessionProfiles.x2goprofs) &gt; 1
+-    if parent.args.password and parent.SessionProfiles.current_profile:
+-        parent.SessionProfiles.current_profile.setPassword(parent.args.password)
+-
+-    #checkArgs(parent, parent.args, SessionProfiles)
+-    parent.logger('parent.SessionProfiles %s' % parent.SessionProfiles, x2go.loglevel_INFO, )
+-    sessionsSuspended = parent.SessionProfiles.suspendedSessions()
+-    if len(sessionsSuspended) and parent.settingsProfile.autoresume:
+-        parent.logger('autoresume sessionsSuspended %s' % sessionsSuspended, x2go.loglevel_INFO, )
+-        ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
+-        for suspended in sessionsSuspended:
+-            suspended.Resume(parent)
+-    elif len(sessionsSuspended):
+-        parent.logger('Choose SuspendedSessions %s' % sessionsSuspended, x2go.loglevel_INFO, )
+-        X2GoResumeSessions(parent, sessionsSuspended)
+-    else:
+-        if parent.args.minimized:
+-            parent.logger('Start X2GoChooseSessionScrn minimized', x2go.loglevel_INFO, )
++    parent.SessionProfiles = x2go.profiles.X2goSessionProfiles(logger=parent.liblogger)
++    parent.registeredSessions = x2go.registry.X2goSessionRegistry(logger=parent.liblogger)
++
++    sessionsSuspended = parent.registeredSessions.suspended_sessions
++    parent.current_profile = defaultProfile = parent.SessionProfiles.has_default_profile()
++    if sessionsSuspended and len(sessionsSuspended) &gt; 0:
++        if parent.settingsProfile.autoresume:
++            parent.logger('autoresume sessionsSuspended %s' % sessionsSuspended, x2go.loglevel_INFO, )
+             ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
++            for suspended in sessionsSuspended:
++                suspended.Resume(parent)
+         else:
+-            if not noSessionsDefined and (not moreSessionsDefined or parent.SessionProfiles.defaultAvailable()):
+-                parent.logger('Start X2GoChooseSessionScrn entry normally with a default or chosen profile', x2go.loglevel_INFO, )
+-                ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=True)
+-            elif noSessionsDefined:
+-                parent.logger('Start Profile Definition', x2go.loglevel_INFO, )
+-                defScrn = X2GoSessionDefScrn(parent, directCall=True)
+-            else:
+-                parent.logger('Start Profile choice', x2go.loglevel_INFO, )
+-                choiceScrn = X2GoChooseSessionScrn(parent)
++            parent.logger('Choose SuspendedSessions %s' % sessionsSuspended, x2go.loglevel_INFO, )
++            X2GoResumeSessions(parent, sessionsSuspended)
++    elif defaultProfile:
++        ChoiceScrn = X2GoChooseSessionScrn(parent, Iconize=parent.args.minimized)
++    elif len(parent.SessionProfiles.profile_names) &gt; 0:
++        parent.logger('Start Profile choice', x2go.loglevel_INFO, )
++        choiceScrn = X2GoChooseSessionScrn(parent)
++    else:
++        parent.logger('Start Profile Definition', x2go.loglevel_INFO, )
++        defScrn = X2GoSessionDefScrn(parent, directCall=True)
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012288.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593
+</A></li>
+	<LI>Next message: <A HREF="012280.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	48069d455581d22d4e48283f5056cfa325ef53ff
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12279">[ date ]</a>
+              <a href="thread.html#12279">[ thread ]</a>
+              <a href="subject.html#12279">[ subject ]</a>
+              <a href="author.html#12279">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

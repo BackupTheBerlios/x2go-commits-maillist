@@ -1,0 +1,579 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-50-gb6a0588
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.5-50-gb6a0588&In-Reply-To=%3C20130604190953.7AC345DB2D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="008129.html">
+   <LINK REL="Next"  HREF="008112.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-50-gb6a0588</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.5-50-gb6a0588&In-Reply-To=%3C20130604190953.7AC345DB2D%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-50-gb6a0588">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:09:53 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="008129.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-55-ge9fd179
+</A></li>
+        <LI>Next message: <A HREF="008112.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-57-gff5809f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8130">[ date ]</a>
+              <a href="thread.html#8130">[ thread ]</a>
+              <a href="subject.html#8130">[ subject ]</a>
+              <a href="author.html#8130">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  b6a0588c151b322dfcf2418b6d6df289946710d1 (commit)
+      from  9fcd2186c96f07d41302fae68112e9b3dd7fb66e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                            |    1 +
+ debian/control                              |    4 +--
+ sbin/x2gobroker                             |   48 +++++++++++++++------------
+ x2gobroker/tests/test_web_plain_base.py     |   17 ++++------
+ x2gobroker/tests/test_web_plain_zeroconf.py |   14 ++++----
+ x2gobroker/web/extras.py                    |    9 ++---
+ x2gobroker/web/html.py                      |   40 +++++++++++-----------
+ x2gobroker/web/json.py                      |    4 ++-
+ x2gobroker/web/plain.py                     |   39 +++++++++++-----------
+ 9 files changed, 92 insertions(+), 84 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 0bc27b3..0bfda42 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,7 @@ x2gobroker (0.0.0.6-0~x2go1) UNRELEASED; urgency=low
+     - If X2Go Session Broker's PAM Auth Service is not available, try to
+       fallback to direct PAM authentication (only works if x2gobroker
+       runs as super-user root).
++    - Switch from webpy to using tornado as http engine.
+   * /debian/*.default:
+     - Be more explanatory about the X2GOBROKER_DEBUG option and allow
+       to enable debug mode for the different services independently.
+diff --git a/debian/control b/debian/control
+index 38cfc6b..ece5439 100644
+--- a/debian/control
++++ b/debian/control
+@@ -22,7 +22,7 @@ Depends:
+  python,
+  python-argparse,
+  python-setproctitle,
+- python-webpy (&gt;= 1:0.37),
++ python-tornado,
+  python-x2gobroker (&gt;= ${source:Version}), python-x2gobroker (&lt;&lt; ${source:Version}.1~),
+ Suggests:
+  apache2 | httpd,
+@@ -150,7 +150,7 @@ Depends:
+  ${python:Depends},
+  python-pampy,
+  python-netaddr,
+- python-webpy (&gt;= 1:0.37),
++ python-tornado,
+  python-paramiko,
+ Suggests:
+  apache2 | httpd,
+diff --git a/sbin/x2gobroker b/sbin/x2gobroker
+index fb6d052..adbde81 100755
+--- a/sbin/x2gobroker
++++ b/sbin/x2gobroker
+@@ -27,8 +27,9 @@ import argparse
+ import socket
+ import logging
+ import thread
+-import web
+-from web.wsgiserver import CherryPyWSGIServer
++import tornado.web
++import tornado.httpserver
++import tornado.ioloop
+ 
+ try:
+     import x2gobroker.defaults
+@@ -99,12 +100,12 @@ if __name__ == &quot;__main__&quot;:
+     # some people just give the port but prepend a colon, webpy does not like this, so we strip if off
+     cmdline_args.bind = cmdline_args.bind.lstrip(':')
+ 
+-    # tweak cmdline args so that they become suitable for the web.py framework
+-    if len(sys.argv) &lt;= 1:
+-        sys.argv.append('')
+-        sys.argv.append('')
+-    sys.argv[1] = cmdline_args.bind
+-    sys.argv[2:] = []
++    if ':' in cmdline_args.bind:
++        bind_address, bind_port = cmdline_args.bind.split(':')[0:2]
++        bind_port = int(bind_port)
++    else:
++        bind_address = None
++        bind_port = int(cmdline_args)
+ 
+ # import classes serving the different web.py URLs
+ import x2gobroker.web.plain
+@@ -112,25 +113,30 @@ import x2gobroker.web.plain
+ #import x2gobroker.web.html
+ import x2gobroker.web.extras
+ 
+-# switch on <A HREF="https://">https://</A> mode
+-if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
+-    CherryPyWSGIServer.ssl_certificate = x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE
+-    CherryPyWSGIServer.ssl_private_key = x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE
+-
+ # define the web.py URLs
+-urls = ( '/plain/(.*)', 'x2gobroker.web.plain.X2GoBrokerWeb',
+-#         '/json/(.*)', 'x2gobroker.web.json.X2GoBrokerWeb',
+-#         '/html/(.*)', 'x2gobroker.web.html.X2GoBrokerWeb',
+-          '/pubkeys/', 'x2gobroker.web.extras.X2GoBrokerPubKeyService',
++urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,),
++#        ('/json/(.*)', x2gobroker.web.json.X2GoBrokerWeb,),
++#        ('/html/(.*)', x2gobroker.web.html.X2GoBrokerWeb,),
++         ('/pubkeys/', x2gobroker.web.extras.X2GoBrokerPubKeyService,),
+        )
+ 
+-app = web.application(urls, globals(), autoreload=False)
+-app.internalerror = web.debugerror
+-application = app.wsgifunc()
++application = tornado.web.Application(urls)
+ 
+ # run the web.py standalone daemon...
+ if __name__ == &quot;__main__&quot;:
+     try:
+-        thread.start_new_thread(app.run(), ())
++        if x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE and x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE:
++            # switch on <A HREF="https://">https://</A> mode
++            http_server = tornado.httpserver.HTTPServer(application,
++                                                        ssl_options={
++                                                            &quot;certfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_CERTFILE,
++                                                            &quot;keyfile&quot;: x2gobroker.defaults.X2GOBROKER_SSL_KEYFILE,
++                                                        },
++            )
++        else:
++            # run without https
++            http_server = tornado.httpserver.HTTPServer(application)
++        http_server.listen(8080, address=)
++        tornado.ioloop.IOLoop.instance().start()
+     except socket.error, e:
+         print (e)
+diff --git a/x2gobroker/tests/test_web_plain_base.py b/x2gobroker/tests/test_web_plain_base.py
+index 74953ff..dd5a3ba 100644
+--- a/x2gobroker/tests/test_web_plain_base.py
++++ b/x2gobroker/tests/test_web_plain_base.py
+@@ -21,21 +21,20 @@ import unittest
+ import tempfile
+ from paste.fixture import TestApp
+ from nose.tools import *
+-import web
++import tornado.wsgi
+ 
+ # Python X2GoBroker modules
+ import x2gobroker.defaults
+ import x2gobroker.web.plain
+ 
+-urls = ( '/plain/(.*)', 'x2gobroker.web.plain.X2GoBrokerWeb',)
+-app = web.application(urls, globals())
++urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,) ,)
++application = tornado.wsgi.WSGIApplication(urls)
+ 
+ class TestX2GoBrokerWebPlainBase(unittest.TestCase):
+ 
+     ### TEST RESPONSE: is enabled?
+ 
+     def test_isenabled(self):
+-        middleware = []
+         _config = &quot;&quot;&quot;
+ [base]
+ enable = false
+@@ -45,7 +44,7 @@ enable = false
+         tf.seek(0)
+         _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/base/', expect_errors=True)
+         assert_equal(r.status, 404)
+         tf.close()
+@@ -57,7 +56,7 @@ enable = true
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/base/', expect_errors=True)
+         assert_equal(r.status, 401)
+         tf.close()
+@@ -66,8 +65,7 @@ enable = true
+     ### TEST RESPONSE: simple authentication (check_access)
+ 
+     def test_checkaccess(self):
+-        middleware = []
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/base/', expect_errors=True)
+         assert_equal(r.status, 401)
+         _config = &quot;&quot;&quot;
+@@ -88,7 +86,6 @@ auth-mech = testsuite
+     ### TEST TASK: listsessions (nothing should be returned for the base backend)
+ 
+     def test_listsessions(self):
+-        middleware = []
+         _config = &quot;&quot;&quot;
+ [base]
+ enable = true
+@@ -99,7 +96,7 @@ auth-mech = testsuite
+         tf.seek(0)
+         _cf_bak = x2gobroker.defaults.X2GOBROKER_CONFIG
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/base/', params={'user': 'test', 'password': 'sweet',  'task': 'listsessions', }, expect_errors=True)
+         assert_equal(r.status, 200)
+         r.mustcontain('Access granted')
+diff --git a/x2gobroker/tests/test_web_plain_zeroconf.py b/x2gobroker/tests/test_web_plain_zeroconf.py
+index c258646..dad829b 100644
+--- a/x2gobroker/tests/test_web_plain_zeroconf.py
++++ b/x2gobroker/tests/test_web_plain_zeroconf.py
+@@ -21,21 +21,20 @@ import unittest
+ import tempfile
+ from paste.fixture import TestApp
+ from nose.tools import *
+-import web
++import tornado.wsgi
+ 
+ # Python X2GoBroker modules
+ import x2gobroker.defaults
+ import x2gobroker.web.plain
+ 
+-urls = ( '/plain/(.*)', 'x2gobroker.web.plain.X2GoBrokerWeb',)
+-app = web.application(urls, globals())
++urls = ( ('/plain/(.*)', x2gobroker.web.plain.X2GoBrokerWeb,) ,)
++application = tornado.wsgi.WSGIApplication(urls)
+ 
+ class TestX2GoBrokerWebPlainZeroconf(unittest.TestCase):
+ 
+     ### TEST TASK: listsessions (you can influence the session command via the X2Go Broker's configurationfile)
+ 
+     def test_listsessions_checkcommand(self):
+-        middleware = []
+         _config = &quot;&quot;&quot;
+ [zeroconf]
+ enable = true
+@@ -46,7 +45,7 @@ desktop-shell = KDE
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/zeroconf/', params={'user': 'test', 'password': 'sweet',  'task': 'listsessions', }, expect_errors=True)
+         assert_equal(r.status, 200)
+         r.mustcontain('Access granted')
+@@ -69,7 +68,7 @@ desktop-shell = GNOME
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/zeroconf/', params={'user': 'test', 'password': 'sweet',  'task': 'listsessions', }, expect_errors=True)
+         assert_equal(r.status, 200)
+         r.mustcontain('Access granted')
+@@ -85,7 +84,6 @@ desktop-shell = GNOME
+     ### TEST TASK: selectsession (returns localhost as the only server, no SSH key, no session info)
+ 
+     def test_selectsession(self):
+-        middleware = []
+         _config = &quot;&quot;&quot;
+ [zeroconf]
+ enable = true
+@@ -95,7 +93,7 @@ auth-mech = testsuite
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         x2gobroker.defaults.X2GOBROKER_CONFIG = tf.name
+-        testApp = TestApp(app.wsgifunc(*middleware))
++        testApp = TestApp(application)
+         r = testApp.get('/plain/zeroconf/', params={'user': 'test', 'password': 'sweet',  'task': 'selectsession', 'sid': 'LOCALHOST',}, expect_errors=True)
+         assert_equal(r.status, 200)
+         r.mustcontain('Access granted')
+diff --git a/x2gobroker/web/extras.py b/x2gobroker/web/extras.py
+index 75571e6..df48008 100644
+--- a/x2gobroker/web/extras.py
++++ b/x2gobroker/web/extras.py
+@@ -23,13 +23,14 @@
+ # modules
+ import os.path
+ import paramiko
++import tornado.web
+ 
+ import x2gobroker._paramiko
+ x2gobroker._paramiko.monkey_patch_paramiko()
+ 
+ import x2gobroker.defaults
+ 
+-class X2GoBrokerPubKeyService:
++class X2GoBrokerPubKeyService(tornado.web.RequestHandler):
+ 
+     http_header_items = {
+         'Content-Type': 'text/plain; charset=utf-8',
+@@ -39,7 +40,7 @@ class X2GoBrokerPubKeyService:
+     def _gen_http_header(self):
+ 
+         for http_header_item in self.http_header_items.keys():
+-            web.header(http_header_item, self.http_header_items[http_header_item])
++            self.add_header(http_header_item, self.http_header_items[http_header_item])
+ 
+     def GET(self):
+ 
+@@ -56,6 +57,6 @@ class X2GoBrokerPubKeyService:
+             output += 'ssh-dss {pubkey} {user}@{hostname}\n'.format(pubkey=str(pubkey.get_base64()), user=x2gobroker.defaults.X2GOBROKER_DAEMON_USER, hostname=x2gobroker.defaults.X2GOBROKER_HOSTNAME)
+ 
+         if not output:
+-            return web.notfound()
++            raise tornado.web.HTTPError(404)
+ 
+-        return output
++        self.write(output)
+diff --git a/x2gobroker/web/html.py b/x2gobroker/web/html.py
+index 1a0b1db..d45f5d0 100644
+--- a/x2gobroker/web/html.py
++++ b/x2gobroker/web/html.py
+@@ -21,12 +21,13 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ # modules
+-import web
++import tornado.web
+ 
+ # Python X2Go Broker modules
+ from x2gobroker.defaults import X2GOBROKER_DEFAULT_BACKEND as _X2GOBROKER_DEFAULT_BACKEND
+ 
+-class X2GoBrokerWeb:
++
++class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
+     http_header_items = {
+         'Content-Type': 'text/html; charset=utf-8',
+@@ -61,12 +62,12 @@ $output
+     def _gen_http_header(self):
+ 
+         for http_header_item in self.http_header_items.keys():
+-            web.header(http_header_item, self.http_header_items[http_header_item])
++            self.add_header(http_header_item, self.http_header_items[http_header_item])
+ 
+-    def GET(self, backend):
+-        return self.POST(backend)
++    def get(self, backend):
++        return self.post(backend)
+ 
+-    def POST(self, backend):
++    def post(self, backend):
+ 
+         if not backend:
+             backend = _X2GOBROKER_DEFAULT_BACKEND
+@@ -81,24 +82,23 @@ $output
+         backend_config = broker_backend.get_backend_config(backend)
+ 
+         if not backend_config['enable']:
+-            return web.notfound()
++            raise tornado.web.HTTPError(404)
+ 
+-        data = web.input()
+-        try: username = data.user
++        try: username = self.get_argument('user', default='')
+         except AttributeError: username = ''
+-        try: password = data.password
++        try: password = self.get_argument('password', default='')
+         except AttributeError: password = ''
+-        try: authid = data.authid
+-        except AttributeError: authid = ''
+-        try: task = data.task
++        try: cookie = self.get_argument('cookie', default='')
++        except AttributeError: cookie = ''
++        try: task = self.get_argument('task')
+         except AttributeError: task = ''
+-        try: session_name = data.sid
+-        except AttributeError: session_name = ''
+-        try: new_password = data.newpass
++        try: profile_id = self.get_argument('sid', default='')
++        except AttributeError: profile_id = ''
++        try: new_password = self.get_argument('newpass', default='')
+         except AttributeError: new_password = ''
+ 
+         output = ''
+-
++        self._gen_http_header()
+         self._gen_http_header()
+ 
+         if broker_backend.check_access(username=username, password=password, authid=authid):
+@@ -116,6 +116,8 @@ $output
+                 ###
+                 pass
+ 
+-            return self.page(self.html_header_items, output)
++            self.write(output)
++            return
++
++        raise tornado.web.HTTPError(401)
+ 
+-        return self.page(self.html_header_items, &quot;&lt;hr&gt;Access denied&quot;)
+diff --git a/x2gobroker/web/json.py b/x2gobroker/web/json.py
+index ef35a0f..2e97f89 100644
+--- a/x2gobroker/web/json.py
++++ b/x2gobroker/web/json.py
+@@ -21,8 +21,10 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ # modules
++import tornado.web
+ 
+-class X2GoBrokerWeb:
++
++class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
+     # MUSIC OF THE FUTURE
+     pass
+\ No newline at end of file
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/plain.py
+index c9fd55b..e4fa9aa 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/web/plain.py
+@@ -21,7 +21,7 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ # modules
+-import web
++import tornado.web
+ import types
+ 
+ # Python X2Go Broker modules
+@@ -29,7 +29,7 @@ import x2gobroker.defaults
+ 
+ from x2gobroker.loggers import logger_broker, logger_error
+ 
+-class X2GoBrokerWeb:
++class X2GoBrokerWeb(tornado.web.RequestHandler):
+ 
+     http_header_items = {
+         'Content-Type': 'text/plain; charset=utf-8',
+@@ -39,15 +39,15 @@ class X2GoBrokerWeb:
+     def _gen_http_header(self):
+ 
+         for http_header_item in self.http_header_items.keys():
+-            web.header(http_header_item, self.http_header_items[http_header_item])
++            self.add_header(http_header_item, self.http_header_items[http_header_item])
+ 
+-    def GET(self, backend):
++    def get(self, backend):
+         if x2gobroker.defaults.X2GOBROKER_DEBUG:
+             logger_broker.warn('GET http request detected, if unwanted: disable X2GOBROKER_DEBUG')
+-            return self.POST(backend)
+-        return web.notfound()
++            return self.post(backend)
++        raise tornado.web.HTTPError(404)
+ 
+-    def POST(self, backend):
++    def post(self, backend):
+ 
+         if not backend:
+             backend = x2gobroker.defaults.X2GOBROKER_DEFAULT_BACKEND
+@@ -62,31 +62,30 @@ class X2GoBrokerWeb:
+         global_config = broker_backend.get_global_config()
+ 
+         # set the client address for the broker backend
+-        ip = web.ctx.env.get('HTTP_X_FORWARDED_FOR', web.ctx.get('ip', ''))
++        ip = self.request.remote_ip
+         if ip:
+             logger_broker.info('client address is {address}'.format(address=ip))
+             broker_backend.set_client_address(ip)
+         elif not x2gobroker.defaults.X2GOBROKER_DEBUG:
+             # if the client IP is not set, we pretend to have nothing on offer
+             logger_error.error('client could not provide an IP address, pretending: 404 Not Found')
+-            return web.notfound()
++            raise tornado.web.HTTPError(404)
+ 
+         # if the broker backend is disabled in the configuration, pretend to have nothing on offer
+         if not broker_backend.is_enabled():
+-            return web.notfound()
++            raise tornado.web.HTTPError(404)
+ 
+-        data = web.input()
+-        try: username = data.user
++        try: username = self.get_argument('user', default='')
+         except AttributeError: username = ''
+-        try: password = data.password
++        try: password = self.get_argument('password', default='')
+         except AttributeError: password = ''
+-        try: cookie = data.cookie
++        try: cookie = self.get_argument('cookie', default='')
+         except AttributeError: cookie = ''
+-        try: task = data.task
++        try: task = self.get_argument('task', default='')
+         except AttributeError: task = ''
+-        try: profile_id = data.sid
++        try: profile_id = self.get_argument('sid', default='')
+         except AttributeError: profile_id = ''
+-        try: new_password = data.newpass
++        try: new_password = self.get_argument('newpass', default='')
+         except AttributeError: new_password = ''
+ 
+         output = ''
+@@ -160,6 +159,8 @@ class X2GoBrokerWeb:
+                             output += &quot;SESSION_INFO:&quot;
+                             output += profile_info['session_info'] + &quot;\n&quot;
+ 
+-            return output
++            self.write(output)
++            return
++
++        raise tornado.web.HTTPError(401)
+ 
+-        return web.unauthorized()
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="008129.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-55-ge9fd179
+</A></li>
+	<LI>Next message: <A HREF="008112.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.5-57-gff5809f
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#8130">[ date ]</a>
+              <a href="thread.html#8130">[ thread ]</a>
+              <a href="subject.html#8130">[ subject ]</a>
+              <a href="author.html#8130">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

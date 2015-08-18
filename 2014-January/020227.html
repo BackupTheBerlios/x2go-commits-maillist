@@ -1,0 +1,260 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%09d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d&In-Reply-To=%3C20140107151557.2586A5DB3D%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020216.html">
+   <LINK REL="Next"  HREF="020179.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%09d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d&In-Reply-To=%3C20140107151557.2586A5DB3D%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:15:57 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020216.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	85f28c3e6beb2ce84844c1165ad93a0b25af989c
+</A></li>
+        <LI>Next message: <A HREF="020179.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	f3e977b8422e29d242f00f6aee2a99e42eb3ba18
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20227">[ date ]</a>
+              <a href="thread.html#20227">[ thread ]</a>
+              <a href="subject.html#20227">[ subject ]</a>
+              <a href="author.html#20227">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  d9715a4bd4b5f801808dfc073bfe91e4adfc6e9d (commit)
+      from  79a34563e372ff34bc23ba3d6090c4175221f2ed (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/stdout.py  |    9 ++++++++-
+ x2go/backends/terminal/stdout.py |   14 +++++++-------
+ x2go/client.py                   |   17 +++++++++++++++--
+ x2go/session.py                  |   19 ++++++++++++++++++-
+ 4 files changed, 48 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/stdout.py b/x2go/backends/control/stdout.py
+index 31089c3..8c26c36 100644
+--- a/x2go/backends/control/stdout.py
++++ b/x2go/backends/control/stdout.py
+@@ -40,6 +40,7 @@ import x2go.defaults as defaults
+ from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+ from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
++from x2go.backends.proxy import X2goProxy as _X2goProxy
+ 
+ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+     &quot;&quot;&quot;\
+@@ -64,6 +65,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                  terminal_backend=_X2goTerminalSession,
+                  info_backend=_X2goServerSessionInfo,
+                  list_backend=_X2goServerSessionList,
++                 proxy_backend=_X2goProxy,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  *args, **kwargs):
+         &quot;&quot;&quot;\
+@@ -81,6 +83,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self._terminal_backend = terminal_backend
+         self._info_backend = info_backend
+         self._list_backend = list_backend
++        self._proxy_backend = proxy_backend
+         paramiko.SSHClient.__init__(self, *args, **kwargs)
+ 
+     def __del__(self):
+@@ -296,7 +299,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         if self.get_transport().get_username() not in self._x2go_remote_group('x2gousers'):
+             raise x2go_exceptions.X2goSessionException('remote user %s is not member of X2go server group x2gousers' % self.get_transport().get_username())
+ 
+-        _terminal = self._terminal_backend(self, **kwargs)
++        _terminal = self._terminal_backend(self, 
++                                           info_backend=self._info_backend,
++                                           list_backend=self._list_backend,
++                                           proxy_backend=self._proxy_backend,
++                                           **kwargs)
+         if session_name is not None:
+             if self.is_running(session_name):
+                 self.suspend(session_name)
+diff --git a/x2go/backends/terminal/stdout.py b/x2go/backends/terminal/stdout.py
+index 7e6d61a..d26b9a8 100644
+--- a/x2go/backends/terminal/stdout.py
++++ b/x2go/backends/terminal/stdout.py
+@@ -51,9 +51,9 @@ from x2go.defaults import LOCAL_HOME as _LOCAL_HOME
+ from x2go.defaults import CURRENT_LOCAL_USER as _CURRENT_LOCAL_USER
+ from x2go.defaults import X2GO_SESSION_ROOTDIR as _X2GO_SESSION_ROOTDIR
+ 
+-from x2go.backends.info import X2goServerSessionInfo
+-from x2go.backends.info import X2goServerSessionList
+-from x2go.backends.proxy import X2goProxy 
++from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
++from x2go.backends.info import X2goServerSessionList as _X2goServerSessionList
++from x2go.backends.proxy import X2goProxy as _X2goProxy
+ 
+ def _rewrite_cmd(cmd):
+ 
+@@ -210,10 +210,10 @@ class X2goTerminalSessionSTDOUT(object):
+                  rootdir=None,
+                  profile_name='UNKNOWN', profile_id=utils._genSessionProfileId(),
+                  print_action=None, print_action_args={},
+-                 info_backend=X2goServerSessionInfo,
+-                 list_backend=X2goServerSessionList,
+-                 proxy_backend=X2goProxy,
+-                 logger = None, loglevel=log.loglevel_DEFAULT):
++                 info_backend=_X2goServerSessionInfo,
++                 list_backend=_X2goServerSessionList,
++                 proxy_backend=_X2goProxy,
++                 logger=None, loglevel=log.loglevel_DEFAULT):
+         &quot;&quot;&quot;\
+         Initialize an X2go session. With the X2goSession class you can start
+         new X2go sessions, resume suspended sessions or suspend resp. terminate
+diff --git a/x2go/client.py b/x2go/client.py
+index 74c813d..64fe8b1 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -207,7 +207,8 @@ class X2goClient(object):
+         return sessions
+ 
+     def register_session(self, server=None, profile_id=None, profile_name=None, 
+-                           printing=False, share_local_folders=[], return_object=False, **kwargs):
++                         printing=False, share_local_folders=[], return_object=False, 
++                         force=False, **kwargs):
+         &quot;&quot;&quot;\
+         Register a new X2go client session. Within one X2goClient 
+         instance you can manage several sessions on serveral
+@@ -256,7 +257,7 @@ class X2goClient(object):
+         @type kwargs: C{dict}
+ 
+         @return: a unique identifier (UUID) for the newly registered X2go session (or an
+-            X2goRegisteredSession object if C{return_object} is set to True
++            X2goSession object if C{return_object} is set to True
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+@@ -268,8 +269,20 @@ class X2goClient(object):
+             _p = None
+ 
+         if _p:
++
+             _profile_id = self.session_profiles.check_profile_id_or_name(_p)
+             _profile_name = self.session_profiles.to_profile_name(_profile_id)
++
++            # detect if we are re-registering a session profile that is already been initialized
++            # by register_all_session_profiles
++            _profile_siblings = session_registry.registered_sessions_of_name(_profile_name)
++            if len(_profile_siblings) == 1 and not _profile_siblings[0].terminal_session():
++                session_uuid = _profiles_siblings[0].get_uuid()
++                if return_object:
++                    return self.session_registry(session_uuid)
++                else:
++                    return session_uuid
++
+             _params = self.session_profiles.to_session_params(_profile_id)
+             del _params['profile_name']
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index 77c2dfa..07cc1b5 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -60,7 +60,7 @@ class X2goSession(object):
+                  info_backend=X2goServerSessionInfo,
+                  list_backend=X2goServerSessionList,
+                  proxy_backend=X2goProxy,
+-		 known_hosts=None,
++                 known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+                  **params):
+ 
+@@ -112,6 +112,7 @@ class X2goSession(object):
+             self.control_session = control_backend(terminal_backend=terminal_backend,
+                                                    info_backend=info_backend,
+                                                    list_backend=list_backend,
++                                                   proxy_backend=proxy_backend,
+                                                    logger=logger)
+         else:
+             self.control_session = control_session
+@@ -200,13 +201,29 @@ class X2goSession(object):
+         return None
+ 
+     def get_control_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
+         return self.control_session
+     __get_control_session = get_control_session
+ 
+     def get_terminal_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
+         return self.terminal_session
+     __get_terminal_session = get_terminal_session
+ 
++    def has_terminal_session(self):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        return self.terminal_session is not None
++    __has_terminal_session = has_terminal_session
++
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False):
+         &quot;&quot;&quot;\
+         Connect to a registered X2go session with registry hash C{&lt;session_uuid&gt;}.
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020216.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	85f28c3e6beb2ce84844c1165ad93a0b25af989c
+</A></li>
+	<LI>Next message: <A HREF="020179.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	f3e977b8422e29d242f00f6aee2a99e42eb3ba18
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20227">[ date ]</a>
+              <a href="thread.html#20227">[ thread ]</a>
+              <a href="subject.html#20227">[ subject ]</a>
+              <a href="author.html#20227">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

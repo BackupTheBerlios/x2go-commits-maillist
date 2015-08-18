@@ -1,0 +1,244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-116-gca2f9e2
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-116-gca2f9e2&In-Reply-To=%3C20140107151740.1B59E5DD47%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="020818.html">
+   <LINK REL="Next"  HREF="020767.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-116-gca2f9e2</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20release/0.4.0.x%20%28branch%29%20updated%3A%0A%090.1.1.4-116-gca2f9e2&In-Reply-To=%3C20140107151740.1B59E5DD47%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-116-gca2f9e2">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:17:39 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="020818.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-107-gb3bf6d6
+</A></li>
+        <LI>Next message: <A HREF="020767.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-112-g30887ea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20756">[ date ]</a>
+              <a href="thread.html#20756">[ thread ]</a>
+              <a href="subject.html#20756">[ subject ]</a>
+              <a href="author.html#20756">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, release/0.4.0.x has been updated
+       via  ca2f9e2dc54d5d41c1c569b812cd724e8511139f (commit)
+      from  7eee17c377885c1f9551819ad7f113fdb6fa0dbe (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/terminal/_stdout.py |    6 ++----
+ x2go/defaults.py                  |   16 ++++++++-------
+ x2go/utils.py                     |   40 ++++++++++++++++++++++++-------------
+ 4 files changed, 38 insertions(+), 25 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 837bcdd..ef8021a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -31,6 +31,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+       get never used.
+     - Rename control session method is_folder_sharing_available to
+       is_sshfs_available.
++    - Make x2go module importable on Win32 platforms again.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 08b8de5..a8c27ce 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -33,7 +33,6 @@ import gevent
+ import cStringIO
+ import copy
+ import shutil
+-import Xlib
+ 
+ # Python X2Go modules
+ import x2go.rforward as rforward
+@@ -853,9 +852,8 @@ class X2goTerminalSessionSTDOUT(object):
+             timeout -= 1
+ 
+             if self.session_window is not None:
+-                self.session_window.set_input_focus(Xlib.X.RevertToParent, Xlib.X.CurrentTime)
+-                self.session_window.configure(stack_mode=Xlib.X.Above)
+-                self.session_window.circulate(Xlib.X.RaiseLowest)
++
++                utils.raise_session_window(self.session_window)
+                 break
+ 
+             gevent.sleep(1)
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 65868f2..7edb59e 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -33,13 +33,15 @@ import platform
+ 
+ X2GOCLIENT_OS = platform.system()
+ 
+-import Xlib.display
+-
+-# handle missing X displays on package build
+-try:
+-    X_DISPLAY = Xlib.display.Display()
+-except Xlib.error.DisplayNameError:
+-    X_DISPLAY = None
++if X2GOCLIENT_OS != 'Windows':
++    import Xlib.display
++    import Xlib.error
++
++    # handle missing X displays on package build
++    try:
++        X_DISPLAY = Xlib.display.Display()
++    except Xlib.error.DisplayNameError:
++        X_DISPLAY = None
+ 
+ LOCAL_HOME = os.path.expanduser('~')
+ X2GO_SESSIONS_ROOTDIR = '.x2go'
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 87c4a4f..1ad5fd0 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -33,15 +33,17 @@ import socket
+ import gevent
+ import string
+ import subprocess
+-import Xlib
+ 
+ # Python X2Go modules
+ from defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+-from defaults import X_DISPLAY as _X_DISPLAY
+ from defaults import X2GO_SESSIONPROFILE_DEFAULTS as _X2GO_SESSIONPROFILE_DEFAULTS
+ from defaults import X2GO_MIMEBOX_ACTIONS as _X2GO_MIMEBOX_ACTIONS
+ from defaults import pack_methods_nx3
+ 
++if _X2GOCLIENT_OS != 'Windows':
++    import Xlib
++    from defaults import X_DISPLAY as _X_DISPLAY
++
+ if _X2GOCLIENT_OS == 'Windows':
+     import win32api
+ 
+@@ -471,20 +473,30 @@ def find_session_window(session_name):
+     @type session_name: C{str}
+ 
+     &quot;&quot;&quot;
+-    # establish connection to the win API in use...
+-    display = _X_DISPLAY
+-    root = display.screen().root
++    if _X2GOCLIENT_OS != 'Windows':
++        # establish connection to the win API in use...
++        display = _X_DISPLAY
++        root = display.screen().root
+ 
+-    success = False
+-    windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
+-    for windowID in windowIDs:
+-        window = display.create_resource_object('window', windowID)
+-        if session_name in window.get_wm_name():
+-            success = True
+-            break
++        success = False
++        windowIDs = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value
++        for windowID in windowIDs:
++            window = display.create_resource_object('window', windowID)
++            if session_name in window.get_wm_name():
++                success = True
++                break
+ 
+-    if success:
+-        return window
++        if success:
++            return window
+ 
+     return None
+ 
++def raise_session_window(session_window):
++    &quot;&quot;&quot;\
++    Raise session window.
++
++    @param session_window: session window instance
++    @type session_name: C{obj}
++
++    &quot;&quot;&quot;
++    pass
+\ No newline at end of file
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="020818.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-107-gb3bf6d6
+</A></li>
+	<LI>Next message: <A HREF="020767.html">[X2Go-Commits] python-x2go.git - release/0.4.0.x (branch) updated:	0.1.1.4-112-g30887ea
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20756">[ date ]</a>
+              <a href="thread.html#20756">[ thread ]</a>
+              <a href="subject.html#20756">[ subject ]</a>
+              <a href="author.html#20756">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

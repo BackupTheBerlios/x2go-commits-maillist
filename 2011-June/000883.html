@@ -1,0 +1,709 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-1-g5af424a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.3-1-g5af424a&In-Reply-To=%3C20110613214829.267D95DB35%40ymir.das-netzwerkteam.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000882.html">
+   <LINK REL="Next"  HREF="000884.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-1-g5af424a</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.3-1-g5af424a&In-Reply-To=%3C20110613214829.267D95DB35%40ymir.das-netzwerkteam.de%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.0.3-1-g5af424a">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Jun 13 23:48:29 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000882.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-3-g68851b5
+</A></li>
+        <LI>Next message: <A HREF="000884.html">[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.1.3.3-5-g976a7bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#883">[ date ]</a>
+              <a href="thread.html#883">[ thread ]</a>
+              <a href="subject.html#883">[ subject ]</a>
+              <a href="author.html#883">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  5af424a7e9c6a693b56b1986a125d4b2abf37c12 (commit)
+      from  84a760d5e08db07be76c05d361ed2024ad0d7632 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 5af424a7e9c6a693b56b1986a125d4b2abf37c12
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Jun 13 23:48:54 2011 +0200
+
+    New upstream version (0.1.1.0): -Add X2go desktop sharing support.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    7 +++
+ x2go/backends/control/_stdout.py  |  106 ++++++++++++++++++++++++++++++++-----
+ x2go/backends/terminal/_stdout.py |   31 ++++++++---
+ x2go/cache.py                     |   75 ++++++++++++++++++++++----
+ x2go/client.py                    |   80 ++++++++++++++++++++++++++++
+ x2go/defaults.py                  |    4 ++
+ x2go/session.py                   |   80 ++++++++++++++++++++++++++--
+ x2go/x2go_exceptions.py           |    1 +
+ 8 files changed, 345 insertions(+), 39 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 29a2aec..8005b43 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,3 +1,10 @@
++python-x2go (0.1.0.3-0~x2go2) UNRELEASED; urgency=low
++
++  * New upstream version (0.1.1.0):
++    -Add X2go desktop sharing support.
++
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Mon, 13 Jun 2011 23:24:02 +0200
++
+ python-x2go (0.1.0.3-0~x2go1) unstable; urgency=low
+ 
+   * New upstream version (0.1.0.3):
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 1daa82f..76938b8 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -545,32 +545,110 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                            sessions_rootdir=self.sessions_rootdir,
+                                            **kwargs)
+ 
++        _success = False
+         if session_name is not None:
+             if self.is_running(session_name):
+                 self.suspend(session_name)
+                 gevent.sleep(3)
+ 
++            try:
++                _success = _terminal.resume()
++            except x2go_exceptions.X2goFwTunnelException:
++                pass
++
++        else:
++            try:
++                _success = _terminal.start()
++            except x2go_exceptions.X2goFwTunnelException:
++                pass
++
++        if _success:
+             while not _terminal.ok():
++                gevent.sleep(.2)
+ 
+-                try:
+-                    _terminal.resume()
+-                except x2go_exceptions.X2goFwTunnelException:
+-                    pass
++            if _terminal.ok():
++                self.associated_terminals[_terminal.get_session_name()] = _terminal
++                self.get_transport().reverse_tunnels[_terminal.get_session_name()] = {
++                    'sshfs': (0, None),
++                    'snd': (0, None),
++                }
++
++                return _terminal or None
++
++        return None
++
++    def share_desktop(self, desktop=None, user=None, display=None, share_mode=0, **kwargs):
++        &quot;&quot;&quot;\
++        Share another already running desktop session. Desktop sharing can be run
++        in two different modes: view-only and full-access mode.
++
++        @param desktop: desktop ID of a sharable desktop in format &lt;user&gt;@&lt;display&gt;
++        @type desktop: C{str}
++        @param user: user name and display number can be given separately, here give the
++            name of the user who wants to share a session with you.
++        @type user: C{str}
++        @param display: user name and display number can be given separately, here give the
++            number of the display that a user allows you to be shared with.
++        @type display: C{str}
++        @param share_mode: desktop sharing mode, 0 is VIEW-ONLY, 1 is FULL-ACCESS.
++        @type share_mode: C{int}
++
++        @return: True if the session could be successfully shared.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if desktop:
++            user = desktop.split('@')[0]
++            display = desktop.split('@')[1]
++        if not (user and display):
++            raise x2go_exceptions.X2goDesktopSharingException('Need user name and display number of sharable desktop.')
++
++        cmd = '%sXSHAD%sXSHAD%s' % (share_mode, user, display)
++
++        kwargs['cmd'] = cmd
++        kwargs['session_type'] = 'shared'
++
++        return self.start(**kwargs)
++
++    def list_desktops(self, raw=False):
++        &quot;&quot;&quot;\
++        List all desktop-like sessions of current user (or of users that have 
++        granted desktop sharing) on the connected server.
++
++        @param raw: if C{True}, the raw output of the server-side X2go command 
++            C{x2godesktopsharing} is returned.
++        @type raw: C{bool}
++
++        @return: a list of X2go desktops available for sharing
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if raw:
++            (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistdesktops&quot;)
++            return stdout.read(), stderr.read()
+ 
+         else:
+-            _terminal.start()
+ 
+-        while not _terminal.ok():
+-            gevent.sleep(.2)
++            # this _success loop will catch errors in case the x2golistsessions output is corrupt
++            # this should not be needed and is a workaround for the current X2go server implementation
++            _success = False
++            while not _success:
++
++                (stdin, stdout, stderr) = self._x2go_exec_command(&quot;export HOSTNAME &amp;&amp; x2golistdesktops&quot;)
+ 
+-        if _terminal.ok():
+-            self.associated_terminals[_terminal.get_session_name()] = _terminal
+-            self.get_transport().reverse_tunnels[_terminal.get_session_name()] = {
+-                'sshfs': (0, None),
+-                'snd': (0, None),
+-            }
++                _stdout_read = stdout.read()
++
++                try:
++                    _listdesktops = _stdout_read.split('\n')
++                    _success = True
++                except KeyError:
++                    gevent.sleep(1)
++                except IndexError:
++                    gevent.sleep(1)
++                except ValueError:
++                    gevent.sleep(1)
+ 
+-        return _terminal or None
++            return _listdesktops
+ 
+     def list_sessions(self, raw=False):
+         &quot;&quot;&quot;\
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 91a8059..09a4147 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -46,7 +46,7 @@ import x2go.defaults as defaults
+ import x2go.utils as utils
+ import x2go.x2go_exceptions as x2go_exceptions
+ 
+-from x2go.cleanup import x2go_cleanup 
++from x2go.cleanup import x2go_cleanup
+ 
+ # we hide the default values from epydoc (that's why we transform them to _UNDERSCORE variables)
+ from x2go.defaults import X2GOCLIENT_OS as _X2GOCLIENT_OS
+@@ -112,10 +112,13 @@ class X2goSessionParams(object):
+         session_type = self.session_type
+         cmd = self.cmd
+ 
+-        if session_type == &quot;desktop&quot;:
++        if session_type in (&quot;D&quot;, &quot;desktop&quot;):
+             self.session_type = 'D'
+             return
+-        if cmd:
++        elif session_type in (&quot;S&quot;, &quot;shared&quot;, &quot;shadow&quot;):
++            self.session_type = 'S'
++            return
++        elif cmd:
+             if cmd == 'RDP':
+                 self.session_type = 'R'
+                 return
+@@ -138,7 +141,7 @@ class X2goSessionParams(object):
+         Update all properties in the object L{X2goSessionParams} object from
+         the passed on dictionary.
+ 
+-        @param properties_to_be_updated: a dictionary with L{X2goSessionParams}
++        @param propertBies_to_be_updated: a dictionary with L{X2goSessionParams}
+             property names as keys und their values to be update in 
+             L{X2goSessionParams} object.
+         @type properties_to_be_updated: dict
+@@ -216,7 +219,7 @@ class X2goTerminalSessionSTDOUT(object):
+         @type kblayout: str
+         @param kbtype: keyboard type, e.g. C{pc105/us} (default), C{pc105/de}, ...
+         @type kbtype: str
+-        @param session_type: either C{desktop} or C{application} (rootless session)
++        @param session_type: either C{desktop}, C{application} (rootless session) or C{shared}
+         @type session_type: str
+         @param snd_system: sound system to be used on server (C{none}, C{pulse} (default), 
+             C{arts} (obsolete) or C{esd})
+@@ -679,6 +682,8 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         if cmd in _X2GO_GENERIC_APPLICATIONS:
+             return True
++        elif 'XSHAD' in cmd:
++            return True
+         elif cmd:
+             test_cmd = 'which %s &amp;&amp; echo OK' % os.path.basename(cmd.split()[0])
+ 
+@@ -720,6 +725,10 @@ class X2goTerminalSessionSTDOUT(object):
+             # do not run command when in XDMCP mode...
+             return None
+ 
++        if 'XSHAD' in cmd:
++            # do not run command when in DESKTOP SHARING mode...
++            return None
++
+         self.params.update({'cmd': cmd})
+ 
+         cmd_line = [ &quot;setsid x2goruncommand&quot;, 
+@@ -804,8 +813,6 @@ class X2goTerminalSessionSTDOUT(object):
+         if self.params.kblayout or self.params.kbtype:
+             setkbd = &quot;1&quot;
+ 
+-        self.params.update()
+-
+         cmd_line = [ &quot;x2gostartagent&quot;,
+                      str(self.params.geometry),
+                      str(self.params.link),
+@@ -823,7 +830,15 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+ 
+-        self.session_info.initialize(stdout.read(),
++        _stdout = stdout.read()
++        _stderr = stderr.read()
++
++        # if the first line of stdout is a &quot;DEN(Y)&quot; string then we will presume that
++        # we tried to use X2go desktop sharing and the sharing was rejected
++        if &quot;ACCESS DENIED&quot; in _stderr and &quot;XSHAD&quot; in _stderr:
++            raise x2go_exceptions.X2goDesktopSharingException('X2go desktop sharing has been denied by the remote user')
++
++        self.session_info.initialize(_stdout,
+                                      username=self.control_session.remote_username(),
+                                      hostname=self.control_session.get_transport().getpeername(),
+                                     )
+diff --git a/x2go/cache.py b/x2go/cache.py
+index e91e54b..7bd8b88 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -37,14 +37,15 @@ class X2goListSessionsCache(object):
+     recommended to enable the L{X2goListSessionsCache}. This can be done by calling
+     the constructor of the L{X2goClient} class.
+ 
+-    The session list cache gets updated in regularly intervals by a threaded
+-    L{X2goSessionGuardian} instance. For the session list update, the X2go server
+-    command C{x2golistsessions} is called and the command's stdout is cached
+-    in the session list cache.
++    The session list and desktop cache gets updated in regular intervals by a threaded
++    L{X2goSessionGuardian} instance. For the session list and desktop list update, the
++    X2go server commands C{x2golistsessions} and C{x2godesktopsessions} are called and
++    the command's stdout is cached in the session list cache.
+ 
+-    Whenever your client application needs access to the server's session list,
+-    the session list cache is queried instead. This assures that the server's
+-    session list is available without delay, even on slow internet connections.
++    Whenever your client application needs access to either the server's session list
++    or the server's desktop list the session cache is queried instead. This assures that
++    the server's session/desktop list is available without delay, even on slow internet
++    connections.
+ 
+     &quot;&quot;&quot;
+     x2go_listsessions_cache = {}
+@@ -105,7 +106,39 @@ class X2goListSessionsCache(object):
+ 
+     def update(self, profile_name):
+         &quot;&quot;&quot;\
+-        Update the L{X2goListSessionsCache} for session profile C{profile_name}.
++        Update L{X2goListSessionsCache} (i.e. session/desktops) for session profile C{profile_name}.
++
++        @param profile_name: name of profile to update
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
++        if not self.x2go_listsessions_cache.has_key(profile_name):
++            self.x2go_listsessions_cache[profile_name] = {}
++        self._update_sessions(profile_name)
++        self._update_desktops(profile_name)
++
++    def _update_desktops(self, profile_name):
++        &quot;&quot;&quot;\
++        Update session lists of L{X2goListSessionsCache} for session profile C{profile_name}.
++
++        @param profile_name: name of profile to update
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
++        self.last_listsessions_cache = copy.deepcopy(self.x2go_listsessions_cache)
++        control_session = self.client_instance.client_control_session_of_profile_name(profile_name)
++        try:
++            self.x2go_listsessions_cache[profile_name]['desktops'] = control_session.list_desktops()
++        except x2go_exceptions.X2goControlSessionException, e:
++            try:
++                del self.x2go_listsessions_cache[profile_name]
++            except KeyError:
++                pass
++            raise e
++
++    def _update_sessions(self, profile_name):
++        &quot;&quot;&quot;\
++        Update desktop list of L{X2goListSessionsCache} for session profile C{profile_name}.
+ 
+         @param profile_name: name of profile to update
+         @type profile_name: C{str}
+@@ -114,7 +147,7 @@ class X2goListSessionsCache(object):
+         self.last_listsessions_cache = copy.deepcopy(self.x2go_listsessions_cache)
+         control_session = self.client_instance.client_control_session_of_profile_name(profile_name)
+         try:
+-            self.x2go_listsessions_cache[profile_name] = control_session.list_sessions()
++            self.x2go_listsessions_cache[profile_name]['sessions'] = control_session.list_sessions()
+         except x2go_exceptions.X2goControlSessionException, e:
+             try:
+                 del self.x2go_listsessions_cache[profile_name]
+@@ -124,8 +157,8 @@ class X2goListSessionsCache(object):
+ 
+     def list_sessions(self, session_uuid):
+         &quot;&quot;&quot;\
+-        Retrieve the current cache content of L{X2goListSessionsCache} for a given L{X2goSession} instance
+-        (specified by its unique session UUID).
++        Retrieve a session list from the current cache content of L{X2goListSessionsCache}
++        for a given L{X2goSession} instance (specified by its unique session UUID).
+ 
+         @param session_uuid: unique identifier of session to query cache for
+         @type session_uuid: C{str}
+@@ -135,7 +168,25 @@ class X2goListSessionsCache(object):
+         &quot;&quot;&quot;
+         profile_name = self.client_instance.get_session_profile_name(session_uuid)
+         if self.is_cached(session_uuid=session_uuid):
+-            return self.x2go_listsessions_cache[profile_name]
++            return self.x2go_listsessions_cache[profile_name]['sessions']
++        else:
++            return None
++
++    def list_desktops(self, session_uuid):
++        &quot;&quot;&quot;\
++        Retrieve a list of available desktop sessions from the current cache content of
++        L{X2goListSessionsCache} for a given L{X2goSession} instance (specified by its 
++        unique session UUID).
++
++        @param session_uuid: unique identifier of session to query cache for
++        @type session_uuid: C{str}
++        @return: a list of strings representing X2go desktop sessions available for sharing
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        profile_name = self.client_instance.get_session_profile_name(session_uuid)
++        if self.is_cached(session_uuid=session_uuid):
++            return self.x2go_listsessions_cache[profile_name]['desktops']
+         else:
+             return None
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index c6b41ff..ae4dec1 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1120,6 +1120,31 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).start()
+     __start_session = start_session
+ 
++    def share_desktop_session(self, session_uuid, desktop=None, user=None, display=None, share_mode=0):
++        &quot;&quot;&quot;\
++        Share another already running desktop session. Desktop sharing can be run
++        in two different modes: view-only and full-access mode. Like new sessions
++        a to-be-shared session has be registered first with the L{X2goClient}
++        instance.
++
++        @param desktop: desktop ID of a sharable desktop in format &lt;user&gt;@&lt;display&gt;
++        @type desktop: C{str}
++        @param user: user name and display number can be given separately, here give the
++            name of the user who wants to share a session with you.
++        @type user: C{str}
++        @param display: user name and display number can be given separately, here give the
++            number of the display that a user allows you to be shared with.
++        @type display: C{str}
++        @param share_mode: desktop sharing mode, 0 is VIEW-ONLY, 1 is FULL-ACCESS.
++        @type share_mode: C{int}
++
++        @return: True if the session could be successfully shared.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        return self.session_registry(session_uuid).share_desktop(desktop=desktop, user=user, display=display, share_mode=share_mode)
++    __share_desktop_session = share_desktop_session
++
+     def resume_session(self, session_uuid=None, session_name=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2go session on a
+@@ -1866,6 +1891,61 @@ class X2goClient(object):
+         return _session_list
+     __list_sessions = list_sessions
+ 
++    def list_desktops(self, session_uuid=None, 
++                      profile_name=None, profile_id=None,
++                      no_cache=False, refresh_cache=False,
++                      raw=False):
++        &quot;&quot;&quot;\
++        Use the X2go session registered under C{session_uuid} to
++        retrieve a list of X2go desktop sessions that are available
++        for desktop sharing.
++
++        Before calling this method you have to setup a pro forma remote X2go session
++        with L{X2goClient.register_session()} (even if you do not intend to open
++        a real X2go session window on the remote server) and connect to this session (with
++        L{X2goClient.connect_session()}.
++
++        @param session_uuid: the X2go session's UUID registry hash
++        @type session_uuid: C{str}
++        @param profile_name: use profile name instead of &lt;session_uuid&gt;
++        @type profile_name: C{str}
++        @param profile_id: use profile id instead of &lt;profile_name&gt; or &lt;session_uuid&gt;
++        @type profile_id: C{str}
++        @param no_cache: do not get the session list from cache, query the X2go server directly
++        @type no_cache: C{bool}
++        @param raw: output the session list in X2go's raw C{x2golistsessions} format
++        @type raw: C{bool}
++
++        &quot;&quot;&quot;
++        if profile_id is not None:
++            profile_name = self.to_profile_name(profile_id)
++
++        if profile_name is not None:
++
++            _connected_sessions = self.client_connected_sessions_of_profile_name(profile_name, return_objects=True)
++            if _connected_sessions:
++                # it does not really matter which session to use for getting a server-side session list
++                # thus, we simply grab the first that comes in...
++                session_uuid = _connected_sessions[0].get_uuid()
++            else:
++                raise x2go_exceptions.X2goClientException('profile ,,%s\'\' is not connected' % profile_name)
++
++        elif session_uuid is not None:
++            pass
++        else:
++            raise x2go_exceptions.X2goClientException('must either specify session UUID or profile name')
++
++        if raw:
++            return self.session_registry(session_uuid).list_desktops(raw=raw)
++
++        if not self.use_listsessions_cache or no_cache:
++            _desktop_list = self.session_registry(session_uuid).list_desktops()
++        else:
++            _desktop_list = self.listsessions_cache.list_desktops(session_uuid)
++
++        return _desktop_list
++    __list_desktops = list_desktops
++
+     ###
+     ### Provide access to config file class objects
+     ### 
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 3ad6fa8..bfe8899 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -393,3 +393,7 @@ X2GO_MIMEBOX_EXTENSIONS_BLACKLIST = [
+     'JS', 'PY', 'PL', 'SH',
+ ]
+ &quot;&quot;&quot;Black-listed MIME box file extenstions.&quot;&quot;&quot;
++
++# X2go desktop sharing
++X2GO_SHARE_VIEWONLY=0
++X2GO_SHARE_FULLACCESS=1
+diff --git a/x2go/session.py b/x2go/session.py
+index 3857d72..687a010 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -792,16 +792,35 @@ class X2goSession(object):
+         @type raw: C{bool}
+ 
+         @return: a session list (as data object or list of strings when called with C{raw=True} option)
+-        @rtype C{X2goServerSessionList*} instance or C{list}
++        @rtype: C{X2goServerSessionList*} instance or C{list}
+ 
+         &quot;&quot;&quot;
+         try:
+             return self.control_session.list_sessions(raw=raw)
+-        except x2go_exceptions.X2goControlSessionException:
++        except X2goControlSessionException:
+             self._X2goSession_disconnect()
+             return None
+     __list_sessions = list_sessions
+ 
++    def list_desktops(self, raw=False):
++        &quot;&quot;&quot;\
++        List X2go desktops sessions available for desktop sharing on the remote X2go server.
++
++        @param raw: if C{True} the output of this method equals
++            the output of the server-side C{x2golistdesktops} command
++        @type raw: C{bool}
++
++        @return: a list of strings representing available desktop sessions
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        try:
++            return self.control_session.list_desktops(raw=raw)
++        except X2goControlSessionException:
++            self._X2goSession_disconnect()
++            return None
++    __list_desktops = list_desktops
++
+     def update_status(self, session_list=None, force_update=False):
+         &quot;&quot;&quot;\
+         Update the current session status. The L{X2goSession} instance uses an internal
+@@ -895,11 +914,10 @@ class X2goSession(object):
+             _terminal = _control.resume(session_name=self.session_name, 
+                                         session_instance=self,
+                                         logger=self.logger, **self.terminal_params)
+-            self.terminal_session = _terminal
+ 
+             if self.session_name is None:
+                 _new_session = True
+-                self.session_name = self.terminal_session.session_info.name
++                self.session_name = _terminal.session_info.name
+ 
+             if _terminal is not None:
+ 
+@@ -929,7 +947,7 @@ class X2goSession(object):
+ 
+                 # only run the session startup command if we do not resume...
+                 if _new_session:
+-                    self.terminal_session.run_command(env=self.session_environment)
++                    _terminal.run_command(env=self.session_environment)
+ 
+                 self.virgin = False
+                 self.suspended = False
+@@ -937,11 +955,16 @@ class X2goSession(object):
+                 self.terminated = False
+ 
+                 self.terminal_session = _terminal
++                return True
++
++            else:
++                return False
+ 
+             return self.running
+         else:
+             self._X2goSession__disconnect()
+             return False
++
+     __resume = resume
+ 
+     def start(self):
+@@ -956,6 +979,53 @@ class X2goSession(object):
+         return self.resume()
+     __start = start
+ 
++    def share_desktop(self, desktop=None, user=None, display=None, share_mode=0):
++        &quot;&quot;&quot;\
++        Share an already running X2go session on the remote X2go server locally. The shared session may be either
++        owned by the same user or by a user that grants access to his/her desktop session by the local user.
++
++        @param desktop: desktop ID of a sharable desktop in format &lt;user&gt;@&lt;display&gt;
++        @type desktop: C{str}
++        @param user: user name and display number can be given separately, here give the
++            name of the user who wants to share a session with you.
++        @type user: C{str}
++        @param display: user name and display number can be given separately, here give the
++            number of the display that a user allows you to be shared with.
++        @type display: C{str}
++        @param share_mode: desktop sharing mode, 0 is VIEW-ONLY, 1 is FULL-ACCESS.
++        @type share_mode: C{int}
++
++        @return: returns C{True} if starting the session has been successful, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.is_alive():
++            _control = self.control_session
++            _terminal = _control.share_desktop(desktop=desktop, user=user, display=display, share_mode=share_mode,
++                                               logger=self.logger, **self.terminal_params)
++
++            if _terminal:
++                self.terminal_session = _terminal
++                self.session_name = self.terminal_session.session_info.name
++
++                # shared desktop sessions get their startup command set by the control
++                # session, run this pre-set command now...
++                self.terminal_session.run_command(env=self.session_environment)
++
++                self.virgin = False
++                self.suspended = False
++                self.running = True
++                self.terminated = False
++
++                return self.running
++            else:
++                return False
++
++        else:
++            self._X2goSession__disconnect()
++            return False
++    __share_desktop = share_desktop
++
+     def suspend(self):
+         &quot;&quot;&quot;\
+         Suspend this X2go session.
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index a2d7968..e211836 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -60,6 +60,7 @@ class X2goPrintActionException(_X2goException): pass
+ class X2goSSHProxyException(_X2goException): pass
+ class X2goSSHProxyAuthenticationException(_X2goException): pass
+ class X2goNotImplementedYetException(_X2goException): pass
++class X2goDesktopSharingException(_X2goException): pass
+ if _X2GOCLIENT_OS != 'Windows':
+     # faking Windows errors on non-Windows systems...
+     class WindowsError(_X2goException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2go Client API).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000882.html">[X2go-Commits] x2godesktopsharing.git - master (branch) updated:	3.0.1.2-3-g68851b5
+</A></li>
+	<LI>Next message: <A HREF="000884.html">[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.1.3.3-5-g976a7bf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#883">[ date ]</a>
+              <a href="thread.html#883">[ thread ]</a>
+              <a href="subject.html#883">[ subject ]</a>
+              <a href="author.html#883">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.3.0-3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcompshad/3.3.0-3&In-Reply-To=%3C20130830142402.876A85DB4B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011721.html">
+   <LINK REL="Next"  HREF="011727.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.3.0-3</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcompshad/3.3.0-3&In-Reply-To=%3C20130830142402.876A85DB4B%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.3.0-3">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:24:02 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011721.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.4.0-1
+</A></li>
+        <LI>Next message: <A HREF="011727.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.16-23-gd139e5d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11725">[ date ]</a>
+              <a href="thread.html#11725">[ thread ]</a>
+              <a href="subject.html#11725">[ subject ]</a>
+              <a href="author.html#11725">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  3d8e85c4749ee9e55601f6e540311008bf8f77af (commit)
+      from  3b4404668c6794f9d0665905f4e22c1a0fafac21 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nxcompshad/CHANGELOG  |    5 +++++
+ nxcompshad/Shadow.cpp |    3 +--
+ nxcompshad/X11.cpp    |   60 +++++++++++++++++++++++++++++++++++++------------
+ 3 files changed, 52 insertions(+), 16 deletions(-)
+
+The diff of changes is:
+diff --git a/nxcompshad/CHANGELOG b/nxcompshad/CHANGELOG
+index 79319b8..8678d21 100644
+--- a/nxcompshad/CHANGELOG
++++ b/nxcompshad/CHANGELOG
+@@ -1,5 +1,10 @@
+ ChangeLog:
+ 
++nxcompshad-3.3.0-3
++
++- Fixed TR01G02158. Keymap initialization could be incorrect because
++  of a type mismatch on 64 bit platforms.
++
+ nxcompshad-3.3.0-2
+ 
+ - Updated VERSION.
+diff --git a/nxcompshad/Shadow.cpp b/nxcompshad/Shadow.cpp
+index c7fb6b4..f9154aa 100644
+--- a/nxcompshad/Shadow.cpp
++++ b/nxcompshad/Shadow.cpp
+@@ -466,6 +466,5 @@ void NXShadowInitKeymap(void *keysyms)
+ {
+   NXShadowKeymap = (KeySymsPtr) keysyms;
+ 
+-  logTest(&quot;NXShadowInitKeymap&quot;,&quot;KeySyms pointer [0x%p] mapWidth [%d]&quot;,
+-              (void *)NXShadowKeymap, NXShadowKeymap -&gt; mapWidth);
++  logTest(&quot;NXShadowInitKeymap&quot;,&quot;KeySyms pointer [0x%p]&quot;, (void *)NXShadowKeymap);
+ }
+diff --git a/nxcompshad/X11.cpp b/nxcompshad/X11.cpp
+index 3971c8e..99333b0 100644
+--- a/nxcompshad/X11.cpp
++++ b/nxcompshad/X11.cpp
+@@ -23,6 +23,7 @@
+ #undef  DEBUG
+ 
+ #include &lt;X11/Xlibint.h&gt;
++#include &lt;X11/Xproto.h&gt;
+ #include &lt;X11/extensions/XTest.h&gt;
+ #include &lt;X11/keysym.h&gt;
+ #include &lt;string.h&gt;
+@@ -59,6 +60,8 @@ static KeyPressedRec *shadowKeyPressedPtr = NULL;
+ static KeySym *shadowKeysyms = NULL;
+ static KeySym *masterKeysyms = NULL;
+ 
++static KeySym *shadowKeymap = NULL;
++
+ static int shadowMinKey, shadowMaxKey, shadowMapWidth;
+ static int masterMinKey, masterMaxKey, masterMapWidth;
+ 
+@@ -409,12 +412,35 @@ void Poller::shmInit(void)
+ 
+ void Poller::keymapShadowInit(Display *display)
+ {
+-  if (NXShadowKeymap)
++  int i, len;
++  CARD32 *map;
++
++  if (NXShadowKeymap != NULL)
+   {
+-    shadowMinKey = NXShadowKeymap -&gt; minKeyCode;
+-    shadowMaxKey = NXShadowKeymap -&gt; maxKeyCode;
++    shadowMinKey   = NXShadowKeymap -&gt; minKeyCode;
++    shadowMaxKey   = NXShadowKeymap -&gt; maxKeyCode;
+     shadowMapWidth = NXShadowKeymap -&gt; mapWidth;
+-    shadowKeysyms = NXShadowKeymap -&gt; map;
++
++    len = (shadowMaxKey - shadowMinKey + 1) * shadowMapWidth;
++
++    map = (CARD32 *) NXShadowKeymap -&gt; map;
++
++    if (shadowKeymap != NULL)
++    {
++      free(shadowKeymap);
++    }
++
++    shadowKeymap = (KeySym *) malloc(len * sizeof(KeySym));
++
++    if (shadowKeymap != NULL)
++    {
++      for (i = 0; i &lt; len; i++)
++      {
++        shadowKeymap[i] = map[i];
++      }
++
++      shadowKeysyms = shadowKeymap;
++    }
+   }
+ 
+   if (shadowKeysyms == NULL)
+@@ -426,13 +452,16 @@ void Poller::keymapShadowInit(Display *display)
+   }
+ 
+   #ifdef DEBUG
+-  if (shadowKeysyms)
++  if (shadowKeysyms != NULL)
+   {
+-    for (int i = 0; i &lt; (shadowMaxKey - shadowMinKey) * shadowMapWidth; i++)
++    for (i = 0; i &lt; (shadowMaxKey - shadowMinKey + 1) * shadowMapWidth; i++)
+     {
+-      logDebug(&quot;Poller::keymapShadowInit&quot;, &quot;keycode %d - keysym %x %s&quot;,
+-                   (int)(i / shadowMapWidth), (unsigned int)shadowKeysyms[i],
+-                       XKeysymToString(shadowKeysyms[i]));
++      if (i % shadowMapWidth == 0)
++      {
++        logDebug(&quot;Poller::keymapShadowInit&quot;, &quot;keycode [%d]&quot;, (int) (i / shadowMapWidth));
++      }
++
++      logDebug(&quot;\tkeysym&quot;, &quot; [%x] [%s]&quot;, (unsigned int) shadowKeysyms[i], XKeysymToString(shadowKeysyms[i]));
+     }
+   }
+   #endif
+@@ -446,13 +475,16 @@ void Poller::keymapMasterInit()
+                                           &amp;masterMapWidth);
+ 
+   #ifdef DEBUG
+-  if (masterKeysyms)
++  if (masterKeysyms != NULL)
+   {
+-    for (int i = 0; i &lt; (masterMaxKey - masterMinKey) * masterMapWidth; i++)
++    for (int i = 0; i &lt; (masterMaxKey - masterMinKey + 1) * masterMapWidth; i++)
+     {
+-      logDebug(&quot;Poller::keymapMasterInit&quot;, &quot;keycode %d - keysym %x %s&quot;,
+-                   (int)(i / masterMapWidth), (unsigned int)masterKeysyms[i],
+-                       XKeysymToString(masterKeysyms[i]));
++      if (i % masterMapWidth == 0)
++      {
++        logDebug(&quot;Poller::keymapMasterInit&quot;, &quot;keycode [%d]&quot;, (int) (i / masterMapWidth));
++      }
++
++      logDebug(&quot;\tkeysym&quot;, &quot; [%x] [%s]&quot;, (unsigned int) masterKeysyms[i], XKeysymToString(masterKeysyms[i]));
+     }
+   }
+   #endif
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011721.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.4.0-1
+</A></li>
+	<LI>Next message: <A HREF="011727.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.16-23-gd139e5d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11725">[ date ]</a>
+              <a href="thread.html#11725">[ thread ]</a>
+              <a href="subject.html#11725">[ subject ]</a>
+              <a href="author.html#11725">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

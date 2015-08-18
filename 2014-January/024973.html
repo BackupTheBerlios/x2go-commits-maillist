@@ -1,0 +1,644 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-30-gd43d6a8
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-30-gd43d6a8&In-Reply-To=%3C20140108143033.07BB35DBEF%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024958.html">
+   <LINK REL="Next"  HREF="025918.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-30-gd43d6a8</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.0.3-30-gd43d6a8&In-Reply-To=%3C20140108143033.07BB35DBEF%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-30-gd43d6a8">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:30:32 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024958.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-26-g81b1dbb
+</A></li>
+        <LI>Next message: <A HREF="025918.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-28-g1864f20
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24973">[ date ]</a>
+              <a href="thread.html#24973">[ thread ]</a>
+              <a href="subject.html#24973">[ subject ]</a>
+              <a href="author.html#24973">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  d43d6a81e68a9cf3d392ff232e481a599ff82119 (commit)
+      from  982d86f3ccf7d17f6590036fd49a4e8bf127df6a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    5 ++++-
+ x2go/client.py   |    4 +++-
+ x2go/registry.py |   30 +++++++++++++++++-------------
+ x2go/session.py  |   37 +++++++++++++++++++++++--------------
+ 4 files changed, 47 insertions(+), 29 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a3d162d..b5f5cab 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -12,8 +12,11 @@ python-x2go (0.1.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Explicitly tunnel over IPv4 for NX proxy.
+     - Make cache more configurable (session list updates, desktop list updates).
+     - Adds an auto_update_listdesktops_cache to X2goClient constructor argvs.
++    - Fix multiple notifications for the same session state change, reliably
++      differentiate between found sessions after connect and newly started 
++      sessions from another client.
+ 
+- -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Tue, 21 Jun 2011 19:48:12 +0200
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike at mimino.das-netzwerkteam.de</A>&gt;  Wed, 22 Jun 2011 01:20:48 +0200
+ 
+ python-x2go (0.1.0.3-0~x2go1) unstable; urgency=low
+ 
+diff --git a/x2go/client.py b/x2go/client.py
+index fa87e4c..0141d73 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1056,7 +1056,9 @@ class X2goClient(object):
+                                                                force_password_auth=force_password_auth,
+                                                               )
+         if self.auto_register_sessions:
+-            self.session_registry.register_available_server_sessions(profile_name=self.get_session_profile_name(session_uuid))
++            self.session_registry.register_available_server_sessions(profile_name=self.get_session_profile_name(session_uuid),
++                                                                     newly_connected=True,
++                                                                    )
+     __connect_session = connect_session
+ 
+     def disconnect_session(self, session_uuid):
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 033a631..1ddbac3 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -182,7 +182,7 @@ class X2goSessionRegistry(object):
+             _session_summary['terminated'] = None
+         return _session_summary
+ 
+-    def update_status(self, session_uuid=None, profile_name=None, profile_id=None, session_list=None, force_update=False):
++    def update_status(self, session_uuid=None, profile_name=None, profile_id=None, session_list=None, force_update=False, newly_connected=False):
+         &quot;&quot;&quot;\
+         Update the session status for L{X2goSession} that is represented by a given session UUID hash,
+         profile name or profile ID.
+@@ -216,7 +216,9 @@ class X2goSessionRegistry(object):
+ 
+         for _session_uuid in session_uuids:
+ 
+-            self(_session_uuid).update_status(session_list=session_list, force_update=force_update)
++            if not self(_session_uuid).update_status(session_list=session_list, force_update=force_update):
++                # skip this run, as nothing has changed since the last time...
++                return False
+             _last_status = copy.deepcopy(self(_session_uuid)._last_status)
+             _current_status = copy.deepcopy(self(_session_uuid)._current_status)
+ 
+@@ -234,9 +236,12 @@ class X2goSessionRegistry(object):
+                 if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
+                     del self.registry[_session_uuid]
+ 
+-            elif _last_status['running'] == False and _current_status['running'] == True and _current_status['faulty'] == False:
++            elif not _last_status['running'] and _current_status['running'] and not _current_status['faulty']:
+                 # session has started
+-                if _last_status['connected']:
++                if newly_connected:
++                    # from a suspended state
++                    self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
++                else:
+                     if self(_session_uuid).has_terminal_session():
+                         if _last_status['suspended']:
+                             # from a suspended state
+@@ -251,15 +256,12 @@ class X2goSessionRegistry(object):
+                         else:
+                             # as a new session
+                             self.client_instance.HOOK_on_session_has_started_by_other(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-                else:
+-                    # from a suspended state
+-                    self.client_instance.HOOK_on_found_session_running_after_connect(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+ 
+-            elif _last_status['connected'] == True and (_last_status['suspended'] == False and _current_status['suspended'] == True) and _current_status['faulty'] == False:
++            elif _last_status['connected'] and (not _last_status['suspended'] and _current_status['suspended']) and not _current_status['faulty']:
+                 # session has been suspended
+                 self(_session_uuid).session_cleanup()
+                 self.client_instance.HOOK_on_session_has_been_suspended(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+-            elif _last_status['connected'] == True and (_last_status['terminated'] == False and _current_status['terminated'] == True) and _current_status['faulty'] == False:
++            elif _last_status['connected'] and (not _last_status['terminated'] and _current_status['terminated']) and not _current_status['faulty']:
+                 # session has terminated
+                 self.client_instance.HOOK_on_session_has_terminated(session_uuid=_session_uuid, profile_name=_profile_name, session_name=_session_name)
+                 self(_session_uuid).session_cleanup()
+@@ -267,7 +269,9 @@ class X2goSessionRegistry(object):
+                 if len(self.virgin_sessions_of_profile_name(profile_name)) &gt; 1:
+                     del self.registry[_session_uuid]
+ 
+-    def register_available_server_sessions(self, profile_name, session_list=None):
++        return True
++
++    def register_available_server_sessions(self, profile_name, session_list=None, newly_connected=False):
+         &quot;&quot;&quot;\
+         Register server-side available X2go sessions with this L{X2goSessionRegistry} instance for a given profile name.
+ 
+@@ -291,6 +295,7 @@ class X2goSessionRegistry(object):
+ 
+             # make sure the session registry gets updated before registering new session
+             # (if the server name has changed, this will kick out obsolete X2goSessions)
++            print &quot;STATUS UPDATE PROFILE: %s&quot; % profile_name
+             self.update_status(profile_name=profile_name, session_list=session_list)
+             for session_name in session_list.keys():
+                 if session_name not in _session_names:
+@@ -324,12 +329,11 @@ class X2goSessionRegistry(object):
+                     # this if clause catches problems when x2golistsessions commands give weird results
+                     if not self.has_session_of_session_name(session_name):
+                         session_uuid = self.register(server, profile_id, profile_name,
+-                                                     session_name=session_name,
+-                                                     virgin=False, running=False, suspended=True, terminated=None,
++                                                     session_name=session_name,                                                     virgin=False,
+                                                      **kwargs
+                                                     )
+                         self(session_uuid).connected = True
+-                        self.update_status(session_uuid=session_uuid, session_list=session_list, force_update=True)
++                        self.update_status(session_uuid=session_uuid, force_update=True, newly_connected=newly_connected)
+ 
+     def register(self, server, profile_id, profile_name,
+                  session_name=None,
+diff --git a/x2go/session.py b/x2go/session.py
+index 0767340..f94d9fe 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -114,7 +114,7 @@ class X2goSession(object):
+                  add_to_known_hosts=False,
+                  known_hosts=None,
+                  logger=None, loglevel=log.loglevel_DEFAULT,
+-                 virgin=True, running=None, suspended=None, terminated=None, faulty=None,
++                 connected=False, virgin=True, running=None, suspended=None, terminated=None, faulty=None,
+                  client_instance=None,
+                  **params):
+         &quot;&quot;&quot;\
+@@ -168,6 +168,8 @@ class X2goSession(object):
+         @type add_to_known_hosts: C{bool}
+         @param known_hosts: the underlying Paramiko/SSH systems C{known_hosts} file
+         @type known_hosts: C{str}
++        @param connected: manipulate session state &#187;connected&#171; by giving a pre-set value
++        @type connected: C{bool}
+         @param virgin: manipulate session state &#187;virgin&#171; by giving a pre-set value
+         @type virgin: C{bool}
+         @param running: manipulate session state &#187;running&#171; by giving a pre-set value
+@@ -193,7 +195,7 @@ class X2goSession(object):
+         self._keep = None
+ 
+         self.uuid = uuid.uuid1()
+-        self.connected = False
++        self.connected = connected
+ 
+         self.virgin = virgin
+         self.running = running
+@@ -207,16 +209,6 @@ class X2goSession(object):
+         self.session_name = session_name
+         self.server = server
+ 
+-        self._current_status = {
+-            'timestamp': time.time(),
+-            'server': self.server,
+-            'virgin': self.virgin,
+-            'connected': self.connected,
+-            'running': self.running,
+-            'suspended': self.suspended,
+-            'terminated': self.terminated,
+-            'faulty': self.faulty,
+-        }
+         self._last_status = None
+ 
+         self.printing = printing
+@@ -264,6 +256,17 @@ class X2goSession(object):
+         self.known_hosts = known_hosts
+         self.use_sshproxy = use_sshproxy
+ 
++        self._current_status = {
++            'timestamp': time.time(),
++            'server': self.server,
++            'virgin': self.virgin,
++            'connected': self.connected,
++            'running': self.running,
++            'suspended': self.suspended,
++            'terminated': self.terminated,
++            'faulty': self.faulty,
++        }
++
+         self.init_control_session()
+         self.terminal_session = None
+ 
+@@ -726,8 +729,10 @@ class X2goSession(object):
+                 self.disconnect()
+ 
+             _dummy = self.get_server_hostname()
++
+         if self.connected:
+             self.update_status()
++
+         return self.connected
+     __connect = connect
+ 
+@@ -868,7 +873,7 @@ class X2goSession(object):
+             # skip this session status update if not longer than a second ago...
+             if  _status_update_timedelta &lt; 1:
+                 self.logger('status update interval too short (%s), skipping status about this time...' % _status_update_timedelta, loglevel=log.loglevel_DEBUG)
+-                return
++                return False
+ 
+         e = None
+         self._last_status = copy.deepcopy(self._current_status)
+@@ -890,7 +895,7 @@ class X2goSession(object):
+                 self.running = _session_info.is_running()
+                 self.suspended = _session_info.is_suspended()
+                 if not self.virgin:
+-                    self.terminated = not (_session_info.is_running() or _session_info.is_suspended())
++                    self.terminated = not (self.running or self.suspended)
+                 else:
+                     self.terminated = None
+             except KeyError:
+@@ -898,6 +903,8 @@ class X2goSession(object):
+                 self.suspended = False
+                 if not self.virgin:
+                     self.terminated = True
++            self.faulty = not (self.running or self.suspended or self.terminated or self.virgin)
++
+ 
+         self._current_status = {
+             'timestamp': time.time(),
+@@ -913,6 +920,8 @@ class X2goSession(object):
+         if (not self.connected or self.faulty) and e:
+             raise e
+ 
++        return True
++
+     __update_status = update_status
+ 
+     def resume(self, session_name=None):
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024958.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-26-g81b1dbb
+</A></li>
+	<LI>Next message: <A HREF="025918.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.0.3-28-g1864f20
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24973">[ date ]</a>
+              <a href="thread.html#24973">[ thread ]</a>
+              <a href="subject.html#24973">[ subject ]</a>
+              <a href="author.html#24973">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,596 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-143-g6a73ef5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-143-g6a73ef5&In-Reply-To=%3C20140108142857.C01D35DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024130.html">
+   <LINK REL="Next"  HREF="024154.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-143-g6a73ef5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-143-g6a73ef5&In-Reply-To=%3C20140108142857.C01D35DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-143-g6a73ef5">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:28:57 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024130.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-140-gea7ea65
+</A></li>
+        <LI>Next message: <A HREF="024154.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-145-ga40721c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24138">[ date ]</a>
+              <a href="thread.html#24138">[ thread ]</a>
+              <a href="subject.html#24138">[ subject ]</a>
+              <a href="author.html#24138">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  6a73ef57bd037131f662e3f115dc332196eec786 (commit)
+      from  cb74f7eb426cf6109e1aea88f47f7440e4a39566 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/client.py   |   41 ++++++++++++++++++++++++++++++-
+ x2go/registry.py |    2 ++
+ x2go/session.py  |   71 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ x2go/utils.py    |    5 ++--
+ 5 files changed, 115 insertions(+), 5 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b38d8da..8e8897e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -52,6 +52,7 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Make published_applications_no_submenus an &lt;int&gt; session option that
+       controls how many menu items will be shown without rendering category based
+       submenus.
++    - Support auto-resuming and auto-starting of session with Python X2Go.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/client.py b/x2go/client.py
+index fd02675..7709f4b 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -331,7 +331,6 @@ class X2goClient(object):
+         self.auto_update_listdesktops_cache = auto_update_listdesktops_cache
+         self.auto_update_listmounts_cache = auto_update_listmounts_cache
+ 
+-    # user hooks for detecting/notifying what happened during application runtime
+     def HOOK_session_startup_failed(self, profile_name='UNKNOWN'):
+         &quot;&quot;&quot;\
+         HOOK method: called if the startup of a session failed.
+@@ -802,6 +801,7 @@ class X2goClient(object):
+             _obj = self._X2goClient__register_session(profile_name=profile_name, return_object=True)
+             sessions[_obj.get_profile_name()] = _obj
+         return sessions
++    __register_all_session_profiles = register_all_session_profiles
+ 
+     def register_session(self, server=None, profile_id=None, profile_name=None, session_name=None,
+                          allow_printing=False, 
+@@ -1138,6 +1138,23 @@ class X2goClient(object):
+         return self.session_registry(session_uuid).can_auto_connect()
+     __session_can_auto_connect = session_can_auto_connect
+ 
++    # user hooks for detecting/notifying what happened during application runtime
++    def session_auto_connect(self, session_uuid):
++        &quot;&quot;&quot;\
++        Auto-connect a given session. This method is called from within the session itself
++        and can be used to override the auto-connect procedure from within your
++        client implementation.
++
++        @param session_uuid: the X2Go session's UUID registry hash
++        @type session_uuid: C{str}
++
++        @return: returns C{True} if the session could be auto-connected.
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        self.session_registry(session_uuid).do_auto_connect(redirect_to_client=False)
++    __session_auto_connect = session_auto_connect
++
+     def connect_session(self, session_uuid,
+                         username='',
+                         password='',
+@@ -1259,6 +1276,28 @@ class X2goClient(object):
+         self.session_registry(session_uuid).raise_session_window()
+     __raise_session_window = raise_session_window
+ 
++    def session_auto_start_or_resume(self, session_uuid, newest=True, oldest=False, all_suspended=False, start=True):
++        &quot;&quot;&quot;\
++        Automatically start or resume one or several sessions.
++
++        This method is called from within the session itself on session registration, so this method
++        can be used to handle auto-start/-resume events.
++
++        @param session_uuid: the X2Go session's UUID registry hash
++        @type session_uuid: C{str}
++        @param newest: if resuming, only resume newest/youngest session
++        @type newest: C{bool}
++        @param oldest: if resuming, only resume oldest session
++        @type oldest: C{bool}
++        @param all_suspended: if resuming, resume all suspended sessions
++        @type all_suspended: C{bool}
++        @param start: if no session is to be resumed, start a new session
++        @type start: C{bool}
++
++        &quot;&quot;&quot;
++        self.session_registry(session_uuid).do_auto_start_or_resume(newest=newest, oldest=oldest, all_suspended=all_suspended, start=start, redirect_to_client=False)
++    __session_auto_start_or_resume = session_auto_start_or_resume
++
+     def start_session(self, session_uuid):
+         &quot;&quot;&quot;\
+         Start a new X2Go session on the remote X2Go server. This method
+diff --git a/x2go/registry.py b/x2go/registry.py
+index a6a2ff4..e30232b 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -546,6 +546,8 @@ class X2goSessionRegistry(object):
+ 
+         # make sure a new session is a non-master session unless promoted in update_status method
+         self(session_uuid).unset_master_session()
++        if control_session is None:
++            self(session_uuid).do_auto_connect()
+ 
+         return session_uuid
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index b8b3540..ea0170d 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -94,6 +94,8 @@ class X2goSession(object):
+                  use_sshproxy=False,
+                  profile_id=None, profile_name='UNKNOWN',
+                  session_name=None,
++                 auto_start_or_resume=False,
++                 auto_connect=False,
+                  printing=False,
+                  allow_mimebox=False,
+                  mimebox_extensions=[],
+@@ -130,6 +132,10 @@ class X2goSession(object):
+         @type profile_name: C{str}
+         @param session_name: session name (if available)
+         @type session_name: C{str}
++        @param auto_start_or_resume: automatically start a new or resume latest session after connect
++        @type auto_start_or_resume: C{bool}
++        @param auto_connect: call a hook method that handles connecting the session profile automatically after a session for this profile has been registered
++        @type auto_connect: C{bool}
+         @param printing: enable X2Go printing
+         @type printing: C{bool}
+         @param allow_mimebox: enable X2Go MIME box support
+@@ -213,6 +219,8 @@ class X2goSession(object):
+ 
+         self.locked = False
+ 
++        self.auto_start_or_resume = auto_start_or_resume
++        self.auto_connect = auto_connect
+         self.printing = printing
+         self.allow_share_local_folders = allow_share_local_folders
+         self.share_local_folders = share_local_folders
+@@ -298,7 +306,6 @@ class X2goSession(object):
+         if self.is_connected():
+             self.retrieve_server_features()
+ 
+-
+     def HOOK_session_startup_failed(self):
+         &quot;&quot;&quot;\
+         HOOK method: called if the startup of a session failed.
+@@ -552,7 +559,7 @@ class X2goSession(object):
+             self.printing = params['printing']
+             del params['printing'] 
+         except KeyError: pass
+-        try: 
++        try:
+             self.allow_share_local_folders = params['allow_share_local_folders']
+             del params['allow_share_local_folders']
+         except KeyError: pass
+@@ -576,6 +583,14 @@ class X2goSession(object):
+             self.use_sshproxy = params['use_sshproxy']
+             del params['use_sshproxy']
+         except KeyError: pass
++        try:
++            self.auto_connect = params['auto_connect']
++            del params['auto_connect']
++        except KeyError: pass
++        try:
++            self.auto_start_or_resume = params['auto_start_or_resume']
++            del params['auto_start_or_resume']
++        except KeyError: pass
+ 
+         _terminal_params = copy.deepcopy(params)
+         _control_params = copy.deepcopy(params)
+@@ -859,6 +874,21 @@ class X2goSession(object):
+             return False
+     __can_auto_connect = can_auto_connect
+ 
++    def do_auto_connect(self, redirect_to_client=True):
++        &quot;&quot;&quot;\
++        Automatically connect this session.
++
++        @return: Return success (or failure) of connecting this sessions
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if not self.is_connected():
++            if self.client_instance and redirect_to_client:
++                return self.client_instance.session_auto_connect(self())
++            else:
++                if self.can_auto_connect() and self.auto_connect:
++                    gevent.spawn(self.connect)
++
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False,
+                 use_sshproxy=False, sshproxy_user='', sshproxy_password=''):
+         &quot;&quot;&quot;\
+@@ -930,6 +960,8 @@ class X2goSession(object):
+                 self.control_params['password'] = ''
+                 if self.sshproxy_params and self.sshproxy_params.has_key('sshproxy_password'):
+                     del self.sshproxy_params['sshproxy_password']
++                if self.auto_start_or_resume:
++                    self.do_auto_start_or_resume()
+ 
+             if not self.connected:
+                 # then tidy up...
+@@ -1260,6 +1292,41 @@ class X2goSession(object):
+             self.terminal_session.exec_published_application(exec_name)
+     __exec_published_application = exec_published_application
+ 
++    def do_auto_start_or_resume(self, newest=True, oldest=False, all_suspended=False, start=True, redirect_to_client=True):
++        &quot;&quot;&quot;\
++        Automatically start or resume this session.
++
++        @param newest: if resuming, only resume newest/youngest session
++        @type newest: C{bool}
++        @param oldest: if resuming, only resume oldest session
++        @type oldest: C{bool}
++        @param all_suspended: if resuming, resume all suspended sessions
++        @type all_suspended: C{bool}
++        @param start: is no session is to be resumed, start a new session
++        @type start: C{bool}
++
++        @return: Return success (or failure) of starting/resuming this sessions
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self.client_instance and redirect_to_client:
++            return self.client_instance.session_auto_start_or_resume(self())
++        else:
++            if self.session_name is not None:
++                return self.resume()
++            else:
++                session_infos = self.list_sessions()
++                if session_infos:
++                    if newest:
++                        return self.resume(session_name=utils.session_names_by_timestamp(session_infos)[-1])
++                    elif oldest:
++                        return self.resume(session_name=utils.session_names_by_timestamp(session_infos)[-1])
++                    elif all_suspended:
++                        for session_name in [ _sn for _sn in session_infos.keys() if session_infos[_sn].is_suspended() ]:
++                            return self.resume(session_name=session_name)
++                else:
++                    return self.start()
++
+     def resume(self, session_name=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2Go session on the
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 1b23cdc..a888834 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -167,6 +167,9 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+             'sessiontitle': 'session_title',
+             'setsessiontitle': 'set_session_title',
+             'published': 'published_applications',
++            'autostart': 'auto_start_or_resume',
++            'autologin': 'auto_connect',
++
+     }
+     _speed_dict = {
+             '0': 'modem',
+@@ -253,8 +256,6 @@ def _convert_SessionProfileOptions_2_SessionParams(_options):
+ 
+     # currently known but ignored in Python X2go
+     _ignored_options = [
+-            'autostart',
+-            'autologin',
+             'dpi',
+             'setdpi',
+             'startsoundsystem',
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024130.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-140-gea7ea65
+</A></li>
+	<LI>Next message: <A HREF="024154.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-145-ga40721c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24138">[ date ]</a>
+              <a href="thread.html#24138">[ thread ]</a>
+              <a href="subject.html#24138">[ subject ]</a>
+              <a href="author.html#24138">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

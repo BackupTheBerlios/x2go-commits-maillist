@@ -1,0 +1,411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0-16-g496726f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.0.28.0-16-g496726f&In-Reply-To=%3C20130827112112.D2BB43BDFD%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="010392.html">
+   <LINK REL="Next"  HREF="010397.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0-16-g496726f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%0A%09build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d%20%28branch%29%0A%09updated%3A%200.0.28.0-16-g496726f&In-Reply-To=%3C20130827112112.D2BB43BDFD%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0-16-g496726f">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Aug 27 13:21:12 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="010392.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0-17-g07d0c6b
+</A></li>
+        <LI>Next message: <A HREF="010397.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10394">[ date ]</a>
+              <a href="thread.html#10394">[ thread ]</a>
+              <a href="subject.html#10394">[ subject ]</a>
+              <a href="author.html#10394">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d has been updated
+       via  496726f919949605fdc481d98d7be016cb157713 (commit)
+      from  8a0d2e68c057649a967994db26e1354349d6ce12 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ pyhoca/wxgui/frontend.py |   94 +++++++++++++++++------------
+ pyhoca/wxgui/logon.py    |    6 +-
+ pyhoca/wxgui/messages.py |  149 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 209 insertions(+), 40 deletions(-)
+ create mode 100644 pyhoca/wxgui/messages.py
+
+The diff of changes is:
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index f180813..74742a1 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -59,6 +59,7 @@ import taskbar
+ import menus_taskbar
+ import profilemanager
+ import notify
++import messages
+ import basepath
+ 
+ wx.SetDefaultPyEncoding(&quot;utf-8&quot;)
+@@ -188,6 +189,7 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         self._eventid_profilenames_map = {}
+         self._eventid_sessionnames_map = {}
+         self._temp_disabled_profile_names = []
++        self._added_known_hosts = []
+ 
+         # We register one session per available session profile.
+         # These registered sessions will be used to access the profile's 
+@@ -304,46 +306,48 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+     def _do_authenticate(self, evt, session_uuid):
+         profile_name = self.current_profile_name
+-        _add_to_known_hosts = self._X2goClient__check_session_host(session_uuid)
+-        try:
+-            self._X2goClient__connect_session(session_uuid, add_to_known_hosts=_add_to_known_hosts)
+-            if not self._X2goClient__server_valid_x2gouser(session_uuid):
+-                self.notifier.send(_(u'%s - connect failure') % profile_name, _(u'User is not allowed to start X2go sessions!'), icon='session_warning', timeout=10000)
+-                self._X2goClient__disconnect_profile(profile_name)
++        host_ok = self._X2goClient__check_session_host(session_uuid)
++        if host_ok:
++            try:
++                self._X2goClient__connect_session(session_uuid, add_to_known_hosts=host_ok)
++                if not self._X2goClient__server_valid_x2gouser(session_uuid):
++                    self.notifier.send(_(u'%s - connect failure') % profile_name, _(u'User is not allowed to start X2go sessions!'), icon='session_warning', timeout=10000)
++                    self._X2goClient__disconnect_profile(profile_name)
++                    self._temp_disabled_profile_names.remove(profile_name)
++                else:
++                    self.notifier.send(_(u'%s - connect') % profile_name, _(u'Public SSH key authentication has been successful.'), icon='auth_success', timeout=4000)
++                    _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
++                    self._post_authenticate(evt, session_uuid)
++                    self._temp_disabled_profile_names.remove(profile_name)
++            except x2go.AuthenticationException:
++                self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, host_ok=host_ok, )
++                self._sub_windows.append(_logon_window)
++            except x2go.X2goSSHProxyAuthenticationException:
++                self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
++                _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, host_ok=host_ok, sshproxy_auth=True )
++                self._sub_windows.append(_logon_window)
++            except x2go.SSHException, e:
++                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+                 self._temp_disabled_profile_names.remove(profile_name)
+-            else:
+-                self.notifier.send(_(u'%s - connect') % profile_name, _(u'Public SSH key authentication has been successful.'), icon='auth_success', timeout=4000)
+-                _dummy = self._X2goClient__list_sessions(session_uuid, refresh_cache=True)
+-                self._post_authenticate(evt, session_uuid)
++            except gevent.dns.DNSError, e:
++                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
+                 self._temp_disabled_profile_names.remove(profile_name)
+-        except x2go.AuthenticationException:
+-            self._pyhoca_logger('public SSH key authentication to server failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self,)
+-            self._sub_windows.append(_logon_window)
+-        except x2go.X2goSSHProxyAuthenticationException:
+-            self._pyhoca_logger('public SSH key authentication for SSH proxy failed, trying next auth-mechanism', loglevel=x2go.log.loglevel_INFO, )
+-            _logon_window = logon.PyHocaGUI_DialogBoxPassword(self, profile_name, caller=self, add_to_known_hosts=_add_to_known_hosts, sshproxy_auth=True )
+-            self._sub_windows.append(_logon_window)
+-        except x2go.SSHException, e:
+-            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+-            self._temp_disabled_profile_names.remove(profile_name)
+-        except gevent.dns.DNSError, e:
+-            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
+-            self._temp_disabled_profile_names.remove(profile_name)
+-        except gevent.socket.error, e:
+-            self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
+-            self._temp_disabled_profile_names.remove(profile_name)
+-        except EOFError, e:
+-            self.notifier.send(_(u'%s - connect error') % profile_name, _(u'Authentication protocol communication incomplete! Try again...'), icon='auth_error', timeout=4000)
+-            self._temp_disabled_profile_names.remove(profile_name)
+-        except x2go.X2goSSHProxyException, e:
+-            self.notifier.send(_(u'%s - key error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
+-            self._temp_disabled_profile_names.remove(profile_name)
+-        except:
+-            self.notifier.send('%s - connect error' % profile_name, 'An unknown error occurred during authentication!', icon='auth_error', timeout=4000)
++            except gevent.socket.error, e:
++                self.notifier.send(_(u'%s - connect error') % profile_name, '%s!' % e.strerror, icon='auth_error', timeout=4000)
++                self._temp_disabled_profile_names.remove(profile_name)
++            except EOFError, e:
++                self.notifier.send(_(u'%s - connect error') % profile_name, _(u'Authentication protocol communication incomplete! Try again...'), icon='auth_error', timeout=4000)
++                self._temp_disabled_profile_names.remove(profile_name)
++            except x2go.X2goSSHProxyException, e:
++                self.notifier.send(_(u'%s - key error') % profile_name, '%s!' % str(e), icon='auth_error', timeout=4000)
++                self._temp_disabled_profile_names.remove(profile_name)
++            except:
++                self.notifier.send('%s - connect error' % profile_name, 'An unknown error occurred during authentication!', icon='auth_error', timeout=4000)
++                self._temp_disabled_profile_names.remove(profile_name)
++            self.taskbar.SetIconIdle()
++        else:
+             self._temp_disabled_profile_names.remove(profile_name)
+-        self.taskbar.SetIconIdle()
+-
+ 
+     def OnSessionAuthenticate(self, evt):
+         &quot;&quot;&quot;\
+@@ -522,6 +526,22 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+         self.OnExit(evt)
+ 
+     ##
++    ## Python X2go (X2goClient) interactive HOOK's...
++    ##
++    def HOOK_check_host_dialog(self, profile_name='UNKNOWN', host='UNKNOWN', port=22, fingerprint='no fingerprint', fingerprint_type='RSA', ):
++        &quot;&quot;&quot;\
++        STILL UNDOCUMENTED
++
++        &quot;&quot;&quot;
++        _message = _(u'The authenticity of host [%s]:%s can\'t be established.\n%s key fingerprint is ,,%s\'\'.\n\nAre you sure you want to continue connecting?') % (host, port, fingerprint_type, fingerprint)
++        m = messages.PyHoca_MessageWindow(self, custom_message=_message, title=_(u'%s: Confirm Host Authorization') % profile_name, icon='profile_warning', buttontype='noyes')
++        while m in self._sub_windows:
++            gevent.sleep(0.5)
++        retval = m.Yes()
++        m.Destroy()
++        return retval
++
++    ##
+     ## Python X2go (X2goClient) notification HOOK's...
+     ##
+ 
+diff --git a/pyhoca/wxgui/logon.py b/pyhoca/wxgui/logon.py
+index 59d4a09..bfa5283 100644
+--- a/pyhoca/wxgui/logon.py
++++ b/pyhoca/wxgui/logon.py
+@@ -62,13 +62,13 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+     STILL UNDOCUMENTED
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, _PyHocaGUI, profile_name, caller=None, add_to_known_hosts=False, sshproxy_auth=False): 
++    def __init__(self, _PyHocaGUI, profile_name, caller=None, host_ok=None, sshproxy_auth=False): 
+ 
+         self._PyHocaGUI = _PyHocaGUI
+         self._pyhoca_logger = self._PyHocaGUI._pyhoca_logger
+         self._pyhoca_logger('password dialog box started', loglevel=x2go.loglevel_INFO, )
+ 
+-        self.add_to_known_hosts = add_to_known_hosts
++        self.host_ok = host_ok or False
+         self.sshproxy_auth = sshproxy_auth
+ 
+         self.current_profile_name = profile_name
+@@ -228,7 +228,7 @@ class PyHocaGUI_DialogBoxPassword(wx.Dialog):
+                                                          username=username, 
+                                                          password=password, 
+                                                          force_password_auth=force_password_auth, 
+-                                                         add_to_known_hosts=self.add_to_known_hosts,
++                                                         add_to_known_hosts=self.host_ok,
+                                                          sshproxy_user=sshproxy_user, 
+                                                          sshproxy_password=sshproxy_password)
+             if not self._PyHocaGUI._X2goClient__server_valid_x2gouser(session_uuid):
+diff --git a/pyhoca/wxgui/messages.py b/pyhoca/wxgui/messages.py
+new file mode 100644
+index 0000000..2a0c4ef
+--- /dev/null
++++ b/pyhoca/wxgui/messages.py
+@@ -0,0 +1,149 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++
++# Copyright (C) 2010 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
++
++# Contributors to the code of this programme:
++#     Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++
++import wx
++
++pyhoca_messages = { 
++    'MISSING_PROFILENAME': 'The profile name is missing, please specify a profile name.',
++    }
++
++class PyHoca_MessageWindow(wx.Dialog):
++
++    def __init__(self, _PyHocaGUI, title=None, shortmsg=None, custom_message=None, icon='session_warning', buttontype='ok'):
++
++        self._PyHocaGUI = _PyHocaGUI
++
++        if shortmsg is None:
++            show_message = custom_message
++        elif shortmsg in pyhoca_messages:
++            show_message = pyhoca_messages[msg]
++        else:
++            show_message = 'No message has been given...'
++
++        self.show_message = show_message
++        self.result = None
++
++        wx.Dialog.__init__(self, _PyHocaGUI.about, )
++        self.SetTitle('%s' % title)
++
++        self.message = wx.StaticText(self, wx.ID_ANY, self.show_message, size=(-1, -1), style=wx.ALIGN_CENTER) 
++
++        btnSizer = wx.BoxSizer(wx.HORIZONTAL)
++        mainSizer = wx.BoxSizer(wx.VERTICAL)
++
++        if buttontype in ('yesno', 'noyes'):
++            self.yesBtn = wx.Button(self, wx.ID_YES, _(u'Yes'),)
++            self.noBtn = wx.Button(self, wx.ID_NO, _(u'No'))
++
++            self.Bind(wx.EVT_BUTTON, self.OnTrue, self.yesBtn)
++            self.Bind(wx.EVT_BUTTON, self.OnFalse, self.noBtn)
++
++            btnSizer.Add(self.yesBtn, 0, wx.ALL, 5) 
++            btnSizer.Add(self.noBtn, 0, wx.ALL, 5) 
++
++            if buttontype == 'yesno':
++                self.yesBtn.SetDefault()
++            elif buttontype == 'noyes':
++                self.noBtn.SetDefault()
++
++        if buttontype in ('ok', 'okcancel', 'cancelok'):
++
++            self.okBtn = wx.Button(self, wx.ID_OK, _(u'Ok'),)
++            self.Bind(wx.EVT_BUTTON, self.OnTrue, self.okBtn)
++            btnSizer.Add(self.okBtn, 0, wx.ALL, 5) 
++
++        if buttontype in ('okcancel', 'cancelok'):
++
++            self.cancelBtn = wx.Button(self, wx.ID_CANCEL, _(u'Cancel'))
++            self.Bind(wx.EVT_BUTTON, self.OnFalse, self.cancelBtn)
++            btnSizer.Add(self.cancelBtn, 0, wx.ALL, 5) 
++
++        if buttontype in ('ok', 'okcancel'):
++            self.okBtn.SetDefault()
++
++        if buttontype == 'cancelok':
++            self.cancelBtn.SetDefault()
++
++        mainSizer.Add(self.message, 0, wx.ALL, 5) 
++        mainSizer.Add(btnSizer, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
++
++        self.SetSizerAndFit(mainSizer) 
++        self.Layout()
++
++        maxX, maxY = wx.GetDisplaySize()
++
++        self.Move((maxX/2 - self.GetSize().GetWidth()/2, maxY/2 - self.GetSize().GetHeight()/2))
++        self.Show()
++        self._PyHocaGUI._sub_windows.append(self)
++
++    def OnTrue(self, evt):
++        self.result = True
++        self.Close()
++
++    def OnFalse(self, evt):
++        self.result = False
++        self.Close()
++
++    def Ok(self):
++        return self.result
++
++    def Cancel(self):
++        return not self.Ok()
++
++    def Yes(self):
++        return self.result
++
++    def No(self):
++        return not self.Yes()
++
++    def Close(self):
++        self._PyHocaGUI._sub_windows.remove(self)
++        wx.Dialog.Close(self)
++
++    def Destroy(self):
++        wx.Dialog.Destroy(self)
++
++
++
++class PyHoca_MessageWindow_Ok(PyHoca_MessageWindow):
++    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='ok')
++
++class PyHoca_MessageWindow_OkCancel(PyHoca_MessageWindow):
++    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message,  icon=icon, buttontype='okcancel')
++
++class PyHoca_MessageWindow_CancelOk(PyHoca_MessageWindow):
++    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='cancelok')
++
++class PyHoca_MessageWindow_YesNo(PyHoca_MessageWindow):
++    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='yesno')
++
++class PyHoca_MessageWindow_NoYes(PyHoca_MessageWindow):
++    def __init__(self, _PyHocaGUI, shortmsg=None, custom_message=None, icon='session_warning'):
++        PyHoca_MessageWindow.__init__(self, _PyHocaGUI, shortmsg=shortmsg, custom_message=custom_message, icon=icon, buttontype='noyes')
++
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="010392.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0-17-g07d0c6b
+</A></li>
+	<LI>Next message: <A HREF="010397.html">[X2Go-Commits] pyhoca-gui.git -	build-59a18b6e3b5d3f1dd8f07f26433d37fe5984a57d (branch)	updated: 0.0.28.0
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#10394">[ date ]</a>
+              <a href="thread.html#10394">[ thread ]</a>
+              <a href="subject.html#10394">[ subject ]</a>
+              <a href="author.html#10394">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

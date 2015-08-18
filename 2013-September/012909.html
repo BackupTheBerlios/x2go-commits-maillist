@@ -1,0 +1,192 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	7058128148bfb912fca8a0fac8ebffe184646f1a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%097058128148bfb912fca8a0fac8ebffe184646f1a&In-Reply-To=%3C20130914135533.172B05DB46%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012907.html">
+   <LINK REL="Next"  HREF="012912.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	7058128148bfb912fca8a0fac8ebffe184646f1a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%097058128148bfb912fca8a0fac8ebffe184646f1a&In-Reply-To=%3C20130914135533.172B05DB46%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	7058128148bfb912fca8a0fac8ebffe184646f1a">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:55:32 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012907.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-48-g5a1a18d
+</A></li>
+        <LI>Next message: <A HREF="012912.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-49-g6069037
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12909">[ date ]</a>
+              <a href="thread.html#12909">[ thread ]</a>
+              <a href="subject.html#12909">[ subject ]</a>
+              <a href="author.html#12909">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  7058128148bfb912fca8a0fac8ebffe184646f1a (commit)
+      from  3faad6adbf891e4d152791625840e3e5755aeea6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ examples/x2go_resume_session.py |   23 ++++++++++++++---------
+ examples/x2go_start_session.py  |   28 +++++++++++++++-------------
+ 2 files changed, 29 insertions(+), 22 deletions(-)
+
+The diff of changes is:
+diff --git a/examples/x2go_resume_session.py b/examples/x2go_resume_session.py
+index 9551e47..fa33c71 100755
+--- a/examples/x2go_resume_session.py
++++ b/examples/x2go_resume_session.py
+@@ -31,26 +31,31 @@ import time
+ import paramiko
+ 
+ # modify to your needs...
+-server   = &quot;server.my-domain.tld&quot;
++server   = &quot;server.mydomain.tld&quot;
+ port     =  22
+ username = &quot;foo&quot;
+ 
+ password = getpass.getpass()
+ 
+-cli = x2go.X2goClient()
+-s_hash = cli.register_session(server, port=port, username=username, geometry=&quot;800x600&quot;)
+-cli.with_session(s_hash).set_missing_host_key_policy(paramiko.WarningPolicy())
+-cli.connect_session(s_hash)
++cli = x2go.X2goClient(use_cache=False, loglevel=x2go.log.loglevel_DEBUG)
++s_uuid = cli.register_session(server, port=port, username=username, geometry=&quot;800x600&quot;, add_to_known_hosts=True)
++cli.connect_session(s_uuid, password=password)
+ 
+ # the next lines will resume the first session in the avail_sessions dictionary
+-avail_sessions = cli.list_sessions(s_hash)
++avail_sessions = cli.list_sessions(s_uuid)
+ if avail_sessions:
+     session_info = avail_sessions.values()[0]
+     sys.stdout.write(&quot;Trying to resume session %s\n&quot; % (session_info.name,))
+-    cli.resume_session(s_hash, session_name=session_info.name)
++    cli.resume_session(s_uuid, session_name=session_info.name)
++
++    try:
++        while cli.session_ok(s_uuid):
++            time.sleep(1)
++    except KeyboardInterrupt:
++        pass
++
++    cli.terminate_session(s_uuid)
+ 
+-    while cli.session_ok(s_hash):
+-        time.sleep(1)
+ else:
+     print &quot;No sessions to be resumed.&quot;
+ 
+diff --git a/examples/x2go_start_session.py b/examples/x2go_start_session.py
+index 53d6217..0e2b200 100755
+--- a/examples/x2go_start_session.py
++++ b/examples/x2go_start_session.py
+@@ -26,33 +26,35 @@
+ import x2go
+ 
+ import sys
+-import time
++import gevent
+ import getpass
+-import paramiko
+ 
+ # modify to your needs...
+-server   = &quot;server.my-domain.tld&quot;
++server   = &quot;server.mydomain.tld&quot;
+ port     = 22
+ username = &quot;foo&quot;
+ command  = &quot;GNOME&quot;
+ 
+ password = getpass.getpass()
+ 
+-cli = x2go.X2goClient()
+-s_hash = cli.register_session(server, port=port, username=username, password=password, cmd=command)
+-cli.with_session(s_hash).set_missing_host_key_policy(paramiko.WarningPolicy())
+-cli.connect_session(s_hash)
++cli = x2go.X2goClient(use_cache=False, loglevel=x2go.log.loglevel_DEBUG)
++s_uuid = cli.register_session(server, port=port,
++                              username=username,
++                              cmd=command,
++                              add_to_known_hosts=True,
++                             )
++cli.connect_session(s_uuid, password=password)
+ 
+ # clean sessions and check the result
+-cli.clean_sessions(s_hash)
++cli.clean_sessions(s_uuid)
+ # start the session and run a command
+-cli.start_session(s_hash)
++cli.start_session(s_uuid)
+ 
+ try:
+-    while True:
+-        time.sleep(2)
++    while cli.session_ok(s_uuid):
++        gevent.sleep(2)
+ except KeyboardInterrupt:
+     pass
+ 
+-# terminate the session
+-cli.terminate_session(s_hash)
++# suspend the session
++cli.suspend_session(s_uuid)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012907.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-48-g5a1a18d
+</A></li>
+	<LI>Next message: <A HREF="012912.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	0.1.0.10-49-g6069037
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12909">[ date ]</a>
+              <a href="thread.html#12909">[ thread ]</a>
+              <a href="subject.html#12909">[ subject ]</a>
+              <a href="author.html#12909">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

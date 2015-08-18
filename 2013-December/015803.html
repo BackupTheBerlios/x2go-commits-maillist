@@ -1,0 +1,666 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-7-g6ec9965
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-7-g6ec9965&In-Reply-To=%3C20131204052110.0F1853BC46%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015802.html">
+   <LINK REL="Next"  HREF="015804.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-7-g6ec9965</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goserver.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%093.0.99-2-7-g6ec9965&In-Reply-To=%3C20131204052110.0F1853BC46%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-7-g6ec9965">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Dec  4 06:21:09 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015802.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-3-g17f0a8f
+</A></li>
+        <LI>Next message: <A HREF="015804.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15803">[ date ]</a>
+              <a href="thread.html#15803">[ thread ]</a>
+              <a href="subject.html#15803">[ subject ]</a>
+              <a href="author.html#15803">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  6ec99657c4be82fe659cf3d13614be7a9734a380 (commit)
+      from  881eb49831cf84440670f3fb8a10cf116c2a1e01 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/control                           |   11 +--
+ debian/rules                             |  117 ++----------------------------
+ debian/{dirs =&gt; x2goserver.dirs}         |    4 +-
+ debian/{init.d =&gt; x2goserver.init}       |    0
+ debian/x2goserver.install                |   32 ++++++++
+ debian/{postinst =&gt; x2goserver.postinst} |   22 ++++++
+ debian/x2goserver.postrm                 |   37 ++++++++++
+ sql                                      |    2 +-
+ x2godbwrapper.pm                         |   38 +++++-----
+ x2gosqlitewrapper                        |   23 +++---
+ 10 files changed, 134 insertions(+), 152 deletions(-)
+ delete mode 100644 debian/docs
+ rename debian/{dirs =&gt; x2goserver.dirs} (72%)
+ rename debian/{init.d =&gt; x2goserver.init} (100%)
+ create mode 100644 debian/x2goserver.install
+ rename debian/{postinst =&gt; x2goserver.postinst} (59%)
+ create mode 100644 debian/x2goserver.postrm
+
+The diff of changes is:
+diff --git a/debian/control b/debian/control
+index db467de..a322e54 100644
+--- a/debian/control
++++ b/debian/control
+@@ -7,8 +7,9 @@ Standards-Version: 3.7.2
+ 
+ Package: x2goserver
+ Architecture: all
+-Depends: x2goagent, sudo, lsof, openssh-client, openssh-server, libconfig-simple-perl, makepasswd, libdbd-pg-perl, libdbd-sqlite3-perl
++Depends: x2goagent, perl-suid, lsof, openssh-client, openssh-server, libconfig-simple-perl, makepasswd, libdbd-pg-perl, libdbd-sqlite3-perl, adduser
+ Recommends: sshfs
++Breaks: x2goserver-one
+ Description: x2goserver (daemon and tools)
+  x2go is a serverbased computing environment with
+  - session resuming
+@@ -16,9 +17,9 @@ Description: x2goserver (daemon and tools)
+  - LDAP support
+  - client side mass storage mounting support
+  - audio/arts support
+- - authentification by smartcard and usb-stick
+- - kde control-center modules for administration
+- - kde based tools for just in time messaging and client surveillance
++ - authentication by smartcard and usb-stick
++ - KDE control-center modules for administration
++ - KDE based tools for just in time messaging and client surveillance
+  .
+  x2goserver contains the main daemon and tools for
+- session administrations (scripts).
+\ No newline at end of file
++ session administrations (scripts).
+diff --git a/debian/docs b/debian/docs
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/debian/rules b/debian/rules
+index ac4ff98..dc98d08 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -1,128 +1,24 @@
+ #!/usr/bin/make -f
+-# -*- makefile -*-
+-# Sample debian/rules that uses debhelper.
+-# This file was originally written by Joey Hess and Craig Small.
+-# As a special exception, when this file is copied by dh-make into a
+-# dh-make output file, you may use that output file without restriction.
+-# This special exception was added by Craig Small in version 0.37 of dh-make.
+-
+-# Uncomment this to turn on verbose mode.
+-#export DH_VERBOSE=1
+-
+-
+-
+-
+-CFLAGS = -Wall -g
+-
+-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+-	CFLAGS += -O0
+-else
+-	CFLAGS += -O2
+-endif
+-
+-configure: configure-stamp
+-configure-stamp:
+-	dh_testdir
+-	# Add here commands to configure the package.
+-
+-	touch configure-stamp
+-
+-
+-build: build-stamp
+-
+-build-stamp: configure-stamp 
+-	dh_testdir
+-
+-	# Add here commands to compile the package.
+-	#docbook-to-man debian/x2goserver.sgml &gt; x2goserver.1
+-
+-	touch $@
+ 
+ clean:
+ 	dh_testdir
+ 	dh_testroot
+-	rm -f build-stamp configure-stamp
+-
+-	# Add here commands to clean up after the build process.
+-
+ 	dh_clean 
+ 
+-install: build
+-	dh_testdir
+-	dh_testroot
+-	dh_clean -k 
+-	dh_installdirs
+-
+-	# Add here commands to install the package into debian/x2goserver.
+-	install  x2gochangestatus  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gocmdexitmessage  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gocreatesession  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gogetagent  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gogetdisplays  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gogetports  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gogetservers  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goinsertport  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goinsertsession  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2golistsessions  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2golistdesktops  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2golistsessions_root  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2golistsessions_sql  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gomountdirs  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goresume  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goresume-session  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goruncommand  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goshowblocks  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gosqlitewrapper  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gostartagent  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gosuspend-session  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gosuspend-agent  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goterminate  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goterminate-session  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goumount  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2goumount_session  $(CURDIR)/debian/x2goserver/usr/bin/
+-	install  x2gosessionlimit  $(CURDIR)/debian/x2goserver/usr/bin/
+-
+-
++build:
++	dh_prep
+ 
+-
+-	cp  sql  $(CURDIR)/debian/x2goserver/etc/x2go/x2gosql/
+-	cp  x2goserver.conf  $(CURDIR)/debian/x2goserver/etc/x2go/
+-	cp x2godbwrapper.pm $(CURDIR)/debian/x2goserver/usr/lib/x2go/
+-	install  x2gocleansessions  $(CURDIR)/debian/x2goserver/usr/sbin/
+-	install  x2godbadmin  $(CURDIR)/debian/x2goserver/usr/lib/x2go/script
+-
+-
+-
+-
+-# Build architecture-independent files here.
+-binary-indep: build install
+ # We have nothing to do by default.
+-
+-# Build architecture-dependent files here.
+-binary-arch: build install
++binary-indep: build
++binary-arch: build
+ 	dh_testdir
+ 	dh_testroot
++	dh_installdirs
++	dh_install
+ 	dh_installchangelogs 
+ 	dh_installdocs
+-	dh_installexamples
+-#	dh_install
+-#	dh_installmenu
+-#	dh_installdebconf	
+-#	dh_installlogrotate
+-#	dh_installemacsen
+-#	dh_installpam
+-#	dh_installmime
+-#	dh_python
+-	dh_installinit -R
+-#	dh_installcron
+-#	dh_installinfo
+-	dh_installman
+-	dh_link
+-	dh_strip
+ 	dh_compress
+ 	dh_fixperms
+-#	dh_perl
+-#	dh_makeshlibs
+ 	dh_installdeb
+ 	dh_shlibdeps
+ 	dh_gencontrol
+@@ -130,4 +26,3 @@ binary-arch: build install
+ 	dh_builddeb
+ 
+ binary: binary-indep binary-arch
+-.PHONY: build clean binary-indep binary-arch binary install configure
+diff --git a/debian/dirs b/debian/x2goserver.dirs
+similarity index 72%
+rename from debian/dirs
+rename to debian/x2goserver.dirs
+index 8d37723..29d4959 100644
+--- a/debian/dirs
++++ b/debian/x2goserver.dirs
+@@ -1,7 +1,5 @@
+-usr/bin
+-usr/sbin
+ etc/x2go
+ etc/x2go/x2gosql
+ etc/x2go/x2gosql/passwords
+ usr/lib/x2go/script
+-var/db/x2go
+\ No newline at end of file
++var/lib/x2go
+diff --git a/debian/init.d b/debian/x2goserver.init
+similarity index 100%
+rename from debian/init.d
+rename to debian/x2goserver.init
+diff --git a/debian/x2goserver.install b/debian/x2goserver.install
+new file mode 100644
+index 0000000..f6627fd
+--- /dev/null
++++ b/debian/x2goserver.install
+@@ -0,0 +1,32 @@
++x2gochangestatus      /usr/bin/
++x2gocmdexitmessage    /usr/bin/
++x2gocreatesession     /usr/bin/
++x2gogetagent          /usr/bin/
++x2gogetdisplays       /usr/bin/
++x2gogetports          /usr/bin/
++x2gogetservers        /usr/bin/
++x2goinsertport        /usr/bin/
++x2goinsertsession     /usr/bin/
++x2golistsessions      /usr/bin/
++x2golistdesktops      /usr/bin/
++x2golistsessions_root /usr/bin/
++x2golistsessions_sql  /usr/bin/
++x2gomountdirs         /usr/bin/
++x2goresume            /usr/bin/
++x2goresume-session    /usr/bin/
++x2goruncommand        /usr/bin/
++x2goshowblocks        /usr/bin/
++x2gosqlitewrapper     /usr/bin/
++x2gostartagent        /usr/bin/
++x2gosuspend-session   /usr/bin/
++x2gosuspend-agent     /usr/bin/
++x2goterminate         /usr/bin/
++x2goterminate-session /usr/bin/
++x2goumount            /usr/bin/
++x2goumount_session    /usr/bin/
++x2gosessionlimit      /usr/bin/
++sql                   /etc/x2go/x2gosql/
++x2goserver.conf       /etc/x2go/
++x2godbwrapper.pm      /usr/lib/x2go/
++x2gocleansessions     /usr/sbin/
++x2godbadmin           /usr/lib/x2go/script
+diff --git a/debian/postinst b/debian/x2goserver.postinst
+similarity index 59%
+rename from debian/postinst
+rename to debian/x2goserver.postinst
+index 67086e0..d81b6ce 100755
+--- a/debian/postinst
++++ b/debian/x2goserver.postinst
+@@ -23,6 +23,28 @@ case &quot;$1&quot; in
+     chmod 700 /etc/x2go/x2gosql/passwords
+     touch /etc/x2go/x2gosql/passwords/pgadmin
+     chmod 600 /etc/x2go/x2gosql/passwords/pgadmin
++
++    # setup x2gouser and group
++    if ! getent group x2gousers &gt;/dev/null; then
++        echo &quot;Creating x2gouser user.&quot; &gt;&amp;2
++        addgroup --system x2gousers
++    else
++        echo &quot;User x2gouser already exists.&quot; &gt;&amp;2
++    fi
++    if ! getent passwd x2gouser &gt;/dev/null; then
++        echo &quot;Creating x2gouser user.&quot; &gt;&amp;2
++        adduser --system --no-create-home \
++            --disabled-password --disabled-login \
++            --shell /bin/false --group --home /var/lib/x2go x2gouser
++    else
++        echo &quot;User x2gouser already exists.&quot; &gt;&amp;2
++    fi
++
++    if [ ! -f /var/lib/x2go/x2go_sessions ]; then
++        /usr/lib/x2go/script/x2godbadmin --createdb
++    fi
++
++    dpkg-statoverride --add --update x2gouser x2gousers 6755 /usr/bin/x2gosqlitewrapper || true
+     ;;
+ 
+     abort-upgrade|abort-remove|abort-deconfigure)
+diff --git a/debian/x2goserver.postrm b/debian/x2goserver.postrm
+new file mode 100644
+index 0000000..9cc8f3a
+--- /dev/null
++++ b/debian/x2goserver.postrm
+@@ -0,0 +1,37 @@
++#! /bin/sh
++# postrm script for x2goserver
++#
++# see: dh_installdeb(1)
++# summary of how this script can be called:
++#        * &lt;postrm&gt; `remove'
++#        * &lt;postrm&gt; `purge'
++#        * &lt;old-postrm&gt; `upgrade' &lt;new-version&gt;
++#        * &lt;new-postrm&gt; `failed-upgrade' &lt;old-version&gt;
++#        * &lt;new-postrm&gt; `abort-install'
++#        * &lt;new-postrm&gt; `abort-install' &lt;old-version&gt;
++#        * &lt;new-postrm&gt; `abort-upgrade' &lt;old-version&gt;
++#        * &lt;disappearer's-postrm&gt; `disappear' &lt;r&gt;overwrit&gt;r&gt; &lt;new-version&gt;
++# for details, see /usr/share/doc/packaging-manual/
++
++set -e
++
++
++case &quot;$1&quot; in
++        purge)
++            dpkg-statoverride --remove /usr/bin/x2gosqlitewrapper || true
++            echo &quot;Removing x2go session database&quot; &gt;&amp;2
++            rm -vf /var/lib/x2go/x2go_sessions
++            getent passwd x2gouser &gt;/dev/null &amp;&amp; deluser x2gouser
++            getent group x2gousers &gt;/dev/null &amp;&amp; delgroup x2gousers
++        ;;
++        remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
++        ;;
++        *)
++            echo &quot;postrm called with unknown argument \`$1'&quot; &gt;&amp;2
++            exit 0
++esac
++
++# dh_installdeb will replace this with shell code automatically
++# generated by other debhelper scripts.
++
++#DEBHELPER#
+diff --git a/sql b/sql
+index dfbfca0..f3052d7 100644
+--- a/sql
++++ b/sql
+@@ -1,5 +1,5 @@
+ #postgres or sqlite
+-backend=postgres
++backend=sqlite
+ 
+ [postgres]
+ host=localhost
+diff --git a/x2godbwrapper.pm b/x2godbwrapper.pm
+index 3d78b4b..ebadcff 100644
+--- a/x2godbwrapper.pm
++++ b/x2godbwrapper.pm
+@@ -80,7 +80,7 @@ sub dbsys_rmsessionsroot
+        }
+        if($backend eq 'sqlite')
+        {
+-	   `sudo -u x2gouser x2gosqlitewrapper rmsessionsroot $sid`;
++	   `x2gosqlitewrapper rmsessionsroot $sid`;
+        }
+ }
+ 
+@@ -110,7 +110,7 @@ sub dbsys_listsessionsroot
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper listsessionsroot $server`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper listsessionsroot $server`);
+        }
+ }
+ 
+@@ -139,7 +139,7 @@ sub dbsys_listsessionsroot_all
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper listsessionsroot_all`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper listsessionsroot_all`);
+        }
+ }
+ 
+@@ -165,7 +165,7 @@ sub dbsys_getmounts
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper getmounts $sid`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper getmounts $sid`);
+        }
+ 
+ }
+@@ -191,7 +191,7 @@ sub db_getmounts
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper getmounts $sid`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper getmounts $sid`);
+        }
+ }
+ 	     
+@@ -209,7 +209,7 @@ sub db_deletemount
+        }
+        if($backend eq 'sqlite')
+        {
+-	   `sudo -u x2gouser x2gosqlitewrapper deletemount $sid \&quot;$path\&quot;`;
++	   `x2gosqlitewrapper deletemount $sid \&quot;$path\&quot;`;
+        }
+ 
+ }
+@@ -234,7 +234,7 @@ sub db_insertmount
+        }
+        if($backend eq 'sqlite')
+        {
+-	   if( `sudo -u x2gouser x2gosqlitewrapper insertmount $sid \&quot;$path\&quot; $client` eq &quot;ok&quot;)
++	   if( `x2gosqlitewrapper insertmount $sid \&quot;$path\&quot; $client` eq &quot;ok&quot;)
+ 	   {
+ 	     $res_ok=1;
+ 	   }
+@@ -258,7 +258,7 @@ sub db_insertsession
+        }
+        if($backend eq 'sqlite')
+        {
+-	   my $err=`sudo -u x2gouser x2gosqlitewrapper insertsession $display $server $sid`;
++	   my $err=`x2gosqlitewrapper insertsession $display $server $sid`;
+ 	   if($err ne &quot;ok&quot;)
+ 	   {
+ 	     die &quot;$err: x2gosqlitewrapper insertsession $display $server $sid&quot;;
+@@ -288,7 +288,7 @@ sub db_createsession
+        }
+        if($backend eq 'sqlite')
+        {
+-	   my $err= `sudo -u x2gouser x2gosqlitewrapper createsession $cookie $pid $client $gr_port $snd_port $fs_port $sid`;
++	   my $err= `x2gosqlitewrapper createsession $cookie $pid $client $gr_port $snd_port $fs_port $sid`;
+ 	   if($err ne &quot;ok&quot;)
+ 	   {
+ 	     die $err;
+@@ -312,7 +312,7 @@ sub db_insertport
+        }
+        if($backend eq 'sqlite')
+        {
+-	   `sudo -u x2gouser x2gosqlitewrapper insertport $server $sid $sshport`;
++	   `x2gosqlitewrapper insertport $server $sid $sshport`;
+        }
+ 
+ }
+@@ -332,7 +332,7 @@ sub db_resume
+        }
+        if($backend eq 'sqlite')
+        {
+-	   `sudo -u x2gouser x2gosqlitewrapper resume $client $sid`;
++	   `x2gosqlitewrapper resume $client $sid`;
+        }
+ 
+ }
+@@ -351,7 +351,7 @@ sub db_changestatus
+        }
+        if($backend eq 'sqlite')
+        {
+-	   `sudo -u x2gouser x2gosqlitewrapper changestatus $status $sid`;
++	   `x2gosqlitewrapper changestatus $status $sid`;
+        }
+ 
+ }
+@@ -378,7 +378,7 @@ sub db_getdisplays
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper getdisplays $server`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper getdisplays $server`);
+        }
+ 
+ }
+@@ -405,7 +405,7 @@ sub db_getports
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper getports $server`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper getports $server`);
+        }
+ 
+ }
+@@ -431,7 +431,7 @@ sub db_getservers
+        }
+               if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper getservers`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper getservers`);
+        }
+ 
+ }
+@@ -458,7 +458,7 @@ sub db_getagent
+        }
+        if($backend eq 'sqlite')
+        {
+-	   $agent=`sudo -u x2gouser x2gosqlitewrapper getagent $sid`;
++	   $agent=`x2gosqlitewrapper getagent $sid`;
+        }
+        return $agent;
+ }
+@@ -485,7 +485,7 @@ sub db_getdisplay
+        }
+        if($backend eq 'sqlite')
+        {
+-	   $display=`sudo -u x2gouser x2gosqlitewrapper getdisplay $sid`;
++	   $display=`x2gosqlitewrapper getdisplay $sid`;
+        }
+        return $display;
+ }
+@@ -516,7 +516,7 @@ sub db_listsessions
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper listsessions $server`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper listsessions $server`);
+        }
+ 
+ }
+@@ -547,7 +547,7 @@ sub db_listsessions_all
+        }
+        if($backend eq 'sqlite')
+        {
+-	   return split(&quot;\n&quot;,`sudo -u x2gouser x2gosqlitewrapper listsessions_all`);
++	   return split(&quot;\n&quot;,`x2gosqlitewrapper listsessions_all`);
+        }
+ 
+ }
+diff --git a/x2gosqlitewrapper b/x2gosqlitewrapper
+index 55b8e43..744c780 100755
+--- a/x2gosqlitewrapper
++++ b/x2gosqlitewrapper
+@@ -1,31 +1,28 @@
+ #!/usr/bin/perl
++
+ use strict;
+ 
+ use DBI;
+ use POSIX;
+ 
+-my $realuser=$ENV{SUDO_USER};
+-my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
+-
+-if($uname ne &quot;x2gouser&quot;)
++if ($&lt; eq $&gt;)
+ {
+-	die &quot;Use \&quot;sudo -u x2gouser\&quot; to run this programm&quot;;
++    die &quot;Please install this program as SUID x2gouser!\n&quot;;
+ }
+ 
+-my $cmd=shift or die &quot;command not specified&quot;;
+-
+-my $user=&quot;x2gouser&quot;;
+-my ($name, $pass, $uid, $pgid, $quota, $comment, $gcos, $dir, $shell, $expire) = getpwnam($user);
+-my $dbfile=&quot;$dir/x2go_sessions&quot;;
+-
++my $realuser=$&lt;;
++my ($uname, $pass, $uid, $pgid, $quota, $comment, $gcos, $homedir, $shell, $expire) = getpwuid(getuid());
++my $dbfile=&quot;/var/lib/x2go/x2go_sessions&quot;;
+ my $dbh=DBI-&gt;connect(&quot;dbi:SQLite:dbname=$dbfile&quot;,&quot;&quot;,&quot;&quot;,{AutoCommit =&gt; 1}) or die $_;
+ 
++my $cmd=shift or die &quot;command not specified&quot;;
++
+ if($cmd eq  &quot;rmsessionsroot&quot;)
+ {
+ 	checkroot();
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;delete from sessions  where session_id=?&quot;);
+-	$sth-&gt;execute($id)or die;
++	$sth-&gt;execute($sid)or die;
+ 	$sth-&gt;finish();
+ }
+ 
+@@ -115,7 +112,7 @@ elsif($cmd eq  &quot;createsession&quot;)
+ 	my $sid=shift or die &quot;argument \&quot;session_id\&quot; missed&quot;;
+ 	my $sth=$dbh-&gt;prepare(&quot;update sessions set status='R',last_time=datetime('now','localtime'),cookie=?,agent_pid=?,
+ 	                       client=?,gr_port=?,sound_port=?,fs_port=? where session_id=? and uname=?&quot;);
+-	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $realuid)or die;
++	$sth-&gt;execute($cookie, $pid, $client, $gr_port, $snd_port, $fs_port, $sid, $realuser)or die;
+ 	$sth-&gt;finish();
+ 	print &quot;ok&quot;;
+ }
+
+
+hooks/post-receive
+-- 
+x2goserver.git (X2Go Server)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goserver.git&quot; (X2Go Server).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015802.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2-3-g17f0a8f
+</A></li>
+	<LI>Next message: <A HREF="015804.html">[X2Go-Commits] x2goserver.git - build-baikal (branch) updated:	3.0.99-2
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15803">[ date ]</a>
+              <a href="thread.html#15803">[ thread ]</a>
+              <a href="subject.html#15803">[ subject ]</a>
+              <a href="author.html#15803">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

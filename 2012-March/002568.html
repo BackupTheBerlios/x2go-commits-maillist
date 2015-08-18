@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-132-g05e3a08
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-March/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.10-132-g05e3a08&In-Reply-To=%3C20120322170403.E2E225DB35%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002567.html">
+   <LINK REL="Next"  HREF="002569.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-132-g05e3a08</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-gui.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.0.10-132-g05e3a08&In-Reply-To=%3C20120322170403.E2E225DB35%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-132-g05e3a08">git-admin at x2go.org
+       </A><BR>
+    <I>Thu Mar 22 18:04:03 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002567.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-131-gf595062
+</A></li>
+        <LI>Next message: <A HREF="002569.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-155-gfdfd1f3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2568">[ date ]</a>
+              <a href="thread.html#2568">[ thread ]</a>
+              <a href="subject.html#2568">[ subject ]</a>
+              <a href="author.html#2568">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  05e3a08419451b405d1a8b1d6e676df554b8c1c0 (commit)
+      from  f5950620dc1520bb5ea57f61e13bfe82715ec7a2 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 05e3a08419451b405d1a8b1d6e676df554b8c1c0
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Thu Mar 22 18:03:48 2012 +0100
+
+    Provide a separate SetExitHandler function to catch signals from outside.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog         |    1 +
+ pyhoca/wxgui/frontend.py |   25 +++++++++++++++++++++++++
+ 2 files changed, 26 insertions(+), 0 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index f9c6b0a..76d75af 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -82,6 +82,7 @@ pyhoca-gui (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Add connect and exit menu items if in single-session-profile mode.
+     - Properly catch CTRL-C and SIGTERM signals.
+     - Make sure application really exits gracefully.
++    - Provide a separate SetExitHandler function to catch signals from outside.
+   * Depend on Python X2Go 0.1.2.0.
+   * Install GNOME icons via dh_links.
+   * Install X2Go icons with explicit install paths.
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index f74a58a..4ec9ef0 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -69,6 +69,26 @@ import sessiontitle
+ wx.SetDefaultPyEncoding(&quot;utf-8&quot;)
+ wx.InitAllImageHandlers()
+ 
++def SetExitHandler(func):
++
++    if os.name == 'nt' :
++        try :
++            import win32api
++            result = win32api.SetConsoleCtrlHandler( func, True )
++            if result == 0:
++                print '\nCould not SetConsoleCtrlHandler (error %r)' % win32api.GetLastError()
++            else :
++                print '\nSetConsoleCtrlHandler SUCCESS'
++
++        except ImportError :
++            version = '.'.join( map( str, sys.version_info[ :2] ) )
++            raise Exception( 'PyWin32 (win32api) is not installed.' )
++
++    else :
++        import signal
++        signal.signal( signal.SIGTERM, func )
++
++
+ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+     def __init__(self, args, logger, liblogger, 
+@@ -155,12 +175,16 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+ 
+         x2go.X2goClient.__init__(self, **_x2goclient_kwargs)
+ 
++        SetExitHandler(self._exit_handler)
+         wx.App.__init__(self, redirect=False, clearSigInt=False)
+         if not self.args.disable_splash:
+             splash.PyHocaGUI_SplashScreen()
+ 
+         self.Bind(wx.EVT_IDLE, self.OnIdle)
+ 
++    def _exit_handler(self):
++        WakeUpIdle()
++        ExitMainLoop()
+ 
+     def OnInit(self):
+         &quot;&quot;&quot;\
+@@ -998,3 +1022,4 @@ class PyHocaGUI(wx.App, x2go.X2goClient):
+             evt = wx.IdleEvent()
+             evt.SetId(_dummy_id)
+             self.OnServerDisconnect(evt)
++
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002567.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-131-gf595062
+</A></li>
+	<LI>Next message: <A HREF="002569.html">[X2go-Commits] python-x2go.git - master (branch) updated:	0.1.1.4-155-gfdfd1f3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2568">[ date ]</a>
+              <a href="thread.html#2568">[ thread ]</a>
+              <a href="subject.html#2568">[ subject ]</a>
+              <a href="author.html#2568">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

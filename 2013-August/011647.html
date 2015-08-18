@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-11-gb9a7a1b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.14-11-gb9a7a1b&In-Reply-To=%3C20130830142350.9A9C85DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011643.html">
+   <LINK REL="Next"  HREF="011638.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-11-gb9a7a1b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09redist-server/3.5.0.14-11-gb9a7a1b&In-Reply-To=%3C20130830142350.9A9C85DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-11-gb9a7a1b">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:23:49 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011643.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-10-gf830090
+</A></li>
+        <LI>Next message: <A HREF="011638.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-12-gb8db519
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11647">[ date ]</a>
+              <a href="thread.html#11647">[ thread ]</a>
+              <a href="subject.html#11647">[ subject ]</a>
+              <a href="author.html#11647">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  b9a7a1b4fe1b74fb734da22364ea42a42e88368c (commit)
+      from  f83009075ecc3baa1087b42ef385a0870ec71daa (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    2 +
+ .../patches/220_nxproxy-bind-loopback-only.patch   |  130 ++++++++++++++++++++
+ debian/patches/series                              |    1 +
+ 3 files changed, 133 insertions(+)
+ create mode 100644 debian/patches/220_nxproxy-bind-loopback-only.patch
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index e281ea7..630d97e 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -13,6 +13,8 @@ nx-libs (2:3.5.0.15-0) UNRELEASED; urgency=low
+   * /debian/control:
+     + Maintainer change in package: X2Go Developers &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">x2go-dev at lists.berlios.de</A>&gt;.
+     + Priority: optional.
++  * Add patch: 220_nxproxy-bind-loopback-only.patch, adds loopback option to
++    nxproxy options and forces nxproxy to bind to loopback devices only.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 28 Jun 2012 14:54:51 +0200
+ 
+diff --git a/debian/patches/220_nxproxy-bind-loopback-only.patch b/debian/patches/220_nxproxy-bind-loopback-only.patch
+new file mode 100644
+index 0000000..b8f8765
+--- /dev/null
++++ b/debian/patches/220_nxproxy-bind-loopback-only.patch
+@@ -0,0 +1,130 @@
++Description: Force NX proxy to bind to loopback devices only (loopback option)
++Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++--- a/nxcomp/Loop.cpp
+++++ b/nxcomp/Loop.cpp
++@@ -952,6 +952,7 @@
++ static char displayHost[DEFAULT_STRING_LENGTH] = { 0 };
++ static char authCookie[DEFAULT_STRING_LENGTH]  = { 0 };
++ 
+++static int loopbackBind = DEFAULT_LOOPBACK_BIND;
++ static int proxyPort = DEFAULT_NX_PROXY_PORT;
++ static int xPort     = DEFAULT_NX_X_PORT;
++ 
++@@ -3959,7 +3960,14 @@
++ 
++   tcpAddr.sin_family = AF_INET;
++   tcpAddr.sin_port = htons(proxyPortTCP);
++-  tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  if ( loopbackBind )
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+++  }
+++  else
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  }
++ 
++   if (bind(tcpFD, (sockaddr *) &amp;tcpAddr, sizeof(tcpAddr)) == -1)
++   {
++@@ -4512,7 +4520,14 @@
++ 
++   tcpAddr.sin_family = AF_INET;
++   tcpAddr.sin_port = htons(portTCP);
++-  tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  if ( loopbackBind )
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+++  }
+++  else
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  }
++ 
++   if (bind(newFD, (sockaddr *) &amp;tcpAddr, sizeof(tcpAddr)) == -1)
++   {
++@@ -6680,7 +6695,14 @@
++ 
++   #ifdef __APPLE__
++ 
++-  tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  if ( loopbackBind )
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+++  }
+++  else
+++  {
+++    tcpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+++  }
++ 
++   #else
++ 
++@@ -8359,6 +8381,10 @@
++ 
++       listenPort = ValidateArg(&quot;local&quot;, name, value);
++     }
+++    else if (strcasecmp(name, &quot;loopback&quot;) == 0)
+++    {
+++      loopbackBind = ValidateArg(&quot;local&quot;, name, value);
+++    }
++     else if (strcasecmp(name, &quot;accept&quot;) == 0)
++     {
++       if (*connectHost != '\0')
++@@ -13735,7 +13761,14 @@
++     }
++     else
++     {
++-      address = htonl(INADDR_ANY);
+++      if ( loopbackBind )
+++      {
+++        address = htonl(INADDR_LOOPBACK);
+++      }
+++      else
+++      {
+++        address = htonl(INADDR_ANY);
+++      }
++     }
++   }
++   else
++--- a/nxcomp/Misc.cpp
+++++ b/nxcomp/Misc.cpp
++@@ -42,6 +42,14 @@
++ #undef  DEBUG
++ 
++ //
+++// By default nxproxy binds to all network interfaces, setting
+++// DEFAULT_LOOPBACK_BIND to 1 enables binding to the loopback
+++// device only.
+++//
+++
+++const int DEFAULT_LOOPBACK_BIND = 0;
+++
+++//
++ // TCP port offset applied to any NX port specification.
++ //
++ 
++@@ -137,6 +145,8 @@
++ \n\
++   listen=n     Local port used for accepting the proxy connection.\n\
++ \n\
+++  loopback=b   Bind to the loopback device only.\n\
+++\n\
++   accept=s     Name or IP of host that can connect to the proxy.\n\
++ \n\
++   connect=s    Name or IP of host that the proxy will connect to.\n\
++--- a/nxcomp/Misc.h
+++++ b/nxcomp/Misc.h
++@@ -90,6 +90,14 @@
++ extern const int DEFAULT_NX_SLAVE_PORT_SERVER_OFFSET;
++ 
++ //
+++// NX proxy binds to all network interfaces by default
+++// With the -loopback parameter, you can switch
+++// over to binding to the loopback device only.
+++//
+++
+++extern const int DEFAULT_LOOPBACK_BIND;
+++
+++//
++ // Return strings containing various info.
++ //
++ 
+diff --git a/debian/patches/series b/debian/patches/series
+index f47979a..bffdb97 100644
+--- a/debian/patches/series
++++ b/debian/patches/series
+@@ -40,6 +40,7 @@
+ 202_nx-x11_enable-xinerama.full.patch
+ 203_nxagent_disable-rootless-exit.full.patch
+ 209_x2goagent-add-man-page.full.patch
++220_nxproxy-bind-loopback-only.patch
+ 300_nxagent_set-wm-class.full.patch
+ 301_nx-X11_use-shared-libs.full.patch
+ 600_nx-X11+nxcompext+nxcompshad_unique-libnames.full.patch
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011643.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-10-gf830090
+</A></li>
+	<LI>Next message: <A HREF="011638.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-server/3.5.0.14-12-gb8db519
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11647">[ date ]</a>
+              <a href="thread.html#11647">[ thread ]</a>
+              <a href="subject.html#11647">[ subject ]</a>
+              <a href="author.html#11647">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

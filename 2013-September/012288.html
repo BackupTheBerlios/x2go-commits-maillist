@@ -1,0 +1,958 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09a2c003bb4a46c001b9e3c5881186a634585d4593&In-Reply-To=%3C20130914135410.D67DD5DB21%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="012284.html">
+   <LINK REL="Next"  HREF="012279.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%09a2c003bb4a46c001b9e3c5881186a634585d4593&In-Reply-To=%3C20130914135410.D67DD5DB21%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	a2c003bb4a46c001b9e3c5881186a634585d4593">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:54:10 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="012284.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e
+</A></li>
+        <LI>Next message: <A HREF="012279.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	7a8808f258f6a417a9fe4d73b84a03e803841155
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12288">[ date ]</a>
+              <a href="thread.html#12288">[ thread ]</a>
+              <a href="subject.html#12288">[ subject ]</a>
+              <a href="author.html#12288">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  a2c003bb4a46c001b9e3c5881186a634585d4593 (commit)
+      from  3318924e56c0f2cf9f12f48c61e0e8e4016884aa (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ Message.py          |   59 ++++++
+ SessionProfile.py   |   26 ++-
+ X2goMaintProfile.py |  532 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ x2goLogon.py        |   89 ++++-----
+ 4 files changed, 655 insertions(+), 51 deletions(-)
+ create mode 100644 Message.py
+ create mode 100644 X2goMaintProfile.py
+
+The diff of changes is:
+diff --git a/Message.py b/Message.py
+new file mode 100644
+index 0000000..21e0a0e
+--- /dev/null
++++ b/Message.py
+@@ -0,0 +1,59 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++&quot;&quot;&quot;
++    Copyright (C) 2010 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program; if not, write to the
++    Free Software Foundation, Inc.,
++    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
++
++    Contributors to the code of this programme:
++        J&#246;rg Sawatzki &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">joerg.sawatzki at web.de</A>&gt;
++        Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++&quot;&quot;&quot;
++
++import wx
++messages = {    1: 'Userid is invalid',
++                2: 'Password is required',
++                3: 'Userid/Password verification failed',
++                4: 'Not all credentials are available',
++                5: 'Profile is entered, but is not known',
++                6: 'Name of the profile is required',
++            }
++
++class Message:
++    def __init__(self, parent, msgid=None, message=None, extraCaption='', msgtype='error'):
++        if msgid is None:
++            showmessage = message
++        elif msgid in messages:
++            showmessage = messages[msgid]
++        else:
++            showmessage = 'Message not available in system'
++        if msgtype == 'warning':
++            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
++            caption = 'Warning '
++        elif msgtype == 'error':
++            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
++            caption = 'Error '
++        else:
++            msgstyle = wx.ICON_INFORMATION|wx.STAY_ON_TOP
++            caption = 'Information '
++        caption += extraCaption
++        md = wx.MessageDialog(parent, showmessage, caption=caption, style=msgstyle)
++        result = md.ShowModal()
++        self.retValue = False
++        if result == wx.OK:
++            self.retValue = True
++        md.Destroy()
+diff --git a/SessionProfile.py b/SessionProfile.py
+index c3b976d..b5cca14 100644
+--- a/SessionProfile.py
++++ b/SessionProfile.py
+@@ -155,10 +155,10 @@ class SessionProfiles(processINI):
+     &quot;&quot;&quot;
+     defaultValues = \
+          {'speed':2,'pack':'16m-jpeg','quality':9,'fstunnel':True,'export':'&quot;/home/dick/Documenten:1;&quot;','fullscreen':False,'width':800,'height':600,'dpi':96,
+-                   'setdpi':False,'usekbd':True,'layout':'us','type':'pc105/us','sound':False,'soundsystem':'pulse','startsoundsystem':True,'soundtunnel':True,
++                   'setdpi':False,'usekbd':True,'kbdlayout':'us','kbdtype':'pc105/us','sound':False,'soundsystem':'pulse','startsoundsystem':True,'soundtunnel':True,
+                    'defsndport':True,'sndport':4713, 'printing':True,'name':None,'icon':':icons/128x128/x2gosession.png','host':None,'user':None, 'key':None,
+                    'sshport':22,'rootless':True,'applications':'dummy, WWWBROWSER, MAILCLIENT, OFFICE, TERMINAL','command':'dummy','rdpoptions':None,
+-                   'rdpserver':None,'default':False,'connected':False,'add_to_known_hosts':True,'session_type':'application','link':'adsl',
++                   'rdpserver':None,'default':False,'connected':False,'add_to_known_hosts':True,'session_type':'application','link':'ADSL',
+          }
+     def __init__(self, logger, fileName=None):
+         self.logger = logger
+@@ -254,7 +254,7 @@ class SingleProfile:
+ 
+     def updValue(self, key, value):
+         setattr(self, key, value)
+-        
++
+     def setPassword(self, password):
+         self.password = password
+ 
+@@ -276,9 +276,10 @@ class x2goProfiles:
+                 self.x2goprofs.append(newSession)
+         if len(self.profiles.SessionProfiles):
+             self.current_profile = self.x2goprofs[0]
++            self.current_selected_profile_nr = 0
+         for idx, prof in enumerate(self.x2goprofs):
+             self.x2gonames[prof.name] = idx
+-            
++
+         if profile:
+             if self.profileExists(profile):
+                 self.current_profile = self.getProfileByName(profile)
+@@ -286,13 +287,18 @@ class x2goProfiles:
+             else:
+                 self.current_profile = None
+ 
++    def createDefaultProfile(self):
++        return self.AddProfile('Default profile')
++
+     def AddProfile(self, name, **kw):
+         if self.profileExists(name):
+             raise profileError('Profile %s already exists' % name)
+         else:
++            self.current_selected_profile_nr = len(x2goprofs)
+             self.profiles.newProfile(name, kw)
+             self.x2goprofs.append(SingleProfile(name, self.profiles, self.logger, self.liblogger))
+             self.x2gonames[name] = len(self.x2goprofs) -1
++            return self.x2goprofs[len(x2goprofs)-1]
+ 
+     def writeIni(self):
+         for s in self.x2goprofs:
+@@ -339,8 +345,20 @@ class x2goProfiles:
+ 
+     def getProfileByName(self, name):
+         if name in self.x2gonames:
++            self.current_selected_profile_nr = self.x2gonames[name]
+             return self.x2goprofs[self.x2gonames[name]]
+ 
++    def updProfileByNumber(self, profile):
++        counter = 0
++        for nameKeys in self.x2gonames.keys():
++            if counter == self.current_selected_profile_nr:
++                oldName = nameKeys
++                break
++            counter += 1
++        del self.x2gonames[oldName]
++        self.x2goprofs[self.current_selected_profile_nr] = profile
++        self.x2gonames[profile.name] = self.current_selected_profile_nr
++
+     def __repr__(self):
+         result = 'x2goProfiles('
+         for p in dir(self):
+diff --git a/X2goMaintProfile.py b/X2goMaintProfile.py
+new file mode 100644
+index 0000000..17a018a
+--- /dev/null
++++ b/X2goMaintProfile.py
+@@ -0,0 +1,532 @@
++#!/usr/bin/env python
++# -*- coding: utf-8 -*-
++
++&quot;&quot;&quot;
++    Copyright (C) 2010 by Dick Kniep &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">dick.kniep at lindix.nl</A>&gt;
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program; if not, write to the
++    Free Software Foundation, Inc.,
++    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
++
++    Contributors to the code of this programme:
++        J&#246;rg Sawatzki &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">joerg.sawatzki at web.de</A>&gt;
++        Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">m.gabriel at das-netzwerkteam.de</A>&gt;
++&quot;&quot;&quot;
++
++import wx
++
++# begin wxGlade: extracode
++# end wxGlade
++
++
++class X2goMaintProfile(wx.Frame):
++    def __init__(self, action, parent, Profiles, callback, selected=None, *args, **kwds):
++        self.sessionChoicesText = [&quot;KDE&quot;, &quot;GNOME&quot;, &quot;LXDE&quot;, &quot;Connect to Windows Terminal server&quot;, &quot;Custom desktop&quot;, &quot;Single application&quot;]
++        self.sessionChoices = [&quot;KDE&quot;, &quot;GNOME&quot;, &quot;LXDE&quot;, &quot;TerminalServer&quot;, &quot;Custom&quot;, &quot;application&quot;]
++        self.applicationListText = [&quot;Internet browser&quot;, &quot;Email client&quot;, &quot;Openoffice.org&quot;, &quot;Terminal&quot;, &quot;xterm&quot;, &quot;Server side programlist&quot;]
++        self.applicationList = ['WWWBROWSER', 'MAILCLIENT', 'OFFICE', 'TERMINAL','TERMINAL','x2go-auth']
++        self.linkText = ['MODEM','ISDN','ADSL','WAN','LAN']
++        self.compText = [&quot;4k-jpeg&quot;, &quot;32k-jpeg&quot;, &quot;64k-jpeg&quot;, &quot;256k-jpeg&quot;, &quot;2m-jpeg&quot;, &quot;16m-jpeg&quot;]
++
++        self.Profiles = Profiles
++        self.action = action
++        self.callback = callback
++        self.selected = selected
++        if self.action == 'Add':
++            self.selected = self.Profiles.createDefaultProfile()
++
++        wx.Frame.__init__(self, parent, -1, style=wx.DEFAULT_FRAME_STYLE)
++        self.X2goTabs = wx.Notebook(self, -1, style=0)
++        self.X2goTabs_pane_4 = wx.Panel(self.X2goTabs, -1)
++        self.X2goSettingsTab = wx.Panel(self.X2goTabs, -1)
++        self.X2goConnectionTab = wx.Panel(self.X2goTabs, -1)
++        self.sizer_2_staticbox = wx.StaticBox(self.X2goConnectionTab, -1, &quot;Server&quot;)
++        self.sizer_3_staticbox = wx.StaticBox(self.X2goConnectionTab, -1, &quot;Session type&quot;)
++        self.ConnSpeedSizer_staticbox = wx.StaticBox(self.X2goConnectionTab, -1, &quot;Connection speed&quot;)
++        self.sizer_4_staticbox = wx.StaticBox(self.X2goConnectionTab, -1, &quot;Compression&quot;)
++        self.sizer_6_staticbox = wx.StaticBox(self.X2goSettingsTab, -1, &quot;Display&quot;)
++        self.sizer_8_staticbox = wx.StaticBox(self.X2goSettingsTab, -1, &quot;Keyboard&quot;)
++        self.sizer_9_staticbox = wx.StaticBox(self.X2goSettingsTab, -1, &quot;Sound&quot;)
++        self.sizer_10_staticbox = wx.StaticBox(self.X2goSettingsTab, -1, &quot;Printing&quot;)
++        self.sizer_11_staticbox = wx.StaticBox(self.X2goTabs_pane_4, -1, &quot;Folders&quot;)
++        self.X2goSessionTab = wx.Panel(self.X2goTabs, -1)
++        self.ProfileLabel = wx.StaticText(self.X2goSessionTab, -1, &quot;Profile name&quot;)
++        self.Name = wx.TextCtrl(self.X2goSessionTab, -1, &quot;&quot;, name='Name')
++        if self.selected.icon:
++            if platform.system() == 'Windows':
++                path_to_icon = self.selected.icon.replace(':','/usr/share/')
++            elif platform.system() == 'Linux':
++                path_to_icon = self.selected.icon.replace(':','/usr/share/')
++            elif platform.system() == 'Mac':
++                path_to_icon = self.selected.icon.replace(':','/usr/share/')
++        self.IconButton = wx.BitmapButton(self.X2goSessionTab, -1, wx.Bitmap(path_to_icon, wx.BITMAP_TYPE_ANY))
++        self.IconLabel = wx.StaticText(self.X2goSessionTab, -1, &quot;&lt;&lt; Change Icon&quot;)
++        self.HostLabel = wx.StaticText(self.X2goSessionTab, -1, &quot;Host:&quot;)
++        self.hostname = wx.TextCtrl(self.X2goSessionTab, -1, &quot;&quot;)
++        self.UserLabel = wx.StaticText(self.X2goSessionTab, -1, &quot;User:&quot;)
++        self.username = wx.TextCtrl(self.X2goSessionTab, -1, &quot;&quot;)
++        self.DefaultLabel = wx.StaticText(self.X2goSessionTab, -1, &quot;Is defaultprofile:&quot;)
++        self.Default = wx.CheckBox(self.X2goSessionTab, -1, &quot;&quot;)
++        self.LoginLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;Login&quot;)
++        self.sshport = wx.SpinCtrl(self.X2goConnectionTab, -1, &quot;0&quot;, min=22, max=64000)
++        self.SSHkeyLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;RSA/DSA key&quot;)
++        self.sshkeylocation = wx.StaticText(self.X2goConnectionTab, -1, &quot;&quot;)
++        self.fileFindButton = wx.BitmapButton(self.X2goConnectionTab, -1, wx.Bitmap(&quot;/usr/share/icons/ikons/22x22/actions/filefind.png&quot;, wx.BITMAP_TYPE_ANY))
++        self.SessionTypeLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;Type&quot;)
++        self.SessionType = wx.ComboBox(self.X2goConnectionTab, -1, choices=self.sessionChoices, style=wx.CB_DROPDOWN|wx.CB_READONLY)
++        self.CommandLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;Command:&quot;)
++        self.Command = wx.ComboBox(self.X2goConnectionTab, -1, choices=self.applicationListText, style=wx.CB_DROPDOWN|wx.CB_READONLY)
++        self.connectionSpeed = wx.Slider(self.X2goConnectionTab, -1, 0, 0, 10)
++        self.ModemLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;|\nModem&quot;)
++        self.ISDNLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot; |\nISDN&quot;, style=wx.ALIGN_CENTRE)
++        self.ADSLLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;|\nADSL&quot;, style=wx.ALIGN_CENTRE)
++        self.WanLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;|\nWAN&quot;, style=wx.ALIGN_CENTRE)
++        self.LanLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;|\nLAN&quot;)
++        self.MethodLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;Method&quot;)
++        self.Compression = wx.ComboBox(self.X2goConnectionTab, -1, choices=self.compText, style=wx.CB_DROPDOWN)
++        self.ImageQualityLabel = wx.StaticText(self.X2goConnectionTab, -1, &quot;Image quality:&quot;)
++        self.ImageQuality = wx.SpinCtrl(self.X2goConnectionTab, -1, &quot;9&quot;, min=0, max=9)
++        self.DisplayTypeFullScreen = wx.RadioButton(self.X2goSettingsTab, -1, &quot;Fullscreen&quot;, style=wx.RB_GROUP)
++        self.DisplayTypeCustom = wx.RadioButton(self.X2goSettingsTab, -1, &quot;Custom&quot;)
++        self.WidthLabel = wx.StaticText(self.X2goSettingsTab, -1, &quot;Width&quot;)
++        self.ScrnWidth = wx.SpinCtrl(self.X2goSettingsTab, -1, &quot;800&quot;, min=400, max=3000)
++        self.HeightLabel = wx.StaticText(self.X2goSettingsTab, -1, &quot;Height&quot;)
++        self.ScrnHeight = wx.SpinCtrl(self.X2goSettingsTab, -1, &quot;600&quot;, min=500, max=3000)
++        self.SetDisplayDPI = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Set display DPI&quot;)
++        self.CurrentKeyBoard = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Keep current keyboard settings&quot;)
++        self.KeyboardLayoutLabel = wx.StaticText(self.X2goSettingsTab, -1, &quot;Keyboard layout&quot;)
++        self.KeyboardLayout = wx.TextCtrl(self.X2goSettingsTab, -1, &quot;&quot;)
++        self.KeyboardModelLabel = wx.StaticText(self.X2goSettingsTab, -1, &quot;Keyboard model:&quot;)
++        self.Keyboardmodel = wx.TextCtrl(self.X2goSettingsTab, -1, &quot;&quot;)
++        self.EnableSound = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Enable sound support&quot;)
++        self.PulseAudio = wx.RadioButton(self.X2goSettingsTab, -1, &quot;Pulse Audio&quot;, style=wx.RB_GROUP)
++        self.soundtunnel = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Use SSH port forwarding to tunnel sound system connections through firewall&quot;)
++        self.Arts = wx.RadioButton(self.X2goSettingsTab, -1, &quot;Arts&quot;)
++        self.DefaultSoundPort = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Use default sound port&quot;)
++        self.esd = wx.RadioButton(self.X2goSettingsTab, -1, &quot;esd&quot;)
++        self.SoundPortLabel = wx.StaticText(self.X2goSettingsTab, -1, &quot;Sound Port&quot;)
++        self.SoundPort = wx.SpinCtrl(self.X2goSettingsTab, -1, &quot;4713&quot;, min=23, max=64889)
++        self.ClientSidePrinting = wx.CheckBox(self.X2goSettingsTab, -1, &quot;Client Side printing&quot;)
++        self.PathLabel = wx.StaticText(self.X2goTabs_pane_4, -1, &quot;Path&quot;)
++        self.Path = wx.TextCtrl(self.X2goTabs_pane_4, -1, &quot;&quot;)
++        self.SharedFilesPath = wx.BitmapButton(self.X2goTabs_pane_4, -1, wx.Bitmap(&quot;/usr/share/icons/ikons/22x22/actions/filefind.png&quot;, wx.BITMAP_TYPE_ANY))
++        self.AddFolderButton = wx.Button(self.X2goTabs_pane_4, -1, &quot;Add&quot;)
++        self.SharedFilesList = wx.ListCtrl(self.X2goTabs_pane_4, -1, style=wx.LC_REPORT|wx.SUNKEN_BORDER)
++        self.DeleteButton = wx.Button(self.X2goTabs_pane_4, -1, &quot;Delete&quot;)
++        self.SSHPortforwarding = wx.CheckBox(self.X2goTabs_pane_4, -1, &quot;Use ssh port forwarding to tunnel file system connections through firewalls&quot;)
++        self.OKButton = wx.Button(self, -1, &quot;OK&quot;)
++        self.CancelButton = wx.Button(self, -1, &quot;Cancel&quot;)
++        self.DefaultButton = wx.Button(self, -1, &quot;Defaults&quot;)
++
++        self.__set_properties()
++        self.__updFields()
++        self.__do_layout()
++
++        self.Bind(wx.EVT_BUTTON, self.onIconChange, self.IconButton)
++        self.Bind(wx.EVT_BUTTON, self.onFindKey, self.fileFindButton)
++        self.Bind(wx.EVT_CHECKBOX, self.onSetDPI, self.SetDisplayDPI)
++        self.Bind(wx.EVT_CHECKBOX, self.onKeepKeyboard, self.CurrentKeyBoard)
++        self.Bind(wx.EVT_CHECKBOX, self.onSoundEnable, self.EnableSound)
++        self.Bind(wx.EVT_CHECKBOX, self.onSoundPort, self.DefaultSoundPort)
++        self.Bind(wx.EVT_BUTTON, self.onAddFolder, self.AddFolderButton)
++        self.Bind(wx.EVT_BUTTON, self.onOK, self.OKButton)
++        self.Bind(wx.EVT_BUTTON, self.onCancel, self.CancelButton)
++        self.Bind(wx.EVT_BUTTON, self.onDefault, self.DefaultButton)
++        # end wxGlade
++
++    def __set_properties(self):
++        # begin wxGlade: X2goMaintProfile.__set_properties
++        self.SetTitle(&quot;frame_1&quot;)
++        self.SetFont(wx.Font(9, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.ProfileLabel.SetMinSize((200, 15))
++        self.Name.SetMinSize((180, 23))
++        self.IconButton.SetSize(self.IconButton.GetBestSize())
++        self.HostLabel.SetMinSize((200, 15))
++        self.hostname.SetMinSize((180, 23))
++        self.UserLabel.SetMinSize((200, 15))
++        self.username.SetMinSize((180, 23))
++        self.LoginLabel.SetMinSize((200, 15))
++        self.SSHkeyLabel.SetMinSize((200, 15))
++        self.sshkeylocation.SetMinSize((220, 15))
++        self.fileFindButton.SetSize(self.fileFindButton.GetBestSize())
++        self.SessionTypeLabel.SetMinSize((200, 15))
++        self.SessionType.SetSelection(5)
++        self.CommandLabel.SetMinSize((200, 15))
++        self.Command.SetMinSize((230, 25))
++        self.Command.SetSelection(0)
++        self.ModemLabel.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.ISDNLabel.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.ADSLLabel.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.WanLabel.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.LanLabel.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, &quot;&quot;))
++        self.MethodLabel.SetMinSize((200, 15))
++        self.Compression.SetSelection(0)
++        self.ImageQualityLabel.SetMinSize((200, 15))
++        self.DisplayTypeFullScreen.SetMinSize((200, 21))
++        self.DisplayTypeCustom.SetValue(1)
++        self.ScrnWidth.SetMinSize((60, 23))
++        self.ScrnHeight.SetMinSize((60, 23))
++        self.SetDisplayDPI.SetMinSize((200, 21))
++        self.KeyboardLayoutLabel.SetMinSize((200, 15))
++        self.KeyboardLayout.SetMinSize((200, 23))
++        self.KeyboardModelLabel.SetMinSize((200, 15))
++        self.Keyboardmodel.SetMinSize((200, 23))
++        self.EnableSound.SetValue(1)
++        self.PulseAudio.SetMinSize((200, 21))
++        self.PulseAudio.SetValue(1)
++        self.soundtunnel.SetValue(1)
++        self.Arts.SetMinSize((200, 21))
++        self.DefaultSoundPort.SetValue(1)
++        self.esd.SetMinSize((200, 21))
++        self.SoundPortLabel.SetMinSize((100, 15))
++        self.ClientSidePrinting.SetMinSize((143, 21))
++        self.ClientSidePrinting.SetValue(1)
++        self.Path.SetMinSize((220, 23))
++        self.SharedFilesPath.SetSize(self.SharedFilesPath.GetBestSize())
++        self.SharedFilesList.SetMinSize((303, 300))
++        self.SSHPortforwarding.SetValue(1)
++        self.OKButton.SetMinSize((60, 30))
++        self.CancelButton.SetMinSize((60, 30))
++        self.DefaultButton.SetMinSize((60, 30))
++        # end wxGlade
++
++    def __updFields(self):
++
++        self.Name.SetValue(self.selected.name)
++        self.hostname.SetValue(self.selected.host)
++        self.username.SetValue(self.selected.user)
++        self.Default.SetValue(self.selected.default)
++        self.sshport.SetValue(self.selected.sshport)
++        self.sshkeylocation.SetLabel(self.selected.key)
++
++        sessionType = self.sessionChoices.index(self.selected.session_type)
++        self.SessionType.SetValue(self.sessionChoicesText[sessionType])
++
++        commandNr = self.applicationList.index(self.selected.command)
++        self.Command.SetValue(self.applicationListText[commandNr])
++
++        speedNr = self.linkText.index(self.selected.link)
++        self.connectionSpeed.SetValue(speedNr)
++
++        self.Compression.SetValue(self.selected.pack)
++        self.ImageQuality.SetValue(self.selected.quality)
++        self.DisplayTypeFullScreen.SetValue(self.selected.fullscreen)
++        self.DisplayTypeCustom.SetValue(not self.selected.fullscreen)
++        self.ScrnWidth.SetValue(self.selected.width)
++        self.ScrnHeight.SetValue(self.selected.height)
++        if self.selected.fullscreen:
++            self.ScrnWidth.Enable(False)
++            self.ScrnHeight.Enable(False)
++
++        self.SetDisplayDPI.SetValue(self.selected.setdpi)
++        # TODO Fill in the actual DPI
++        self.CurrentKeyBoard.SetValue(self.selected.usekbd)
++        self.KeyboardLayout.SetValue(self.selected.kbdlayout)
++        self.Keyboardmodel.SetValue(self.selected.kbdtype)
++        if self.selected.usekbd:
++            self.KeyboardLayout.Enable(False)
++            self.Keyboardmodel.Enable(False)
++
++        self.EnableSound.SetValue(self.selected.sound)
++        self.soundtunnel.SetValue(self.selected.soundtunnel)
++        self.DefaultSoundPort.SetValue(self.selected.defsndport)
++        self.SoundPort.SetValue(self.selected.sndport)
++        if self.selected.soundsystem == 'pulse':
++            self.PulseAudio.SetValue(True)
++        elif self.selected.soundsystem == 'arts':
++            self.Arts.SetValue(True)
++        elif self.selected.soundsystem == 'esd':
++            self.esd.SetValue(True)
++        if not self.selected.sound:
++            self.PulseAudio.Enable(False)
++            self.soundtunnel.Enable(False)
++            self.Arts.Enable(False)
++            self.esd.Enable(False)
++            self.DefaultSoundPort.Enable(False)
++            self.SoundPort.Enable(False)
++        elif not self.selected.defsndport:
++            self.SoundPort.Enable(False)
++
++        self.ClientSidePrinting.SetValue(self.selected.printing)
++        self.SSHPortforwarding.SetValue(self.selected.fstunnel)
++
++    def __updateFromScreen(self):
++        self.selected.name = self.Name.GetValue()
++        self.selected.host = self.hostname.GetValue()
++        self.selected.user = self.username.GetValue()
++        self.selected.default = self.Default.GetValue()
++        self.selected.sshport = self.sshport.GetValue()
++        self.selected.key = self.sshkeylocation.GetLabel()
++        sessionText = self.SessionType.GetValue()
++        sessionNr = self.sessionChoicesText.index(sessionText)
++        self.selected.session_type = self.sessionChoices[sessionNr]
++
++        commandText = self.Command.GetValue()
++        commandNr = self.applicationListText.index(commandText)
++        self.selected.command = self.applicationList[commandNr]
++
++        speedNr = self.connectionSpeed.GetValue()
++        self.selected.link = self.linkText[speedNr]
++
++        self.selected.pack = self.Compression.GetValue()
++        self.selected.quality = self.ImageQuality.GetValue()
++        self.selected.fullscreen = self.DisplayTypeFullScreen.GetValue()
++        self.selected.width = self.ScrnWidth.GetValue()
++        self.selected.height = self.ScrnHeight.GetValue()
++
++        self.selected.setdpi = self.SetDisplayDPI.GetValue()
++        # TODO Fill in the actual DPI
++        self.selected.usekbd = self.CurrentKeyBoard.GetValue()
++        self.selected.kbdlayout = self.KeyboardLayout.GetValue()
++        self.selected.kbdtype = self.Keyboardmodel.GetValue()
++
++        self.selected.sound = self.EnableSound.GetValue()
++        self.selected.soundtunnel = self.soundtunnel.GetValue()
++        self.selected.defsndport = self.DefaultSoundPort.GetValue()
++        self.selected.sndport = self.SoundPort.GetValue()
++        if self.PulseAudio.GetValue():
++            self.selected.soundsystem = 'pulse'
++        elif self.Arts.GetValue():
++            self.selected.soundsystem = 'arts'
++        elif self.esd.GetValue():
++            self.selected.soundsystem = 'esd'
++
++        self.selected.printing = self.ClientSidePrinting.GetValue()
++        self.selected.fstunnel = self.SSHPortforwarding.GetValue()
++
++    def __validate(self):
++        validateOk = True
++        if len(self.selected.name.strip()) == 0:
++            Message(self,6)
++            validateOk = True
++        return validateOk
++
++    def __do_layout(self):
++        # begin wxGlade: X2goMaintProfile.__do_layout
++        MainSizer = wx.BoxSizer(wx.VERTICAL)
++        bottomsizer = wx.BoxSizer(wx.HORIZONTAL)
++        grid_sizer_4 = wx.FlexGridSizer(1, 3, 0, 14)
++        sizer_11 = wx.StaticBoxSizer(self.sizer_11_staticbox, wx.VERTICAL)
++        grid_sizer_16 = wx.FlexGridSizer(3, 1, 0, 0)
++        grid_sizer_18 = wx.FlexGridSizer(1, 2, 3, 9)
++        grid_sizer_17 = wx.FlexGridSizer(1, 4, 2, 9)
++        sizer_5 = wx.BoxSizer(wx.VERTICAL)
++        sizer_10 = wx.StaticBoxSizer(self.sizer_10_staticbox, wx.HORIZONTAL)
++        sizer_9 = wx.StaticBoxSizer(self.sizer_9_staticbox, wx.VERTICAL)
++        grid_sizer_15 = wx.FlexGridSizer(1, 3, 0, 9)
++        grid_sizer_14 = wx.FlexGridSizer(1, 2, 0, 9)
++        grid_sizer_13 = wx.FlexGridSizer(1, 2, 0, 9)
++        sizer_8 = wx.StaticBoxSizer(self.sizer_8_staticbox, wx.VERTICAL)
++        grid_sizer_12 = wx.FlexGridSizer(1, 2, 0, 9)
++        grid_sizer_11 = wx.FlexGridSizer(1, 2, 0, 9)
++        sizer_6 = wx.StaticBoxSizer(self.sizer_6_staticbox, wx.VERTICAL)
++        sizer_7 = wx.BoxSizer(wx.VERTICAL)
++        grid_sizer_10 = wx.FlexGridSizer(1, 3, 0, 9)
++        grid_sizer_9 = wx.FlexGridSizer(2, 6, 0, 9)
++        sizer_1 = wx.BoxSizer(wx.VERTICAL)
++        sizer_4 = wx.StaticBoxSizer(self.sizer_4_staticbox, wx.VERTICAL)
++        grid_sizer_8 = wx.FlexGridSizer(1, 2, 0, 9)
++        grid_sizer_7 = wx.FlexGridSizer(1, 2, 0, 9)
++        ConnSpeedSizer = wx.StaticBoxSizer(self.ConnSpeedSizer_staticbox, wx.VERTICAL)
++        grid_sizer_6 = wx.FlexGridSizer(1, 5, 0, 6)
++        sizer_3 = wx.StaticBoxSizer(self.sizer_3_staticbox, wx.VERTICAL)
++        grid_sizer_5 = wx.FlexGridSizer(2, 2, 0, 10)
++        sizer_2 = wx.StaticBoxSizer(self.sizer_2_staticbox, wx.VERTICAL)
++        grid_sizer_3 = wx.FlexGridSizer(1, 3, 0, 3)
++        grid_sizer_2 = wx.FlexGridSizer(1, 2, 0, 0)
++        grid_sizer_1 = wx.FlexGridSizer(11, 2, 0, 0)
++        grid_sizer_1.Add(self.ProfileLabel, 0, wx.FIXED_MINSIZE, 0)
++        grid_sizer_1.Add(self.Name, 2, wx.FIXED_MINSIZE, 0)
++        grid_sizer_1.Add(self.IconButton, 0, 0, 0)
++        grid_sizer_1.Add(self.IconLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_1.Add(self.HostLabel, 0, 0, 0)
++        grid_sizer_1.Add(self.hostname, 0, wx.FIXED_MINSIZE, 0)
++        grid_sizer_1.Add(self.UserLabel, 0, 0, 0)
++        grid_sizer_1.Add(self.username, 0, wx.FIXED_MINSIZE, 0)
++        grid_sizer_1.Add(self.DefaultLabel, 0, 0, 0)
++        grid_sizer_1.Add(self.Default, 0, 0, 0)
++        self.X2goSessionTab.SetSizer(grid_sizer_1)
++        grid_sizer_1.AddGrowableCol(0)
++        grid_sizer_1.AddGrowableCol(1)
++        grid_sizer_2.Add(self.LoginLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_2.Add(self.sshport, 0, 0, 0)
++        sizer_2.Add(grid_sizer_2, 1, wx.EXPAND, 0)
++        grid_sizer_3.Add(self.SSHkeyLabel, 0, wx.ALIGN_CENTER_VERTICAL|wx.FIXED_MINSIZE, 0)
++        grid_sizer_3.Add(self.sshkeylocation, 0, wx.ALIGN_CENTER_VERTICAL|wx.FIXED_MINSIZE, 0)
++        grid_sizer_3.Add(self.fileFindButton, 0, 0, 0)
++        sizer_2.Add(grid_sizer_3, 1, wx.EXPAND, 0)
++        sizer_1.Add(sizer_2, 1, wx.EXPAND, 0)
++        grid_sizer_5.Add(self.SessionTypeLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_5.Add(self.SessionType, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_5.Add(self.CommandLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_5.Add(self.Command, 0, 0, 0)
++        sizer_3.Add(grid_sizer_5, 1, wx.EXPAND, 0)
++        sizer_1.Add(sizer_3, 1, wx.EXPAND, 0)
++        ConnSpeedSizer.Add(self.connectionSpeed, 0, wx.EXPAND, 0)
++        grid_sizer_6.Add(self.ModemLabel, 0, wx.LEFT|wx.EXPAND, 0)
++        grid_sizer_6.Add(self.ISDNLabel, 0, wx.EXPAND, 0)
++        grid_sizer_6.Add(self.ADSLLabel, 0, wx.EXPAND, 0)
++        grid_sizer_6.Add(self.WanLabel, 0, wx.RIGHT|wx.EXPAND, 0)
++        grid_sizer_6.Add(self.LanLabel, 0, wx.RIGHT|wx.EXPAND, 0)
++        grid_sizer_6.AddGrowableCol(0)
++        grid_sizer_6.AddGrowableCol(1)
++        grid_sizer_6.AddGrowableCol(2)
++        grid_sizer_6.AddGrowableCol(3)
++        grid_sizer_6.AddGrowableCol(4)
++        ConnSpeedSizer.Add(grid_sizer_6, 1, wx.EXPAND, 1)
++        sizer_1.Add(ConnSpeedSizer, 1, wx.EXPAND, 0)
++        grid_sizer_7.Add(self.MethodLabel, 0, 0, 0)
++        grid_sizer_7.Add(self.Compression, 0, 0, 0)
++        sizer_4.Add(grid_sizer_7, 1, wx.EXPAND, 0)
++        grid_sizer_8.Add(self.ImageQualityLabel, 0, 0, 0)
++        grid_sizer_8.Add(self.ImageQuality, 0, 0, 0)
++        sizer_4.Add(grid_sizer_8, 1, wx.EXPAND, 0)
++        sizer_1.Add(sizer_4, 1, wx.EXPAND, 0)
++        self.X2goConnectionTab.SetSizer(sizer_1)
++        grid_sizer_9.Add(self.DisplayTypeFullScreen, 0, 0, 0)
++        grid_sizer_9.Add(self.DisplayTypeCustom, 0, 0, 0)
++        grid_sizer_9.Add(self.WidthLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_9.Add(self.ScrnWidth, 0, 0, 0)
++        grid_sizer_9.Add(self.HeightLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_9.Add(self.ScrnHeight, 0, 0, 0)
++        sizer_7.Add(grid_sizer_9, 1, wx.EXPAND, 0)
++        grid_sizer_10.Add(self.SetDisplayDPI, 0, 0, 0)
++        sizer_7.Add(grid_sizer_10, 1, wx.EXPAND, 0)
++        sizer_6.Add(sizer_7, 1, wx.EXPAND, 0)
++        sizer_5.Add(sizer_6, 1, wx.EXPAND, 0)
++        sizer_8.Add(self.CurrentKeyBoard, 0, 0, 0)
++        grid_sizer_11.Add(self.KeyboardLayoutLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_11.Add(self.KeyboardLayout, 0, wx.EXPAND, 0)
++        sizer_8.Add(grid_sizer_11, 1, wx.EXPAND, 0)
++        grid_sizer_12.Add(self.KeyboardModelLabel, 0, 0, 0)
++        grid_sizer_12.Add(self.Keyboardmodel, 0, wx.EXPAND, 0)
++        sizer_8.Add(grid_sizer_12, 1, wx.EXPAND, 0)
++        sizer_5.Add(sizer_8, 1, wx.EXPAND, 0)
++        sizer_9.Add(self.EnableSound, 0, 0, 0)
++        grid_sizer_13.Add(self.PulseAudio, 0, 0, 0)
++        grid_sizer_13.Add(self.soundtunnel, 0, 0, 0)
++        sizer_9.Add(grid_sizer_13, 1, wx.EXPAND, 0)
++        grid_sizer_14.Add(self.Arts, 0, 0, 0)
++        grid_sizer_14.Add(self.DefaultSoundPort, 0, 0, 0)
++        sizer_9.Add(grid_sizer_14, 1, wx.EXPAND, 0)
++        grid_sizer_15.Add(self.esd, 0, 0, 0)
++        grid_sizer_15.Add(self.SoundPortLabel, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_15.Add(self.SoundPort, 0, 0, 0)
++        sizer_9.Add(grid_sizer_15, 1, wx.EXPAND, 0)
++        sizer_5.Add(sizer_9, 1, wx.EXPAND, 0)
++        sizer_10.Add(self.ClientSidePrinting, 0, 0, 0)
++        sizer_5.Add(sizer_10, 1, wx.EXPAND, 0)
++        self.X2goSettingsTab.SetSizer(sizer_5)
++        grid_sizer_17.Add(self.PathLabel, 0, 0, 0)
++        grid_sizer_17.Add(self.Path, 0, 0, 0)
++        grid_sizer_17.Add(self.SharedFilesPath, 0, 0, 0)
++        grid_sizer_17.Add(self.AddFolderButton, 0, 0, 0)
++        grid_sizer_16.Add(grid_sizer_17, 1, wx.EXPAND, 0)
++        grid_sizer_18.Add(self.SharedFilesList, 1, wx.EXPAND, 0)
++        grid_sizer_18.Add(self.DeleteButton, 0, wx.ALIGN_CENTER_VERTICAL, 0)
++        grid_sizer_16.Add(grid_sizer_18, 1, wx.EXPAND, 0)
++        grid_sizer_16.Add(self.SSHPortforwarding, 0, 0, 0)
++        sizer_11.Add(grid_sizer_16, 1, wx.EXPAND, 0)
++        self.X2goTabs_pane_4.SetSizer(sizer_11)
++        self.X2goTabs.AddPage(self.X2goSessionTab, &quot;Session&quot;)
++        self.X2goTabs.AddPage(self.X2goConnectionTab, &quot;Connection&quot;)
++        self.X2goTabs.AddPage(self.X2goSettingsTab, &quot;Settings&quot;)
++        self.X2goTabs.AddPage(self.X2goTabs_pane_4, &quot;Shared Folders&quot;)
++        MainSizer.Add(self.X2goTabs, 1, wx.EXPAND|wx.FIXED_MINSIZE, 0)
++        grid_sizer_4.Add(self.OKButton, 0, 0, 0)
++        grid_sizer_4.Add(self.CancelButton, 0, 0, 0)
++        grid_sizer_4.Add(self.DefaultButton, 0, 0, 0)
++        bottomsizer.Add(grid_sizer_4, 1, wx.EXPAND, 0)
++        MainSizer.Add(bottomsizer, 0, wx.EXPAND, 0)
++        self.SetSizer(MainSizer)
++        MainSizer.Fit(self)
++        MainSizer.SetSizeHints(self)
++        self.Layout()
++        # end wxGlade
++
++    def onOKButton(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        self.__updateFromScreen()
++        if self.__validate():
++            self.Profiles.updProfileByNumber(self.selected)
++            self.Profiles.writeIni()
++            self.callback(self.action, self.selected)
++
++    def onCancel(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        self.Close()
++        self.Destroy()
++
++    def onDefaults(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        self.resetValues()
++
++    def onIconChange(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        print &quot;Event handler `onIconChange' not implemented&quot;
++        event.Skip()
++
++    def onFindKey(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        wildcard = &quot;Public keys (*.pub)|*.pub|&quot;     \
++           &quot;All files (*.*)|*.*&quot;
++        sshdir = os.path.expanduser('~/.ssh')
++        if not os.path.exists(sshdir):
++            sshdir = os.getcwd()
++        dlg = wx.FileDialog(
++            self, message=&quot;Choose a public key&quot;, defaultDir=startdir,
++            defaultFile=&quot;&quot;, wildcard=wildcard, style=wx.OPEN | wx.CHANGE_DIR )
++        # Show the dialog and retrieve the user response. If it is the OK response,
++        # process the data.
++        if dlg.ShowModal() == wx.ID_OK:
++            # This returns a Python list of files that were selected.
++            path = dlg.GetPath()
++
++    def onSetDPI(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        print &quot;Event handler `onSetDPI' not implemented&quot;
++        event.Skip()
++
++    def onKeepKeyboard(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        if self.CurrentKeyBoard.GetValue():
++            self.KeyboardLayout.Enable(False)
++            self.Keyboardmodel.Enable(False)
++        else:
++            self.KeyboardLayout.Enable(True)
++            self.Keyboardmodel.Enable(True)
++
++    def onSoundEnable(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        if self.EnableSound.GetValue():
++            self.PulseAudio.Enable(True)
++            self.soundtunnel.Enable(True)
++            self.Arts.Enable(True)
++            self.esd.Enable(True)
++            if self.DefaultSoundPort.GetValue() is False:
++                self.SoundPort.Enable(True)
++        else:
++            self.PulseAudio.Enable(False)
++            self.soundtunnel.Enable(False)
++            self.Arts.Enable(False)
++            self.esd.Enable(False)
++            self.SoundPort.Enable(False)
++            self.DefaultSoundPort.Enable(False)
++
++    def onAddFolder(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        print &quot;Event handler `onAddFolder' not implemented&quot;
++        event.Skip()
++
++    def onOK(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        print &quot;Event handler `onOK' not implemented&quot;
++        event.Skip()
++
++    def onDefault(self, event): # wxGlade: X2goMaintProfile.&lt;event_handler&gt;
++        print &quot;Event handler `onDefault' not implemented&quot;
++        event.Skip()
++
++# end of class X2goMaintProfile
++
+diff --git a/x2goLogon.py b/x2goLogon.py
+index a0e65fc..724ad0b 100644
+--- a/x2goLogon.py
++++ b/x2goLogon.py
+@@ -33,6 +33,8 @@ import sys
+ import wx.lib.scrolledpanel as scrolled
+ import wx.lib.mixins.listctrl as listmix
+ import SessionProfile
++import X2goMaintProfile
++from Message import Message
+ import x2go
+ import pyhocaguiImages
+ 
+@@ -116,6 +118,7 @@ class menuActions(wx.Menu):
+ 
+     def OnAddProfile(self, evt):
+         self.logger('Add Profile started', x2go.loglevel_INFO, )
++        X2goMaintProfile.X2goMaintProfile('Add', self.parent, self.SessionProfiles, self.parent.callbackupdList)
+ 
+     def OnNewSession(self, evt):
+         self.logger('NewSession started for self.parent.__class__.__name__ %s, len(self.SessionProfiles.x2goprofs) %s' % (self.parent.__class__.__name__, len(self.SessionProfiles.x2goprofs)), x2go.loglevel_INFO, )
+@@ -141,6 +144,8 @@ class menuActions(wx.Menu):
+ 
+     def OnUpdateProfile(self, evt):
+         self.logger('Update Profile started', x2go.loglevel_INFO, )
++        if self.selected_profile:
++            X2goMaintProfile.X2goMaintProfile('Upd', self.parent, self.SessionProfiles, self.parent.callbackupdList, self.selected_profile)
+ 
+     def OnExit(self, evt):
+         self.logger('Exit application', x2go.loglevel_INFO, )
+@@ -237,10 +242,10 @@ class X2GoPasswordScrn(sc.SizedFrame):
+         username = self.username_ctl.GetValue()
+         password = self.passwd_ctl.GetValue()
+         if len(username) == 0:
+-            Message(self,'Userid is invalid')
++            Message(self,1)
+             return
+         if len(password) == 0:
+-            Message(self,'Password is required')
++            Message(self,2)
+             return
+         self.current_profile.updValue('username',username)
+         self.current_profile.setPassword(password)
+@@ -253,13 +258,13 @@ class X2GoPasswordScrn(sc.SizedFrame):
+             connection.makeConnection(self.session, self.StatusText)
+             error = False
+         except x2go.AuthenticationException:
+-            Message(self,'Userid/Password verification failed')
++            Message(self,3)
+         except x2go.BadHostKeyException:
+-            Message(self,'SSH host key verification for remote host [%s]:%s failed' % (self.current_profile.host, self.current_profile.sshport ))
++            Message(self,message='SSH host key verification for remote host [%s]:%s failed' % (self.current_profile.host, self.current_profile.sshport ))
+         except x2go.SSHException, e:
+-            Message(self,'Problem with ssh tunnel for host [%s]:%s failed' % (self.current_profile.host, self.current_profile.sshport ))
++            Message(self,message='Problem with ssh tunnel for host [%s]:%s failed' % (self.current_profile.host, self.current_profile.sshport ))
+         except:
+-            Message(self,'Unknown problem with connection to host [%s]:%s' % (self.current_profile.host, self.current_profile.sshport ))
++            Message(self,message='Unknown problem with connection to host [%s]:%s' % (self.current_profile.host, self.current_profile.sshport ))
+         if error:
+             self.Show(True)
+             if self.IsIconized():
+@@ -344,7 +349,7 @@ class X2GoChooseSessionScrn(wx.Frame):
+             if parent.args.password and parent.args.username and self.current_profile:
+                 X2GoPasswordScrn(self)
+             elif parent.args.profile:
+-                Message(self, 'Not all credentials are available')
++                Message(self, 4)
+                 self.Iconize(False)
+         else:
+             self.Show(True)
+@@ -366,18 +371,21 @@ class X2GoChooseSessionScrn(wx.Frame):
+         info.m_text = &quot;Status&quot;
+         self.list.InsertColumnInfo(1, info)
+         for profilename, connected, alive in sessions:
+-            if connected and alive:
+-                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx2)
+-                self.list.SetStringItem(index, 1, 'Connected')
+-            elif not connected and alive:
+-                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx3)
+-                self.list.SetStringItem(index, 1, 'Suspended')
+-            else:
+-                index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx1)
+-                self.list.SetStringItem(index, 1, 'Not Connected')
++            self.addRow(profilename, connected, alive)
+ 
+         self.list.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+ 
++    def addRow(self, profilename, connected, alive):
++        if connected and alive:
++            index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx2)
++            self.list.SetStringItem(index, 1, 'Connected')
++        elif not connected and alive:
++            index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx3)
++            self.list.SetStringItem(index, 1, 'Suspended')
++        else:
++            index = self.list.InsertImageStringItem(sys.maxint, profilename, self.idx1)
++            self.list.SetStringItem(index, 1, 'Not Connected')
++
+     def OnRightDown(self, event):
+         x = event.GetX()
+         y = event.GetY()
+@@ -412,14 +420,20 @@ class X2GoChooseSessionScrn(wx.Frame):
+         #self.Close()
+             self.tb.Destroy()
+         self.Destroy()
+-        
++
+     def callbackConnection(self, error):
+         if self.currentItem:
+             if error:
+                 self.list.SetItemImage(self.currentItem, self.idx1)
+             else:
+                 self.list.SetItemImage(self.currentItem, self.idx2)
+-            
++
++    def callbackupdList(self, action, profile):
++        if action == 'Add':
++            self.addRow(profile.name, False, False)
++        else:
++            self.list.SetStringItem(self.currentItem, 0, profile.name)
++
+ 
+ class X2GoLogonTaskBarIcon(wx.TaskBarIcon):
+ 
+@@ -483,28 +497,9 @@ class X2GoLogonTaskBarIcon(wx.TaskBarIcon):
+     #def OnTaskBarNewSession(self, evt):
+         #self.RemoveIcon()
+ 
+-class Message:
+-    def __init__(self, parent, message, extraCaption='', msgtype='error'):
+-        if msgtype == 'warning':
+-            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
+-            caption = 'Warning '
+-        elif msgtype == 'error':
+-            msgstyle = wx.ICON_QUESTION|wx.STAY_ON_TOP
+-            caption = 'Error '
+-        else:
+-            msgstyle = wx.ICON_INFORMATION|wx.STAY_ON_TOP
+-            caption = 'Information '
+-        caption += extraCaption
+-        md = wx.MessageDialog(parent, message, caption=caption, style=msgstyle)
+-        result = md.ShowModal()
+-        self.retValue = False
+-        if result == wx.OK:
+-            self.retValue = True
+-        md.Destroy()
+-
+ def checkArgs(parent, args, SessionProfiles):
+     if args.profile and not SessionProfiles.profileExists(args.profile):
+-        Message(parent, 'Profile is entered, but is not known')
++        Message(parent, 5)
+         exit(0)
+ 
+ 
+@@ -513,22 +508,22 @@ def startX2Go(parent):
+     This routine starts all processing
+ 
+     If there is only one profile available, or if there is one (1) single
+-    profile that has the default switch, and the password has not been passed, 
++    profile that has the default switch, and the password has not been passed,
+     the logon screen is shown immediately
+-    
++
+     If there is only one profile available, or if there is one (1) single
+-    profile that has the default switch, and the password has been passed, 
++    profile that has the default switch, and the password has been passed,
+     the connection can be made immediately and the screens should not be shown,
+     but if there is an error in the connection, the logon screen should be shown with an errormessage.
+-    
+-    if there are more than one profile available, and there is no default, 
++
++    if there are more than one profile available, and there is no default,
+     the list of available profiles should be shown. After the user chooses
+     a profile, the connection should be made to that specific profile, turning
+     it into a session. After that all screens should be minimized.
+-    
+-    First all profile information is retrieved together with the settings and 
+-    the printprofile. 
+-    
++
++    First all profile information is retrieved together with the settings and
++    the printprofile.
++
+     Then it is tested if there are more than one profile that can be selected
+     &quot;&quot;&quot;
+     parent.logger('starting a new X2go GUI session', x2go.loglevel_INFO, )
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="012284.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	66a75dce88b6ea0d3a5e38d2beab3dcb3eddb46e
+</A></li>
+	<LI>Next message: <A HREF="012279.html">[X2Go-Commits] pyhoca-gui.git - twofactorauth (branch) updated:	7a8808f258f6a417a9fe4d73b84a03e803841155
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12288">[ date ]</a>
+              <a href="thread.html#12288">[ thread ]</a>
+              <a href="subject.html#12288">[ subject ]</a>
+              <a href="author.html#12288">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

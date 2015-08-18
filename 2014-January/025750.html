@@ -1,0 +1,330 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-10-g7ddc496
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-10-g7ddc496&In-Reply-To=%3C20140108143521.4BA855DB8C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025745.html">
+   <LINK REL="Next"  HREF="025755.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-10-g7ddc496</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20pyhoca-gui.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.4.0.8-10-g7ddc496&In-Reply-To=%3C20140108143521.4BA855DB8C%40ymir%3E"
+       TITLE="[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-10-g7ddc496">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:35:21 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025745.html">[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-14-ga80f88c
+</A></li>
+        <LI>Next message: <A HREF="025755.html">[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-17-g623aa9c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25750">[ date ]</a>
+              <a href="thread.html#25750">[ thread ]</a>
+              <a href="subject.html#25750">[ subject ]</a>
+              <a href="author.html#25750">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  7ddc4960eed4405306aae04853b5ea0a89ab5266 (commit)
+      from  299bb0ee83d70c6c98cbc834e7d876cdff27d91f (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog               |    2 ++
+ pyhoca/wxgui/frontend.py       |   18 ++++++++++++++++++
+ pyhoca/wxgui/profilemanager.py |    8 ++++++--
+ 3 files changed, 26 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 9abb3f9..73c874f 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -10,6 +10,8 @@ pyhoca-gui (0.4.0.9-0~x2go1) UNRELEASED; urgency=low
+     - Implement two-factor authentication.
+     - Don't crash if no notification-daemon provide is registered in DBUS.
+       (Fixes: #321).
++    - Become aware of new Python X2Go hook method
++      (HOOK_on_failing_SFTP_client).
+   * /debian/copyright:
+     + Update file. Add entry for file icon2exe.py.
+ 
+diff --git a/pyhoca/wxgui/frontend.py b/pyhoca/wxgui/frontend.py
+index 96c530b..5f7b14b 100644
+--- a/pyhoca/wxgui/frontend.py
++++ b/pyhoca/wxgui/frontend.py
+@@ -1560,6 +1560,24 @@ class PyHocaGUI(wx.App, x2go.X2GoClient):
+             self.WakeUpIdle()
+             self.ExitMainLoop()
+ 
++    def HOOK_on_failing_SFTP_client(self, profile_name='UNKNOWN', **kwargs):
++        &quot;&quot;&quot;\
++        Notify about SFTP client failures
++
++        @param profile_name: profile name of session that called this hook method
++        @type profile_name: C{str}
++
++        &quot;&quot;&quot;
++        if not self._exiting:
++            self.notifier.send(_(u'%s - SFTP client error') % profile_name, _(u'New X2Go session will lack SFTP client support.\nCheck your server setup.\n\nAvoid echoing ~/.*shrc files on server!!!\n\nNot starting new session...'), icon='session_error', timeout=10000)
++        try:
++            del self._temp_disabled_session_names[profile_name]
++        except KeyError:
++            pass
++        if self.exit_on_disconnect:
++            self.WakeUpIdle()
++            self.ExitMainLoop()
++
+     def HOOK_session_startup_failed(self, profile_name='UNKNOWN', **kwargs):
+         &quot;&quot;&quot;\
+         Notify about session startup failures.
+diff --git a/pyhoca/wxgui/profilemanager.py b/pyhoca/wxgui/profilemanager.py
+index 35ff313..d73b36d 100644
+--- a/pyhoca/wxgui/profilemanager.py
++++ b/pyhoca/wxgui/profilemanager.py
+@@ -870,7 +870,7 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+         self.SSHProxyAutoLogin.SetValue(self.profile_config['sshproxyautologin'])
+ 
+         _ssh_proxy = self.profile_config['usesshproxy']
+-        _ssh_proxy_host = self.profile_config['sshproxyhost']
++        _ssh_proxy_host = self.profile_config['sshproxyhost'].strip()
+         _ssh_proxy_port = 22
+         try:
+             _ssh_proxy_port = int(self.profile_config['sshproxyport'])
+@@ -888,7 +888,11 @@ class PyHocaGUI_ProfileManager(wx.Dialog):
+             self.SSHProxyUser.SetValue(self.profile_config['user'])
+         else:
+             self.SSHProxyUser.SetValue(self.profile_config['sshproxyuser'])
+-        self.SSHProxyKeyFile.SetValue(self.profile_config['sshproxykeyfile'])
++
++        if self.profile_config['sshproxysamepass']:
++            self.SSHProxyKeyFile.SetValue(self.profile_config['sshproxykeyfile'])
++        else:
++            self.SSHProxyKeyFile.SetValue(self.profile_config['key'])
+ 
+         self.UseSSHProxy.SetValue(_ssh_proxy)
+         self.SSHProxySameUser.SetValue(self.profile_config['sshproxysameuser'])
+
+
+hooks/post-receive
+-- 
+pyhoca-gui.git (Python X2Go Client (wxPython GUI))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-gui.git&quot; (Python X2Go Client (wxPython GUI)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025745.html">[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-14-ga80f88c
+</A></li>
+	<LI>Next message: <A HREF="025755.html">[X2Go-Commits] pyhoca-gui.git - build-baikal (branch) updated:	0.4.0.8-17-g623aa9c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25750">[ date ]</a>
+              <a href="thread.html#25750">[ thread ]</a>
+              <a href="subject.html#25750">[ subject ]</a>
+              <a href="author.html#25750">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

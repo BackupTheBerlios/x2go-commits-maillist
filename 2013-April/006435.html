@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	35dc28b34f75794f4e88add4298032d236b167e1
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%0935dc28b34f75794f4e88add4298032d236b167e1&In-Reply-To=%3C20130427114527.D9B165DB2E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="006432.html">
+   <LINK REL="Next"  HREF="006436.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	35dc28b34f75794f4e88add4298032d236b167e1</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20libpam-x2go.git%20-%20build-main%20%28branch%29%20updated%3A%0A%0935dc28b34f75794f4e88add4298032d236b167e1&In-Reply-To=%3C20130427114527.D9B165DB2E%40ymir%3E"
+       TITLE="[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	35dc28b34f75794f4e88add4298032d236b167e1">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Apr 27 13:45:27 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="006432.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	8312e8df8682ebf7b8499b641c56844e617aeb9b
+</A></li>
+        <LI>Next message: <A HREF="006436.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	dfbd12d4d9e5af664330aff4bd31443f271d444c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6435">[ date ]</a>
+              <a href="thread.html#6435">[ thread ]</a>
+              <a href="subject.html#6435">[ subject ]</a>
+              <a href="author.html#6435">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  35dc28b34f75794f4e88add4298032d236b167e1 (commit)
+      from  09706973403a6ae0934f55780ac81159bf8d6200 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ src/pam-freerdp.c |   38 +++++++++++++++++++++++++++-----------
+ 1 file changed, 27 insertions(+), 11 deletions(-)
+
+The diff of changes is:
+diff --git a/src/pam-freerdp.c b/src/pam-freerdp.c
+index bf533c4..d8c6703 100644
+--- a/src/pam-freerdp.c
++++ b/src/pam-freerdp.c
+@@ -1,4 +1,5 @@
+ #include &lt;stdlib.h&gt;
++#include &lt;stdio.h&gt;
+ #include &lt;string.h&gt;
+ #include &lt;unistd.h&gt;
+ #include &lt;sys/wait.h&gt;
+@@ -95,27 +96,29 @@ pam_sm_authenticate (pam_handle_t *pamh, int flags, int argc, const char **argv)
+ 	GET_ITEM(rdomain,  PAM_TYPE_DOMAIN);
+ 	GET_ITEM(password, PAM_AUTHTOK);
+ 
++	int stdinpipe[2];
++	if (pipe(stdinpipe) != 0) {
++		retval = PAM_SYSTEM_ERR;
++		goto done;
++	}
++
+ 	/* At this point we should have the values, let's check the auth */
+ 	pid_t pid;
+ 	switch (pid = fork()) {
+ 	case 0: { /* child */
+-		char * args[13];
++		dup2(stdinpipe[0], 0);
++
++		char * args[8];
++
+ 		args[0] = XFREERDP;
+ 		args[1] = &quot;--plugin&quot;;
+ 		args[2] = &quot;rdpsnd.so&quot;;
+ 		args[3] = &quot;--no-nla&quot;;
+ 		args[4] = &quot;-f&quot;;
+ 		args[5] = &quot;--ignore-certificate&quot;; /* TODO: Change when we set the home directory properly */
++		args[6] = &quot;--from-stdin&quot;;
+ 		
+-		/* TODO: Use stdin */
+-		args[6] = &quot;-u&quot;;
+-		args[7] = ruser;
+-		args[8] = &quot;-p&quot;;
+-		args[9] = password;
+-		args[10] = &quot;-d&quot;;
+-		args[11] = rdomain;
+-
+-		args[12] = NULL;
++		args[7] = NULL;
+ 
+ 		/* TODO: Drop privs */
+ 		/* TODO: Home directory environment to user's home */
+@@ -129,7 +132,20 @@ pam_sm_authenticate (pam_handle_t *pamh, int flags, int argc, const char **argv)
+ 	}
+ 	default: {
+ 		int forkret = 0;
+-		if (waitpid(pid, &amp;forkret, 0) &lt; 0) {
++		int bytesout = 0;
++
++		bytesout += write(stdinpipe[1], ruser, strlen(ruser));
++		bytesout += write(stdinpipe[1], &quot; &quot;, 1);
++		bytesout += write(stdinpipe[1], password, strlen(password));
++		bytesout += write(stdinpipe[1], &quot; &quot;, 1);
++		bytesout += write(stdinpipe[1], rdomain, strlen(rdomain));
++		bytesout += write(stdinpipe[1], &quot; &quot;, 1);
++		bytesout += write(stdinpipe[1], rhost, strlen(rhost));
++		bytesout += write(stdinpipe[1], &quot; &quot;, 1);
++
++		close(stdinpipe[1]);
++
++		if (waitpid(pid, &amp;forkret, 0) &lt; 0 || bytesout == 0) {
+ 			retval = PAM_SYSTEM_ERR;
+ 		} else if (forkret == 0) {
+ 			retval = PAM_SUCCESS;
+
+
+hooks/post-receive
+-- 
+libpam-x2go.git (Remote login session via X2Go (PAM module))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;libpam-x2go.git&quot; (Remote login session via X2Go (PAM module)).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="006432.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	8312e8df8682ebf7b8499b641c56844e617aeb9b
+</A></li>
+	<LI>Next message: <A HREF="006436.html">[X2Go-Commits] libpam-x2go.git - build-main (branch) updated:	dfbd12d4d9e5af664330aff4bd31443f271d444c
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6435">[ date ]</a>
+              <a href="thread.html#6435">[ thread ]</a>
+              <a href="subject.html#6435">[ subject ]</a>
+              <a href="author.html#6435">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

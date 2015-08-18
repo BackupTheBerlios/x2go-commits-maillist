@@ -1,0 +1,1261 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.2.0-3
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-August/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcompshad/3.2.0-3&In-Reply-To=%3C20130830142402.5F4085DB37%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="011707.html">
+   <LINK REL="Next"  HREF="011713.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.2.0-3</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20nx-libs.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%09nxcompshad/3.2.0-3&In-Reply-To=%3C20130830142402.5F4085DB37%40ymir%3E"
+       TITLE="[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.2.0-3">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Aug 30 16:24:02 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="011707.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.16-24-gb09b686
+</A></li>
+        <LI>Next message: <A HREF="011713.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.4.0-3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11709">[ date ]</a>
+              <a href="thread.html#11709">[ thread ]</a>
+              <a href="subject.html#11709">[ subject ]</a>
+              <a href="author.html#11709">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  9f7021392b921ad44163024ed8ca538195d3ac9c (commit)
+      from  c7dc0c3cdec2e0f2fa2d52f8d446d0e83623a8a0 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ nxcompshad/CHANGELOG                       |   24 +
+ nxcompshad/Core.cpp                        |   16 +
+ nxcompshad/Core.h                          |    4 +
+ nxcompshad/Misc.h                          |    4 +-
+ nxcompshad/Shadow.cpp                      |   32 ++
+ nxcompshad/{Shadow.cpp =&gt; Shadow.cpp.orig} |   22 +
+ nxcompshad/Shadow.h                        |    6 +
+ nxcompshad/Win.cpp                         |    7 +
+ nxcompshad/Win.h                           |    1 +
+ nxcompshad/X11.cpp                         |  789 +++++++++++++++++++++++++++-
+ nxcompshad/X11.h                           |   30 ++
+ 11 files changed, 932 insertions(+), 3 deletions(-)
+ copy nxcompshad/{Shadow.cpp =&gt; Shadow.cpp.orig} (94%)
+
+The diff of changes is:
+diff --git a/nxcompshad/CHANGELOG b/nxcompshad/CHANGELOG
+index d21d16a..7797686 100644
+--- a/nxcompshad/CHANGELOG
++++ b/nxcompshad/CHANGELOG
+@@ -1,5 +1,29 @@
+ ChangeLog:
+ 
++nxcompshad-3.2.0-3
++
++- Improved keycode translation.
++
++nxcompshad-3.2.0-2
++
++- Solved a problem when sending fake modifier events.
++
++- Added support for keyboard events handling for the web player.
++
++- Changed keycodes translation for Solaris keyboard.
++
++- Corrected a problem for keycodes translation from Solaris keyboard.
++
++- Fixed TR02F02001. In shadow session the shadower's keyboard layout
++  could be wrong. Now keycodes are correctly translated if master and
++  shadow keyboards have different layouts.
++
++- Added NXShadowGetScreenSize() and NXShadowSetScreenSize() functions,
++  so that the shadow session can handle correctly the resize of the
++  master session window.
++
++- Solved a compilation problem on GCC 4.3.
++
+ nxcompshad-3.2.0-1
+ 
+ - Opened the 3.2.0 branch based on nxcompshad-3.1.0-2.
+diff --git a/nxcompshad/Core.cpp b/nxcompshad/Core.cpp
+index 351fa8f..44327cd 100644
+--- a/nxcompshad/Core.cpp
++++ b/nxcompshad/Core.cpp
+@@ -538,6 +538,15 @@ void CorePoller::update(char *src, XRectangle r)
+ 
+   for (unsigned int i = 0; i &lt; r.height; i++)
+   {
++    if(((r.x * bpp_ + r.y * bpl_) + bpl) &gt; (bpl_ * height_))
++    {
++      //
++      // Out of bounds. Maybe a resize is going on.
++      //
++
++      continue;
++    }
++
+     memcpy(dst, src, bpl);
+ 
+     src += bpl;
+@@ -574,6 +583,13 @@ void CorePoller::handleEvent(Display *display, XEvent *event)
+   }
+ }
+ 
++void CorePoller::handleWebKeyEvent(KeySym keysym, Bool isKeyPress)
++{
++  logTrace(&quot;CorePoller::handleWebKeyEvent&quot;);
++
++  handleWebKeyboardEvent(keysym, isKeyPress);
++}
++
+ void CorePoller::handleInput()
+ {
+   while (input_ -&gt; checkIfEvent())
+diff --git a/nxcompshad/Core.h b/nxcompshad/Core.h
+index 6d2053b..17ce448 100644
+--- a/nxcompshad/Core.h
++++ b/nxcompshad/Core.h
+@@ -68,6 +68,8 @@ class CorePoller
+ 
+   void handleEvent(Display *, XEvent *);
+ 
++  void handleWebKeyEvent(KeySym keysym, Bool isKeyPress);
++
+   Display *getShadowDisplay();
+ 
+   void setShadowDisplay(Display *shadowDisplay);
+@@ -115,6 +117,8 @@ class CorePoller
+ 
+   virtual void handleKeyboardEvent(Display *, XEvent *) = 0;
+ 
++  virtual void handleWebKeyboardEvent(KeySym keysym, Bool isKeyPress) = 0;
++
+   virtual void handleMouseEvent(Display *, XEvent *) = 0;
+ 
+   Input *input_;
+diff --git a/nxcompshad/Misc.h b/nxcompshad/Misc.h
+index 674d346..6bfbaa4 100644
+--- a/nxcompshad/Misc.h
++++ b/nxcompshad/Misc.h
+@@ -18,11 +18,13 @@
+ #ifndef Misc_H
+ #define Misc_H
+ 
+-#include &lt;iostream.h&gt;
++#include &lt;iostream&gt;
+ 
+ #include &lt;errno.h&gt;
+ #include &lt;string.h&gt;
+ 
++using namespace std;
++
+ //
+ // Error handling macros.
+ //
+diff --git a/nxcompshad/Shadow.cpp b/nxcompshad/Shadow.cpp
+index 7221396..c7fb6b4 100644
+--- a/nxcompshad/Shadow.cpp
++++ b/nxcompshad/Shadow.cpp
+@@ -28,6 +28,15 @@
+ #include &quot;Poller.h&quot;
+ #include &quot;Manager.h&quot;
+ 
++typedef struct {
++    KeySym  *map;
++    KeyCode minKeyCode,
++            maxKeyCode;
++    int     mapWidth;
++} KeySymsRec, *KeySymsPtr;
++
++KeySymsPtr NXShadowKeymap = NULL;
++
+ ShadowOptions NXShadowOptions = {1, 1, -1};
+ 
+ static int mirrorException = 0;
+@@ -295,6 +304,16 @@ void NXShadowDisableDamage(void)
+   NXShadowOptions.optionDamageExtension = 0;
+ }
+ 
++void NXShadowGetScreenSize(int *w, int *h)
++{
++  poller -&gt; getScreenSize(w, h);
++}
++
++void NXShadowSetScreenSize(int *w, int *h)
++{
++  poller -&gt; setScreenSize(w, h);
++}
++
+ #endif
+ 
+ void NXShadowDestroy()
+@@ -406,6 +425,11 @@ void NXShadowEvent(Display *display, XEvent event)
+   poller -&gt; handleEvent(display, &amp;event);
+ }
+ 
++void NXShadowWebKeyEvent(KeySym keysym, Bool isKeyPress)
++{
++  poller -&gt; handleWebKeyEvent(keysym, isKeyPress);
++}
++
+ #ifdef __CYGWIN32__
+ 
+ int NXShadowCaptureCursor(unsigned int wnd, void *vis)
+@@ -437,3 +461,11 @@ void NXShadowUpdateBuffer(void **buffer)
+ 
+   logTest(&quot;NXShadowUpdateBuffer&quot;,&quot;New frame buffer [0x%p]&quot;, (void *)*fBuffer);
+ }
++
++void NXShadowInitKeymap(void *keysyms)
++{
++  NXShadowKeymap = (KeySymsPtr) keysyms;
++
++  logTest(&quot;NXShadowInitKeymap&quot;,&quot;KeySyms pointer [0x%p] mapWidth [%d]&quot;,
++              (void *)NXShadowKeymap, NXShadowKeymap -&gt; mapWidth);
++}
+diff --git a/nxcompshad/Shadow.cpp b/nxcompshad/Shadow.cpp.orig
+similarity index 94%
+copy from nxcompshad/Shadow.cpp
+copy to nxcompshad/Shadow.cpp.orig
+index 7221396..91ef3b8 100644
+--- a/nxcompshad/Shadow.cpp
++++ b/nxcompshad/Shadow.cpp.orig
+@@ -28,6 +28,15 @@
+ #include &quot;Poller.h&quot;
+ #include &quot;Manager.h&quot;
+ 
++typedef struct {
++    KeySym  *map;
++    KeyCode minKeyCode,
++            maxKeyCode;
++    int     mapWidth;
++} KeySymsRec, *KeySymsPtr;
++
++KeySymsPtr NXShadowKeymap = NULL;
++
+ ShadowOptions NXShadowOptions = {1, 1, -1};
+ 
+ static int mirrorException = 0;
+@@ -406,6 +415,11 @@ void NXShadowEvent(Display *display, XEvent event)
+   poller -&gt; handleEvent(display, &amp;event);
+ }
+ 
++void NXShadowWebKeyEvent(KeySym keysym, Bool isKeyPress)
++{
++  poller -&gt; handleWebKeyEvent(keysym, isKeyPress);
++}
++
+ #ifdef __CYGWIN32__
+ 
+ int NXShadowCaptureCursor(unsigned int wnd, void *vis)
+@@ -437,3 +451,11 @@ void NXShadowUpdateBuffer(void **buffer)
+ 
+   logTest(&quot;NXShadowUpdateBuffer&quot;,&quot;New frame buffer [0x%p]&quot;, (void *)*fBuffer);
+ }
++
++void NXShadowInitKeymap(void *keysyms)
++{
++  NXShadowKeymap = (KeySymsPtr) keysyms;
++
++  logTest(&quot;NXShadowInitKeymap&quot;,&quot;KeySyms pointer [0x%p] mapWidth [%d]&quot;,
++              (void *)NXShadowKeymap, NXShadowKeymap -&gt; mapWidth);
++}
+diff --git a/nxcompshad/Shadow.h b/nxcompshad/Shadow.h
+index eb3c141..57a7725 100644
+--- a/nxcompshad/Shadow.h
++++ b/nxcompshad/Shadow.h
+@@ -81,12 +81,18 @@ extern void          NXShadowColorCorrect(int, int, unsigned int, unsigned int,
+ extern void          NXShadowUpdateBuffer(void **);
+ 
+ extern void          NXShadowEvent(Display *, XEvent);
++extern void          NXShadowWebKeyEvent(KeySym keysym, Bool isKeyPress);
+ 
+ extern void          NXShadowSetDisplayUid(int uid);
+ 
+ extern void          NXShadowDisableShm(void);
+ extern void          NXShadowDisableDamage(void);
+ 
++extern void          NXShadowGetScreenSize(int *width, int *height);
++extern void          NXShadowSetScreenSize(int *width, int *height);
++
++extern void          NXShadowInitKeymap(void *keysyms);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/nxcompshad/Win.cpp b/nxcompshad/Win.cpp
+index 9f8cdc9..87ea80b 100644
+--- a/nxcompshad/Win.cpp
++++ b/nxcompshad/Win.cpp
+@@ -479,6 +479,13 @@ void Poller::handleKeyboardEvent(Display *display, XEvent *event)
+   delete[] keyname;
+ }
+ 
++void Poller::handleWebKeyboardEvent(KeySym keysym, Bool isKeyPress)
++{
++/*
++FIXME
++*/
++}
++
+ void Poller::handleMouseEvent(Display *display, XEvent *event)
+ {
+   DWORD flg = 0;
+diff --git a/nxcompshad/Win.h b/nxcompshad/Win.h
+index b44b5a0..9343821 100644
+--- a/nxcompshad/Win.h
++++ b/nxcompshad/Win.h
+@@ -72,6 +72,7 @@ class Poller : public CorePoller
+   
+   int Poller::updateShadowFrameBuffer(void);
+   void handleKeyboardEvent(Display *, XEvent *);
++  void handleWebKeyboardEvent(KeySym keysym, Bool isKeyPress);
+   void addToKeymap(char *keyname, unsigned char scancode, unsigned short modifiers, char *mapname);
+   int xkeymapRead(char *mapname);
+   FILE *xkeymapOpen(char *filename);
+diff --git a/nxcompshad/X11.cpp b/nxcompshad/X11.cpp
+index a2165d8..3971c8e 100644
+--- a/nxcompshad/X11.cpp
++++ b/nxcompshad/X11.cpp
+@@ -35,7 +35,49 @@
+ 
+ #define ROUNDUP(nbytes, pad) ((((nbytes) + ((pad)-1)) / (pad)) * ((pad)&gt;&gt;3))
+ 
+-#define TRANSLATE_KEYCODES
++#undef  TRANSLATE_KEYCODES
++#define TRANSLATE_ALWAYS
++
++typedef struct {
++    KeySym  *map;
++    KeyCode minKeyCode,
++            maxKeyCode;
++    int     mapWidth;
++} KeySymsRec, *KeySymsPtr;
++
++extern KeySymsPtr NXShadowKeymap;
++
++typedef struct _KeyPressed
++{
++  KeyCode keyRcvd;
++  KeyCode keySent;
++  struct _KeyPressed *next;
++} KeyPressedRec;
++
++static KeyPressedRec *shadowKeyPressedPtr = NULL;
++
++static KeySym *shadowKeysyms = NULL;
++static KeySym *masterKeysyms = NULL;
++
++static int shadowMinKey, shadowMaxKey, shadowMapWidth;
++static int masterMinKey, masterMaxKey, masterMapWidth;
++
++static int leftShiftOn = 0;
++static int rightShiftOn = 0;
++static int modeSwitchOn = 0;
++static int level3ShiftOn = 0;
++static int altROn = 0;
++
++static int sentFakeLShiftPress = 0;
++static int sentFakeLShiftRelease = 0;
++static int sentFakeRShiftRelease = 0;
++static int sentFakeModeSwitchPress = 0;
++static int sentFakeModeSwitchRelease = 0;
++static int sentFakeLevel3ShiftPress = 0;
++static int sentFakeLevel3ShiftRelease = 0;
++static int sentFakeAltRRelease = 0;
++
++static int shmInitTrap = 0;
+ 
+ Poller::Poller(Input *input, Display *display, int depth) : CorePoller(input, display)
+ {
+@@ -226,7 +268,10 @@ void Poller::shmInit(void)
+   {
+     logDebug(&quot;Poller::shmInit&quot;, &quot;Called with shared memory already initialized.&quot;);
+ 
+-    return;
++    if (shmInitTrap == 0)
++    {
++      return;
++    }
+   }
+ 
+   if (shmExtension_ &lt; 0 &amp;&amp; NXShadowOptions.optionShmExtension == 0)
+@@ -362,6 +407,520 @@ void Poller::shmInit(void)
+   }
+ }
+ 
++void Poller::keymapShadowInit(Display *display)
++{
++  if (NXShadowKeymap)
++  {
++    shadowMinKey = NXShadowKeymap -&gt; minKeyCode;
++    shadowMaxKey = NXShadowKeymap -&gt; maxKeyCode;
++    shadowMapWidth = NXShadowKeymap -&gt; mapWidth;
++    shadowKeysyms = NXShadowKeymap -&gt; map;
++  }
++
++  if (shadowKeysyms == NULL)
++  {
++    XDisplayKeycodes(display, &amp;shadowMinKey, &amp;shadowMaxKey);
++
++    shadowKeysyms = XGetKeyboardMapping(display, shadowMinKey, shadowMaxKey - shadowMinKey + 1,
++                                            &amp;shadowMapWidth);
++  }
++
++  #ifdef DEBUG
++  if (shadowKeysyms)
++  {
++    for (int i = 0; i &lt; (shadowMaxKey - shadowMinKey) * shadowMapWidth; i++)
++    {
++      logDebug(&quot;Poller::keymapShadowInit&quot;, &quot;keycode %d - keysym %x %s&quot;,
++                   (int)(i / shadowMapWidth), (unsigned int)shadowKeysyms[i],
++                       XKeysymToString(shadowKeysyms[i]));
++    }
++  }
++  #endif
++}
++
++void Poller::keymapMasterInit()
++{
++  XDisplayKeycodes(display_, &amp;masterMinKey, &amp;masterMaxKey);
++
++  masterKeysyms = XGetKeyboardMapping(display_, masterMinKey, masterMaxKey - masterMinKey + 1,
++                                          &amp;masterMapWidth);
++
++  #ifdef DEBUG
++  if (masterKeysyms)
++  {
++    for (int i = 0; i &lt; (masterMaxKey - masterMinKey) * masterMapWidth; i++)
++    {
++      logDebug(&quot;Poller::keymapMasterInit&quot;, &quot;keycode %d - keysym %x %s&quot;,
++                   (int)(i / masterMapWidth), (unsigned int)masterKeysyms[i],
++                       XKeysymToString(masterKeysyms[i]));
++    }
++  }
++  #endif
++}
++
++KeySym Poller::keymapKeycodeToKeysym(KeyCode keycode, KeySym *keysyms,
++                                         int minKey, int mapWidth, int col)
++{
++  int index = ((keycode - minKey) * mapWidth) + col;
++  return keysyms[index];
++}
++
++KeyCode Poller::keymapKeysymToKeycode(KeySym keysym, KeySym *keysyms,
++                                          int minKey, int maxKey, int mapWidth, int *col)
++{
++  for (int i = 0; i &lt; (maxKey - minKey + 1) * mapWidth; i++)
++  {
++    if (keysyms[i] == keysym)
++    {
++      *col = i % mapWidth;
++      return i / mapWidth + minKey;
++    }
++  }
++  return 0;
++}
++
++KeyCode Poller::translateKeysymToKeycode(KeySym keysym, int *col)
++{
++  KeyCode keycode;
++
++  keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                      masterMaxKey, masterMapWidth, col);
++
++  if (keycode == 0)
++  {
++    if (((keysym &gt;&gt; 8) == 0) &amp;&amp; (keysym &gt;= XK_a) &amp;&amp; (keysym &lt;= XK_z))
++    {
++      /*
++       * The master session has a Solaris keyboard.
++       */
++
++      keysym -= XK_a - XK_A;
++
++      keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                          masterMaxKey, masterMapWidth, col);
++    }
++    else if (keysym == XK_Shift_R)
++    {
++      keysym = XK_Shift_L;
++
++      keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                          masterMaxKey, masterMapWidth, col);
++    }
++    else if (keysym == XK_Shift_L)
++    {
++      keysym = XK_Shift_R;
++
++      keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                          masterMaxKey, masterMapWidth, col);
++    }
++    else if (keysym == XK_ISO_Level3_Shift)
++    {
++      keysym = XK_Mode_switch;
++
++      if ((keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, col)) == 0)
++      {
++        keysym = XK_Alt_R;
++
++        keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                            masterMaxKey, masterMapWidth, col);
++      }
++    }
++    else if (keysym == XK_Alt_R)
++    {
++      keysym = XK_ISO_Level3_Shift;
++
++      if ((keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, col)) == 0)
++      {
++        keysym = XK_Mode_switch;
++
++        keycode = keymapKeysymToKeycode(keysym, masterKeysyms, masterMinKey,
++                                            masterMaxKey, masterMapWidth, col);
++      }
++    }
++  }
++  return keycode;
++}
++
++Bool Poller::checkModifierKeys(KeySym keysym, Bool isKeyPress)
++{
++  switch (keysym)
++  {
++    case XK_Shift_L:
++      leftShiftOn = isKeyPress;
++      return True;
++    case XK_Shift_R:
++      rightShiftOn = isKeyPress;
++      return True;
++    case XK_Mode_switch:
++      modeSwitchOn = isKeyPress;
++      return True;
++    case XK_ISO_Level3_Shift:
++      level3ShiftOn = isKeyPress;
++      return True;
++    case XK_Alt_R:
++      altROn = isKeyPress;
++      return True;
++    default:
++      return False;
++  }
++}
++
++void Poller::sendFakeModifierEvents(int pos, Bool skip)
++{
++  KeySym fakeKeysym;
++  int col;
++
++  if ((!leftShiftOn &amp;&amp; !rightShiftOn) &amp;&amp;
++          (!modeSwitchOn &amp;&amp; !level3ShiftOn &amp;&amp; !altROn))
++  {
++    if (pos == 1 || pos == 3)
++    {
++      fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                             masterMaxKey, masterMapWidth, &amp;col);
++      XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++      sentFakeLShiftPress = 1;
++    }
++    if (pos == 2 || pos == 3)
++    {
++      fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                             masterMaxKey, masterMapWidth, &amp;col);
++
++      if (fakeKeysym == 0)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        sentFakeModeSwitchPress = 1;
++      }
++      else
++      {
++        sentFakeLevel3ShiftPress = 1;
++      }
++
++      XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++    }
++  }
++
++  else if ((leftShiftOn || rightShiftOn) &amp;&amp;
++               (!modeSwitchOn &amp;&amp; !level3ShiftOn &amp;&amp; !altROn))
++  {
++    if ((pos == 0 &amp;&amp; !skip) || pos == 2)
++    {
++      if (leftShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeLShiftRelease = 1;
++      }
++      if (rightShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Shift_R, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeRShiftRelease = 1;
++      }
++    }
++    if (pos == 2 || pos ==3)
++    {
++      fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                             masterMaxKey, masterMapWidth, &amp;col);
++
++      if (fakeKeysym == 0)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        sentFakeModeSwitchPress = 1;
++      }
++      else
++      {
++        sentFakeLevel3ShiftPress = 1;
++      }
++
++      XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++    }
++  }
++
++  else if ((!leftShiftOn &amp;&amp; !rightShiftOn) &amp;&amp;
++               (modeSwitchOn || level3ShiftOn || altROn))
++  {
++    if (pos == 1 || pos == 3)
++    {
++      fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                             masterMaxKey, masterMapWidth, &amp;col);
++      XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++      sentFakeLShiftPress = 1;
++    }
++    if (pos == 0 || pos == 1)
++    {
++      if (modeSwitchOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeModeSwitchRelease = 1;
++      }
++      if (level3ShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeLevel3ShiftRelease = 1;
++      }
++      if (altROn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Alt_R, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeAltRRelease = 1;
++      }
++    }
++  }
++
++  else if ((leftShiftOn || rightShiftOn) &amp;&amp;
++               (modeSwitchOn || level3ShiftOn || altROn))
++  {
++    if (pos == 0 || pos == 2)
++    {
++      if (leftShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeLShiftRelease = 1;
++      }
++      if (rightShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Shift_R, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeRShiftRelease = 1;
++      }
++    }
++    if (pos == 0 || pos == 1)
++    {
++      if (modeSwitchOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeModeSwitchRelease = 1;
++      }
++      if (level3ShiftOn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeLevel3ShiftRelease = 1;
++      }
++      if (altROn)
++      {
++        fakeKeysym = keymapKeysymToKeycode(XK_Alt_R, masterKeysyms, masterMinKey,
++                                               masterMaxKey, masterMapWidth, &amp;col);
++        XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++        sentFakeAltRRelease = 1;
++      }
++    }
++  }
++}
++
++void Poller::cancelFakeModifierEvents()
++{
++  KeySym fakeKeysym;
++  int col;
++
++  if (sentFakeLShiftPress)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake Shift_L key press event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake Shift_L key release event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++
++    sentFakeLShiftPress = 0;
++  }
++
++  if (sentFakeLShiftRelease)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake Shift_L key release event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake Shift_L key press event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Shift_L, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++
++    sentFakeLShiftRelease = 0;
++  }
++
++  if (sentFakeRShiftRelease)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake Shift_R key release event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake Shift_R key press event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Shift_R, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++
++    sentFakeRShiftRelease = 0;
++  }
++
++  if (sentFakeModeSwitchPress)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake Mode_switch key press event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake Mode_switch key release event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++
++    sentFakeModeSwitchPress = 0;
++  }
++
++  if (sentFakeModeSwitchRelease)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake Mode_switch key release event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending Mode_switch key press event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Mode_switch, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++
++    sentFakeModeSwitchRelease = 0;
++  }
++
++  if (sentFakeLevel3ShiftPress)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake ISO_Level3_Shift key press event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake ISO_Level3_Shift key release event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 0, 0);
++
++    sentFakeLevel3ShiftPress = 0;
++  }
++
++  if (sentFakeLevel3ShiftRelease)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake ISO_Level3_Shift key release event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake ISO_Level3_Shift key press event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_ISO_Level3_Shift, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++
++    sentFakeLevel3ShiftRelease = 0;
++  }
++
++  if (sentFakeAltRRelease)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Fake XK_Alt_R key release event has been sent&quot;);
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Sending fake XK_Alt_R key press event&quot;);
++
++    fakeKeysym = keymapKeysymToKeycode(XK_Alt_R, masterKeysyms, masterMinKey,
++                                           masterMaxKey, masterMapWidth, &amp;col);
++    XTestFakeKeyEvent(display_, fakeKeysym, 1, 0);
++
++    sentFakeAltRRelease = 0;
++  }
++}
++
++Bool Poller::keyIsDown(KeyCode keycode)
++{
++  KeyPressedRec *downKey;
++
++  downKey = shadowKeyPressedPtr;
++
++  while (downKey)
++  {
++    if (downKey -&gt; keyRcvd == keycode)
++    {
++      return True;
++    }
++    downKey = downKey -&gt; next;
++  }
++
++  return False;
++}
++
++void Poller::addKeyPressed(KeyCode received, KeyCode sent)
++{
++  KeyPressedRec *downKey;
++
++  if (!keyIsDown(received))
++  {
++    if (shadowKeyPressedPtr == NULL)
++    {
++      shadowKeyPressedPtr = (KeyPressedRec *) malloc(sizeof(KeyPressedRec));
++
++      shadowKeyPressedPtr -&gt; keyRcvd = received;
++      shadowKeyPressedPtr -&gt; keySent = sent;
++      shadowKeyPressedPtr -&gt; next = NULL;
++    }
++    else
++    {
++      downKey = shadowKeyPressedPtr;
++
++      while (downKey -&gt; next != NULL)
++      {
++        downKey = downKey -&gt; next;
++      }
++
++      downKey -&gt; next = (KeyPressedRec *) malloc(sizeof(KeyPressedRec));
++
++      downKey -&gt; next -&gt; keyRcvd = received;
++      downKey -&gt; next -&gt; keySent = sent;
++      downKey -&gt; next -&gt; next = NULL;
++    }
++  }
++}
++
++KeyCode Poller::getKeyPressed(KeyCode received)
++{
++  KeyCode sent;
++  KeyPressedRec *downKey;
++  KeyPressedRec *tempKey;
++
++  if (shadowKeyPressedPtr != NULL)
++  {
++    if (shadowKeyPressedPtr -&gt; keyRcvd == received)
++    {
++      sent = shadowKeyPressedPtr -&gt; keySent;
++
++      tempKey = shadowKeyPressedPtr;
++      shadowKeyPressedPtr = shadowKeyPressedPtr -&gt; next;
++      free(tempKey);
++
++      return sent;
++    }
++    else
++    {
++      downKey = shadowKeyPressedPtr;
++
++      while (downKey -&gt; next != NULL)
++      {
++        if (downKey -&gt; next -&gt; keyRcvd == received)
++        {
++          sent = downKey -&gt; next -&gt; keySent;
++
++          tempKey = downKey -&gt; next;
++          downKey -&gt; next = downKey -&gt; next -&gt; next;
++          free(tempKey);
++
++          return sent;
++        }
++        else
++        {
++          downKey = downKey -&gt; next;
++        }
++      }
++    }
++  }
++  return 0;
++}
++
+ void Poller::handleKeyboardEvent(Display *display, XEvent *event)
+ {
+   if (xtestExtension_ == 0 || display_ == 0)
+@@ -371,6 +930,158 @@ void Poller::handleKeyboardEvent(Display *display, XEvent *event)
+ 
+   logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Handling event at [%p]&quot;, event);
+ 
++#ifdef TRANSLATE_ALWAYS
++
++  KeyCode keycode;
++  KeySym keysym;
++
++  int col = 0;
++
++  Bool isKeyPress = False;
++  Bool isModifier = False;
++  Bool skip = False;
++
++  if (event -&gt; type == KeyPress)
++  {
++    isKeyPress = True;
++  }
++
++  if (shadowKeysyms == NULL)
++  {
++    keymapShadowInit(event -&gt; xkey.display);
++  }
++
++  if (masterKeysyms == NULL)
++  {
++    keymapMasterInit();
++  }
++
++  if (shadowKeysyms == NULL || masterKeysyms == NULL)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Unable to initialize keymaps. Do not translate&quot;);
++
++    keycode = event -&gt; xkey.keycode;
++
++    goto SendKeycode;
++  }
++
++  keysym = keymapKeycodeToKeysym(event -&gt; xkey.keycode, shadowKeysyms,
++                                   shadowMinKey, shadowMapWidth, 0);
++
++  isModifier = checkModifierKeys(keysym, isKeyPress);
++
++  if (event -&gt; type == KeyRelease)
++  {
++    KeyCode keycodeToSend;
++
++    keycodeToSend = getKeyPressed(event -&gt; xkey.keycode);
++
++    if (keycodeToSend)
++    {
++      keycode = keycodeToSend;
++
++      goto SendKeycode;
++    }
++  }
++
++  /*
++   * Convert case for Solaris keyboard.
++   */
++
++  if (((keysym &gt;&gt; 8) == 0) &amp;&amp; (keysym &gt;= XK_A) &amp;&amp; (keysym &lt;= XK_Z))
++  {
++    if (!leftShiftOn &amp;&amp; !rightShiftOn)
++    {
++      keysym += XK_a - XK_A;
++    }
++    else
++    {
++      skip = True;
++    }
++  }
++
++  if (!isModifier)
++  {
++    if ((leftShiftOn || rightShiftOn) &amp;&amp;
++            (!modeSwitchOn &amp;&amp; !level3ShiftOn &amp;&amp; !altROn) &amp;&amp;
++                !skip)
++    {
++      keysym = keymapKeycodeToKeysym(event -&gt; xkey.keycode, shadowKeysyms,
++                                         shadowMinKey, shadowMapWidth, 1);
++    }
++
++    if ((!leftShiftOn &amp;&amp; !rightShiftOn) &amp;&amp;
++            (modeSwitchOn || level3ShiftOn || altROn))
++    {
++      keysym = keymapKeycodeToKeysym(event -&gt; xkey.keycode, shadowKeysyms,
++                                         shadowMinKey, shadowMapWidth, 2);
++    }
++
++    if ((leftShiftOn || rightShiftOn) &amp;&amp;
++            (modeSwitchOn || level3ShiftOn || altROn))
++    {
++      keysym = keymapKeycodeToKeysym(event -&gt; xkey.keycode, shadowKeysyms,
++                                       shadowMinKey, shadowMapWidth, 3);
++    }
++  }
++
++  if (keysym == 0)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;Null keysym. Return&quot;);
++
++    return;
++  }
++
++  logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;keysym [%x] [%s]&quot;,
++              (unsigned int)keysym, XKeysymToString(keysym));
++
++  if (keysym == XK_Mode_switch)
++  {
++    keysym = XK_ISO_Level3_Shift;
++  }
++
++  keycode = translateKeysymToKeycode(keysym, &amp;col);
++
++  if (keycode == 0)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;No keycode found for keysym [%x] [%s]. Return&quot;,
++                (unsigned int)keysym, XKeysymToString(keysym));
++    return;
++  }
++
++  logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;keycode [%d] translated into keycode [%d]&quot;,
++              (int)event -&gt; xkey.keycode, (unsigned int)keycode);
++
++  if (event -&gt; type == KeyPress)
++  {
++    addKeyPressed(event -&gt; xkey.keycode, keycode);
++  }
++
++  /*
++   * Send fake modifier events.
++   */
++
++  if (!isModifier)
++  {
++    sendFakeModifierEvents(col, ((keysym &gt;&gt; 8) == 0) &amp;&amp; (keysym &gt;= XK_A) &amp;&amp; (keysym &lt;= XK_Z));
++  }
++
++SendKeycode:
++
++  /*
++   * Send the event.
++   */
++
++  XTestFakeKeyEvent(display_, keycode, isKeyPress, 0);
++
++  /*
++   * Check if fake modifier events have been sent.
++   */
++
++  cancelFakeModifierEvents();
++
++#else // TRANSLATE_ALWAYS
++
+   //
+   // Use keysyms to translate keycodes across different
+   // keyboard models. Unuseful when both keyboards have
+@@ -417,6 +1128,60 @@ void Poller::handleKeyboardEvent(Display *display, XEvent *event)
+   {
+     XTestFakeKeyEvent(display_, event -&gt; xkey.keycode, 0, 0);
+   }
++
++#endif // TRANSLATE_ALWAYS
++}
++
++void Poller::handleWebKeyboardEvent(KeySym keysym, Bool isKeyPress)
++{
++  KeyCode keycode;
++  int col;
++
++  if (masterKeysyms == NULL)
++  {
++    keymapMasterInit();
++  }
++
++  if (masterKeysyms == NULL)
++  {
++    logTest(&quot;Poller::handleWebKeyboardEvent&quot;, &quot;Unable to initialize keymap&quot;);
++
++    return;
++  }
++
++  keycode = translateKeysymToKeycode(keysym, &amp;col);
++
++  if (keycode == 0)
++  {
++    logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;No keycode found for keysym [%x] [%s]. Return&quot;,
++                (unsigned int)keysym, XKeysymToString(keysym));
++    return;
++  }
++
++  logTest(&quot;Poller::handleKeyboardEvent&quot;, &quot;keysym [%x] [%s] translated into keycode [%x]&quot;,
++              (unsigned int)keysym, XKeysymToString(keysym), (unsigned int)keycode);
++
++  /*
++   * Send fake modifier events.
++   */
++
++  if (!checkModifierKeys(keysym, isKeyPress))
++  {
++    sendFakeModifierEvents(col, False);
++  }
++
++  /*
++   * Send the event.
++   */
++
++  XTestFakeKeyEvent(display_, keycode, isKeyPress, 0);
++
++  /*
++   * Check if fake modifier events have been sent.
++   */
++
++  cancelFakeModifierEvents();
++
+ }
+ 
+ void Poller::handleMouseEvent(Display *display, XEvent *event)
+@@ -712,6 +1477,26 @@ void Poller::updateDamagedAreas(void)
+   return;
+ }
+ 
++void Poller::getScreenSize(int *w, int *h)
++{
++  *w = WidthOfScreen(DefaultScreenOfDisplay(display_));
++  *h = HeightOfScreen(DefaultScreenOfDisplay(display_));
++}
++
++void Poller::setScreenSize(int *w, int *h)
++{
++  setRootSize();
++
++  shmInitTrap = 1;
++  shmInit();
++  shmInitTrap = 0;
++
++  *w = width_;
++  *h = height_;
++
++  logDebug(&quot;Poller::setScreenSize&quot;, &quot;New size of screen [%d, %d]&quot;, width_, height_);
++}
++
+ int anyEventPredicate(Display *display, XEvent *event, XPointer parameter)
+ {
+   return 1;
+diff --git a/nxcompshad/X11.h b/nxcompshad/X11.h
+index e3a62ba..ff14aae 100644
+--- a/nxcompshad/X11.h
++++ b/nxcompshad/X11.h
+@@ -41,6 +41,10 @@ class Poller : public CorePoller
+ 
+   void getEvents(void);
+ 
++  void getScreenSize(int *width, int *height);
++
++  void setScreenSize(int *width, int *height);
++
+   private:
+ 
+   Display *display_;
+@@ -77,8 +81,34 @@ class Poller : public CorePoller
+ 
+   char *getRect(XRectangle);
+ 
++  void keymapShadowInit(Display *display);
++
++  void keymapMasterInit();
++
++  KeySym keymapKeycodeToKeysym(KeyCode keycode, KeySym *keysyms,
++                                   int minKey, int per, int col);
++
++  KeyCode keymapKeysymToKeycode(KeySym keysym, KeySym *keysyms,
++                                    int minKey, int maxKey, int per, int *col);
++
++  KeyCode translateKeysymToKeycode(KeySym keysym, int *col);
++
++  Bool checkModifierKeys(KeySym keysym, Bool isKeyPress);
++
++  void sendFakeModifierEvents(int pos, Bool skip);
++
++  void cancelFakeModifierEvents();
++
++  Bool keyIsDown(KeyCode keycode);
++
++  void addKeyPressed(KeyCode received, KeyCode sent);
++
++  KeyCode getKeyPressed(KeyCode received);
++
+   void handleKeyboardEvent(Display *display, XEvent *);
+ 
++  void handleWebKeyboardEvent(KeySym keysym, Bool isKeyPress);
++
+   void handleMouseEvent(Display *, XEvent *);
+ 
+   void xtestInit(void);
+
+
+hooks/post-receive
+-- 
+nx-libs.git (NX (redistributed))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;nx-libs.git&quot; (NX (redistributed)).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="011707.html">[X2Go-Commits] nx-libs.git - build-main (branch) updated:	redist-client/3.5.0.16-24-gb09b686
+</A></li>
+	<LI>Next message: <A HREF="011713.html">[X2Go-Commits] nx-libs.git - build-baikal (branch) updated:	nxcompshad/3.4.0-3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11709">[ date ]</a>
+              <a href="thread.html#11709">[ thread ]</a>
+              <a href="subject.html#11709">[ subject ]</a>
+              <a href="author.html#11709">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

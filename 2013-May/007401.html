@@ -1,0 +1,455 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	a0d62e0be475fa27152decbc15b009cdd937bb1d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09a0d62e0be475fa27152decbc15b009cdd937bb1d&In-Reply-To=%3C20130519110437.14BF95DB36%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007393.html">
+   <LINK REL="Next"  HREF="007402.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	a0d62e0be475fa27152decbc15b009cdd937bb1d</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%09a0d62e0be475fa27152decbc15b009cdd937bb1d&In-Reply-To=%3C20130519110437.14BF95DB36%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	a0d62e0be475fa27152decbc15b009cdd937bb1d">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:36 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007393.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	b045b4d4ad0c548faa15be947050da2481fb73ca
+</A></li>
+        <LI>Next message: <A HREF="007402.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	b52e51c2d66eb72980f93efafe27d64d58597c32
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7401">[ date ]</a>
+              <a href="thread.html#7401">[ thread ]</a>
+              <a href="subject.html#7401">[ subject ]</a>
+              <a href="author.html#7401">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  a0d62e0be475fa27152decbc15b009cdd937bb1d (commit)
+      from  3626ac1dc3c22b870e7d337bf71179ff44977402 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2gobroker/backends/base.py                        |  109 +++++++++++++++++++-
+ x2gobroker/{backends =&gt; nameservices}/__init__.py  |    0
+ .../{backends/ldap.py =&gt; nameservices/base.py}     |   30 ++++--
+ .../{backends/ldap.py =&gt; nameservices/libnss.py}   |   33 ++++--
+ x2gobroker/tests/test_backend_base.py              |   57 ++++++++--
+ 5 files changed, 201 insertions(+), 28 deletions(-)
+ copy x2gobroker/{backends =&gt; nameservices}/__init__.py (100%)
+ copy x2gobroker/{backends/ldap.py =&gt; nameservices/base.py} (58%)
+ copy x2gobroker/{backends/ldap.py =&gt; nameservices/libnss.py} (52%)
+
+The diff of changes is:
+diff --git a/x2gobroker/backends/base.py b/x2gobroker/backends/base.py
+index 1bde0e7..f6f0dd6 100644
+--- a/x2gobroker/backends/base.py
++++ b/x2gobroker/backends/base.py
+@@ -48,6 +48,7 @@ class X2GoBroker(object):
+     &quot;&quot;&quot;
+ 
+     backend_name = 'base'
++    service_module = None
+ 
+     def __init__(self, config_file=None, config_defaults=None):
+         &quot;&quot;&quot;\
+@@ -329,12 +330,12 @@ class X2GoBroker(object):
+ 
+         return unicode(_auth_mech) or unicode(_default_auth_mech)
+ 
+-    def get_userdb_backend(self):
++    def get_userdb_service(self):
+         &quot;&quot;&quot;\
+         Get the name of the backend being used for retrieving user information from the
+         system.
+ 
+-        @return: user database backend name
++        @return: user service name
+         @rtype: C{unicode}
+ 
+         &quot;&quot;&quot;
+@@ -347,12 +348,12 @@ class X2GoBroker(object):
+ 
+         return unicode(_user_db)
+ 
+-    def get_groupdb_backend(self):
++    def get_groupdb_service(self):
+         &quot;&quot;&quot;\
+         Get the name of the backend being used for retrieving group information from the
+         system.
+ 
+-        @return: group database backend name
++        @return: group service name
+         @rtype: C{unicode}
+ 
+         &quot;&quot;&quot;
+@@ -365,6 +366,104 @@ class X2GoBroker(object):
+ 
+         return unicode(_group_db)
+ 
++    def _import_service_module(self, service='libnss'):
++        try:
++            if self.service_module is None:
++                exec(&quot;import x2gobroker.nameservices.{service} as _service_module&quot;.format(service=service))
++                self.service_module = _service_module
++            return True
++        except ImportError:
++            return False
++
++    def has_user(self, username):
++        &quot;&quot;&quot;\
++        Test if the broker knows user C{&lt;username&gt;}.
++
++        @param username: test for existence of this user
++        @type username: C{unicode}
++
++        @return: returns C{True} if a user exists
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_userdb_service()):
++            return self.service_module.X2GoBrokerNameService().has_user(username=username)
++        else:
++            return False
++
++    def get_users(self):
++        &quot;&quot;&quot;\
++        Get list of known users.
++
++        @return: returns list of known users
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_userdb_service()):
++            return self.service_module.X2GoBrokerNameService().get_users()
++        else:
++            return False
++
++    def has_group(self, group):
++        &quot;&quot;&quot;\
++        Test if the broker knows group C{&lt;group&gt;}.
++
++        @param group: test for existence of this group
++        @type group: C{unicode}
++
++        @return: returns C{True} if a group exists
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_groupdb_service()):
++            return self.service_module.X2GoBrokerNameService().has_group(group=group)
++        else:
++            return False
++
++    def get_groups(self):
++        &quot;&quot;&quot;\
++        Get list of known groups.
++
++        @return: returns list of known groups
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_groupdb_service()):
++            return self.service_module.X2GoBrokerNameService().get_groups()
++        else:
++            return False
++
++    def is_group_member(self, username, group, primary_groups=False):
++        &quot;&quot;&quot;\
++        Check if a user is member of a given group.
++
++        @return: returns C{True} if the user is member of the given group
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_groupdb_service()):
++            return self.service_module.X2GoBrokerNameService().is_group_member(username=username, group=group, primary_groups=primary_groups)
++        else:
++            return []
++
++    def get_group_members(self, group, primary_groups=False):
++        &quot;&quot;&quot;\
++        Get the list of members in group C{&lt;group&gt;}.
++
++        @param group: valid group name
++        @type group: C{unicode}
++        @param primary_groups: include primary groups found with the user db service
++        @type primary_groups: C{bool}
++
++        @return: list of users belonging to the given group
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        if self._import_service_module(service=self.get_groupdb_service()):
++            return self.service_module.X2GoBrokerNameService().get_group_members(group=group, primary_groups=primary_groups)
++        else:
++            return []
++
+     def check_access(self, username='', password='', authid=None, ):
+         &quot;&quot;&quot;\
+         Check if a given user with a given password may gain access to the
+@@ -391,6 +490,8 @@ class X2GoBroker(object):
+         access = False
+         access = self._do_authenticate(username=username, password=password)
+ 
++        ### HANDLING OF DYNAMIC AUTHENTICATION ID HASHES
++
+         # using authid as extra security?
+         if self.config.get_value('global', 'use-authid'):
+ 
+diff --git a/x2gobroker/backends/__init__.py b/x2gobroker/nameservices/__init__.py
+similarity index 100%
+copy from x2gobroker/backends/__init__.py
+copy to x2gobroker/nameservices/__init__.py
+diff --git a/x2gobroker/backends/ldap.py b/x2gobroker/nameservices/base.py
+similarity index 58%
+copy from x2gobroker/backends/ldap.py
+copy to x2gobroker/nameservices/base.py
+index 62b9801..48ac244 100644
+--- a/x2gobroker/backends/ldap.py
++++ b/x2gobroker/nameservices/base.py
+@@ -18,16 +18,28 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-&quot;&quot;&quot;\
+-X2goBrokerLDAP class - a production X2GoBroker implementations that uses LDAP as configuration backend
++class X2GoBrokerNameService(object):
+ 
+-&quot;&quot;&quot;
+-__NAME__ = 'x2gobroker-pylib'
++    def has_user(self, username):
++        return username in self.get_users()
+ 
+-# modules
+-import x2gobroker.base
++    def get_users(self):
++        return []
+ 
+-class X2GoBroker(x2gobroker.base.X2GoBroker):
+-    &quot;&quot;&quot;\
++    def get_primary_group(self, username):
++        return []
+ 
+-    &quot;&quot;&quot;
++    def has_group(self, group):
++        return group in self.get_groups()
++
++    def get_groups(self):
++        return []
++
++    def is_group_member(self, username, group, primary_groups=False):
++        _groups = self.get_group_members(group)
++        if primary_groups:
++            _groups.extend(self.get_primary_group(username))
++        return username in _groups
++
++    def get_group_members(self, group, primary_groups=False):
++        return []
+diff --git a/x2gobroker/backends/ldap.py b/x2gobroker/nameservices/libnss.py
+similarity index 52%
+copy from x2gobroker/backends/ldap.py
+copy to x2gobroker/nameservices/libnss.py
+index 62b9801..4636a13 100644
+--- a/x2gobroker/backends/ldap.py
++++ b/x2gobroker/nameservices/libnss.py
+@@ -18,16 +18,31 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-&quot;&quot;&quot;\
+-X2goBrokerLDAP class - a production X2GoBroker implementations that uses LDAP as configuration backend
++# modules
++import pwd
++import grp
+ 
+-&quot;&quot;&quot;
+-__NAME__ = 'x2gobroker-pylib'
++# Python X2GoBroker modules
++import base
+ 
+-# modules
+-import x2gobroker.base
+ 
+-class X2GoBroker(x2gobroker.base.X2GoBroker):
+-    &quot;&quot;&quot;\
++class X2GoBrokerNameService(base.X2GoBrokerNameService):
++
++    def get_users(self):
++        return [ p.pw_name for p in pwd.getpwall() ]
++
++    def get_primary_group(self, username):
++        prim_gid_number = [ p.pw_gid for p in pwd.getpwall() if p.pw_name == username ]
++        return [ g.gr_name for g in grp.getgrall() if g.gr_gid in prim_gid_number ]
++
++    def get_groups(self):
++        return [ g.gr_name for g in grp.getgrall() ]
++
++    def get_group_members(self, group, primary_groups=False):
++        _members_from_primgroups = []
++        if primary_groups:
++            for username in self.get_users():
++                if group in self.get_primary_group(username):
++                    _members_from_primgroups.append(group)
++        return grp.getgrnam(group).gr_mem + _members_from_primgroups
+ 
+-    &quot;&quot;&quot;
+diff --git a/x2gobroker/tests/test_backend_base.py b/x2gobroker/tests/test_backend_base.py
+index a00765b..d08538d 100644
+--- a/x2gobroker/tests/test_backend_base.py
++++ b/x2gobroker/tests/test_backend_base.py
+@@ -95,7 +95,7 @@ auth-mech = bar-auth-mech
+ 
+     ### TEST CONFIGURATION: user DB backend (default-user-db vs. user-db in backend config)
+ 
+-    def test_getuserdbbackend(self):
++    def test_getuserdbservice(self):
+         _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
+         _config_defaults.update({'base': {'enable': True, }, })
+         _config = &quot;&quot;&quot;
+@@ -109,7 +109,7 @@ enable = true
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name)
+-        self.assertEqual(base_backend.get_userdb_backend(), 'foo-user-db')
++        self.assertEqual(base_backend.get_userdb_service(), 'foo-user-db')
+         _config = &quot;&quot;&quot;
+ [global]
+ default-user-db = foo-user-db
+@@ -122,12 +122,12 @@ user-db = bar-user-db
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
+-        self.assertEqual(base_backend.get_userdb_backend(), 'bar-user-db')
++        self.assertEqual(base_backend.get_userdb_service(), 'bar-user-db')
+         tf.close()
+ 
+     ### TEST CONFIGURATION: group DB backend (default-group-db vs. group-db in backend config)
+ 
+-    def test_getgroupdbbackend(self):
++    def test_getgroupdbservice(self):
+         _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
+         _config_defaults.update({'base': {'enable': True, }, })
+         _config = &quot;&quot;&quot;
+@@ -141,7 +141,7 @@ enable = true
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name)
+-        self.assertEqual(base_backend.get_groupdb_backend(), 'foo-group-db')
++        self.assertEqual(base_backend.get_groupdb_service(), 'foo-group-db')
+         _config = &quot;&quot;&quot;
+ [global]
+ default-group-db = foo-group-db
+@@ -154,9 +154,54 @@ group-db = bar-group-db
+         print &gt;&gt; tf, _config
+         tf.seek(0)
+         base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name, config_defaults=_config_defaults)
+-        self.assertEqual(base_backend.get_groupdb_backend(), 'bar-group-db')
++        self.assertEqual(base_backend.get_groupdb_service(), 'bar-group-db')
+         tf.close()
+ 
++    def test_nameservicebase(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config_defaults.update({'base': {'enable': True, }, })
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = base
++default-group-db = base
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name)
++        self.assertEqual(base_backend.get_users(), [])
++        self.assertEqual(base_backend.has_user('any-user'), False)
++        self.assertEqual(base_backend.get_groups(), [])
++        self.assertEqual(base_backend.has_group('any-group'), False)
++        self.assertEqual(base_backend.is_group_member('any-user', 'any-group'), False)
++        self.assertEqual(base_backend.get_group_members('any-group'), [])
++
++    def test_nameservicelibnss(self):
++        _config_defaults = copy.deepcopy(x2gobroker.defaults.X2GOBROKER_CONFIG_DEFAULTS)
++        _config_defaults.update({'base': {'enable': True, }, })
++        _config = &quot;&quot;&quot;
++[global]
++default-user-db = libnss
++default-group-db = libnss
++
++[base]
++enable = true
++&quot;&quot;&quot;
++        tf = tempfile.NamedTemporaryFile()
++        print &gt;&gt; tf, _config
++        tf.seek(0)
++        base_backend = x2gobroker.backends.base.X2GoBroker(config_file=tf.name)
++        self.assertTrue( ( 'root' in base_backend.get_users() ) )
++        self.assertEqual(base_backend.has_user('root'), True)
++        self.assertTrue( ( 'root' in base_backend.get_groups() ) )
++        self.assertEqual(base_backend.has_group('root'), True)
++        self.assertEqual(base_backend.is_group_member('root', 'root'), False)
++        self.assertEqual(base_backend.is_group_member('root', 'root', primary_groups=True), True)
++        self.assertTrue( ( 'root' not in base_backend.get_group_members('root') ) )
++        self.assertTrue( ( 'root' in base_backend.get_group_members('root', primary_groups=True) ) )
+ 
+     ### TEST CONFIGURATION: global &gt;&gt; check-credentials = false
+ 
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007393.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	b045b4d4ad0c548faa15be947050da2481fb73ca
+</A></li>
+	<LI>Next message: <A HREF="007402.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	b52e51c2d66eb72980f93efafe27d64d58597c32
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7401">[ date ]</a>
+              <a href="thread.html#7401">[ thread ]</a>
+              <a href="subject.html#7401">[ subject ]</a>
+              <a href="author.html#7401">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

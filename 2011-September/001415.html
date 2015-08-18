@@ -1,0 +1,160 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-22-g3c6993f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2011-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-22-g3c6993f&In-Reply-To=%3C20110909071100.1375A5DB1B%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="001414.html">
+   <LINK REL="Next"  HREF="001416.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-22-g3c6993f</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20cups-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%093.0.0.2-22-g3c6993f&In-Reply-To=%3C20110909071100.1375A5DB1B%40ymir%3E"
+       TITLE="[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-22-g3c6993f">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Sep  9 09:10:59 CEST 2011</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="001414.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-21-g698c43d
+</A></li>
+        <LI>Next message: <A HREF="001416.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-23-g2643535
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1415">[ date ]</a>
+              <a href="thread.html#1415">[ thread ]</a>
+              <a href="subject.html#1415">[ subject ]</a>
+              <a href="author.html#1415">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  3c6993f6a0afa679bfdf4c5a0d3375f4284db81d (commit)
+      from  698c43d6d21dfed60db3e70fcb8a987e8514f103 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 3c6993f6a0afa679bfdf4c5a0d3375f4284db81d
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Fri Sep 9 09:12:01 2011 +0200
+
+    Fix remote printing, use host specified in X2go session information for destination of print jobs, not the host specified in cups-x2go.conf.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ cups-x2go        |   24 +++++++++---------------
+ debian/changelog |    2 ++
+ 2 files changed, 11 insertions(+), 15 deletions(-)
+
+The diff of changes is:
+diff --git a/cups-x2go b/cups-x2go
+index 1a10aaa..0b24ff6 100755
+--- a/cups-x2go
++++ b/cups-x2go
+@@ -47,7 +47,7 @@ my $cfgfile=&quot;/etc/cups/cups-x2go.conf&quot;;
+ 
+ my $userName;
+ my @sessions;
+-my $host=hostname();
++my $this_host=hostname();
+ 
+ sub readconfig
+ {
+@@ -112,9 +112,9 @@ sub getsessions
+ 
+ sub printfile
+ {
+-	my ($pfile,$tfile,$phost, $sess)=@_;
++	my ($pfile,$tfile,$x2gosession_host, $sess)=@_;
+ 	my $bname=basename($pfile);
+-	if($phost eq $host)
++	if($x2gosession_host eq $this_host)
+ 	{
+ 		my ($tm,$tm,$uid,$gid,$tm,$tm,$tm,$spooldir)=getpwnam(&quot;x2goprint&quot;);
+ 		my $spfile=&quot;$spooldir/${sess}_$bname&quot;;
+@@ -133,21 +133,15 @@ sub printfile
+ 	{
+ 		# push spool job to remote X2go server... and launch x2goprint there (with sudo!!!)
+ 
+-		# FIXME: probably the $phost contains the value for the remote x2goserver...
+-                #        $x2goserver is read from config, it doesn't make sense here that the
+-                #        X2go server is statically taken from the config file, it should be 
+-                #        taken from the session information hash (i.e. = $phost).
+-                #        If that is so, then $phost is not an appropriate var name...
+-
+ 		# PDF file
+-		syslog('debug', &quot;scp -i $printdsa $pfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname&quot;);
+-		system (&quot;scp -i $printdsa $pfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname&quot;);
++		syslog('debug', &quot;scp -i $printdsa $pfile x2goprint\@$x2gosession_host:~x2goprint/${sess}_$bname&quot;);
++		system (&quot;scp -i $printdsa $pfile x2goprint\@$x2gosession_host:~x2goprint/${sess}_$bname&quot;);
+ 		# title file
+-		syslog('debug', &quot;scp -i $printdsa $tfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname.title&quot;);
+-		system (&quot;scp -i $printdsa $tfile x2goprint\@$x2goserver:~x2goprint/${sess}_$bname.title&quot;);
++		syslog('debug', &quot;scp -i $printdsa $tfile x2goprint\@$x2gosession_host:~x2goprint/${sess}_$bname.title&quot;);
++		system (&quot;scp -i $printdsa $tfile x2goprint\@$x2gosession_host:~x2goprint/${sess}_$bname.title&quot;);
+ 		# run x2goprint on remote X2go server
+-		syslog('debug', &quot;ssh -i $printdsa  x2goprint\@$x2goserver \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
+-		system( &quot;ssh -i $printdsa  x2goprint\@$x2goserver \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
++		syslog('debug', &quot;ssh -i $printdsa  x2goprint\@$x2gosession_host \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
++		system( &quot;ssh -i $printdsa  x2goprint\@$x2gosession_host \&quot;sudo x2goprint $userName $sess ${sess}_$bname ${sess}_$bname.title\&quot;&quot; );
+ 
+ 	}
+ }
+diff --git a/debian/changelog b/debian/changelog
+index b4a668a..e732607 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -8,6 +8,8 @@ cups-x2go (3.0.0.2-0~x2go2) UNRELEASED; urgency=low
+     server share the same machine.
+   * Add a proper dpkg-statoverride check in postinst script.
+   * Major change of code, add comments, syslogging, fix ghostscript call.
++  * Fix remote printing, use host specified in X2go session information for
++    destination of print jobs, not the host specified in cups-x2go.conf.
+ 
+   [ Mario Oroz ]
+   * Add syslog support for cups-x2go.
+
+
+hooks/post-receive
+-- 
+cups-x2go.git (CUPS Backend for X2go Printing)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;cups-x2go.git&quot; (CUPS Backend for X2go Printing).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="001414.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-21-g698c43d
+</A></li>
+	<LI>Next message: <A HREF="001416.html">[X2go-Commits] cups-x2go.git - master (branch) updated:	3.0.0.2-23-g2643535
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#1415">[ date ]</a>
+              <a href="thread.html#1415">[ thread ]</a>
+              <a href="subject.html#1415">[ subject ]</a>
+              <a href="author.html#1415">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

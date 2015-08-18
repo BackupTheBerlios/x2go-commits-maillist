@@ -1,0 +1,753 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.4.0.8-43-g167ec13
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.4.0.8-43-g167ec13&In-Reply-To=%3C20140107152150.871245E1BB%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022424.html">
+   <LINK REL="Next"  HREF="022385.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.4.0.8-43-g167ec13</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.4.0.8-43-g167ec13&In-Reply-To=%3C20140107152150.871245E1BB%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.4.0.8-43-g167ec13">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:50 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022424.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.4.0.8-44-g2cef942
+</A></li>
+        <LI>Next message: <A HREF="022385.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-23-g950dfa1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22426">[ date ]</a>
+              <a href="thread.html#22426">[ thread ]</a>
+              <a href="subject.html#22426">[ subject ]</a>
+              <a href="author.html#22426">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  167ec138a3222347c02f9db4cef03458de15575c (commit)
+      from  4808f519c54212ae6f1f8885271beb88d83b3805 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 167ec138a3222347c02f9db4cef03458de15575c
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sun Jan 5 16:38:21 2014 +0100
+
+    Split up session profile backend into generic and storage specific parts.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                                   |    9 +
+ x2go/__init__.py                                   |    2 +-
+ x2go/backends/profiles/__init__.py                 |    9 -
+ x2go/backends/profiles/{_file.py =&gt; base.py}       |  175 +++++++++++++-------
+ x2go/backends/profiles/file.py                     |  110 ++++++++++++
+ x2go/backends/profiles/{_gconf.py =&gt; gconf.py}     |    0
+ .../profiles/{_httpsbroker.py =&gt; httpsbroker.py}   |    0
+ x2go/backends/profiles/{_winreg.py =&gt; winreg.py}   |    0
+ x2go/client.py                                     |   10 +-
+ x2go/defaults.py                                   |   11 +-
+ x2go/inifiles.py                                   |   21 ++-
+ 11 files changed, 261 insertions(+), 86 deletions(-)
+ rename x2go/backends/profiles/{_file.py =&gt; base.py} (79%)
+ create mode 100644 x2go/backends/profiles/file.py
+ rename x2go/backends/profiles/{_gconf.py =&gt; gconf.py} (100%)
+ rename x2go/backends/profiles/{_httpsbroker.py =&gt; httpsbroker.py} (100%)
+ rename x2go/backends/profiles/{_winreg.py =&gt; winreg.py} (100%)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index eb0426d..a15fe06 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,3 +1,12 @@
++python-x2go (0.5.0.0-0x2go1) UNRELEASED; urgency=low
++
++  [ Mike Gabriel ]
++  * New upstream version (0.5.0.0):
++    - Split up session profile backend into generic and storage specific
++      parts
++
++ -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sun, 05 Jan 2014 16:35:57 +0100
++
+ python-x2go (0.4.0.9-0x2go1) UNRELEASED; urgency=low
+ 
+   [ Mike Gabriel ]
+diff --git a/x2go/__init__.py b/x2go/__init__.py
+index 65bd8c7..54fca39 100644
+--- a/x2go/__init__.py
++++ b/x2go/__init__.py
+@@ -191,7 +191,7 @@ monkey.patch_all()
+ import utils
+ 
+ from client import X2GoClient
+-from backends.profiles import X2GoSessionProfiles
++from backends.profiles.file import X2GoSessionProfiles
+ from backends.printing import X2GoClientPrinting
+ from backends.settings import X2GoClientSettings
+ from session import X2GoSession
+diff --git a/x2go/backends/profiles/__init__.py b/x2go/backends/profiles/__init__.py
+index 9766fc5..d41885a 100644
+--- a/x2go/backends/profiles/__init__.py
++++ b/x2go/backends/profiles/__init__.py
+@@ -17,12 +17,3 @@
+ # Free Software Foundation, Inc.,
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-from x2go.defaults import BACKEND_SESSIONPROFILES_DEFAULT
+-
+-from _file import X2GoSessionProfilesFILE
+-from _winreg import X2GoSessionProfilesWINREG
+-from _httpsbroker import X2GoSessionProfilesHTTPSBROKER
+-from _gconf import X2GoSessionProfilesGCONF
+-
+-X2GoSessionProfiles = eval(BACKEND_SESSIONPROFILES_DEFAULT)
+-
+diff --git a/x2go/backends/profiles/_file.py b/x2go/backends/profiles/base.py
+similarity index 79%
+rename from x2go/backends/profiles/_file.py
+rename to x2go/backends/profiles/base.py
+index ac0c380..4447544 100644
+--- a/x2go/backends/profiles/_file.py
++++ b/x2go/backends/profiles/base.py
+@@ -31,32 +31,27 @@ import types
+ import re
+ 
+ # Python X2Go modules
+-from x2go.defaults import X2GO_SESSIONPROFILES_CONFIGFILES as _X2GO_SESSIONPROFILES_CONFIGFILES
+ from x2go.defaults import X2GO_SESSIONPROFILE_DEFAULTS as _X2GO_SESSIONPROFILE_DEFAULTS
+ from x2go.defaults import X2GO_DESKTOPSESSIONS as _X2GO_DESKTOPSESSIONS
+-import x2go.inifiles as inifiles
+ import x2go.log as log
+ import x2go.utils as utils
+-from x2go.x2go_exceptions import X2GoProfileException
+ 
++from x2go.x2go_exceptions import X2GoNotImplementedYetException
+ 
+-class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
++class X2GoSessionProfiles():
+ 
+     defaultSessionProfile = _X2GO_SESSIONPROFILE_DEFAULTS
+     _non_profile_sections = ('embedded')
+ 
+-    def __init__(self, config_files=_X2GO_SESSIONPROFILES_CONFIGFILES, defaults=None, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
++    def __init__(self, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT, **kwargs):
+         &quot;&quot;&quot;\
+-        Retrieve X2Go session profiles from a file, typically C{~/.x2goclient/sessions}.
++        Retrieve X2Go session profiles. Base class for the different specific session profile
++        configuration backends.
+ 
+-        @param config_files: a list of config file locations, the first file name in this list the user has write access to will be the user configuration file
+-        @type config_files: C{list}
+-        @param defaults: not used for this class
+-        @type defaults: C{dict}
+         @param session_profile_defaults: a default session profile
+         @type session_profile_defaults: C{dict}
+         @param logger: you can pass an L{X2GoLogger} object to the
+-            L{X2GoSessionProfilesFILE} constructor
++            L{X2GoSessionProfilesHTTPSBROKER} constructor
+         @type logger: L{X2GoLogger} instance
+         @param loglevel: if no L{X2GoLogger} object has been supplied a new one will be
+             constructed with the given loglevel
+@@ -68,6 +63,7 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+         self._cached_profile_ids = []
+         self._cached_profile_names = []
+         self._profiles_need_profile_id_renewal = []
++        self.write_user_config = False
+ 
+         if logger is None:
+             self.logger = log.X2GoLogger(loglevel=loglevel)
+@@ -75,19 +71,10 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+             self.logger = copy.deepcopy(logger)
+         self.logger.tag = __NAME__
+ 
+-        # providing defaults for an X2GoSessionProfiles instance will---in the worst case---override your
+-        # existing sessions file in your home directory once you write the sessions back to file...
+-        inifiles.X2GoIniFile.__init__(self, config_files, defaults=defaults, logger=logger, loglevel=loglevel)
+-
+         if utils._checkSessionProfileDefaults(session_profile_defaults):
+             self.defaultSessionProfile = session_profile_defaults
+ 
+-        self.session_profiles = [ p for p in self.iniConfig.sections() if p not in self._non_profile_sections ]
+-        for session_profile in self.session_profiles:
+-            for key, default_value in self.defaultSessionProfile.iteritems():
+-                if not self.iniConfig.has_option(session_profile, key):
+-                    self._storeValue(session_profile, key, default_value)
+-            self.get_profile_metatype(session_profile)
++        self.session_profiles = self.populate_session_profiles()
+ 
+     def __call__(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+@@ -103,6 +90,28 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+         _profile_id = self.check_profile_id_or_name(self, profile_id_or_name)
+         return self.get_profile_config(profile_id=_profile_id)
+ 
++    def populate_session_profiles(self):
++        &quot;&quot;&quot;\
++        Load a session profile set from the configuration storage
++        backend and make it available for this class.
++
++        @return: a set of session profiles
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return self. _populate_session_profiles()
++
++    def _populate_session_profiles(self):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide the backend specific way of loading /
++        populating a set of session profile via this method.
++
++        @return: a set of session profiles
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        return {}
++
+     def get_profile_metatype(self, profile_id_or_name, force=False):
+         &quot;&quot;&quot;\
+         Detect a human readable session profile type from the session profile configuration.
+@@ -147,11 +156,19 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+             return self._profile_metatypes[_profile_id]
+ 
+     def write(self):
++        &quot;&quot;&quot;\
++        Store session profile data to the storage backend.
+ 
++        @return: C{True} if the write process has been successfull, C{False} otherwise
++        @rtype: C{bool}
++
++        &quot;&quot;&quot;
+         # then update profile IDs for profiles that have a renamed host attribute...
+         for profile_id in self._profiles_need_profile_id_renewal:
+             _config = self.get_profile_config(profile_id=profile_id)
+-            self.iniConfig.remove_section(profile_id)
++
++            self._delete_profile(profile_id)
++
+             try: self._cached_profile_ids.remove(profile_id)
+             except ValueError: pass
+             self.add_profile(profile_id=None, force_add=True, **_config)
+@@ -159,9 +176,15 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+         self._cached_profile_ids = []
+         self._cached_profile_names = []
+ 
+-        # at last write the profile config as is...
+-        return inifiles.X2GoIniFile.write(self)
++        return self._write()
++
++    def _write(self):
++        &quot;&quot;&quot;\
++        Write session profiles back to session profile storage backend. Inherit from this
++        class and adapt to the session profile backend via this method.
+ 
++        &quot;&quot;&quot;
++        return True
+ 
+     def get_profile_option_type(self, option):
+         &quot;&quot;&quot;\
+@@ -179,22 +202,6 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+         except KeyError:
+             return types.StringType
+ 
+-    def get_type(self, section, key):
+-        &quot;&quot;&quot;\
+-        Override the parent class's get_type method due to the special layout of this class.
+-
+-        @param section: INI file section
+-        @type section: C{str}
+-        @param key: key in INI file section
+-        @type key: C{str}
+-
+-        @return: the data type of C{key} in C{section}
+-        @rtype: C{type}
+-
+-        &quot;&quot;&quot;
+-        # we have to handle the get_type method separately...
+-        return self.get_profile_option_type(key)
+-
+     def get_profile_config(self, profile_id_or_name=None, parameter=None, profile_id=None):
+         &quot;&quot;&quot;\
+         The configuration options for a single session profile.
+@@ -212,8 +219,8 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+         &quot;&quot;&quot;
+         _profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+         _profile_config = {}
+-        for option in self.iniConfig.options(_profile_id):
+-            _profile_config[option] = self.get(_profile_id, option, key_type=self.get_profile_option_type(option))
++        for option in self._get_profile_options(_profile_id):
++            _profile_config[option] = self._get_profile_parameter(_profile_id, option, key_type=self.get_profile_option_type(option))
+ 
+         if parameter is not None:
+             if parameter in _profile_config.keys():
+@@ -267,13 +274,24 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+     @property
+     def profile_ids(self):
+         &quot;&quot;&quot;\
+-        Renders a list of all profile IDs found in the session profile configuration file.
++        Render a list of all profile IDs found in the session profiles configuration.
+ 
+         &quot;&quot;&quot;
+         if not self._cached_profile_ids:
+-            self._cached_profile_ids = [ s for s in self.iniConfig.sections() if s not in self._non_profile_sections ]
++            self._cached_profile_ids = [ s for s in self._get_profile_ids() if s not in self._non_profile_sections ]
+         return self._cached_profile_ids
+ 
++    def _get_profile_ids(self):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide a way for actually getting
++        a list of session profile IDs from the storage backend via this method.
++
++        @return: list of available session profile IDs
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return []
++
+     def has_profile_id(self, profile_id):
+         &quot;&quot;&quot;\
+         Does a session profile of a given profile ID exist? (Faster than L{has_profile()}.)
+@@ -290,7 +308,7 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+     @property
+     def profile_names(self):
+         &quot;&quot;&quot;\
+-        Renders a list of all profile names found in the session profile configuration file.
++        Render a list of all profile names found in the session profiles configuration.
+ 
+         &quot;&quot;&quot;
+         if not self._cached_profile_names:
+@@ -389,32 +407,42 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+ 
+         &quot;&quot;&quot;
+         _profile_id = self.check_profile_id_or_name(profile_id_or_name)
+-        self.iniConfig.remove_section(_profile_id)
++
++        self._delete_profile(_profile_id)
++
+         self.write_user_config = True
+         self.write()
+         self._cached_profile_ids = []
+         self._cached_profile_names = []
+ 
+-    def update_value(self, section, key, value, profile_id=None):
++    def _delete_profile(self, profile_id):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide a way for actually deleting
++        a complete session profile from the storage backend via this method.
++
++        &quot;&quot;&quot;
++        pass
++
++    def update_value(self, profile_id_or_name, option, value, profile_id=None):
+         &quot;&quot;&quot;\
+         Update a value in a session profile.
+ 
+-        @param section: the profile ID
+-        @type section: C{str}
+-        @param key: the session profile option of the given profile ID
+-        @type key: C{str}
++        @param profile_id_or_name: the profile ID
++        @type profile_id_or_name: C{str}
++        @param option: the session profile option of the given profile ID
++        @type option: C{str}
+         @param value: the value to update the session profile option with
+         @type value: any type, depends on the session profile option
+ 
+         &quot;&quot;&quot;
+         try:
+-            profile_id = profile_id or self.check_profile_id_or_name(section)
++            profile_id = profile_id or self.check_profile_id_or_name(profile_id_or_name)
+         except X2GoProfileException:
+-            profile_id = section
++            profile_id = profile_id_or_name
+ 
+-        if key == 'name':
++        if option == 'name':
+             profile_name = value
+-            current_profile_name = self.get_value(profile_id, key)
++            current_profile_name = self.get_value(profile_id, option)
+             if not profile_name:
+                 raise X2GoProfileException('profile name for profile id %s may not be empty' % profile_id)
+             else:
+@@ -422,7 +450,7 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+                 if profile_name != current_profile_name and profile_name in self.profile_names:
+                     raise X2GoProfileException('a profile of name ,,%s\'\' already exists' % profile_name)
+ 
+-        if key == 'export' and type(value) == types.DictType:
++        if option == 'export' and type(value) == types.DictType:
+             _strvalue = '&quot;'
+             for folder in value.keys():
+                 _strvalue += &quot;%s:%s;&quot; % (folder, int(value[folder]))
+@@ -430,12 +458,20 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+             _strvalue = _strvalue.replace('&quot;&quot;', '')
+             value = _strvalue
+ 
+-        if key == 'host':
++        if option == 'host':
+             _config = self.get_profile_config(profile_id=profile_id)
+             if _config.has_key('host') and _config['host'] != value:
+                 self._profiles_need_profile_id_renewal.append(profile_id)
+ 
+-        inifiles.X2GoIniFile.update_value(self, profile_id, key, value)
++        self._update_value(profile_id, option, value)
++
++    def _update_value(self, profile_id, option, value):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide for actually updating
++        a session profile's value in the storage backend via this method.
++
++        &quot;&quot;&quot;
++        pass
+ 
+     def check_profile_id_or_name(self, profile_id_or_name):
+         &quot;&quot;&quot;\
+@@ -491,3 +527,26 @@ class X2GoSessionProfilesFILE(inifiles.X2GoIniFile):
+ 
+         &quot;&quot;&quot;
+         return self.to_session_params(profile_id_or_name)[param]
++
++    def _get_profile_parameter(self, profile_id):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide a way for actually obtaining
++        the value of a specific profile parameter.
++
++        @return: value of a session profile parameter
++        @rtype: C{various types}
++
++        &quot;&quot;&quot;
++        return None
++
++    def _get_profile_options(self, profile_id):
++        &quot;&quot;&quot;\
++        Inherit from this class and provide a way for actually obtaining
++        a list of available profile options of a given session profile.
++
++        @return: list of available option is the given session profile
++        @rtype: C{list}
++
++        &quot;&quot;&quot;
++        return []
++
+diff --git a/x2go/backends/profiles/file.py b/x2go/backends/profiles/file.py
+new file mode 100644
+index 0000000..431044a
+--- /dev/null
++++ b/x2go/backends/profiles/file.py
+@@ -0,0 +1,110 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2010-2013 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++#
++# Python X2Go is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# Python X2Go is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++&quot;&quot;&quot;\
++L{X2GoSessionProfiles} class - managing x2goclient session profiles.
++
++L{X2GoSessionProfiles} is a public API class. Use this class in your Python X2Go based 
++applications.
++
++&quot;&quot;&quot;
++__NAME__ = 'x2gosessionprofiles-pylib'
++
++# Python X2Go modules
++from x2go.defaults import X2GO_SESSIONPROFILES_CONFIGFILES as _X2GO_SESSIONPROFILES_CONFIGFILES
++import x2go.backends.profiles.base as base
++import x2go.inifiles as inifiles
++import x2go.log as log
++
++class X2GoSessionProfiles(base.X2GoSessionProfiles, inifiles.X2GoIniFile):
++
++    def __init__(self, config_files=_X2GO_SESSIONPROFILES_CONFIGFILES, session_profile_defaults=None, logger=None, loglevel=log.loglevel_DEFAULT, **kwargs):
++        &quot;&quot;&quot;\
++        Retrieve X2Go session profiles from a file, typically C{~/.x2goclient/sessions}.
++
++        @param config_files: a list of config file locations, the first file name in this list the user has write access to will be the user configuration file
++        @type config_files: C{list}
++        @param session_profile_defaults: a default session profile
++        @type session_profile_defaults: C{dict}
++        @param logger: you can pass an L{X2GoLogger} object to the
++            L{X2GoSessionProfilesFILE} constructor
++        @type logger: L{X2GoLogger} instance
++        @param loglevel: if no L{X2GoLogger} object has been supplied a new one will be
++            constructed with the given loglevel
++        @type loglevel: C{int}
++
++        &quot;&quot;&quot;
++        # providing defaults for an X2GoSessionProfiles instance will---in the worst case---override your
++        # existing sessions file in your home directory once you write the sessions back to file...
++        inifiles.X2GoIniFile.__init__(self, config_files=config_files, logger=logger, loglevel=loglevel)
++        base.X2GoSessionProfiles.__init__(self, session_profile_defaults=session_profile_defaults, logger=logger, loglevel=loglevel)
++
++    def get_type(self, section, key):
++        &quot;&quot;&quot;\
++        Override the inifile class's get_type method due to the special layout of the session profile
++        class.
++
++        @param section: INI file section
++        @type section: C{str}
++        @param key: key in INI file section
++        @type key: C{str}
++
++        @return: the data type of C{key} in C{section}
++        @rtype: C{type}
++
++        &quot;&quot;&quot;
++        # we have to handle the get_type method separately...
++        return self.get_profile_option_type(key)
++
++    def _populate_session_profiles(self):
++        &quot;&quot;&quot;\
++        Populate the set of session profiles by loading the session
++        profile configuration from a file in INI format.
++
++        @return: a set of session profiles
++        @rtype: C{dict}
++
++        &quot;&quot;&quot;
++        session_profiles = [ p for p in self.iniConfig.sections() if p not in self._non_profile_sections and p != 'none' ]
++        for session_profile in session_profiles:
++            for key, default_value in self.defaultSessionProfile.iteritems():
++                if not self.iniConfig.has_option(session_profile, key):
++                    self._storeValue(session_profile, key, default_value)
++            # update cached meta type session profile information
++            self.get_profile_metatype(session_profile)
++        return session_profiles
++
++    def _write(self):
++        self._write_user_config = self.write_user_config
++        return inifiles.X2GoIniFile.write(self)
++
++    def _delete_profile(self, profile_id):
++        self.iniConfig.remove_section(profile_id)
++
++    def _update_value(self, profile_id, option, value):
++        inifiles.X2GoIniFile.update_value(self, profile_id, option, value)
++
++    def _get_profile_parameter(self, profile_id, option, key_type):
++        return self.get(profile_id, option, key_type)
++
++    def _get_profile_options(self, profile_id):
++        return [ o for o in self.iniConfig.options(profile_id) if o != &quot;none&quot; ]
++
++    def _get_profile_ids(self):
++        return [ s for s in self.iniConfig.sections() if s != &quot;none&quot; ]
+diff --git a/x2go/backends/profiles/_gconf.py b/x2go/backends/profiles/gconf.py
+similarity index 100%
+rename from x2go/backends/profiles/_gconf.py
+rename to x2go/backends/profiles/gconf.py
+diff --git a/x2go/backends/profiles/_httpsbroker.py b/x2go/backends/profiles/httpsbroker.py
+similarity index 100%
+rename from x2go/backends/profiles/_httpsbroker.py
+rename to x2go/backends/profiles/httpsbroker.py
+diff --git a/x2go/backends/profiles/_winreg.py b/x2go/backends/profiles/winreg.py
+similarity index 100%
+rename from x2go/backends/profiles/_winreg.py
+rename to x2go/backends/profiles/winreg.py
+diff --git a/x2go/client.py b/x2go/client.py
+index 210be04..fceab0b 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -153,6 +153,8 @@ from defaults import BACKENDS_SESSIONPROFILES as _BACKENDS_SESSIONPROFILES
+ from defaults import BACKENDS_CLIENTSETTINGS as _BACKENDS_CLIENTSETTINGS
+ from defaults import BACKENDS_CLIENTPRINTING as _BACKENDS_CLIENTPRINTING
+ 
++from defaults import BACKEND_SESSIONPROFILES_DEFAULT as _BACKEND_SESSIONPROFILES_DEFAULT
++
+ import x2go.backends.control as control
+ import x2go.backends.terminal as terminal
+ import x2go.backends.info as info
+@@ -186,7 +188,7 @@ class X2GoClient(object):
+                  info_backend=info.X2GoServerSessionInfo,
+                  list_backend=info.X2GoServerSessionList,
+                  proxy_backend=proxy.X2GoProxy,
+-                 profiles_backend=profiles.X2GoSessionProfiles,
++                 profiles_backend=_BACKEND_SESSIONPROFILES_DEFAULT,
+                  settings_backend=settings.X2GoClientSettings,
+                  printing_backend=printing.X2GoClientPrinting,
+                  client_rootdir=None,
+@@ -275,7 +277,7 @@ class X2GoClient(object):
+         self.info_backend = info_backend
+         self.list_backend = list_backend
+         self.proxy_backend = proxy_backend
+-        self.profiles_backend = profiles_backend
++        self.profiles_backend = self._get_backend_class(profiles_backend, &quot;X2GoSessionProfiles&quot;)
+         self.settings_backend = settings_backend
+         self.printing_backend = printing_backend
+ 
+@@ -371,6 +373,10 @@ class X2GoClient(object):
+         self.auto_update_listdesktops_cache = auto_update_listdesktops_cache
+         self.auto_update_listmounts_cache = auto_update_listmounts_cache
+ 
++    def _get_backend_class(self, backend, class_name):
++        exec(&quot;from {backend} import {class_name} as _this_class&quot;.format(backend=backend, class_name=class_name))
++        return _this_class
++
+     def HOOK_profile_auto_connect(self, profile_name='UNKNOWN'):
+         &quot;&quot;&quot;\
+         HOOK method: called if a session demands to auto connect the session profile.
+diff --git a/x2go/defaults.py b/x2go/defaults.py
+index 0817f63..dbf875f 100644
+--- a/x2go/defaults.py
++++ b/x2go/defaults.py
+@@ -122,10 +122,11 @@ BACKEND_PROXY_DEFAULT = 'X2GoProxyNX3'
+ ##
+ 
+ BACKENDS_SESSIONPROFILES = {
+-    'FILE': 'X2GoSessionProfilesFILE',
+-    'GCONF': 'X2GoSessionProfilesGCONF',
+-    'HTTPSBROKER': 'X2GoSessionProfilesHTTPSBROKER',
+-    'WINREG': 'X2GoSessionProfilesWINREG',
++    'FILE': 'x2go.backends.profiles.file',
++    'GCONF': 'x2go.backends.profiles.gconf',
++    'HTTPBROKER': 'x2go.backends.profiles.httpbroker',
++    'SSHBROKER': 'x2go.backends.profiles.sshbroker',
++    'WINREG': 'x2go.backends.profiles.winreg',
+ }
+ &quot;&quot;&quot;Python X2Go backends for storing session profiles.&quot;&quot;&quot;
+ BACKENDS_CLIENTSETTINGS = {
+@@ -143,7 +144,7 @@ BACKENDS_CLIENTPRINTING = {
+ }
+ &quot;&quot;&quot;Python X2Go backends for storing print settings.&quot;&quot;&quot;
+ 
+-BACKEND_SESSIONPROFILES_DEFAULT = 'X2GoSessionProfilesFILE'
++BACKEND_SESSIONPROFILES_DEFAULT = BACKENDS_SESSIONPROFILES['FILE']
+ BACKEND_CLIENTSETTINGS_DEFAULT = 'X2GoClientSettingsFILE'
+ BACKEND_CLIENTPRINTING_DEFAULT = 'X2GoClientPrintingFILE'
+ 
+diff --git a/x2go/inifiles.py b/x2go/inifiles.py
+index 7650d9e..fb928b5 100644
+--- a/x2go/inifiles.py
++++ b/x2go/inifiles.py
+@@ -52,12 +52,6 @@ class X2GoIniFile(object):
+     always contain the same fields.
+ 
+     &quot;&quot;&quot;
+-    defaultValues = {
+-        'none': {
+-            'none': 'empty', 
+-            },
+-        }
+-    write_user_config = False
+     user_config_file = None
+ 
+     def __init__(self, config_files, defaults=None, logger=None, loglevel=log.loglevel_DEFAULT):
+@@ -76,6 +70,8 @@ class X2GoIniFile(object):
+         @type loglevel: C{int}
+ 
+         &quot;&quot;&quot;
++        self._write_user_config = True
++
+         # make sure a None type gets turned into list type
+         if not config_files:
+             config_files = []
+@@ -90,6 +86,8 @@ class X2GoIniFile(object):
+ 
+         if utils._checkIniFileDefaults(defaults):
+             self.defaultValues = defaults
++        else:
++            self.defaultValues = {}
+ 
+         # we purposefully do not inherit the SafeConfigParser class
+         # here as we do not want to run into name conflicts between
+@@ -109,8 +107,8 @@ class X2GoIniFile(object):
+         self.load()
+ 
+         if _create_file:
+-            self.write_user_config = True
+-            self.write()
++            self._write_user_config = True
++            self._X2GoIniFile__write()
+ 
+     def load(self):
+         &quot;&quot;&quot;\
+@@ -195,7 +193,7 @@ class X2GoIniFile(object):
+         if not self.iniConfig.has_section(section):
+             self.iniConfig.add_section(section)
+         self._storeValue(section, key, value)
+-        self.write_user_config = True
++        self._write_user_config = True
+ 
+     def write(self):
+         &quot;&quot;&quot;\
+@@ -208,16 +206,17 @@ class X2GoIniFile(object):
+         @rtype: C{bool}
+ 
+         &quot;&quot;&quot;
+-        if self.user_config_file and self.write_user_config:
++        if self.user_config_file and self._write_user_config:
+             try:
+                 fd = open(self.user_config_file, 'wb')
+                 self.iniConfig.write(fd)
+                 fd.close()
+-                self.write_user_config = False
++                self._write_user_config = False
+                 return True
+             except Exception, e:
+                 print e
+         return False
++    __write = write
+ 
+     def get_type(self, section, key):
+         &quot;&quot;&quot;\
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022424.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.4.0.8-44-g2cef942
+</A></li>
+	<LI>Next message: <A HREF="022385.html">[X2Go-Commits] x2gognomebindings.git - master (branch) updated:	2.0.2.0-23-g950dfa1
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22426">[ date ]</a>
+              <a href="thread.html#22426">[ thread ]</a>
+              <a href="subject.html#22426">[ subject ]</a>
+              <a href="author.html#22426">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

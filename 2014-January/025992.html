@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-19-g74913d5
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-19-g74913d5&In-Reply-To=%3C20140108212005.A536C5DB2C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025991.html">
+   <LINK REL="Next"  HREF="025993.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-19-g74913d5</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%094.0.1.1-19-g74913d5&In-Reply-To=%3C20140108212005.A536C5DB2C%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-19-g74913d5">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 22:20:05 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025991.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-22-g174c6c4
+</A></li>
+        <LI>Next message: <A HREF="025993.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-16-g24561cc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25992">[ date ]</a>
+              <a href="thread.html#25992">[ thread ]</a>
+              <a href="subject.html#25992">[ subject ]</a>
+              <a href="author.html#25992">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  74913d557824edb1dedc0784223484070399e072 (commit)
+      from  2f53855ca00741af1f2276163201607484ddd861 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    2 ++
+ onmainwindow.cpp |   27 +++++++++++++++++----------
+ onmainwindow.h   |    1 +
+ 3 files changed, 20 insertions(+), 10 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 2d6cd76..ef36c0f 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -17,6 +17,8 @@ x2goclient (4.0.1.2-0~x2go2) UNRELEASED; urgency=low
+     - Update man page for new --tray-icon cmdline option.
+     - Properly handle (=expand) the &quot;~&quot; character in key filenames. (Brought to
+       attention by Eldamir on IRC. Thanks!).
++    - Expand tilde operator for all other file paths handed over to X2Go Client
++      via sessions file or cmdline parameter.
+   * Pull-in packaging changes from Debian.
+ 
+   [ Ricardo D&#237;az Mart&#237;n ]
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 164b2a6..9d1c353 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -2071,6 +2071,7 @@ void ONMainWindow::slotCreateDesktopIcon ( SessionButton* bt )
+                          ( QVariant )
+                          &quot;:icons/128x128/x2gosession.png&quot;
+                      ).toString();
++    sessIcon = expandHome(sessIcon);
+     if ( sessIcon.startsWith ( &quot;:icons&quot;,Qt::CaseInsensitive ) ||
+             !sessIcon.endsWith ( &quot;.png&quot;,Qt::CaseInsensitive ) )
+     {
+@@ -2681,9 +2682,7 @@ void ONMainWindow::slotSelectedFromList ( SessionButton* session )
+         currentKey=st-&gt;setting()-&gt;value (
+                        sid+&quot;/key&quot;,
+                        ( QVariant ) QString::null ).toString();
+-        if ( currentKey.startsWith(&quot;~&quot;) ) {
+-            currentKey = currentKey.replace(QString(&quot;~&quot;), QDir::homePath());
+-        }
++        currentKey=expandHome(currentKey);
+ 
+         autologin=st-&gt;setting()-&gt;value (
+                       sid+&quot;/autologin&quot;,
+@@ -3179,6 +3178,14 @@ void ONMainWindow::continueLDAPSession()
+     sshConnection-&gt;executeCommand ( &quot;x2gogetservers&quot;, this, SLOT ( slotGetServers ( bool, QString,int ) ));
+ }
+ 
++QString ONMainWindow::expandHome( QString path )
++{
++    if ( path.startsWith(&quot;~/&quot;) || path.startsWith(&quot;~\\&quot;) ) {
++        path = path.replace(QString(&quot;~&quot;), QDir::homePath());
++    }
++    return path;
++}
++
+ #ifdef Q_OS_LINUX
+ void ONMainWindow::startDirectRDP()
+ {
+@@ -3423,9 +3430,7 @@ bool ONMainWindow::startSession ( const QString&amp; sid )
+                   sid+&quot;/sshproxykeyfile&quot;,
+                   QString()
+               ).toString() );
+-    if ( proxyKey.startsWith(&quot;~&quot;) ) {
+-        proxyKey = proxyKey.replace(QString(&quot;~&quot;), QDir::homePath());
+-    }
++    proxyKey=expandHome(proxyKey);
+ 
+     proxyserver=(st-&gt;setting()-&gt;value (
+                      sid+&quot;/sshproxyhost&quot;,
+@@ -6546,7 +6551,7 @@ bool ONMainWindow::parseParameter ( QString param )
+     }
+     if ( setting==&quot;--session-conf&quot; )
+     {
+-        ONMainWindow::sessionCfg=value;
++        ONMainWindow::sessionCfg=expandHome(value);
+         return true;
+     }
+     if ( setting==&quot;--sessionid&quot; )
+@@ -6589,13 +6594,13 @@ bool ONMainWindow::parseParameter ( QString param )
+     }
+     if ( setting==&quot;--read-exports-from&quot; )
+     {
+-        readExportsFrom=value;
++        readExportsFrom=expandHome(value);
+         return true;
+     }
+     if ( setting==&quot;--external-login&quot; )
+     {
+         extLogin=true;
+-        readLoginsFrom=value;
++        readLoginsFrom=expandHome(value);
+         return true;
+     }
+     if ( setting==&quot;--ssh-port&quot; )
+@@ -6682,7 +6687,7 @@ bool ONMainWindow::parseParameter ( QString param )
+     }
+     if ( setting == &quot;--auth-id&quot;)
+     {
+-        QFile file(value);
++        QFile file(expandHome(value));
+         if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+         {
+             printError ( param + tr(&quot; (can't open file)&quot;));
+@@ -6726,6 +6731,8 @@ bool ONMainWindow::parseParameter ( QString param )
+     {
+         QDir dr;
+ 
++        value = expandHome(value);
++
+ #ifdef Q_OS_WIN
+         int find=value.indexOf(&quot;(&quot;);
+         int lind=value.indexOf(&quot;)&quot;);
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 7e51291..8bc1c6f 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -1088,6 +1088,7 @@ private:
+     void printSshDError();
+     void loadPulseModuleNativeProtocol();
+     void initEmbedToolBar();
++    QString expandHome( QString path );
+ #ifdef Q_OS_LINUX
+     void startDirectRDP();
+ #endif
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025991.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-22-g174c6c4
+</A></li>
+	<LI>Next message: <A HREF="025993.html">[X2Go-Commits] x2goclient.git - build-baikal (branch) updated:	4.0.1.1-16-g24561cc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25992">[ date ]</a>
+              <a href="thread.html#25992">[ thread ]</a>
+              <a href="subject.html#25992">[ subject ]</a>
+              <a href="author.html#25992">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

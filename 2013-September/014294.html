@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.0-9-g453d11e
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.0-9-g453d11e&In-Reply-To=%3C20130914135755.9E13F5DB7E%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014293.html">
+   <LINK REL="Next"  HREF="014298.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.0-9-g453d11e</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.0-9-g453d11e&In-Reply-To=%3C20130914135755.9E13F5DB7E%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.0-9-g453d11e">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:55 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014293.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.0-7-ga68e15b
+</A></li>
+        <LI>Next message: <A HREF="014298.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-3-g2a1d3db
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14294">[ date ]</a>
+              <a href="thread.html#14294">[ thread ]</a>
+              <a href="subject.html#14294">[ subject ]</a>
+              <a href="author.html#14294">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  453d11e530cc18fe7d88598bad7bbb13fc1cc6f2 (commit)
+      from  6efedf038a16505e6cd6c20656b5b9c688da3d6a (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    1 +
+ x2go/backends/control/_stdout.py |   12 ++++++++++++
+ x2go/cache.py                    |    8 +++++---
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 36e4a9a..5559148 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -12,6 +12,7 @@ python-x2go (0.2.1.1-0~x2go1) UNRELEASED; urgency=low
+       under the same user ID, we have to strictly differentiate between
+       running/suspend sessions associated to the several connected session
+       profiles.
++    - Make connection disruptures more robust.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 13 Dec 2012 13:32:30 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 7e29166..fdb80d4 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -798,6 +798,9 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                         if str(e) == 'No authentication methods available':
+                             raise paramiko.AuthenticationException('Interactive password authentication required!')
+                         else:
++                            self.close()
++                            if self.sshproxy_session:
++                                self.sshproxy_session.stop_thread()
+                             raise(e)
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+@@ -872,9 +875,16 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     self.logger('Requesting SSH agent forwarding for control session of connected session profile %s' % self.profile_name, loglevel=log.loglevel_INFO)
+                 else:
+                     self.logger('SSH agent forwarding is not available in the Paramiko version used with this instance of Python X2Go', loglevel=log.loglevel_WARN)
++        else:
++            self.close()
++            if self.sshproxy_session:
++                self.sshproxy_session.stop_thread()
+ 
+         self._remote_home = None
+         if not self.home_exists():
++            self.close()
++            if self.sshproxy_session:
++                self.sshproxy_session.stop_thread()
+             raise x2go_exceptions.X2goRemoteHomeException('remote home directory does not exist')
+ 
+         return (self.get_transport() is not None)
+@@ -979,6 +989,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 return True
+         except x2go_exceptions.X2goControlSessionException:
+             self.session_died = True
++            self.disconnect()
+         return False
+ 
+     def has_session_died(self):
+@@ -1438,6 +1449,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+             if _count &gt;= _maxwait:
+                 self.session_died = True
++                self.disconnect()
+                 raise x2go_exceptions.X2goControlSessionException('x2golistsessions command failed after we have tried 20 times')
+ 
+             # update internal variables when list_sessions() is called
+diff --git a/x2go/cache.py b/x2go/cache.py
+index f0063d7..1654e08 100644
+--- a/x2go/cache.py
++++ b/x2go/cache.py
+@@ -152,7 +152,8 @@ class X2goListSessionsCache(object):
+             self.x2go_listsessions_cache[profile_name]['mounts'] = {}
+             if self.x2go_listsessions_cache[profile_name]['sessions']:
+                 for session_name in self.x2go_listsessions_cache[profile_name]['sessions']:
+-                    self.x2go_listsessions_cache[profile_name]['mounts'].update(control_session.list_mounts(session_name))
++                    if control_session is not None and not control_session.has_session_died():
++                        self.x2go_listsessions_cache[profile_name]['mounts'].update(control_session.list_mounts(session_name))
+         except (x2go_exceptions.X2goControlSessionException, AttributeError), e:
+             if profile_name in self.x2go_listsessions_cache.keys():
+                 del self.x2go_listsessions_cache[profile_name]
+@@ -173,7 +174,8 @@ class X2goListSessionsCache(object):
+         @raise X2goControlSessionException: if the control session's C{list_desktop} method fails
+         &quot;&quot;&quot;
+         try:
+-            self.x2go_listsessions_cache[profile_name]['desktops'] = control_session.list_desktops()
++            if control_session is not None and not control_session.has_session_died():
++                self.x2go_listsessions_cache[profile_name]['desktops'] = control_session.list_desktops()
+         except (x2go_exceptions.X2goControlSessionException, AttributeError), e:
+             if profile_name in self.x2go_listsessions_cache.keys():
+                 del self.x2go_listsessions_cache[profile_name]
+@@ -192,7 +194,7 @@ class X2goListSessionsCache(object):
+         @raise X2goControlSessionException: if the control session's C{list_sessions} method fails
+         &quot;&quot;&quot;
+         try:
+-            if control_session is not None:
++            if control_session is not None and not control_session.has_session_died():
+                 self.x2go_listsessions_cache[profile_name]['sessions'] = control_session.list_sessions()
+         except (x2go_exceptions.X2goControlSessionException, AttributeError), e:
+             if profile_name in self.x2go_listsessions_cache.keys():
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014293.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.0-7-ga68e15b
+</A></li>
+	<LI>Next message: <A HREF="014298.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-3-g2a1d3db
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14294">[ date ]</a>
+              <a href="thread.html#14294">[ thread ]</a>
+              <a href="subject.html#14294">[ subject ]</a>
+              <a href="author.html#14294">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

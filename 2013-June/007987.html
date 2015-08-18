@@ -1,0 +1,343 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-6-g5231ba4
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-June/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.1-6-g5231ba4&In-Reply-To=%3C20130604190938.2EA4D5DB26%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007986.html">
+   <LINK REL="Next"  HREF="007988.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-6-g5231ba4</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20statusflag%20%28branch%29%20updated%3A%0A%090.0.0.1-6-g5231ba4&In-Reply-To=%3C20130604190938.2EA4D5DB26%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-6-g5231ba4">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jun  4 21:09:38 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007986.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-11-gabebae8
+</A></li>
+        <LI>Next message: <A HREF="007988.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-8-gbbe2c8a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7987">[ date ]</a>
+              <a href="thread.html#7987">[ thread ]</a>
+              <a href="subject.html#7987">[ subject ]</a>
+              <a href="author.html#7987">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, statusflag has been updated
+       via  5231ba48183cc603a5193400884dd01b360491ba (commit)
+      from  716736e53b9bf284d5bc196b708bc3b2362b50a4 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                      |    1 +
+ lib/x2gobroker-agent.pl               |   37 ++++++++++++++
+ x2gobroker/agent.py                   |   87 +++++++++++++++++++++++++++++++++
+ x2gobroker/brokers/base_broker.py     |   32 ++++++++++--
+ x2gobroker/brokers/zeroconf_broker.py |    2 +-
+ x2gobroker/web/plain.py               |    2 +-
+ 6 files changed, 156 insertions(+), 5 deletions(-)
+ create mode 100644 x2gobroker/agent.py
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 025cc4c..0984633 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -3,6 +3,7 @@ x2gobroker (0.0.0.2-0~x2go1) UNRELEASED; urgency=low
+   * New upstream version (0.0.0.2):
+     - Make CC, CFLAGS and LDFLAGS configurable through build system.
+     - Make host session option a list, not string.
++    - Add load balancing support.
+   * /debian/control:
+     + Add bin:package x2gobroker-agent.
+ 
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index 6a64bbf..74e0751 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -98,6 +98,43 @@ if($mode eq 'listsessions')
+ 	exec (&quot;/bin/su - $uid -c \&quot;x2golistsessions --all-servers\&quot;&quot;);
+ }
+ 
++if($mode eq 'findbestserver_by_sessionstats') || ($mode eq 'findbestserver')
++{
++	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
++	print &quot;OK\n&quot;;
++	my $session_list = `/bin/su - -c \&quot;x2golistsessions_root --all-servers\&quot;`;
++	my $avail_servers = `/bin/su - $uid -c \&quot;x2gogetservers\&quot;`;
++	my $amount_sessions = 0;
++
++	# initialize server_load hash
++	my %server_load = ();
++	foreach (split('\n', $avail_servers))
++	{
++		$server_load{$_} = 0;
++	}
++
++	# count sessions per server
++	my @session_list = split(/\n/, $session_list);
++	foreach (@session_list)
++	{
++		my ($apid, $sid, $disp, $hostname, $stat, $dcreated, $cookie, $gport, $sndport, $dsusp, $username, $fsport) = split('\\|', $_);
++		$amount_sessions++;
++		$server_load{$hostname} += 1;
++	}
++
++	# render the output result
++	my @result;
++	for my $hostname ( keys %server_load ) {
++		my $available = 100-$server_load{$hostname}/$amount_sessions*100;
++		if ($available eq 0) {
++			$available = 100;
++		}
++		push @result, sprintf '%1$d:%2$s', $available, $hostname;
++	}
++	print join('\n', sort @result);
++	print &quot;\n&quot;;
++}
++
+ 
+ if($mode eq 'getservers')
+ {
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+new file mode 100644
+index 0000000..3e7cdc6
+--- /dev/null
++++ b/x2gobroker/agent.py
+@@ -0,0 +1,87 @@
++# -*- coding: utf-8 -*-
++
++# Copyright (C) 2012 by Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
++# Copyright (C) 2012 by Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at obviously-nice.de</A>&gt;
++# Copyright (C) 2012 by Heinz-Markus Graesing &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">heinz-m.graesing at obviously-nice.de</A>&gt;
++#
++# X2Go Session Broker is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Affero General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# X2Go Session Broker is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU Affero General Public License for more details.
++#
++# You should have received a copy of the GNU Affero General Public License
++# along with this program; if not, write to the
++# Free Software Foundation, Inc.,
++# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
++
++import subprocess
++
++# X2Go Broker modules
++import x2gobroker.defaults
++
++def call_x2gobroker_agent(username, mode):
++    &quot;&quot;&quot;\
++    Launch X2Go Broker Agent and process its output.
++
++    @param username: run the broker agent for this user
++    @type username: C{unicode}
++    @param mode: execution mode of the broker (listsessions, getservers, etc.)
++    @type mode: C{unicode}
++
++    &quot;&quot;&quot;
++    cmdline = [
++        '{x2gobroker_agent_binary}'.format(x2gobroker_agent_binary=x2gobroker.defaults.X2GOBROKER_AGENT_CMD),
++        '{username}'.format(username=username),
++        '{mode}'.format(mode=mode),
++    ]
++
++    subprocess.Popen(cmd_line,
++                     stdin=None,
++                     stdout=subprocess.PIPE,
++                     stderr=subprocess.STDOUT,
++                     shell=False,
++    )
++
++    return subprocess.stdout.read()
++
++def list_sessions(username):
++    &quot;&quot;&quot;\
++    Query X2Go Broker Agent for a session list for a given username.
++
++    @param username: username for who to query a session list
++    @type username: C{unicode}
++
++    &quot;&quot;&quot;
++    return call_broker_agent(username, mode='listsessions')
++
++def find_best_server(username=None):
++    &quot;&quot;&quot;\
++    Query X2Go Broker Agent for the best server for the given user.
++    In many cases the username does not have an effect on the 
++    detection of an optimal server.
++
++    @param username: username for who to query a session list
++    @type username: C{unicode}
++
++    &quot;&quot;&quot;
++    server_list = call_broker_agent(username, mode='findbestserver')
++    server_list.sort(reverse=True)
++    return server_list[0].split(':')[1]
++
++def get_servers(username=None):
++    &quot;&quot;&quot;\
++    Query X2Go Broker Agent for the list of available servers
++    for the given user. In many cases the username does not
++    have an effect on the list of available servers.
++
++    @param username: username for who to query a session list
++    @type username: C{unicode}
++
++    &quot;&quot;&quot;
++    return call_broker_agent(username, mode='getservers')
++
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index c06dfa6..9c710b3 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -29,10 +29,12 @@ import types
+ import copy
+ import uuid
+ import netaddr
++import random
+ 
+ # X2Go Broker modules
+ import x2gobroker.config
+ import x2gobroker.defaults
++import x2gobroker.agent
+ 
+ class X2GoBroker(object):
+     &quot;&quot;&quot;\
+@@ -685,7 +687,7 @@ class X2GoBroker(object):
+ 
+         return list_of_profiles
+ 
+-    def select_session(self, profile_id):
++    def select_session(self, profile_id, username=None):
+         &quot;&quot;&quot;\
+         Start/resume a session by selecting a profile name offered by the X2Go client.
+ 
+@@ -693,16 +695,40 @@ class X2GoBroker(object):
+         broker.
+ 
+         @param profile_id: the selected profile ID. This matches one of the dictionary keys offered by the C{list_profiles} method
+-        @type profile_id: C{dict}
++        @type profile_id: C{unicode}
++        @param username: specify username that this operation runs for
++        @type username: C{unicode}
+ 
+         &quot;&quot;&quot;
+         profile = self.get_profile(profile_id)
+ 
++        # if we have more than one server, pick one server randomly for X2Go Broker Agent queries
++        server_list = profile[u'host']
++        random.shuffle(server_list)
++        agent_query_server = server_list[0]
++
++        best_server = x2gobroker.agent.find_best_server()
++
+         selected_session = {
+-            'server': profile[u'host'][0],
++            'server': best_server,
+             'port': profile[u'sshport'],
+         }
+ 
++        # do some load balancing if more than one server is configured
++        if len(server_list) &gt;= 1 and username:
++
++            session_list = x2gobroker.agent.list_sessions(username=username)
++            if session_list:
++
++                # if resuming, always select the first session in the list, there should only be one suspended session
++                server_name = session_list[0].split('|')[3]
++                session_info = session_list[0].split('|')[1]
++
++                selected_session.update({
++                    'server': server_name,
++                    'session_info': session_info,
++                })
++
+         return selected_session
+ 
+     def change_password(self, new='', old=''):
+diff --git a/x2gobroker/brokers/zeroconf_broker.py b/x2gobroker/brokers/zeroconf_broker.py
+index ad21567..5970659 100644
+--- a/x2gobroker/brokers/zeroconf_broker.py
++++ b/x2gobroker/brokers/zeroconf_broker.py
+@@ -76,7 +76,7 @@ class X2GoBroker(base.X2GoBroker):
+         }
+         return list_of_profiles
+ 
+-    def select_session(self, profile_id):
++    def select_session(self, profile_id, username=None):
+ 
+         selectprofile_output = {
+             'server': 'localhost',
+diff --git a/x2gobroker/web/plain.py b/x2gobroker/web/plain.py
+index b6c5f83..e25b5c0 100644
+--- a/x2gobroker/web/plain.py
++++ b/x2gobroker/web/plain.py
+@@ -142,7 +142,7 @@ class X2GoBrokerWebPlain:
+ 
+                 if profile_id:
+ 
+-                    profile_info = broker_backend.select_session(profile_id=profile_id)
++                    profile_info = broker_backend.select_session(profile_id=profile_id, username=username)
+                     if profile_info.has_key('server'):
+                         output += &quot;SERVER:&quot;
+                         output += profile_info['server']
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007986.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-11-gabebae8
+</A></li>
+	<LI>Next message: <A HREF="007988.html">[X2Go-Commits] x2gobroker.git - statusflag (branch) updated:	0.0.0.1-8-gbbe2c8a
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7987">[ date ]</a>
+              <a href="thread.html#7987">[ thread ]</a>
+              <a href="subject.html#7987">[ subject ]</a>
+              <a href="author.html#7987">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

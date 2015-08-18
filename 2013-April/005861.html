@@ -1,0 +1,251 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.2-2-g8cec21a
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.2-2-g8cec21a&In-Reply-To=%3C20130423190850.ACFA75DB49%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="005857.html">
+   <LINK REL="Next"  HREF="005866.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.2-2-g8cec21a</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20tmp%20%28branch%29%20updated%3A%0A%090.0.0.2-2-g8cec21a&In-Reply-To=%3C20130423190850.ACFA75DB49%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.2-2-g8cec21a">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Apr 23 21:08:50 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="005857.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-69-g8fcdf93
+</A></li>
+        <LI>Next message: <A HREF="005866.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.2-4-gfd4ae72
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5861">[ date ]</a>
+              <a href="thread.html#5861">[ thread ]</a>
+              <a href="subject.html#5861">[ subject ]</a>
+              <a href="author.html#5861">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, tmp has been updated
+       via  8cec21a5f2e9dde24155f47aa6b7450e56b770c4 (commit)
+      from  e6d532ca4ffa675beda709a2b861c7ad2b542330 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    4 +-
+ debian/control                   |    1 -
+ sbin/x2gobroker-pubkeyauthorizer |   83 +++++++++++++++++++++++++++++---------
+ 3 files changed, 67 insertions(+), 21 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 3d7d3d0..bbc3d05 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -1,6 +1,8 @@
+ x2gobroker (0.0.0.3-0~x2go1) UNRELEASED; urgency=low
+ 
+-  * Continue development...
++  * New upstream version (0.0.0.3):
++    - Script x2gobroker-pubkeyauthorizer is now independent
++      from Python module x2gobroker.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 21 Feb 2013 20:00:43 +0100
+ 
+diff --git a/debian/control b/debian/control
+index 6d78bbd..07868bd 100644
+--- a/debian/control
++++ b/debian/control
+@@ -183,7 +183,6 @@ Depends:
+  perl,
+  python,
+  adduser,
+- python-x2gobroker (&gt;= ${source:Version}), python-x2gobroker (&lt;&lt; ${source:Version}.1~),
+  x2goserver,
+ Description: X2Go http(s) based session broker (common files)
+  X2Go is a server based computing environment with
+diff --git a/sbin/x2gobroker-pubkeyauthorizer b/sbin/x2gobroker-pubkeyauthorizer
+index 66ad1ce..a28a068 100755
+--- a/sbin/x2gobroker-pubkeyauthorizer
++++ b/sbin/x2gobroker-pubkeyauthorizer
+@@ -29,38 +29,81 @@ import logging
+ import binascii
+ import paramiko
+ import urllib
++import getpass
++import logging
++import logging.config
+ 
+ from pwd import getpwnam
+ from grp import getgrnam
+ 
+-try:
+-    import x2gobroker.defaults
+-except ImportError:
+-    sys.path.insert(0, os.path.join(os.getcwd(), '..'))
+-    import x2gobroker.defaults
++__VERSION__ = '0.0.0.3'
++__AUTHOR__ = 'Mike Gabriel (X2Go Project) &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;'
+ 
+ PROG_NAME = os.path.basename(sys.argv[0])
+ PROG_OPTIONS = sys.argv[1:]
+ setproctitle.setproctitle(&quot;%s %s&quot; % (PROG_NAME, &quot; &quot;.join(PROG_OPTIONS)))
+ 
+-from x2gobroker import __VERSION__
+-from x2gobroker import __AUTHOR__
+-from x2gobroker.loggers import logger_broker, logger_error
++### The following is a code duplication of x2gobroker.loggers and x2gobroker.defaults.
++### Normally, we would avoid that. However, this is to make this script independent from
++### the python-x2gobroker package (and its manifold python module dependencies).
++
++if os.environ.has_key('X2GOBROKER_DAEMON_USER'):
++    X2GOBROKER_DAEMON_USER=os.environ['X2GOBROKER_DAEMON_USER']
++else:
++    X2GOBROKER_DAEMON_USER=&quot;x2gobroker&quot;
++if os.environ.has_key('X2GOBROKER_DAEMON_GROUP'):
++    X2GOBROKER_DAEMON_GROUP=os.environ['X2GOBROKER_DAEMON_GROUP']
++else:
++    X2GOBROKER_DAEMON_GROUP=&quot;x2gobroker&quot;
++if os.environ.has_key('X2GOBROKER_LOGCONFIG'):
++    X2GOBROKER_LOGCONFIG=os.environ['X2GOBROKER_LOGCONFIG']
++else:
++    X2GOBROKER_LOGCONFIG=&quot;/etc/x2go/broker/x2gobroker-loggers.conf&quot;
++if os.environ.has_key('X2GOBROKER_DEBUG'):
++    X2GOBROKER_DEBUG = ( os.environ['X2GOBROKER_DEBUG'].lower() in ('1', 'on', 'true', 'yes', ) )
++else:
++    X2GOBROKER_DEBUG = False
++# the home directory of the user that the daemon/cgi runs as
++X2GOBROKER_HOME = os.path.normpath(os.path.expanduser('~{broker_uid}'.format(broker_uid=X2GOBROKER_DAEMON_USER)))
+ 
+ if os.geteuid() == 0:
++
++    # we run in standalone daemon mode, so let's use the system configuration for logging
++    logging.config.fileConfig(X2GOBROKER_LOGCONFIG)
++
++    # create loggers
++    logger_broker = logging.getLogger('broker')
++    logger_error = logging.getLogger('error')
++
+     # propagate msgs for  the broker logger to the root logger (i.e. to stderr)
+     logger_broker.propagate = 1
+     logger_error.propagate = 1
+ 
++else:
++    logger_root = logging.getLogger()
++    stderr_handler = logging.StreamHandler(sys.stderr)
++    stderr_handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt=''))
++
++    # all loggers stream to stderr...
++    logger_root.addHandler(stderr_handler)
++
++    logger_broker = logging.getLogger('broker')
++    logger_broker.addHandler(stderr_handler)
++    logger_broker.propagate = 0
++
++    logger_error = logging.getLogger('error')
++    logger_error.addHandler(stderr_handler)
++    logger_error.propagate = 0
++
+ # raise log level to DEBUG if requested...
+-if x2gobroker.defaults.X2GOBROKER_DEBUG and not x2gobroker.defaults.X2GOBROKER_TESTSUITE:
++if X2GOBROKER_DEBUG:
+     logger_broker.setLevel(logging.DEBUG)
+ 
+ logger_broker.info('X2Go Session Broker ({version}), written by {author}'.format(version=__VERSION__, author=__AUTHOR__))
+ logger_broker.info('Setting up the &#187;PubKey Authorizer&#171;\'s environment...')
+-logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DEBUG))
+-logger_broker.info('  X2GOBROKER_DAEMON_USER: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DAEMON_USER))
+-logger_broker.info('  X2GOBROKER_DAEMON_GROUP: {value}'.format(value=x2gobroker.defaults.X2GOBROKER_DAEMON_GROUP))
++logger_broker.info('  X2GOBROKER_DEBUG: {value}'.format(value=X2GOBROKER_DEBUG))
++logger_broker.info('  X2GOBROKER_DAEMON_USER: {value}'.format(value=X2GOBROKER_DAEMON_USER))
++logger_broker.info('  X2GOBROKER_DAEMON_GROUP: {value}'.format(value=X2GOBROKER_DAEMON_GROUP))
+ 
+ # check effective UID the broker runs as and complain appropriately...
+ if os.geteuid() != 0:
+@@ -87,21 +130,23 @@ if __name__ == '__main__':
+     cmdline_args = p.parse_args()
+ 
+     if cmdline_args.broker_url is None:
+-        logger_error.error('Cannot proceed without having an URL specified. Use --broker-url as cmdline parameter. Exiting...')
++        logger_error.error('Cannot proceed without having an URL specified. Use --broker-url as cmdline parameter.')
++        logger_error.error('Exiting...')
+         sys.exit(-2)
+ 
+-    broker_uid = x2gobroker.defaults.X2GOBROKER_DAEMON_USER
++    broker_uid = X2GOBROKER_DAEMON_USER
+     broker_uidnumber = getpwnam(broker_uid).pw_uid
+-    broker_gid = x2gobroker.defaults.X2GOBROKER_DAEMON_GROUP
++    broker_gid = X2GOBROKER_DAEMON_GROUP
+     broker_gidnumber = getgrnam(broker_gid).gr_gid
+-    broker_home = x2gobroker.defaults.X2GOBROKER_HOME
++    broker_home = X2GOBROKER_HOME
+ 
+     if not os.path.exists(broker_home):
+-        logger_error.error('The home directory {home} of user {user} does not exists. Cannot continue. Exiting...'.format(home=broker_home, user=broker_uid))
++        logger_error.error('The home directory {home} of user {user} does not exists.')
++        logger_error.error('Cannot continue. Exiting...'.format(home=broker_home, user=broker_uid))
+         sys.exit(-2)
+ 
+-    logger_broker.info('Authorizing access to this X2Go server for X2Go Session Broker at URL {url}'.format(url=cmdline_args.broker_url))
+-
++    logger_broker.info('Authorizing access to this X2Go server for X2Go Session Broker')
++    logger_broker.info('  at URL {url}'.format(url=cmdline_args.broker_url))
+ 
+     if not os.path.exists('{home}/.ssh'.format(home=broker_home)):
+         os.mkdir('{home}/.ssh'.format(home=broker_home))
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="005857.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.1-69-g8fcdf93
+</A></li>
+	<LI>Next message: <A HREF="005866.html">[X2Go-Commits] x2gobroker.git - tmp (branch) updated:	0.0.0.2-4-gfd4ae72
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5861">[ date ]</a>
+              <a href="thread.html#5861">[ thread ]</a>
+              <a href="subject.html#5861">[ subject ]</a>
+              <a href="author.html#5861">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

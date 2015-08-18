@@ -1,0 +1,201 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] buildscripts.git - master (branch) updated:	c1f0d58bbbd8e7233f3190a5d2119581bc3c8742
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09c1f0d58bbbd8e7233f3190a5d2119581bc3c8742&In-Reply-To=%3C20131130194208.0F6F35DB1C%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="015004.html">
+   <LINK REL="Next"  HREF="015006.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] buildscripts.git - master (branch) updated:	c1f0d58bbbd8e7233f3190a5d2119581bc3c8742</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20buildscripts.git%20-%20master%20%28branch%29%20updated%3A%0A%09c1f0d58bbbd8e7233f3190a5d2119581bc3c8742&In-Reply-To=%3C20131130194208.0F6F35DB1C%40ymir%3E"
+       TITLE="[X2Go-Commits] buildscripts.git - master (branch) updated:	c1f0d58bbbd8e7233f3190a5d2119581bc3c8742">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Nov 30 20:42:08 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="015004.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	5096e66050e68ddb8aea6e41e039d305762f571e
+</A></li>
+        <LI>Next message: <A HREF="015006.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	63edba4964c723d4116dc6daeb476d1c5e5d8480
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15005">[ date ]</a>
+              <a href="thread.html#15005">[ thread ]</a>
+              <a href="subject.html#15005">[ subject ]</a>
+              <a href="author.html#15005">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  c1f0d58bbbd8e7233f3190a5d2119581bc3c8742 (commit)
+      from  5096e66050e68ddb8aea6e41e039d305762f571e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit c1f0d58bbbd8e7233f3190a5d2119581bc3c8742
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Sat Nov 30 20:41:33 2013 +0100
+
+    don't write the RPM_BUILDS_FOR config to file anymore, handle as variable in memory
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ bin/build-rpm-package        |   37 +++++++++++++++----------------------
+ home/.buildscripts/x2go.conf |    4 +---
+ 2 files changed, 16 insertions(+), 25 deletions(-)
+
+The diff of changes is:
+diff --git a/bin/build-rpm-package b/bin/build-rpm-package
+index 7632ac3..a011062 100755
+--- a/bin/build-rpm-package
++++ b/bin/build-rpm-package
+@@ -26,12 +26,8 @@ RPMEMAIL=&quot;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">firstname.lastname at mydomain.org</A>&quot;
+ RPMFULLNAME=&quot;Firstname Lastname&quot;
+ GPG_KEY=
+ DISTS_SUPPORTED=&quot;fedora epel&quot;
+-FEDORA_DISTROS=&quot;18 19 20 rawhide&quot;
++FEDORA_DISTROS=&quot;18,19,20,rawhide&quot;
+ EPEL_DISTROS=&quot;6&quot;
+-RPM_BUILDS_FOR=&quot;\
+-fedora: $FEDORA_DISTROS\n\
+-epel: $EPEL_DISTROS\n\
+-&quot;
+ RPM_REPOS_BASE=/var/www/
+ 
+ COMPONENT_MAIN=&quot;main&quot;
+@@ -42,6 +38,7 @@ PACKAGES_WITHOUT_OTHERMIRROR=&quot;keyring&quot;
+ GNUPGHOME=$HOME/.gnupg
+ 
+ FORCE_BUILD=${FORCE_BUILD:-&quot;no&quot;}
++RPM_BUILDS_FOR=${RPM_BUILDS_FOR:-&quot;fedora:$FEDORA_DISTROS epel:$EPEL_DISTROS&quot;}
+ 
+ test -z $1 &amp;&amp; { echo &quot;usage: $(basename $0) [&lt;subpath&gt;/]&lt;git-project&gt; {main,main/&lt;codename&gt;,nightly,nightly/&lt;codename&gt;} [&lt;git-checkout&gt;]&quot;; exit -1; }
+ 
+@@ -93,9 +90,6 @@ set_vars() {
+ }
+ 
+ prepare_workspace() {
+-	# in any case remove the RPM_BUILDS_FOR file
+-	rm -f &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot;
+-
+ 	# create rpmbuild subdirectories
+ 	mkdir -p $PKGDIST/rpmbuild/SOURCES
+ 
+@@ -122,22 +116,21 @@ prepare_workspace() {
+ 	GIT_OBJECT_ID=`git show-ref -s heads/master`
+ 	cd &quot;$PROJECT_DIR&quot;
+ 
+-	# by default we build for all current debian versions
+-	if test -z $ARGV2_CODENAME; then
+-		test -f RPM_BUILDS_FOR || echo -e &quot;$RPM_BUILDS_FOR&quot; &gt; RPM_BUILDS_FOR
+-	elif echo &quot;$FEDORA_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+-		echo &quot;fedora: $ARGV2_CODENAME&quot; &gt; RPM_BUILDS_FOR
+-	elif echo &quot;$EPEL_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
+-		echo &quot;epel: $ARGV2_CODENAME&quot; &gt;/dev/null
++	if [ -n &quot;$ARGV2_CODENAME&quot; ]; then
++		if echo &quot;$FEDORA_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
++			RPM_BUILDS_FOR=&quot;fedora:$ARGV2_CODENAME&quot;
++		elif echo &quot;$EPEL_DISTROS&quot; | grep $ARGV2_CODENAME &gt;/dev/null; then
++			RPM_BUILDS_FOR=&quot;epel:$ARGV2_CODENAME&quot;
++		fi
+ 	fi
+ 	return 0
+ }
+ 
+ clear_pkgdist() {
+ 	# pkgdist directory cleanup
+-	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	echo &quot;$RPM_BUILDS_FOR&quot; | sed -e 's/ /\n/g' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+-		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
++		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | sed -e 's/,/ /g' | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+ 			for l_CODENAME in $l_CODENAMES; do
+ 
+@@ -195,9 +188,9 @@ build_packages() {
+ 	# clean up the Git clone from the temp folder
+ 	cd &amp;&amp; rm $TEMP_DIR/$PROJECT -Rf
+ 
+-	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
++	echo &quot;$RPM_BUILDS_FOR&quot; | sed -e 's/ /\n/g' | while read line; do
+ 		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
+-		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}&quot;
++		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | sed -e 's/,/ /g' | tr [:upper:] [:lower:])}&quot;
+ 		echo &quot;$DISTS_SUPPORTED&quot; | grep $l_DIST &gt;/dev/null &amp;&amp; {
+ 			for l_CODENAME in $l_CODENAMES; do
+ 
+@@ -236,9 +229,9 @@ build_packages() {
+ upload_packages() {
+ 	# dupload the new packages to the reprepro repository
+ 
+-	cat &quot;$PROJECT_DIR/RPM_BUILDS_FOR&quot; | egrep -v '(^$|^#.*$)' | while read line; do
+-		l_DIST=$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])
+-		l_CODENAMES=${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | tr [:upper:] [:lower:])}
++	echo &quot;$RPM_BUILDS_FOR&quot; | sed -e 's/ /\n/g' | while read line; do
++		l_DIST=&quot;$(echo ${line/: /:} | cut -d&quot;:&quot; -f1 | tr [:upper:] [:lower:])&quot;
++		l_CODENAMES=&quot;${CODENAMES:-$(echo ${line/: /:} | cut -d&quot;:&quot; -f2- | sed -e 's/,/ /g' | tr [:upper:] [:lower:])}&quot;
+ 		for l_CODENAME in $l_CODENAMES; do
+ 
+ 			# in case we build a special CODENAME (squeeze, wheezy, lucid, ...) do skip
+diff --git a/home/.buildscripts/x2go.conf b/home/.buildscripts/x2go.conf
+index 7af9d26..eda1867 100644
+--- a/home/.buildscripts/x2go.conf
++++ b/home/.buildscripts/x2go.conf
+@@ -15,9 +15,7 @@ RPMEMAIL=<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">git-admin at x2go.org</A>
+ RPMFULLNAME=&quot;X2go Git Administrator&quot;
+ GPG_KEY=&quot;F4A7678C9C6B0B2B&quot;
+ DISTS_SUPPORTED=&quot;fedora epel&quot;
+-RPM_BUILDS_FOR=&quot;\
+-fedora: 18 19 20 rawhide\n\
+-epel: 6\n&quot;
++RPM_BUILDS_FOR=&quot;fedora:18,19,20,rawhide epel:6&quot;
+ RPM_REPOS_BASE=/srv/sites/x2go.org/packages/
+ 
+ COMPONENT_MAIN=&quot;main&quot;
+
+
+hooks/post-receive
+-- 
+buildscripts.git (X2Go packaging scripts)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;buildscripts.git&quot; (X2Go packaging scripts).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="015004.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	5096e66050e68ddb8aea6e41e039d305762f571e
+</A></li>
+	<LI>Next message: <A HREF="015006.html">[X2Go-Commits] buildscripts.git - master (branch) updated:	63edba4964c723d4116dc6daeb476d1c5e5d8480
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15005">[ date ]</a>
+              <a href="thread.html#15005">[ thread ]</a>
+              <a href="subject.html#15005">[ subject ]</a>
+              <a href="author.html#15005">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

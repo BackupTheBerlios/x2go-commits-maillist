@@ -1,0 +1,363 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-16-gb1c28c7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-September/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-16-gb1c28c7&In-Reply-To=%3C20130914135757.BDA0B5DB99%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="014306.html">
+   <LINK REL="Next"  HREF="014321.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-16-gb1c28c7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20twofactorauth%20%28branch%29%20updated%3A%0A%090.2.1.1-16-gb1c28c7&In-Reply-To=%3C20130914135757.BDA0B5DB99%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-16-gb1c28c7">git-admin at x2go.org
+       </A><BR>
+    <I>Sat Sep 14 15:57:57 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="014306.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-15-gf787a06
+</A></li>
+        <LI>Next message: <A HREF="014321.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-14-ga986b60
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14308">[ date ]</a>
+              <a href="thread.html#14308">[ thread ]</a>
+              <a href="subject.html#14308">[ subject ]</a>
+              <a href="author.html#14308">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, twofactorauth has been updated
+       via  b1c28c749e6d34ae51d5169e360ba4f3409d1d81 (commit)
+      from  f787a0620a5fee6cc9df2a53a92abb81d5a99880 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                 |    3 +++
+ x2go/backends/control/_stdout.py |    9 ++++++++-
+ x2go/checkhosts.py               |   24 ++++++++++++++++++------
+ x2go/client.py                   |    2 +-
+ x2go/session.py                  |    2 +-
+ x2go/sshproxy.py                 |   33 +++++++++++++++++++++++++++++++--
+ x2go/utils.py                    |   14 +++++++-------
+ 7 files changed, 69 insertions(+), 18 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a8da37f..ca60226 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -11,6 +11,9 @@ python-x2go (0.2.1.2-0~x2go1) UNRELEASED; urgency=low
+     - Add session profile option ,,display'' to default session profile options.
+     - Catch any kind of exception when writing session profile files and return
+       True or False in cases where I/O errors occur.
++    - Avoid the known_hosts file being flushed with localhost:[&lt;someport&gt;]
++      entries. Store host keys of SSH-proxied hosts under the [&lt;address&gt;]:&lt;port&gt;
++      the system has _behind_ the SSH proxy gateway.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Dec 2012 08:58:44 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index fdb80d4..d7e0aec 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -718,6 +718,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @raise X2goRemoteHomeException: if the remote home directory does not exist or is not accessible
+ 
+         &quot;&quot;&quot;
++        _fake_hostname = None
++
+         if use_sshproxy and sshproxy_host and sshproxy_user:
+             try:
+                 self.sshproxy_session = sshproxy.X2goSSHProxy(known_hosts=self.known_hosts,
+@@ -734,6 +736,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                                               session_instance=session_instance,
+                                                               logger=self.logger,
+                                                              )
++                hostname = self.sshproxy_session.get_local_proxy_host()
++                port = self.sshproxy_session.get_local_proxy_port()
++                _fake_hostname = self.sshproxy_session.get_remote_host()
++                _fake_port = self.sshproxy_session.get_remote_port()
++                _fake_hostname = &quot;[%s]:%s&quot; % (_fake_hostname, _fake_port)
+ 
+             except:
+                 if self.sshproxy_session:
+@@ -750,7 +757,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 port = self.sshproxy_session.get_local_proxy_port()
+ 
+         if not add_to_known_hosts and session_instance:
+-            self.set_missing_host_key_policy(checkhosts.X2goInteractiveAddPolicy(caller=self, session_instance=session_instance))
++            self.set_missing_host_key_policy(checkhosts.X2goInteractiveAddPolicy(caller=self, session_instance=session_instance, fake_hostname=_fake_hostname))
+ 
+         if add_to_known_hosts:
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+diff --git a/x2go/checkhosts.py b/x2go/checkhosts.py
+index 98badbb..aedb08d 100644
+--- a/x2go/checkhosts.py
++++ b/x2go/checkhosts.py
+@@ -50,7 +50,7 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+     method and hook some interactive user dialog to either of them.
+ 
+     &quot;&quot;&quot;
+-    def __init__(self, caller=None, session_instance=None):
++    def __init__(self, caller=None, session_instance=None, fake_hostname=None):
+         &quot;&quot;&quot;\
+         @param caller: calling instance
+         @type caller: C{class}
+@@ -60,6 +60,7 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+         &quot;&quot;&quot;
+         self.caller = caller
+         self.session_instance = session_instance
++        self.fake_hostname = fake_hostname
+ 
+     def missing_host_key(self, client, hostname, key):
+         &quot;&quot;&quot;\
+@@ -95,6 +96,17 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+         client._log(paramiko.common.DEBUG, 'Interactively Checking %s host key for %s: %s' %
+                    (self.key.get_name(), self.hostname, binascii.hexlify(self.key.get_fingerprint())))
+         if self.session_instance:
++
++            if self.fake_hostname is not None:
++                server_key = client.get_transport().get_remote_server_key()
++                keytype = server_key.get_name()
++                our_server_key = client._system_host_keys.get(self.fake_hostname, {}).get(keytype, None)
++                if our_server_key is None:
++                    our_server_key = client._host_keys.get(self.fake_hostname, {}).get(keytype, None)
++                if our_server_key is not None:
++                    self.session_instance.logger('SSH host key verification for SSH-proxied host %s with %s fingerprint ,,%s\'\' succeeded. This host is known by the address it has behind the SSH proxy host.' % (self.fake_hostname, self.get_key_name(), self.get_key_fingerprint_with_colons()), loglevel=log.loglevel_NOTICE)
++                    return
++
+             self.session_instance.logger('SSH host key verification for host %s with %s fingerprint ,,%s\'\' initiated. We are seeing this X2Go server for the first time.' % (self.get_hostname(), self.get_key_name(), self.get_key_fingerprint_with_colons()), loglevel=log.loglevel_NOTICE)
+             _valid = self.session_instance.HOOK_check_host_dialog(self.get_hostname_name(),
+                                                                   port=self.get_hostname_port(),
+@@ -102,14 +114,14 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+                                                                   fingerprint_type=self.get_key_name(),
+                                                                  )
+             if _valid:
+-                paramiko.AutoAddPolicy().missing_host_key(client, self.hostname, key)
++                paramiko.AutoAddPolicy().missing_host_key(client, self.get_hostname(), key)
+             else:
+                 if type(self.caller) in (sshproxy.X2goSSHProxy, ):
+-                    raise x2go_exceptions.X2goSSHProxyHostKeyException('Invalid host %s is not authorized for access. Add the host to Paramiko/SSH\'s known_hosts file.' % hostname)
++                    raise x2go_exceptions.X2goSSHProxyHostKeyException('Invalid host %s is not authorized for access. Add the host to Paramiko/SSH\'s known_hosts file.' % self.get_hostname())
+                 else:
+-                    raise x2go_exceptions.X2goHostKeyException('Invalid host %s is not authorized for access. Add the host to Paramiko/SSH\'s known_hosts file.' % hostname)
++                    raise x2go_exceptions.X2goHostKeyException('Invalid host %s is not authorized for access. Add the host to Paramiko/SSH\'s known_hosts file.' % self.get_hostname())
+         else:
+-            raise x2go_exceptions.SSHException('Policy has collected host key information on %s for further introspection' % hostname)
++            raise x2go_exceptions.SSHException('Policy has collected host key information on %s for further introspection' % self.get_hostname())
+ 
+     def get_client(self):
+         &quot;&quot;&quot;\
+@@ -129,7 +141,7 @@ class X2goInteractiveAddPolicy(paramiko.MissingHostKeyPolicy):
+         @rtype: C{str}
+ 
+         &quot;&quot;&quot;
+-        return self.hostname
++        return self.fake_hostname or self.hostname
+ 
+     def get_hostname_name(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/client.py b/x2go/client.py
+index 9471cd2..f35961d 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -454,7 +454,7 @@ class X2goClient(object):
+         else:
+             self.logger('HOOK_printaction_error: incoming print job ,, %s'' caused error: %s' % (filename, err_msg), loglevel=log.loglevel_ERROR)
+ 
+-    def HOOK_check_host_dialog(self, profile_name='UNKNOWN', host='UNKNOWN', port=22, fingerprint='no fingerprint', fingerprint_type='RSA'):
++    def HOOK_check_host_dialog(self, profile_name='UNKNOWN', host='UNKNOWN', port=22, fingerprint='no fingerprint', fingerprint_type='UNKNOWN'):
+         &quot;&quot;&quot;\
+         HOOK method: called if a host check is requested. This hook has to either return C{True} (default) or C{False}.
+ 
+diff --git a/x2go/session.py b/x2go/session.py
+index bca32ec..43c9256 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -544,7 +544,7 @@ class X2goSession(object):
+         else:
+             self.logger('HOOK_sshfs_not_available: the remote X2Go server (%s) denies SSHFS access for session %s. This will result in client-side folder sharing, printing and the MIME box feature being unavailable' % (self.profile_name, self.session_name), loglevel=log.loglevel_WARN)
+ 
+-    def HOOK_check_host_dialog(self, host, port, fingerprint='no fingerprint', fingerprint_type='RSA'):
++    def HOOK_check_host_dialog(self, host, port, fingerprint='no fingerprint', fingerprint_type='UNKNOWN'):
+         &quot;&quot;&quot;\
+         HOOK method: called if a host check is requested. This hook has to either return C{True} (default) or C{False}.
+ 
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index df50f2b..4f66123 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -288,7 +288,6 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         Wraps around a Paramiko/SSH host key check.
+ 
+         &quot;&quot;&quot;
+-        # hostname rewrite for localhost, force to IPv4
+         _hostname = self.hostname
+ 
+         # force into IPv4 for localhost connections
+@@ -298,7 +297,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         _valid = False
+         (_valid, _hostname, _port, _fingerprint, _fingerprint_type) = checkhosts.check_ssh_host_key(self, _hostname, port=self.port)
+         if not _valid and self.session_instance:
+-            _valid = self.session_instance.HOOK_check_host_dialog(_hostname, _port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
++            _valid = self.session_instance.HOOK_check_host_dialog(self.remote_host, self.remote_port, fingerprint=_fingerprint, fingerprint_type=_fingerprint_type)
+         return _valid
+ 
+     def run(self):
+@@ -334,6 +333,16 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         else:
+             raise x2go_exceptions.X2goSSHProxyException('SSH proxy connection could not retrieve an SSH transport')
+ 
++    def get_local_proxy_host(self):
++        &quot;&quot;&quot;\
++        Retrieve the local IP socket address this SSH proxying tunnel is (about to) bind/bound to.
++
++        @return: local IP socket address
++        @rtype: C{int}
++
++        &quot;&quot;&quot;
++        return self.local_host
++
+     def get_local_proxy_port(self):
+         &quot;&quot;&quot;\
+         Retrieve the local IP socket port this SSH proxying tunnel is (about to) bind/bound to.
+@@ -344,6 +353,26 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         &quot;&quot;&quot;
+         return self.local_port
+ 
++    def get_remote_host(self):
++        &quot;&quot;&quot;\
++        Retrieve the remote IP socket address at the remote end of the SSH proxying tunnel.
++
++        @return: local IP socket address
++        @rtype: C{int}
++
++        &quot;&quot;&quot;
++        return self.remote_host
++
++    def get_remote_port(self):
++        &quot;&quot;&quot;\
++        Retrieve the remote IP socket port of the target system's SSH daemon.
++
++        @return: remote SSH port
++        @rtype: C{int}
++
++        &quot;&quot;&quot;
++        return self.remote_port
++
+     def stop_thread(self):
+         &quot;&quot;&quot;\
+         Tear down the SSH proxying tunnel.
+diff --git a/x2go/utils.py b/x2go/utils.py
+index 5cbafa4..f621ece 100644
+--- a/x2go/utils.py
++++ b/x2go/utils.py
+@@ -205,8 +205,6 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+             'sshproxyport': 'sshproxy_port',
+             'sshproxyuser': 'sshproxy_user',
+             'sshproxykeyfile': 'sshproxy_key_filename',
+-            # FIXME: remove this next option...
+-            'sshproxytunnel': 'sshproxy_tunnel',
+             'sessiontitle': 'session_title',
+             'setsessiontitle': 'set_session_title',
+             'published': 'published_applications',
+@@ -329,11 +327,13 @@ def _convert_SessionProfileOptions_2_SessionParams(options):
+         _params['sshproxy_key_filename'] = _params['key_filename']
+     del _params['sshproxysamepass']
+ 
+-    #if options['sshproxytunnel']:
+-    #    del _params['sshproxytunnel']
+-    #
+-    #if _params['use_sshproxy']:
+-    #    _params['sshproxy_tunnel'] = 'localhost:44444:%s:%s' % (_params['server'], _params['port'])
++    if _params['use_sshproxy']:
++        _params['server'] = options['sshproxytunnel'].split(&quot;:&quot;)[-2]
++        _params['port'] = options['sshproxytunnel'].split(&quot;:&quot;)[-1]
++        _params['sshproxy_tunnel'] = 'localhost:44444:%s:%s' % (_params['server'], _params['port'])
++
++    if options['sshproxytunnel']:
++        del _params['sshproxytunnel']
+ 
+     # currently known but ignored in Python X2go
+     _ignored_options = [
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="014306.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-15-gf787a06
+</A></li>
+	<LI>Next message: <A HREF="014321.html">[X2Go-Commits] python-x2go.git - twofactorauth (branch) updated:	0.2.1.1-14-ga986b60
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14308">[ date ]</a>
+              <a href="thread.html#14308">[ thread ]</a>
+              <a href="subject.html#14308">[ subject ]</a>
+              <a href="author.html#14308">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,758 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0909da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f&In-Reply-To=%3C20140108142929.127675DC9F%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025500.html">
+   <LINK REL="Next"  HREF="024271.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%0909da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f&In-Reply-To=%3C20140108142929.127675DC9F%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:28 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025500.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-63-ge5a1796
+</A></li>
+        <LI>Next message: <A HREF="024271.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-73-gda000f3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24254">[ date ]</a>
+              <a href="thread.html#24254">[ thread ]</a>
+              <a href="subject.html#24254">[ subject ]</a>
+              <a href="author.html#24254">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  09da9d4f9d045aa59deeef4eb2c6f78ed75c5d7f (commit)
+      from  1b39b26c782a431bea3dc99d3dab61edceb253cc (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |    6 +++++-
+ x2go/client.py                   |   29 ++++++++++++++++++--------
+ x2go/registry.py                 |   42 +++++++++++++++++++++++---------------
+ x2go/session.py                  |    6 ++++--
+ 4 files changed, 55 insertions(+), 28 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 4e67d88..b7bbbd8 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -472,7 +472,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                 try:
+                     _listsessions = self._list_backend(_stdout_read, info_backend=self._info_backend).sessions
+                     _success = True
+-                except:
++                except KeyError:
++                    gevent.sleep(1)
++                except IndexError:
++                    gevent.sleep(1)
++                except ValueError:
+                     gevent.sleep(1)
+ 
+             # update internal variables when list_sessions() is called
+diff --git a/x2go/client.py b/x2go/client.py
+index 3e247d4..a959342 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1265,7 +1265,7 @@ class X2goClient(object):
+             _session_list = self.listsessions_cache.list_sessions(session_uuid)
+ 
+         if update_sessionregistry:
+-            self.session_registry.update_status(profile_name=self.get_session_profile_name(session_uuid), session_list=_session_list)
++            self.update_sessionregistry_status_by_profile_name(profile_name=self.get_session_profile_name(session_uuid), session_list=_session_list)
+ 
+         if register_sessions:
+             self.session_registry.register_available_server_sessions(profile_name=self.get_session_profile_name(session_uuid),
+@@ -1415,18 +1415,24 @@ class X2goClient(object):
+             self.__update_cache_all_profiles()
+     __disconnect_profile = disconnect_profile
+ 
+-    def update_sessionregistry_status_by_profile_name(self, profile_name):
++    def update_sessionregistry_status_by_profile_name(self, profile_name, session_list=None):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+         session_uuids = self.client_registered_sessions_of_profile_name(profile_name)
+         if session_uuids:
+-            session_list = self.list_sessions(session_uuids[0],
+-                                              update_sessionregistry=False, 
+-                                              register_sessions=False,
+-                                             )
+-            self.session_registry.update_status(profile_name=profile_name, session_list=session_list)
++            if session_list is None:
++                session_list = self.list_sessions(session_uuids[0],
++                                                  update_sessionregistry=False, 
++                                                  register_sessions=False,
++                                                 )
++            try:
++                self.session_registry.update_status(profile_name=profile_name, session_list=session_list)
++            except x2go_exceptions.X2goControlSessionException:
++                self.disconnect_profile(profile_name)
++                self.HOOK_on_control_session_death(profile_name)
++                return False
+     __update_sessionregistry_status_by_profile_name = update_sessionregistry_status_by_profile_name
+ 
+ 
+@@ -1459,8 +1465,8 @@ class X2goClient(object):
+             try:
+                 self.listsessions_cache.update(profile_name)
+             except x2go_exceptions.X2goControlSessionException:
+-                self.HOOK_on_control_session_death(profile_name)
+                 self.disconnect_profile(profile_name)
++                self.HOOK_on_control_session_death(profile_name)
+                 return False
+     __update_cache_by_profile_name = update_cache_by_profile_name
+ 
+@@ -1495,7 +1501,12 @@ class X2goClient(object):
+                                               update_sessionregistry=False,
+                                               register_sessions=False,
+                                              )
+-            self.session_registry.register_available_server_sessions(profile_name, session_list=session_list)
++            try:
++                self.session_registry.register_available_server_sessions(profile_name, session_list=session_list)
++            except x2go_exceptions.X2goControlSessionException:
++                self.disconnect_profile(profile_name)
++                self.HOOK_on_control_session_death(profile_name)
++                return False
+     __register_available_server_sessions_by_profile_name = register_available_server_sessions_by_profile_name
+ 
+     def register_available_server_sessions_by_session_uuid(self, session_uuid):
+diff --git a/x2go/registry.py b/x2go/registry.py
+index daf2bb8..fd40b39 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -369,53 +369,59 @@ class X2goSessionRegistry(object):
+         else:
+             raise X2goSessionException('no session of name ,,%s\'\' registered' % session_name)
+ 
+-    def _sessionsWithState(self, state, return_objects=True, return_profile_names=False):
++    def _sessionsWithState(self, state, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         sessions = [ ts for ts in self.registry.values() if eval('ts.%s' % state) ]
+-        if return_objects:
+-            return sessions
+-        elif return_profile_names:
++        if return_profile_names:
+             profile_names = []
+             for session in sessions:
+                 if session.profile_name not in profile_names:
+                     profile_names.append(session.profile_name)
+             return profile_names
++        elif return_profile_ids:
++            profile_ids = []
++            for session in sessions:
++                if session.profile_id not in profile_ids:
++                    profile_ids.append(session.profile_id)
++            return profile_ids
++        elif return_objects:
++            return sessions
+         else:
+             return [s.get_uuid() for s in sessions ]
+ 
+-    def connected_sessions(self, return_objects=True, return_profile_names=False):
++    def connected_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('connected', return_objects=return_objects, return_profile_names=return_profile_names)
++        return self._sessionsWithState('connected', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
+ 
+-    def virgin_sessions(self, return_objects=True, return_profile_names=False):
++    def virgin_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names)
++        return self._sessionsWithState('virgin', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
+ 
+-    def running_sessions(self, return_objects=True, return_profile_names=False):
++    def running_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('running', return_objects=return_objects, return_profile_names=return_profile_names)
++        return self._sessionsWithState('running', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
+ 
+-    def suspended_sessions(self, return_objects=True, return_profile_names=False):
++    def suspended_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('suspended', return_objects=return_objects, return_profile_names=return_profile_names)
++        return self._sessionsWithState('suspended', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
+ 
+-    def terminated_sessions(self, return_objects=True, return_profile_names=False):
++    def terminated_sessions(self, return_objects=True, return_profile_names=False, return_profile_ids=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return self._sessionsWithState('terminated', return_objects=return_objects, return_profile_names=return_profile_names)
++        return self._sessionsWithState('terminated', return_objects=return_objects, return_profile_names=return_profile_names, return_profile_ids=return_profile_ids)
+ 
+     @property
+     def has_running_sessions(self):
+@@ -526,9 +532,13 @@ class X2goSessionRegistry(object):
+         return [ c for c in self.control_sessions.values() if c.is_connected() ]
+ 
+     @property
+-    def connected_profiles(self):
++    def connected_profiles(self, use_paramiko=False):
+         &quot;&quot;&quot;\
+         STILL UNDOCUMENTED
+ 
+         &quot;&quot;&quot;
+-        return [ p for p in self.control_sessions.keys() if self.control_sessions[p].is_connected() ]
++        if use_paramiko:
++            return [ p for p in self.control_sessions.keys() if self.control_sessions[p].is_connected() ]
++        else:
++            return self.connected_sessions(return_profile_ids=True)
++
+diff --git a/x2go/session.py b/x2go/session.py
+index 8668fc9..5ff6cef 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -460,13 +460,15 @@ class X2goSession(object):
+             try:
+                 session_list = self.control_session.list_sessions()
+                 self.connected = True
+-            except X2goControlSessionException:
++            except X2goControlSessionException, e:
+                 self.connected = False
+                 self.running = None
+                 self.suspended = None
+                 self.terminated = None
++                raise e
+         try:
+-            _session_info = session_list[self.get_session_name()]
++            _session_name = self.get_session_name()
++            _session_info = session_list[_session_name]
+             self.running = _session_info.is_running()
+             self.suspended = _session_info.is_suspended()
+             if not self.virgin:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025500.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-63-ge5a1796
+</A></li>
+	<LI>Next message: <A HREF="024271.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-73-gda000f3
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24254">[ date ]</a>
+              <a href="thread.html#24254">[ thread ]</a>
+              <a href="subject.html#24254">[ subject ]</a>
+              <a href="author.html#24254">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

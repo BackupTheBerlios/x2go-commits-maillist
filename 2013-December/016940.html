@@ -1,0 +1,212 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-16-g24561cc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-December/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-16-g24561cc&In-Reply-To=%3C20131217144330.9D2505DB22%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="016939.html">
+   <LINK REL="Next"  HREF="016941.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-16-g24561cc</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2goclient.git%20-%20build-main%20%28branch%29%20updated%3A%0A%094.0.1.1-16-g24561cc&In-Reply-To=%3C20131217144330.9D2505DB22%40ymir%3E"
+       TITLE="[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-16-g24561cc">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Dec 17 15:43:30 CET 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="016939.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-10-g8cade0e
+</A></li>
+        <LI>Next message: <A HREF="016941.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-11-gcf33d55
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16940">[ date ]</a>
+              <a href="thread.html#16940">[ thread ]</a>
+              <a href="subject.html#16940">[ subject ]</a>
+              <a href="author.html#16940">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  24561ccdeb367345797ead5db7ad5305b962135d (commit)
+      from  ec8bb38e02b8c4c1be428c6690fa45d35c13b26e (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    3 +++
+ onmainwindow.cpp |   51 ++++++++++++++++++++++++++++++++++++++-------------
+ onmainwindow.h   |    1 +
+ 3 files changed, 42 insertions(+), 13 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index 09fc5e0..a772355 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -20,6 +20,9 @@ x2goclient (4.0.1.2-0~x2go2) UNRELEASED; urgency=low
+   * New upstream versino (4.0.1.2):
+     - Strip whitespaces off of user name, host name and other
+       strings when loading / saving session profiles.(Fixes: #315).
++    - New option --tray-icon. Force showing the tray icon, even for
++      hidden sessions. Also allow creation of .desktop files with
++      --tray-icon optionally being enabled. (Fixes: #316).
+ 
+   [ Oleksandr Shneyder ]
+   * New upstream version (4.0.1.2):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index d0a3108..7811540 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -101,6 +101,7 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     lastSession=0l;
+     changeBrokerPass=false;
+     resumeAfterSuspending=false;
++    forceToShowTrayicon=false;
+ 
+     appSeparator=0;
+     config.brokerNoAuth=false;
+@@ -1099,7 +1100,7 @@ void ONMainWindow::trayIconInit()
+             trayIcon-&gt;setToolTip(tr(&quot;Left mouse button to hide/restore - Right mouse button to display context menu&quot;));
+         }
+ 
+-        if (!startHidden)
++        if (!startHidden | forceToShowTrayicon)
+         {
+             trayIcon-&gt;show();
+             plugAppsInTray();
+@@ -2034,17 +2035,29 @@ void ONMainWindow::slotEdit ( SessionButton* bt )
+ 
+ void ONMainWindow::slotCreateDesktopIcon ( SessionButton* bt )
+ {
+-    bool crHidden= ( QMessageBox::question (
+-                         this,
+-                         tr ( &quot;Create session icon on desktop&quot; ),
+-                         tr ( &quot;Desktop icons can be configured &quot;
+-                              &quot;not to show x2goclient (hidden mode). &quot;
+-                              &quot;If you like to use this feature you'll &quot;
+-                              &quot;need to configure login by a gpg key &quot;
+-                              &quot;or gpg smart card.\n\n&quot;
+-                              &quot;Use x2goclient hidden mode?&quot; ),
+-                         QMessageBox::Yes|QMessageBox::No ) ==
+-                     QMessageBox::Yes );
++    QMessageBox messageBox(QMessageBox::Question,
++                           tr ( &quot;Create session icon on desktop&quot; ),
++                           tr ( &quot;Desktop icons can be configured &quot;
++                                &quot;not to show x2goclient (hidden mode). &quot;
++                                &quot;If you like to use this feature you'll &quot;
++                                &quot;need to configure login by a gpg key &quot;
++                                &quot;or gpg smart card.\n\n&quot;
++                                &quot;Use x2goclient hidden mode?&quot; ),
++                           QMessageBox::Yes|QMessageBox::No,
++                           this);
++
++    //adding a chekbox to know if user want to enable trayicon in hide sessions
++    QCheckBox cbShowTrayIcon(tr(&quot;Show session tray icon when running&quot;));
++    messageBox.layout()-&gt;addWidget(&amp;cbShowTrayIcon);
++    QGridLayout* gridLayout = (QGridLayout*) messageBox.layout();
++    gridLayout-&gt;addWidget(&amp;cbShowTrayIcon, gridLayout-&gt;rowCount(), 0, 1, gridLayout-&gt;columnCount());
++    cbShowTrayIcon.blockSignals(true);
++
++    //getting the result
++    bool crHidden = (messageBox.exec() == QMessageBox::Yes);
++    bool bShowTrayicon = (cbShowTrayIcon.checkState() == Qt::Checked);
++
++
+     X2goSettings st ( &quot;sessions&quot; );
+ 
+     QString name=st.setting()-&gt;value ( bt-&gt;id() +&quot;/name&quot;,
+@@ -2073,6 +2086,10 @@ void ONMainWindow::slotCreateDesktopIcon ( SessionButton* bt )
+     QString cmd=&quot;x2goclient&quot;;
+     if ( crHidden )
+         cmd=&quot;x2goclient --hide&quot;;
++
++    if (bShowTrayicon)
++        cmd += &quot; --tray-icon&quot;;
++
+     QTextStream out ( &amp;file );
+     out &lt;&lt; &quot;[Desktop Entry]\n&quot;&lt;&lt;
+         &quot;Exec=&quot;&lt;&lt;cmd&lt;&lt;&quot; --sessionid=&quot;&lt;&lt;bt-&gt;id() &lt;&lt;&quot;\n&quot;&lt;&lt;
+@@ -6474,6 +6491,12 @@ bool ONMainWindow::parseParameter ( QString param )
+         return true;
+     }
+ 
++    //force to show trayicon
++    if (param == &quot;--tray-icon&quot;)
++    {
++        forceToShowTrayicon = true;
++        return true;
++    }
+ 
+     QString setting,value;
+     QStringList vals=param.split ( &quot;=&quot; );
+@@ -6980,7 +7003,9 @@ void ONMainWindow::showHelp()
+         &quot;--set-kbd=&lt;0|1&gt;\t\t\t overwrite current keyboard settings\n&quot;
+         &quot;--autostart=&lt;app&gt; \t\t launch \&quot;app\&quot; by session start in \&quot;published &quot;
+         &quot;applications\&quot; mode\n&quot;
+-        &quot;--session-conf=&lt;file&gt;\t\t path to alternative session config\n&quot;;
++        &quot;--session-conf=&lt;file&gt;\t\t path to alternative session config\n&quot;
++        &quot;--tray-icon\t\t force to show session trayicon\n&quot;;
++
+     qCritical ( &quot;%s&quot;,helpMsg.toLocal8Bit().data() );
+     if (!startHidden)
+     {
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 7e1d02c..7e51291 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -595,6 +595,7 @@ private:
+     QList&lt;serv&gt; x2goServers;
+     QList&lt;Application&gt; applications;
+     QList&lt;sshKey&gt; cmdSshKeys;
++    bool forceToShowTrayicon; //true if --tray-icon passed in command line
+ 
+     QPushButton* bSusp;
+     QPushButton* bTerm;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="016939.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-10-g8cade0e
+</A></li>
+	<LI>Next message: <A HREF="016941.html">[X2Go-Commits] x2goclient.git - build-main (branch) updated:	4.0.1.1-11-gcf33d55
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#16940">[ date ]</a>
+              <a href="thread.html#16940">[ thread ]</a>
+              <a href="subject.html#16940">[ subject ]</a>
+              <a href="author.html#16940">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

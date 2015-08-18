@@ -1,0 +1,480 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-39-g1c5e41f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2013-May/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-39-g1c5e41f&In-Reply-To=%3C20130519110446.89EE35DB27%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="007494.html">
+   <LINK REL="Next"  HREF="007509.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-39-g1c5e41f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20x2gobroker.git%20-%20build-main%20%28branch%29%20updated%3A%0A%090.0.0.1-39-g1c5e41f&In-Reply-To=%3C20130519110446.89EE35DB27%40ymir%3E"
+       TITLE="[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-39-g1c5e41f">git-admin at x2go.org
+       </A><BR>
+    <I>Sun May 19 13:04:46 CEST 2013</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="007494.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-41-g9ed3a78
+</A></li>
+        <LI>Next message: <A HREF="007509.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-43-g7009b45
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7502">[ date ]</a>
+              <a href="thread.html#7502">[ thread ]</a>
+              <a href="subject.html#7502">[ subject ]</a>
+              <a href="author.html#7502">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-main has been updated
+       via  1c5e41f4849a2c8273eb96bf09b5c9993a9c7a3f (commit)
+      from  769d5c17f51f20e91f8bff1fb1830fba2ade4e05 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ etc/x2gobroker.conf               |   45 ++++++++++++++
+ lib/x2gobroker-agent.pl           |   31 +++++++---
+ x2gobroker/agent.py               |  122 +++++++++++++++++++++++++++++--------
+ x2gobroker/brokers/base_broker.py |   49 +++++++++++++--
+ x2gobroker/defaults.py            |    2 +
+ 5 files changed, 211 insertions(+), 38 deletions(-)
+
+The diff of changes is:
+diff --git a/etc/x2gobroker.conf b/etc/x2gobroker.conf
+index 83f6bd8..b512cf4 100644
+--- a/etc/x2gobroker.conf
++++ b/etc/x2gobroker.conf
+@@ -90,6 +90,50 @@
+ # CPU intensive on the X2Go Broker server.
+ #ignore-primary-group-memberships = true
+ 
++# default X2Go Broker Agent query mode:
++#
++# The X2Go Broker Agent is needed for multi-server sites configured for
++# load balancing. Multi-server sites require a setup that uses the
++# PostgreSQL X2Go session DB backend. The X2Go Broker Agent has to be installed
++# on the local system (mode: LOCAL) or on all X2Go Servers (mode: SSH) in a
++# multi-server farm.
++#
++# So, there are two query modes for the X2GO Broker Agent: LOCAL and SSH.
++#
++#    LOCAL - This LOCAL mode only works for _one_ configured multi-server farm.
++#            If the locally installed X2Go Session Broker is to server many different
++#            multi-server farms, then the LOCAL mode will not work!!!
++#
++#            How it works: Assume that the local system has an X2Go Broker Agent
++#            that knows about the multi-server setup. This means: X2Go Server has
++#            to be installed locally and the X2Go Server has to be configured to
++#            use the multi-server farms PostgreSQL session DB backend.
++#
++#            The local system that is running the broker does not necessarily have
++#            to be a real application server. It only has to be aware of running/suspended
++#            sessions within the X2Go multi-server farm setup.
++#
++#            A typical use-case is X2Go on top of a Debian Edu Terminal-Server farm:
++#
++#              TJENER -&gt; PostgreSQL DB, X2Go Server, X2Go Session Broker + Broker Agent
++#              TS01 - TS0X -&gt; X2Go Server configured to use the PostgreSQL DB on TJENER
++#
++#    SSH   - The more generic approach, but also more complex. It allows that the broker
++#            on this system may serve for many different X2Go Server multi-server setups.
++#
++#            With the SSH agent query mode, the X2Go Session Broker will query one of the X2Go
++#            Servers in the targeted multi-server setup (through SSH). The SSH authentication
++#            is done by a system user account (normally UID=x2gobroker) and SSH pub/priv
++#            key authentication has to be configured to make this work.
++#
++#            All X2Go Servers in a multi-server farm need the X2Go Broker Agent installed,
++#            whereas this local system running the X2Go Session Broker does not need a
++#            local X2Go Broker Agent at all.
++
++# The agent query mode can be configured on a per-broker-backend basis, the below value is
++# the default.
++#default-agent-query-mode=LOCAL
++
+ ###
+ ### BACKEND section
+ ###
+@@ -136,3 +180,4 @@
+ #host-search-filter = (&amp;(objectClass=ipHost)(serial=X2GoServer)(cn=*))
+ #group-search-filter = (&amp;(objectClass=posifxGroup)(cn=*))
+ #starttls = false
++#agent-query-mode = SSH
+diff --git a/lib/x2gobroker-agent.pl b/lib/x2gobroker-agent.pl
+index 74e0751..481de06 100755
+--- a/lib/x2gobroker-agent.pl
++++ b/lib/x2gobroker-agent.pl
+@@ -98,17 +98,36 @@ if($mode eq 'listsessions')
+ 	exec (&quot;/bin/su - $uid -c \&quot;x2golistsessions --all-servers\&quot;&quot;);
+ }
+ 
+-if($mode eq 'findbestserver_by_sessionstats') || ($mode eq 'findbestserver')
++if( ($mode eq 'findbusyservers_by_sessionstats') || ($mode eq 'findbusyservers'))
+ {
++
++	# Normally the session broker setup knows about all servers,
++	# make sure your configuration of X2Go Session Broker is correct and
++	# lists all available servers.
++
++	# The findbusyservers algorithm only returns servers that are currently
++	# in use (i.e. have running or suspended sessions on them). So the
++	# result may be empty or contain a server list not containing all
++	# available servers.
++
++	# The logic of findbusyservers is this, then:
++	#   1. if no server is returned, any of the configured servers is best server
++	#   2. if some servers are returned, a best server is one that is not returned
++	#   3. if all configured servers are returned, than evaluate the usage value
++	#      (e.g. 90:server1, 20:server2, 10:server3 -&gt; best server is server3)
++
++	# The above interpretation has to be handled by the broker implementation
++	# calling &#187;x2gobroker-agent findbusyservers&#171;.
++
+ 	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
+ 	print &quot;OK\n&quot;;
+ 	my $session_list = `/bin/su - -c \&quot;x2golistsessions_root --all-servers\&quot;`;
+-	my $avail_servers = `/bin/su - $uid -c \&quot;x2gogetservers\&quot;`;
++	my $busy_servers = `/bin/su - $uid -c \&quot;x2gogetservers\&quot;`;
+ 	my $amount_sessions = 0;
+ 
+ 	# initialize server_load hash
+ 	my %server_load = ();
+-	foreach (split('\n', $avail_servers))
++	foreach (split('\n', $busy_servers))
+ 	{
+ 		$server_load{$_} = 0;
+ 	}
+@@ -125,17 +144,13 @@ if($mode eq 'findbestserver_by_sessionstats') || ($mode eq 'findbestserver')
+ 	# render the output result
+ 	my @result;
+ 	for my $hostname ( keys %server_load ) {
+-		my $available = 100-$server_load{$hostname}/$amount_sessions*100;
+-		if ($available eq 0) {
+-			$available = 100;
+-		}
++		my $available = $server_load{$hostname}/$amount_sessions*100;
+ 		push @result, sprintf '%1$d:%2$s', $available, $hostname;
+ 	}
+ 	print join('\n', sort @result);
+ 	print &quot;\n&quot;;
+ }
+ 
+-
+ if($mode eq 'getservers')
+ {
+ 	InitX2GoUser($uid, $uidNumber, $gidNumber, $home);
+diff --git a/x2gobroker/agent.py b/x2gobroker/agent.py
+index 81edc04..72e95e3 100644
+--- a/x2gobroker/agent.py
++++ b/x2gobroker/agent.py
+@@ -20,13 +20,16 @@
+ # 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ import subprocess
++import paramiko
+ 
+ # X2Go Broker modules
+ import x2gobroker.defaults
++from x2gobroker.loggers import logger_error
+ 
+-def call_broker_agent(username, mode):
++
++def call_local_broker_agent(username, mode):
+     &quot;&quot;&quot;\
+-    Launch X2Go Broker Agent and process its output.
++    Launch X2Go Broker Agent locally and process its output.
+ 
+     @param username: run the broker agent for this user
+     @type username: C{unicode}
+@@ -40,48 +43,117 @@ def call_broker_agent(username, mode):
+         '{mode}'.format(mode=mode),
+     ]
+ 
+-    subprocess.Popen(cmd_line,
+-                     stdin=None,
+-                     stdout=subprocess.PIPE,
+-                     stderr=subprocess.STDOUT,
+-                     shell=False,
++    agent_process = subprocess.Popen(cmd_line,
++                                     stdin=None,
++                                     stdout=subprocess.PIPE,
++                                     stderr=subprocess.STDOUT,
++                                     shell=False,
+     )
+ 
+-    return subprocess.stdout.read()
++    return agent_process.stdout.read().split('\n')
++
++def call_remote_broker_agent(username, mode, remote_agent):
++    &quot;&quot;&quot;\
++    Launch remote X2Go Broker Agent via SSH and process its output.
++
++    @param username: run the broker agent for this user
++    @type username: C{unicode}
++    @param mode: execution mode of the broker (listsessions, getservers, etc.)
++    @type mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
++
++    &quot;&quot;&quot;
++    cmd_line = [
++        '{x2gobroker_agent_binary}'.format(x2gobroker_agent_binary=x2gobroker.defaults.X2GOBROKER_AGENT_CMD),
++        '{username}'.format(username=username),
++        '{mode}'.format(mode=mode),
++    ]
+ 
+-def list_sessions(username):
++    remote_username = x2gobroker.defaults.X2GOBROKER_USER
++    remote_hostname = remote_agent[u'hostname']
++    remote_port = int(remote_agent[u'port'])
++
++    # now, connect and use paramiko Client to negotiate SSH2 across the connection
++    try:
++        client = paramiko.SSHClient()
++        client.load_system_host_keys()
++        client.set_missing_host_key_policy(paramiko.WarningPolicy)
++        client.connect(remote_hostname, remote_port, remote_username, look_for_keys=True, allow_agent=True)
++
++        ssh_transport = client.get_transport()
++        if ssh_transport.is_authenticated():
++            cmd = cmd_line.join(' ')
++            cmd = 'sh -c \&quot;{cmd}\&quot;'.format(cmd=cmd)
++            (stdin, stdout, stderr) = client.exec_command(cmd)
++        client.close()
++        return stdout.read().split('\n')
++    except paramiko.SSHException:
++        logger_error.error('could not connect to remote X2Go Broker Agent (user: {user}, hostname: {hostname}, port: {port}'.format(user=remote_username, hostname=remote_hostname, port=remote_port))
++
++def list_sessions(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+     Query X2Go Broker Agent for a session list for a given username.
+ 
+-    @param username: username for who to query a session list
++    @param username: run the query on behalf of this username
+     @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
+ 
+     &quot;&quot;&quot;
+-    return call_broker_agent(username, mode='listsessions')
++    if query_mode == 'LOCAL':
++        return call_local_broker_agent(username, mode='listsessions')
++    else:
++        return call_remote_broker_agent(username, mode='listsessions', remote_agent=remote_agent)
+ 
+-def find_best_server(username=None):
++def find_busy_servers(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+-    Query X2Go Broker Agent for the best server for the given user.
+-    In many cases the username does not have an effect on the 
+-    detection of an optimal server.
++    Query X2Go Broker Agent for a list of  servers with running
++    and/or suspended sessions and a percentage that tells about
++    the busy-state of the server.
+ 
+-    @param username: username for who to query a session list
++    The result is independent from the username given.
++
++    @param username: run the query on behalf of this username
+     @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
+ 
+     &quot;&quot;&quot;
+-    server_list = call_broker_agent(username, mode='findbestserver')
+-    server_list.sort(reverse=True)
+-    return server_list[0].split(':')[1]
++    if query_mode == 'LOCAL':
++        server_list = call_local_broker_agent(username, mode='findbusyservers')
++    else:
++        server_list = call_remote_broker_agent(username, mode='findbusyservers', remote_agent=remote_agent)
++
++    server_usage = {}
++
++    if server_list:
++        for server_item in server_list.split('\n'):
++            usage, server = line.split(':')
++            server_usage.update({ server: int(usage) })
+ 
+-def get_servers(username=None):
++    return server_usage
++
++def get_servers(username, query_mode='LOCAL', remote_agent=None):
+     &quot;&quot;&quot;\
+-    Query X2Go Broker Agent for the list of available servers
+-    for the given user. In many cases the username does not
+-    have an effect on the list of available servers.
++    Query X2Go Broker Agent for the list of currently used servers.
++
++    The result is independent from the username given.
+ 
+-    @param username: username for who to query a session list
++    @param username: run the query on behalf of this username
+     @type username: C{unicode}
++    @param query_mode: query mode used when calling X2Go Broker Agent (C{LOCAL} or C{SSH})
++    @type query_mode: C{unicode}
++    @param remote_agent: information about the remote agent that is to be called.
++    @type remote_agent: C{dict}
+ 
+     &quot;&quot;&quot;
+-    return call_broker_agent(username, mode='getservers')
++    if query_mode == 'LOCAL':
++        return call_local_broker_agent(username, mode='getservers')
++    else:
++        return call_local_broker_agent(username, mode='getservers', remote_agent=remote_agent)
+ 
+diff --git a/x2gobroker/brokers/base_broker.py b/x2gobroker/brokers/base_broker.py
+index be8b4e8..1f71430 100644
+--- a/x2gobroker/brokers/base_broker.py
++++ b/x2gobroker/brokers/base_broker.py
+@@ -421,10 +421,31 @@ class X2GoBroker(object):
+ 
+         if self.config.has_value(self.backend_name, 'auth-mech'):
+             _auth_mech = self.config.get_value(self.backend_name, 'auth-mech').lower()
+-            logger_broker.debug('base_broker.X2GoBroker.get_authentication_mechanism(): found auth-mech in backend config section &#187;{backend}&#171;: {value}'.format(backend=self.backend_name, value=_auth_mech))
++            logger_broker.debug('base_broker.X2GoBroker.get_authentication_mechanism(): found auth-mech in backend config section &#187;{backend}&#171;: {value}. This one has precendence over the default value.'.format(backend=self.backend_name, value=_auth_mech))
+ 
+         return unicode(_auth_mech) or unicode(_default_auth_mech)
+ 
++    def get_agent_query_mode(self):
++        &quot;&quot;&quot;\
++        Get the agent query mode (LOCAL or SSH, normally) that is configured for this
++        X2Go Session Broker instance.
++
++        @return: agent query mode
++        @rtype: C{unicode}
++
++        &quot;&quot;&quot;
++        _default_agent_query_mode = &quot;LOCAL&quot;
++        _agent_query_mode = &quot;&quot;
++        if self.config.has_value('global', 'default-agent-query-mode'):
++            _default_agent_query_mode = self.config.get_value('global', 'default-agent-query-mode').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_agent_query_mode(): found default-agent-query-mode in global config section: {value}'.format(value=_default_agent_query_mode))
++
++        if self.config.has_value(self.backend_name, 'agent-query-mode'):
++            _agent_query_mode = self.config.get_value(self.backend_name, 'agent-query-mode').lower()
++            logger_broker.debug('base_broker.X2GoBroker.get_agent_query_mode(): found agent-query-mode in backend config section &#187;{backend}&#171;: {value}. This one has precendence over the default value.'.format(backend=self.backend_name, value=_agent_query_mode))
++
++        return unicode(_agent_query_mode) or unicode(_default_agent_query_mode)
++
+     def get_userdb_service(self):
+         &quot;&quot;&quot;\
+         Get the name of the backend being used for retrieving user information from the
+@@ -694,7 +715,7 @@ class X2GoBroker(object):
+ 
+         return list_of_profiles
+ 
+-    def select_session(self, profile_id, username=None):
++    def select_session(self, profile_id, username):
+         &quot;&quot;&quot;\
+         Start/resume a session by selecting a profile name offered by the X2Go client.
+ 
+@@ -711,11 +732,29 @@ class X2GoBroker(object):
+ 
+         # if we have more than one server, pick one server randomly for X2Go Broker Agent queries
+         server_list = profile[u'host']
+-        random.shuffle(server_list)
+-        agent_query_server = server_list[0]
++        agent_query_mode = self.get_agent_query_mode()
+ 
+         if len(server_list) &gt;= 2:
+-            best_server = x2gobroker.agent.find_best_server()
++
++            remote_agent = None
++            if agent_query_mode == 'SSH':
++                random.shuffle(server_list)
++                remote_agent_server = server_list[0]
++                remote_agent_port = profile[u'sshport']
++                remote_agent = {u'hostname': remote_agent_server, u'port': remote_agent_port, }
++
++            busy_servers = x2gobroker.agent.find_busy_servers(username=username, query_mode=agent_query_mode, remote_agent = remote_agent)
++
++            for server in server_list:
++                if server not in busy_servers.keys():
++                    busy_servers[server] = 0
++
++            busy_server_list = [ (load, server) for server, load in busy_servers.items() ]
++            busy_server_list.sort()
++            print busy_server_list
++
++            best_server = busy_server_list[0][1]
++
+         else:
+             best_server = server_list[0]
+ 
+diff --git a/x2gobroker/defaults.py b/x2gobroker/defaults.py
+index 720fa94..e777142 100644
+--- a/x2gobroker/defaults.py
++++ b/x2gobroker/defaults.py
+@@ -109,6 +109,7 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'default-user-db': u'libnss',
+         u'default-group-db': u'libnss',
+         u'ignore-primary-group-memberships': True,
++        u'default-agent-query-mode': u'LOCAL',
+     },
+     'zeroconf': {
+         u'enable': True,
+@@ -135,6 +136,7 @@ X2GOBROKER_CONFIG_DEFAULTS = {
+         u'host-search-filter': u'(&amp;(objectClass=ipHost)(serial=X2GoServer)(cn=*))',
+         u'group-search-filter': u'(&amp;(objectClass=posifxGroup)(cn=*))',
+         u'starttls': False,
++        u'agent-query-mode': u'SSH',
+     },
+ }
+ 
+
+
+hooks/post-receive
+-- 
+x2gobroker.git (HTTP(S) Session broker for X2Go)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2gobroker.git&quot; (HTTP(S) Session broker for X2Go).
+
+</PRE>
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="007494.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-41-g9ed3a78
+</A></li>
+	<LI>Next message: <A HREF="007509.html">[X2Go-Commits] x2gobroker.git - build-main (branch) updated:	0.0.0.1-43-g7009b45
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7502">[ date ]</a>
+              <a href="thread.html#7502">[ thread ]</a>
+              <a href="subject.html#7502">[ subject ]</a>
+              <a href="author.html#7502">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,291 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.0-7-g4311309
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-February/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.1.0-7-g4311309&In-Reply-To=%3C20120224103742.964425DB17%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002381.html">
+   <LINK REL="Next"  HREF="002383.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.0-7-g4311309</H1>
+    <B>X2go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20x2goclient.git%20-%20master%20%28branch%29%20updated%3A%0A%093.99.1.0-7-g4311309&In-Reply-To=%3C20120224103742.964425DB17%40ymir%3E"
+       TITLE="[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.0-7-g4311309">git-admin at x2go.org
+       </A><BR>
+    <I>Fri Feb 24 11:37:42 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002381.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-79-g614c2ab
+</A></li>
+        <LI>Next message: <A HREF="002383.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.0-7-g236d841
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2382">[ date ]</a>
+              <a href="thread.html#2382">[ thread ]</a>
+              <a href="subject.html#2382">[ subject ]</a>
+              <a href="author.html#2382">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  43113094153d30ac676912cad7cf06ddb59c6cad (commit)
+      from  0cf7b36b26b81dd2bbb650474ee8af71f82e2ff1 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 43113094153d30ac676912cad7cf06ddb59c6cad
+Author: Oleksandr Shneyder &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">oleksandr.shneyder at treuchtlingen.de</A>&gt;
+Date:   Fri Feb 24 11:36:19 2012 +0100
+
+    improved support for use in TCE command line argument --thinclient - running without window manager command line argument --haltbt - button to shutdown the thin client
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog       |    3 ++
+ onmainwindow.cpp       |   60 ++++++++++++++++++++++++++++++++++++++++++++++++
+ onmainwindow.h         |    5 +++-
+ onmainwindow_part3.cpp |   13 ++++++++++
+ png/power-button.png   |  Bin 0 -&gt; 742 bytes
+ resources.rcc          |    1 +
+ 6 files changed, 81 insertions(+), 1 deletions(-)
+ create mode 100644 png/power-button.png
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index b5cacc8..2412314 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -5,6 +5,9 @@ x2goclient (3.99.1.1-0~x2go1) UNRELEASED; urgency=low
+     - not including &lt;netinet/in.h&gt; on Q_OS_WIN platform.
+     - not updating Xinerama configuration in &quot;fullscreen&quot; mode.
+     - command line argument &quot;--xinerama&quot;: use Xinerama by default.
++    - improved support for use in TCE
++      command line argument --thinclient - running without window manager
++      command line argument --haltbt - button to shutdown the thin client
+ 
+   [ Mike Gabriel ]
+   * New upstream version (3.99.1.1):
+diff --git a/onmainwindow.cpp b/onmainwindow.cpp
+index 87f9b94..344c993 100644
+--- a/onmainwindow.cpp
++++ b/onmainwindow.cpp
+@@ -57,6 +57,8 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     extLogin=false;
+     startMaximized=false;
+     startHidden=false;
++    thinMode=false;
++    showHaltBtn=false;
+     defaultUseSound=true;
+     defaultSetKbd=true;
+     defaultSetDPI=false;
+@@ -393,6 +395,28 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+               SLOT ( slotResize ( const QSize ) ) );
+     slotResize ( fr-&gt;size() );
+ 
++
++
++#ifdef Q_OS_LINUX
++    if (thinMode)
++    {
++        QTimer *timer = new QTimer(this);
++        connect(timer, SIGNAL(timeout()), this, SLOT(slotSyncX()));
++        timer-&gt;start(200);
++    }
++#endif
++    if (showHaltBtn)
++    {
++        QPushButton* bHalt=new QPushButton(bgFrame);
++        QPixmap p(&quot;:/png/power-button.png&quot;);
++        bHalt-&gt;setIcon(p);
++        bHalt-&gt;setFocusPolicy(Qt::NoFocus);
++        bHalt-&gt;setFixedSize(32,32);
++        bHalt-&gt;move(10,10);
++        bHalt-&gt;show();
++        connect(bHalt,SIGNAL(clicked()),this, SLOT(slotShutdownThinClient()));
++    }
++
+     if (brokerMode)
+     {
+         broker=new HttpBrokerClient ( this, &amp;config );
+@@ -419,6 +443,12 @@ ONMainWindow::ONMainWindow ( QWidget *parent ) :QMainWindow ( parent )
+     connect( xineramaTimer, SIGNAL(timeout()), this, SLOT(slotConfigXinerama()));
+ 
+     x2goDebug&lt;&lt;&quot;ONMainWindows constructor finished, home Directory is:&quot;&lt;&lt;homeDir&lt;&lt;endl;
++    if (thinMode)
++    {
++        showMaximized();
++        activateWindow();
++        raise();
++    }
+ }
+ 
+ 
+@@ -430,8 +460,38 @@ ONMainWindow::~ONMainWindow()
+     x2goDebug&lt;&lt;&quot;end of ONMainWindow destructor&quot;;
+ }
+ 
++void ONMainWindow::slotShutdownThinClient()
++{
++    QFile file(QDir::homePath()+&quot;/.halt&quot;);
++    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
++        return;
++
++    QTextStream out(&amp;file);
++    out &lt;&lt; &quot;\n&quot;;
++    file.close();
++}
+ 
+ 
++void ONMainWindow::slotSyncX()
++{
++    if (proxyWinId)
++    {
++        if (!isHidden())
++            hide();
++#ifdef Q_OS_LINUX
++        XSync(QX11Info::display(),false);
++#endif
++    }
++    else
++    {
++        if (isHidden())
++        {
++            showMaximized();
++            activateWindow();
++            raise();
++        }
++    }
++}
+ 
+ 
+ void ONMainWindow::installTranslator()
+diff --git a/onmainwindow.h b/onmainwindow.h
+index 5aa76f6..1f2f08f 100644
+--- a/onmainwindow.h
++++ b/onmainwindow.h
+@@ -476,6 +476,7 @@ private:
+     bool changeBrokerPass;
+     bool connTest;
+     bool embedMode;
++    bool thinMode;
+     QString statusString;
+     int defaultLink;
+     int defaultQuality;
+@@ -628,6 +629,7 @@ private:
+     bool proxyWinEmbedded;
+     bool useLdap;
+     bool showToolBar;
++    bool showHaltBtn;
+     bool newSession;
+     bool ldapOnly;
+     bool isScDaemonOk;
+@@ -822,7 +824,6 @@ private slots:
+     void slotChangeBrokerPass();
+     void slotTestConnection();
+     void slotCheckPortableDir();
+-
+     void readUsers();
+     void slotSelectedFromList ( UserButton* user );
+     void slotUnameEntered();
+@@ -837,6 +838,8 @@ private slots:
+     void slotSshConnectionOk();
+     void slotServSshConnectionOk(QString server);
+     void slotChangeKbdLayout(const QString&amp; layout);
++    void slotSyncX();
++    void slotShutdownThinClient();
+ 
+ public slots:
+     void slotConfig();
+diff --git a/onmainwindow_part3.cpp b/onmainwindow_part3.cpp
+index 69a0493..fb6a3ba 100644
+--- a/onmainwindow_part3.cpp
++++ b/onmainwindow_part3.cpp
+@@ -252,6 +252,17 @@ bool ONMainWindow::parseParameter ( QString param )
+         defaultXinerama=true;
+         return true;
+     }
++    if (param == &quot;--thinclient&quot;)
++    {
++      thinMode=true;
++      startMaximized=true;
++      return true;
++    }
++    if (param == &quot;--haltbt&quot;)
++    {
++      showHaltBtn=true;
++      return true;
++    }
+     if ( param==&quot;--hide&quot; )
+     {
+         startHidden=true;
+@@ -701,6 +712,8 @@ void ONMainWindow::showHelp()
+         &quot;--pgp-card\t\t\t use openPGP card authentication\n&quot;
+         &quot;--xinerama\t\t\t use Xinerama by default\n&quot;
+         &quot;--ldap-printing\t\t\t allow client side printing in LDAP mode\n&quot;
++        &quot;--thinclient\t\t\t run without window manager\n&quot;
++        &quot;--haltbt\t\t\t show shutdown button\n&quot;
+         &quot;--add-to-known-hosts\t\t add RSA key fingerprint to &quot;
+         &quot;.ssh/known_hosts\n&quot;
+         &quot;\t\t\t\t if authenticity of server can't be established\n\n&quot;
+diff --git a/png/power-button.png b/png/power-button.png
+new file mode 100644
+index 0000000..03b1d1b
+Binary files /dev/null and b/png/power-button.png differ
+diff --git a/resources.rcc b/resources.rcc
+index e3b6a5e..0b2996e 100644
+--- a/resources.rcc
++++ b/resources.rcc
+@@ -12,6 +12,7 @@
+        &lt;file&gt;png/ico_mini.png&lt;/file&gt;
+        &lt;file&gt;png/sess_ico.png&lt;/file&gt;
+        &lt;file&gt;png/ico_440x180.png&lt;/file&gt;
++       &lt;file&gt;png/power-button.png&lt;/file&gt;
+        &lt;file&gt;icons/128x128/x2go.png&lt;/file&gt;
+        &lt;file&gt;icons/128x128/x2gosession.png&lt;/file&gt;
+        &lt;file&gt;icons/128x128/create_file.png&lt;/file&gt;
+
+
+hooks/post-receive
+-- 
+x2goclient.git (X2Go Client)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;x2goclient.git&quot; (X2Go Client).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002381.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-79-g614c2ab
+</A></li>
+	<LI>Next message: <A HREF="002383.html">[X2go-Commits] x2goclient.git - master (branch) updated:	3.99.1.0-7-g236d841
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2382">[ date ]</a>
+              <a href="thread.html#2382">[ thread ]</a>
+              <a href="subject.html#2382">[ subject ]</a>
+              <a href="author.html#2382">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

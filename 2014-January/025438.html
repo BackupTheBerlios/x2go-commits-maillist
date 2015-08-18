@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-31-gc8d8cf7
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-31-gc8d8cf7&In-Reply-To=%3C20140108142924.30A295DC65%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="024604.html">
+   <LINK REL="Next"  HREF="025450.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-31-gc8d8cf7</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.2.0.10-31-gc8d8cf7&In-Reply-To=%3C20140108142924.30A295DC65%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-31-gc8d8cf7">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:29:24 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="024604.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0eb30cd413a6841108c9c84078c00f5eee1e479c
+</A></li>
+        <LI>Next message: <A HREF="025450.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-33-gb75628b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25438">[ date ]</a>
+              <a href="thread.html#25438">[ thread ]</a>
+              <a href="subject.html#25438">[ subject ]</a>
+              <a href="author.html#25438">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  c8d8cf7147febea9ade38e28f9b828eda7360402 (commit)
+      from  5da7378d77a8bd36de9c78305a785f046163c920 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ x2go/registry.py |   37 ++++++++++++++++++-------------------
+ 2 files changed, 19 insertions(+), 19 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index a8c2abc..a8310b3 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -20,6 +20,7 @@ python-x2go (0.2.1.0-0~x2go1) UNRELEASED; urgency=low
+     - Implement X2Go session profile features ,,autologin'' and
+       ,,sshproxyautologin'' (meaning: look_for_keys and allow_agent in Python
+       Paramiko terms).
++    - Make X2goClient instance available in initial X2goSession instances.
+   * /debian/rules:
+     + Allow package build on systems with missing dh_python2.
+   * /debian/control:
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 61ceba3..84a0058 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -460,7 +460,6 @@ class X2goSessionRegistry(object):
+                  keep_controlsession_alive=True,
+                  add_to_known_hosts=False,
+                  known_hosts=None,
+-                 forward_sshagent=False,
+                  **kwargs):
+         &quot;&quot;&quot;\
+         Register a new L{X2goSession} instance with this L{X2goSessionRegistry}.
+@@ -512,36 +511,36 @@ class X2goSessionRegistry(object):
+         if profile_id in self.control_sessions.keys():
+             control_session = self.control_sessions[profile_id]
+ 
++        _params = self.client_instance.session_profiles.to_session_params(profile_id)
++        for _k in _params.keys():
++            if _k in kwargs.keys():
++                _params[_k] = kwargs[_k]
++
+         # when starting a new session, we will try to use unused registered virgin sessions
+         # depending on your application layout, there should either be one or no such virgin session at all
+         _virgin_sessions = [ s for s in self.virgin_sessions_of_profile_name(profile_name, return_objects=True) if not s.activated ]
+         if _virgin_sessions and not session_name:
+-
+-            _virgin_sessions[0].activated = True
+             session_uuid = _virgin_sessions[0].get_uuid()
+-            _params = self.client_instance.session_profiles.to_session_params(profile_id)
+-            for _k in _params.keys():
+-                if _k in kwargs.keys():
+-                    _params[_k] = kwargs[_k]
+-            self(session_uuid).update_params(_params)
+-            self(session_uuid).set_server(server)
+-            self(session_uuid).set_profile_name(profile_name)
+             self.logger('using already initially-registered yet-unused session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+-            return session_uuid
+ 
+-        session_uuid = self.get_session_of_session_name(session_name)
++        else:
++            session_uuid = self.get_session_of_session_name(session_name)
++            if session_uuid is not None: self.logger('using already registered-by-session-name session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
++
+         if session_uuid is not None:
+             self(session_uuid).activated = True
+-            _params = self.client_instance.session_profiles.to_session_params(profile_id)
+-            for _k in _params.keys():
+-                if _k in kwargs.keys():
+-                    _params[_k] = kwargs[_k]
+             self(session_uuid).update_params(_params)
+             self(session_uuid).set_server(server)
+             self(session_uuid).set_profile_name(profile_name)
+-            self.logger('using already registered-by-session-name session %s' % session_uuid, loglevel=log.loglevel_NOTICE)
+             return session_uuid
+ 
++        try: del _params['server'] 
++        except: pass
++        try: del _params['profile_name']
++        except: pass
++        try: del _params['profile_id'] 
++        except: pass
++
+         s = session.X2goSession(server=server, control_session=control_session,
+                                 profile_id=profile_id, profile_name=profile_name,
+                                 session_name=session_name,
+@@ -558,8 +557,8 @@ class X2goSessionRegistry(object):
+                                 keep_controlsession_alive=keep_controlsession_alive,
+                                 add_to_known_hosts=add_to_known_hosts,
+                                 known_hosts=known_hosts,
+-                                forward_sshagent=forward_sshagent,
+-                                logger=self.logger, **kwargs)
++                                client_instance=self.client_instance,
++                                logger=self.logger, **_params)
+ 
+         session_uuid = s._X2goSession__get_uuid()
+         self.logger('registering X2Go session %s...' % profile_name, log.loglevel_NOTICE)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="024604.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0eb30cd413a6841108c9c84078c00f5eee1e479c
+</A></li>
+	<LI>Next message: <A HREF="025450.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.2.0.10-33-gb75628b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25438">[ date ]</a>
+              <a href="thread.html#25438">[ thread ]</a>
+              <a href="subject.html#25438">[ subject ]</a>
+              <a href="author.html#25438">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

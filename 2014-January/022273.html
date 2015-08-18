@@ -1,0 +1,197 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-27-g7c04590
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-27-g7c04590&In-Reply-To=%3C20140107152137.C5C3E5DCF8%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="022270.html">
+   <LINK REL="Next"  HREF="022064.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-27-g7c04590</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20brokerclient%20%28branch%29%20updated%3A%0A%090.2.1.1-27-g7c04590&In-Reply-To=%3C20140107152137.C5C3E5DCF8%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-27-g7c04590">git-admin at x2go.org
+       </A><BR>
+    <I>Tue Jan  7 16:21:37 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="022270.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-22-gb014bae
+</A></li>
+        <LI>Next message: <A HREF="022064.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-30-g5415362
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22273">[ date ]</a>
+              <a href="thread.html#22273">[ thread ]</a>
+              <a href="subject.html#22273">[ subject ]</a>
+              <a href="author.html#22273">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, brokerclient has been updated
+       via  7c04590d15e7b41656614a91288d538d28735066 (commit)
+      from  9a9712d918b999c87c2ff01b07b0526c3a855835 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    1 +
+ x2go/backends/control/_stdout.py  |    3 +--
+ x2go/backends/proxy/_nx3.py       |    4 ++--
+ x2go/backends/terminal/_stdout.py |   12 ++++++------
+ x2go/session.py                   |    8 ++++++--
+ 5 files changed, 16 insertions(+), 12 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index ccbd43b..a1dc40a 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -22,6 +22,7 @@ python-x2go (0.4.0.0-0~x2go1) UNRELEASED; urgency=low
+       &lt;hostname&gt;:&lt;port&gt;. Update session profile IDs on hostname changes.
+       Re-arrange class structure for MissingHostKey policies, also provide an
+       X2goAutoAddPolicy class.
++    - Fix auto-starting and auto-resuming of sessions.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Thu, 20 Dec 2012 08:58:44 +0100
+ 
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index 264e8b3..844efe2 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -1257,14 +1257,13 @@ class X2GoControlSessionSTDOUT(paramiko.SSHClient):
+         if not self.is_x2gouser(self.get_transport().get_username()):
+             raise x2go_exceptions.X2GoUserException('remote user %s is not allowed to run X2Go commands' % self.get_transport().get_username())
+ 
++        session_info = None
+         try:
+             if session_name is not None:
+                 if session_list:
+                     session_info = session_list[session_name]
+                 else:
+                     session_info = self.list_sessions()[session_name]
+-            else:
+-                session_info = None
+         except KeyError:
+             _success = False
+ 
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index 67cc00e..ac57ff7 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -76,7 +76,7 @@ class X2GoProxyNX3(base.X2GoProxyBASE):
+                 &quot;connect=127.0.0.1&quot;,
+                 &quot;clipboard=1&quot;,
+                 &quot;cookie=%s&quot; % self.session_info.cookie,
+-                &quot;port=%d&quot; % self.session_info.graphics_port,
++                &quot;port=%s&quot; % self.session_info.graphics_port,
+                 &quot;errors=%s&quot; % os.path.join(&quot;.&quot;, &quot;..&quot;, &quot;S-%s&quot; % self.session_info.name, self.session_log, ),
+             ]
+         else:
+@@ -87,7 +87,7 @@ class X2GoProxyNX3(base.X2GoProxyBASE):
+                 &quot;connect=127.0.0.1&quot;,
+                 &quot;clipboard=1&quot;,
+                 &quot;cookie=%s&quot; % self.session_info.cookie,
+-                &quot;port=%d&quot; % self.session_info.graphics_port,
++                &quot;port=%s&quot; % self.session_info.graphics_port,
+                 &quot;errors=%s&quot; % os.path.join(self.session_info.local_container, self.session_log, ),
+             ]
+ 
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 6044a56..0156700 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -1518,6 +1518,12 @@ class X2GoTerminalSessionSTDOUT(object):
+             except IndexError:
+                 continue
+ 
++        # local path may be a Windows path, so we use the path separator of the local system
++        self.session_info.local_container = os.path.join(self.params.rootdir, 'S-%s' % self.session_info.name)
++        # remote path is always a UniX path...
++        self.session_info.remote_container = '%s/.x2go/C-%s' % (self.control_session._x2go_remote_home, 
++                                                                self.session_info.name,
++                                                               )
+         self.proxy = self.proxy_backend(session_info=self.session_info, 
+                                         ssh_transport=self.control_session.get_transport(), 
+                                         sessions_rootdir=self.sessions_rootdir,
+@@ -1527,12 +1533,6 @@ class X2GoTerminalSessionSTDOUT(object):
+         self.proxy_subprocess, proxy_ok = self.proxy.start_proxy()
+ 
+         if proxy_ok:
+-            # local path may be a Windows path, so we use the path separator of the local system
+-            self.session_info.local_container = os.path.join(self.params.rootdir, 'S-%s' % self.session_info.name)
+-            # remote path is always a UniX path...
+-            self.session_info.remote_container = '%s/.x2go/C-%s' % (self.control_session._x2go_remote_home, 
+-                                                                    self.session_info.name,
+-                                                                   )
+             self.params.depth = self.session_info.name.split('_')[2][2:]
+ 
+             # on a session resume the user name comes in as a user ID. We have to translate this...
+diff --git a/x2go/session.py b/x2go/session.py
+index cf9a2ea..0328c41 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -1658,10 +1658,14 @@ class X2GoSession(object):
+                         del session_infos[session_name]
+ 
+                 if session_infos:
++                    sorted_session_names = utils.session_names_by_timestamp(session_infos)
++                    print sorted_session_names
+                     if newest:
+-                        return self.resume(session_name=utils.session_names_by_timestamp(session_infos)[-1])
++                        if sorted_session_names[0].find('RDP') == -1:
++                            return self.resume(session_name=sorted_session_names[-1])
+                     elif oldest:
+-                        return self.resume(session_name=utils.session_names_by_timestamp(session_infos)[-1])
++                        if sorted_session_names[-1].find('RDP') == -1:
++                            return self.resume(session_name=sorted_session_names[0])
+                     elif all_suspended:
+                         for session_name in [ _sn for _sn in session_infos.keys() if session_infos[_sn].is_suspended() ]:
+                             return self.resume(session_name=session_name)
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="022270.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-22-gb014bae
+</A></li>
+	<LI>Next message: <A HREF="022064.html">[X2Go-Commits] python-x2go.git - brokerclient (branch) updated:	0.2.1.1-30-g5415362
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22273">[ date ]</a>
+              <a href="thread.html#22273">[ thread ]</a>
+              <a href="subject.html#22273">[ subject ]</a>
+              <a href="author.html#22273">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

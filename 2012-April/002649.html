@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.1.4.2-5-g844198f
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-April/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-cli.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.4.2-5-g844198f&In-Reply-To=%3C20120411080450.4E6105DB19%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="002648.html">
+   <LINK REL="Next"  HREF="002650.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.1.4.2-5-g844198f</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20pyhoca-cli.git%20-%20master%20%28branch%29%20updated%3A%0A%090.1.4.2-5-g844198f&In-Reply-To=%3C20120411080450.4E6105DB19%40ymir%3E"
+       TITLE="[X2go-Commits] pyhoca-cli.git - master (branch) updated:	0.1.4.2-5-g844198f">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Apr 11 10:04:50 CEST 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="002648.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-178-g3ac15cc
+</A></li>
+        <LI>Next message: <A HREF="002650.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-179-g0598516
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2649">[ date ]</a>
+              <a href="thread.html#2649">[ thread ]</a>
+              <a href="subject.html#2649">[ subject ]</a>
+              <a href="author.html#2649">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  844198f8829e6d23d69ffa9bc092ca560ab73c35 (commit)
+      from  a92896977c367567119f309411cff500fea1dbaf (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 844198f8829e6d23d69ffa9bc092ca560ab73c35
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Wed Apr 11 10:04:43 2012 +0200
+
+    Add code to redirect stdout and stderr when frozen with py2exe.
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog |    1 +
+ pyhoca-cli       |   41 +++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 40 insertions(+), 2 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index db59077..b4461ba 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -2,6 +2,7 @@ pyhoca-cli (0.1.4.3-0~x2go1) UNRELEASED; urgency=low
+ 
+   * New upstream version (0.1.4.3):
+     - Replace non-code strings ,,X2go'' by ,,X2Go''.
++    - Add code to redirect stdout and stderr when frozen with py2exe.
+   * Add python-suport (&gt;=0.90) as dependency. Fix project name in control
+     file.
+   * Add proper license to copyright file.
+diff --git a/pyhoca-cli b/pyhoca-cli
+index a21fe0a..cd7f62d 100755
+--- a/pyhoca-cli
++++ b/pyhoca-cli
+@@ -30,13 +30,50 @@ import x2go
+ 
+ import sys
+ import os
++
++import sys
++import os
++
++PROG_NAME = os.path.basename(sys.argv[0]).replace('.exe', '')
++PROG_PID  = os.getpid()
++
++if hasattr(sys, 'frozen') and sys.frozen in (&quot;windows_exe&quot;, &quot;console_exe&quot;):
++    class Win32_Logging(object):
++
++        softspace = 0
++        _fname = os.path.join(os.environ['AppData'], PROG_NAME, '%s.log' % PROG_NAME)
++        _file = None
++
++        def __init__(self, filemode='a'):
++            self._filemode = filemode
++
++        def write(self, text, **kwargs):
++            if self._file is None:
++                try:
++                    try:
++                        os.mkdir(os.path.dirname(self._fname))
++                    except:
++                        pass
++                    self._file = open(self._fname, self._filemode)
++                except:
++                    pass
++            else:
++                self._file.write(text)
++                self._file.flush()
++
++        def flush(self):
++            if self._file is not None:
++                self._file.flush()
++
++    sys.stdout = Win32_Logging(filemode='w+')
++    sys.stderr = Win32_Logging(filemode='a')
++    del Win32_Logging
++
+ app = sys.argv[0]
+ if app.startswith('./'):
+     sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+     os.environ['PYTHONX2GO_LOCAL'] = '1'
+ 
+-PROG_NAME = os.path.basename(sys.argv[0])
+-PROG_PID  = os.getpid()
+ PROG_OPTIONS = sys.argv[1:]
+ try:
+     _password_index = PROG_OPTIONS.index('--password')+1
+
+
+hooks/post-receive
+-- 
+pyhoca-cli.git (Python X2Go Client (command line client))
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;pyhoca-cli.git&quot; (Python X2Go Client (command line client)).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="002648.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-178-g3ac15cc
+</A></li>
+	<LI>Next message: <A HREF="002650.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.1.0.10-179-g0598516
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2649">[ date ]</a>
+              <a href="thread.html#2649">[ thread ]</a>
+              <a href="subject.html#2649">[ subject ]</a>
+              <a href="author.html#2649">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>

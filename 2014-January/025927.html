@@ -1,0 +1,943 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-242-g63ac948
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2014-January/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-242-g63ac948&In-Reply-To=%3C20140108143104.8BDD25DF54%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="025737.html">
+   <LINK REL="Next"  HREF="025134.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-242-g63ac948</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2Go-Commits%5D%20python-x2go.git%20-%20build-baikal%20%28branch%29%20updated%3A%0A%090.1.1.4-242-g63ac948&In-Reply-To=%3C20140108143104.8BDD25DF54%40ymir%3E"
+       TITLE="[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-242-g63ac948">git-admin at x2go.org
+       </A><BR>
+    <I>Wed Jan  8 15:31:04 CET 2014</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="025737.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-240-g5820e62
+</A></li>
+        <LI>Next message: <A HREF="025134.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-250-g0294d5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25927">[ date ]</a>
+              <a href="thread.html#25927">[ thread ]</a>
+              <a href="subject.html#25927">[ subject ]</a>
+              <a href="author.html#25927">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, build-baikal has been updated
+       via  63ac948ac2d787b9d82dc086d316f7c7b1246cf3 (commit)
+      from  97c0d9d61117c7924dd368053cab595704efbccb (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+-----------------------------------------------------------------------
+
+Summary of changes:
+ debian/changelog                  |    6 ++
+ x2go/backends/control/_stdout.py  |   52 ++++-----
+ x2go/backends/proxy/_nx3.py       |    4 +-
+ x2go/backends/proxy/base.py       |   22 ++--
+ x2go/backends/terminal/_stdout.py |  216 +++++++++++++++++++++----------------
+ x2go/client.py                    |    4 +-
+ x2go/forward.py                   |   44 ++++----
+ x2go/registry.py                  |    4 +-
+ x2go/session.py                   |   55 +++++-----
+ x2go/sftpserver.py                |    3 +
+ x2go/sshproxy.py                  |    6 ++
+ x2go/x2go_exceptions.py           |    1 +
+ 12 files changed, 234 insertions(+), 183 deletions(-)
+
+The diff of changes is:
+diff --git a/debian/changelog b/debian/changelog
+index bb03bc8..98d3ae5 100644
+--- a/debian/changelog
++++ b/debian/changelog
+@@ -128,6 +128,12 @@ python-x2go (0.1.2.0-0~x2go1) UNRELEASED; urgency=low
+     - Allow custom commands to be desktop sessions.
+     - X2goSession instances cannot raise X2goClientExceptions.
+     - Be more tolerant against suspension failures while taking over a session.
++    - Use Paramiko transport compression if available.
++    - Prohibit simultaneous calls to terminal_session.share_local_folders().
++    - Cache SSH transport's getpeername() and get_username().
++    - Catch session startup failures due to faulty port forwarding tunnels
++      and make the notifiable via hooks.
++    - Properly set setkbd value for x2gostartagent and x2goresume-session.
+   * Depend on python-xlib.
+ 
+  -- Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;  Sat, 28 Sep 2012 01:44:21 +0100
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index a5d08ba..74c2350 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -122,6 +122,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         self._session_auth_rsakey = None
+         self._remote_home = None
+         self._remote_group = {}
++        self._remote_username = None
++        self._remote_peername = None
+ 
+         self._server_features = None
+ 
+@@ -306,26 +308,26 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         Returns the control session's remote username.
+ 
+         &quot;&quot;&quot;
+-        if self.get_transport() is not None:
+-            try:
+-                return self.get_transport().get_username()
+-            except:
+-                raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
+-        else:
+-            return None
++        if self._remote_username is None:
++            if self.get_transport() is not None:
++                try:
++                    self._remote_username = self.get_transport().get_username()
++                except:
++                    raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
++        return self._remote_username
+ 
+     def remote_peername(self):
+         &quot;&quot;&quot;\
+         Returns the control session's remote host (name or ip).
+ 
+         &quot;&quot;&quot;
+-        if self.get_transport() is not None:
+-            try:
+-                return self.get_transport().getpeername()
+-            except:
+-                raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
+-        else:
+-            return None
++        if self._remote_peername is None:
++            if self.get_transport() is not None:
++                try:
++                    self._remote_peername = self.get_transport().getpeername()
++                except:
++                    raise x2go_exceptions.X2goControlSessionException('Lost connection to X2Go server')
++        return self._remote_peername
+ 
+     @property
+     def _x2go_session_auth_rsakey(self):
+@@ -476,6 +478,11 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                            key_filename=key_filename, timeout=timeout, allow_agent=allow_agent, 
+                                            look_for_keys=look_for_keys)
+ 
++                # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
++                t = self.get_transport()
++                if hasattr(t, 'use_compression'):
++                    t.use_compression(compress=True)
++
+             except paramiko.AuthenticationException, e:
+                 self.close()
+                 if password:
+@@ -830,7 +837,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         &quot;&quot;&quot;
+         return self.resume(**kwargs)
+ 
+-    def resume(self, session_name=None, session_instance=None, **kwargs):
++    def resume(self, session_name=None, session_instance=None, session_list=None, **kwargs):
+         &quot;&quot;&quot;\
+         Resume a running/suspended X2Go session. 
+ 
+@@ -845,7 +852,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+             raise x2go_exceptions.X2goUserException('remote user %s is not allowed to run X2Go commands' % self.get_transport().get_username())
+ 
+         if session_name is not None:
+-            session_info = self.list_sessions()[session_name]
++            if session_list:
++                session_info = session_list[session_name]
++            else:
++                session_info = self.list_sessions()[session_name]
+         else:
+             session_info = None
+ 
+@@ -862,16 +872,10 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+         _success = False
+         if session_name is not None:
+-            try:
+-                _success = _terminal.resume()
+-            except x2go_exceptions.X2goFwTunnelException:
+-                pass
++            _success = _terminal.resume()
+ 
+         else:
+-            try:
+-                _success = _terminal.start()
+-            except x2go_exceptions.X2goFwTunnelException:
+-                pass
++            _success = _terminal.start()
+ 
+         if _success:
+             while not _terminal.ok():
+diff --git a/x2go/backends/proxy/_nx3.py b/x2go/backends/proxy/_nx3.py
+index e5ada98..7005178 100644
+--- a/x2go/backends/proxy/_nx3.py
++++ b/x2go/backends/proxy/_nx3.py
+@@ -164,11 +164,11 @@ options=%s&quot;&quot;&quot; % ( self.proxy_options['xkbrules'],
+         self.logger('NX3 Proxy mode is server, cookie=%s, host=127.0.0.1, port=%s.' % (self.session_info.cookie, self.session_info.graphics_port,), loglevel=log.loglevel_DEBUG)
+         self.logger('NX3 proxy writes session log to %s.' % os.path.join(self.session_info.local_container, 'session.log'), loglevel=log.loglevel_DEBUG)
+ 
+-        p = base.X2goProxyBASE.start_proxy(self)
++        p, p_ok = base.X2goProxyBASE.start_proxy(self)
+ 
+         if self.ok():
+             self.logger('NX3 proxy is up and running.', loglevel=log.loglevel_INFO)
+         else:
+             self.logger('Bringing up NX3 proxy failed.', loglevel=log.loglevel_ERROR)
+ 
+-        return p
++        return p, self.ok()
+diff --git a/x2go/backends/proxy/base.py b/x2go/backends/proxy/base.py
+index 0c1586c..028190a 100644
+--- a/x2go/backends/proxy/base.py
++++ b/x2go/backends/proxy/base.py
+@@ -168,7 +168,7 @@ class X2goProxyBASE(threading.Thread):
+             return None
+ 
+         try:
+-            os.mkdir(self.session_info.local_container)
++            os.makedirs(self.session_info.local_container)
+         except OSError, e:
+             if e.errno == 17:
+                 # file exists
+@@ -273,15 +273,17 @@ class X2goProxyBASE(threading.Thread):
+             self.logger('waiting for proxy to come up: 0.4s x %s' % _count, loglevel=log.loglevel_DEBUG)
+             gevent.sleep(.4)
+ 
+-        # also wait for fw_tunnel to become active
+-        _count = 0
+-        _maxwait = 40
+-        while not self.fw_tunnel.is_active and _count &lt; _maxwait:
+-            _count += 1
+-            self.logger('waiting for port fw tunnel to come up: 0.5s x %s' % _count, loglevel=log.loglevel_DEBUG)
+-            gevent.sleep(.5)
++        if self.proxy:
++
++            # also wait for fw_tunnel to become active
++            _count = 0
++            _maxwait = 40
++            while not self.fw_tunnel.is_active and not self.fw_tunnel.failed and _count &lt; _maxwait:
++                _count += 1
++                self.logger('waiting for port fw tunnel to come up: 0.5s x %s' % _count, loglevel=log.loglevel_DEBUG)
++                gevent.sleep(.5)
+ 
+-        return self.proxy
++        return self.proxy, bool(self.proxy) and self.fw_tunnel.is_active
+ 
+     def ok(self):
+         &quot;&quot;&quot;\
+@@ -291,4 +293,4 @@ class X2goProxyBASE(threading.Thread):
+         @rtype C{bool}
+ 
+         &quot;&quot;&quot;
+-        return bool(self.proxy and self.proxy.poll() is None)
++        return bool(self.proxy and self.proxy.poll() is None) and self.fw_tunnel.is_active
+diff --git a/x2go/backends/terminal/_stdout.py b/x2go/backends/terminal/_stdout.py
+index 4c401a7..7199ad8 100644
+--- a/x2go/backends/terminal/_stdout.py
++++ b/x2go/backends/terminal/_stdout.py
+@@ -322,6 +322,7 @@ class X2goTerminalSessionSTDOUT(object):
+         else:
+             self.client_instance = None
+ 
++        self._share_local_folder_busy = False
+         self._mk_sessions_rootdir(self.params.rootdir)
+ 
+         self.session_info = session_info
+@@ -366,7 +367,7 @@ class X2goTerminalSessionSTDOUT(object):
+     def _mk_sessions_rootdir(self, d):
+ 
+         try:
+-            os.mkdir(d)
++            os.makedirs(d)
+         except OSError, e:
+             if e.errno == 17:
+                 # file exists
+@@ -504,6 +505,8 @@ class X2goTerminalSessionSTDOUT(object):
+                 self.reverse_tunnels[self.session_info.name]['sshfs'] = (self.session_info.sshfs_port, _tunnel)
+                 _tunnel.start()
+                 self.active_threads.append(_tunnel)
++                while not _tunnel.ready:
++                    gevent.sleep(.1)
+ 
+         else:
+             # tunnel has already been started and might simply need a resume call
+@@ -539,7 +542,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         spool_dir = os.path.join(self.session_info.local_container, 'spool')
+         if not os.path.exists(spool_dir):
+-            os.mkdir(spool_dir)
++            os.makedirs(spool_dir)
+         self.share_local_folder(local_path=spool_dir, folder_type='spool')
+         self.print_queue = printqueue.X2goPrintQueue(profile_name=self.profile_name,
+                                                      session_name=self.session_info.name,
+@@ -585,7 +588,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         mimebox_dir = os.path.join(self.session_info.local_container, 'mimebox')
+         if not os.path.exists(mimebox_dir):
+-            os.mkdir(mimebox_dir)
++            os.makedirs(mimebox_dir)
+         self.share_local_folder(local_path=mimebox_dir, folder_type='mimebox')
+         self.mimebox_queue = mimebox.X2goMIMEboxQueue(profile_name=self.profile_name,
+                                                       session_name=self.session_info.name,
+@@ -689,63 +692,75 @@ class X2goTerminalSessionSTDOUT(object):
+         _x2go_key_fname = '%s/%s/%s' % (os.path.dirname(self.session_info.remote_container), 'ssh', 'key.z%s' % self.session_info.agent_pid)
+         _x2go_key_bundle = _tmp_io_object.getvalue()
+ 
+-        self.control_session._x2go_sftp_write(_x2go_key_fname, _x2go_key_bundle)
++        # if there is another call to this method currently being processed, wait for that one to finish
++        while self._share_local_folder_busy:
++            gevent.sleep(.1)
++        self._share_local_folder_busy = True
+ 
+-        _convert_encoding = self.params.convert_encoding
+-        _client_encoding = self.params.client_encoding
+-        _server_encoding = self.params.server_encoding
++        try:
++            self.control_session._x2go_sftp_write(_x2go_key_fname, _x2go_key_bundle)
+ 
+-        if _X2GOCLIENT_OS == 'Windows':
+-            local_path = local_path.replace('\\', '/')
+-            local_path = local_path.replace(':', '')
+-            local_path = '/windrive/%s' % local_path
+-            _convert_encoding = True
+-            _client_encoding = 'WINDOWS-1252'
++            _convert_encoding = self.params.convert_encoding
++            _client_encoding = self.params.client_encoding
++            _server_encoding = self.params.server_encoding
+ 
+-        if _convert_encoding:
+-            export_iconv_settings = 'export X2GO_ICONV=modules=iconv,from_code=%s,to_code=%s &amp;&amp;' % (_client_encoding, _server_encoding)
+-        else:
+-            export_iconv_settings = ''
+-
+-        if folder_type == 'disk':
+-
+-            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
+-                         'x2gomountdirs', 
+-                         'dir',
+-                         str(self.session_info.name), 
+-                         '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
+-                         _x2go_key_fname,
+-                         '%s__REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
+-                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname),
+-                       ]
+-
+-        elif folder_type == 'spool':
+-
+-            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
+-                         'x2gomountdirs', 
+-                         'dir',
+-                         str(self.session_info.name), 
+-                         '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
+-                         _x2go_key_fname,
+-                         '%s__PRINT_SPOOL___REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
+-                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
+-                       ]
+-
+-        elif folder_type == 'mimebox':
+-
+-            cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
+-                         'x2gomountdirs', 
+-                         'dir',
+-                         str(self.session_info.name), 
+-                         '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
+-                         _x2go_key_fname,
+-                         '%s__MIMEBOX_SPOOL___REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
+-                         'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
+-                       ]
++            if _X2GOCLIENT_OS == 'Windows':
++                local_path = local_path.replace('\\', '/')
++                local_path = local_path.replace(':', '')
++                local_path = '/windrive/%s' % local_path
++                _convert_encoding = True
++                _client_encoding = 'WINDOWS-1252'
+ 
+-        (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
+-        _stdout = stdout.read().split('\n')
+-        self.logger('x2gomountdirs output is : %s' % _stdout, log.loglevel_NOTICE)
++            if _convert_encoding:
++                export_iconv_settings = 'export X2GO_ICONV=modules=iconv,from_code=%s,to_code=%s &amp;&amp;' % (_client_encoding, _server_encoding)
++            else:
++                export_iconv_settings = ''
++
++            if folder_type == 'disk':
++
++                cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
++                             'x2gomountdirs',
++                             'dir',
++                             str(self.session_info.name),
++                             '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
++                             _x2go_key_fname,
++                             '%s__REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
++                             'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname),
++                           ]
++
++            elif folder_type == 'spool':
++
++                cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
++                             'x2gomountdirs',
++                             'dir',
++                             str(self.session_info.name),
++                             '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
++                             _x2go_key_fname,
++                             '%s__PRINT_SPOOL___REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
++                             'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
++                           ]
++
++            elif folder_type == 'mimebox':
++
++                cmd_line = [ '%s export HOSTNAME &amp;&amp;' % export_iconv_settings,
++                             'x2gomountdirs',
++                             'dir',
++                             str(self.session_info.name),
++                             '&quot;%s&quot;' % _CURRENT_LOCAL_USER,
++                             _x2go_key_fname,
++                             '%s__MIMEBOX_SPOOL___REVERSESSH_PORT__%s; ' % (local_path, self.session_info.sshfs_port),
++                             'rm -f %s %s.ident' % (_x2go_key_fname, _x2go_key_fname), 
++                           ]
++
++            (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line)
++            _stdout = stdout.read().split('\n')
++            self.logger('x2gomountdirs output is: %s' % _stdout, log.loglevel_NOTICE)
++
++        except:
++            raise
++        finally:
++            # allow sharing of other folders again
++            self._share_local_folder_busy = False
+ 
+         if len(_stdout) &gt;= 6 and _stdout[5].endswith('ok'):
+             return True
+@@ -1036,20 +1051,29 @@ class X2goTerminalSessionSTDOUT(object):
+             return self.session_info.is_published_applications_provider()
+         return False
+ 
+-    def exec_published_application(self, exec_name, timeout=20):
++    def exec_published_application(self, exec_name, timeout=20, env={}):
+         &quot;&quot;&quot;\
+         Executed a published application.
+ 
+         @param exec_name: application to be executed
+         @type exec_name: C{str}
++        @param timeout: execution timeout
++        @type timeout: C{int}
++        @param env: session environment dictionary
++        @type env: C{dict}
++
+         &quot;&quot;&quot;
+         cmd_line = [
+-            &quot;export DISPLAY=:%s &amp;&amp;&quot; % str(self.session_info.display),
+-            &quot;export X2GO_SESSION=%s &amp;&amp;&quot; % str(self.get_session_name()),
++            &quot;export DISPLAY=:%s &amp;&amp; &quot; % str(self.session_info.display),
++            &quot;export X2GO_SESSION=%s &amp;&amp; &quot; % str(self.get_session_name()),
+         ]
+ 
+         if self.params.snd_system == 'pulse':
+-            cmd_line.append(&quot;export PULSE_CLIENTCONFIG=%s/.pulse-client.conf &amp;&amp;&quot; % self.session_info.remote_container)
++            cmd_line.append(&quot;export PULSE_CLIENTCONFIG=%s/.pulse-client.conf &amp;&amp; &quot; % self.session_info.remote_container)
++
++        if env:
++            for env_var in env.keys():
++                cmd_line = [ 'export %s=%s &amp;&amp; ' % (env_var, env[env_var]) ] + cmd_line
+ 
+         cmd_line.extend(
+             [
+@@ -1057,6 +1081,7 @@ class X2goTerminalSessionSTDOUT(object):
+                 &quot;&amp;&gt; /dev/null &amp; exit&quot;,
+             ]
+         )
++
+         self.logger('executing published application %s for %s with command line: %s' % (exec_name, self.profile_name, cmd_line), loglevel=log.loglevel_DEBUG)
+         (stdin, stdout, stderr) = self.control_session._x2go_exec_command(cmd_line, timeout=timeout)
+ 
+@@ -1121,8 +1146,8 @@ class X2goTerminalSessionSTDOUT(object):
+             return False
+ 
+         setkbd = &quot;0&quot;
+-        if self.params.kblayout or self.params.kbtype:
+-            setkbd = &quot;1&quot;
++        if (self.params.kblayout != &quot;null&quot;) or (self.params.kbtype != &quot;null/null&quot;):
++            setkbd = &quot;0&quot;
+ 
+         if '/' in self.params.cmd:
+             self.params.cmd = os.path.basename(self.params.cmd)
+@@ -1182,18 +1207,20 @@ class X2goTerminalSessionSTDOUT(object):
+                                         session_instance=self.session_instance,
+                                         proxy_options=self.proxy_options,
+                                         logger=self.logger)
+-        self.proxy_subprocess = self.proxy.start_proxy()
+-        self.active_threads.append(self.proxy)
++        self.proxy_subprocess, proxy_ok = self.proxy.start_proxy()
+ 
+-        if self.params.session_type in ('D', 'S'):
+-            self.find_session_window()
+-            self.auto_session_window_title()
+-            self.raise_session_window()
++        if proxy_ok:
++            self.active_threads.append(self.proxy)
+ 
+-        if self.params.published_applications:
+-            self.control_session.get_published_applications()
++            if self.params.session_type in ('D', 'S'):
++                self.find_session_window()
++                self.auto_session_window_title()
++                self.raise_session_window()
+ 
+-        return self.ok()
++            if self.params.published_applications:
++                self.control_session.get_published_applications()
++
++        return proxy_ok
+ 
+     def resume(self):
+         &quot;&quot;&quot;\
+@@ -1207,7 +1234,7 @@ class X2goTerminalSessionSTDOUT(object):
+ 
+         &quot;&quot;&quot;
+         setkbd = &quot;0&quot;
+-        if self.params.kblayout or self.params.kbtype:
++        if (self.params.kblayout != &quot;null&quot;) or (self.params.kbtype != &quot;null/null&quot;):
+             setkbd = &quot;1&quot;
+ 
+         cmd_line = [ &quot;x2goresume-session&quot;, self.session_info.name,
+@@ -1253,28 +1280,29 @@ class X2goTerminalSessionSTDOUT(object):
+                                         session_instance=self.session_instance,
+                                         logger=self.logger
+                                        )
+-        self.proxy_subprocess = self.proxy.start_proxy()
+-
+-        # local path may be a Windows path, so we use the path separator of the local system
+-        self.session_info.local_container = os.path.join(self.params.rootdir, 'S-%s' % self.session_info.name)
+-        # remote path is always a UniX path...
+-        self.session_info.remote_container = '%s/.x2go/C-%s' % (self.control_session._x2go_remote_home, 
+-                                                                self.session_info.name,
+-                                                               )
+-        self.params.depth = self.session_info.name.split('_')[2][2:]
+-        # on a session resume the user name comes in as a user ID. We have to translate this...
+-        self.session_info.username = self.control_session.remote_username()
+-
+-        if self.params.session_type in ('D', 'S'):
+-            self.find_session_window()
+-            self.auto_session_window_title()
+-            self.raise_session_window()
+-
+-        if self.is_published_applications_provider():
+-            self.control_session.get_published_applications()
+-            self.published_applications = True
+-
+-        return self.ok()
++        self.proxy_subprocess, proxy_ok = self.proxy.start_proxy()
++
++        if proxy_ok:
++            # local path may be a Windows path, so we use the path separator of the local system
++            self.session_info.local_container = os.path.join(self.params.rootdir, 'S-%s' % self.session_info.name)
++            # remote path is always a UniX path...
++            self.session_info.remote_container = '%s/.x2go/C-%s' % (self.control_session._x2go_remote_home, 
++                                                                    self.session_info.name,
++                                                                   )
++            self.params.depth = self.session_info.name.split('_')[2][2:]
++            # on a session resume the user name comes in as a user ID. We have to translate this...
++            self.session_info.username = self.control_session.remote_username()
++
++            if self.params.session_type in ('D', 'S'):
++                self.find_session_window()
++                self.auto_session_window_title()
++                self.raise_session_window()
++
++            if self.is_published_applications_provider():
++                self.control_session.get_published_applications()
++                self.published_applications = True
++
++        return proxy_ok
+ 
+     def suspend(self):
+         &quot;&quot;&quot;\
+diff --git a/x2go/client.py b/x2go/client.py
+index 7e81e4b..5bbdb17 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1480,9 +1480,9 @@ class X2goClient(object):
+                 raise x2go_exceptions.X2goClientException('don\'t know which session to resume')
+             if session_uuid is None:
+                 session_uuid = self.session_registry.get_session_of_session_name(session_name=session_name, return_object=False)
+-                return self.session_registry(session_uuid).resume()
++                return self.session_registry(session_uuid).resume(session_list=self.list_sessions(session_uuid=session_uuid))
+             else:
+-                return self.session_registry(session_uuid).resume(session_name=session_name)
++                return self.session_registry(session_uuid).resume(session_name=session_name, session_list=self.list_sessions(session_uuid=session_uuid))
+         except x2go_exceptions.X2goControlSessionException:
+             profile_name = self.get_session_profile_name(session_uuid)
+             self.HOOK_on_control_session_death(profile_name)
+diff --git a/x2go/forward.py b/x2go/forward.py
+index dca0e70..b10e86f 100644
+--- a/x2go/forward.py
++++ b/x2go/forward.py
+@@ -72,6 +72,7 @@ class X2goFwServer(StreamServer):
+ 
+         self.chan = None
+         self.is_active = False
++        self.failed = False
+         self.keepalive = False
+         self.chain_host = remote_host
+         self.chain_port = remote_port
+@@ -124,26 +125,24 @@ class X2goFwServer(StreamServer):
+                                                                                           loglevel=log.loglevel_WARN)
+                 gevent.sleep(.4)
+ 
+-
+         if not _success:
+             self.logger('incoming request to %s:%d failed after %d attempts' % (self.chain_host,
+                                                                                 self.chain_port,
+                                                                                 _count),
+                                                                                 loglevel=log.loglevel_ERROR)
++            if self.session_instance:
++                self.session_instance.HOOK_forwarding_tunnel_setup_failed(chain_host=self.chain_host, chain_port=self.chain_port)
++            self.failed = True
++
+         else:
++
++            self.logger('connected!  Tunnel open %r -&gt; %r -&gt; %r' % (self.fw_socket.getpeername(),
++                        chan_peername, (self.chain_host, self.chain_port)),
++                        loglevel=log.loglevel_INFO)
++
+             # once we are here, we can presume the tunnel to be active...
+             self.is_active = True
+ 
+-            if self.chan is None:
+-                self.logger('incoming request to [%s]:%d was rejected by the SSH server.' %
+-                            (self.chain_host, self.chain_port), loglevel=log.loglevel_ERROR)
+-                if self.session_instance:
+-                    self.session_instance.HOOK_forwarding_tunnel_setup_failed(chain_host=self.chain_host, chain_port=self.chain_port)
+-                return
+-            else:
+-                self.logger('connected!  Tunnel open %r -&gt; %r -&gt; %r' % (self.fw_socket.getpeername(),
+-                                                                chan_peername, (self.chain_host, self.chain_port)),
+-                                                                loglevel=log.loglevel_INFO)
+             self.keepalive = True
+             try:
+                 while self.keepalive:
+@@ -243,22 +242,19 @@ def start_forward_tunnel(local_host='127.0.0.1', local_port=22022,
+     @rtype: C{instance}
+ 
+     &quot;&quot;&quot;
++    fw_server = X2goFwServer(listener=(local_host, local_port),
++                             remote_host=remote_host, remote_port=remote_port,
++                             ssh_transport=ssh_transport, session_instance=session_instance,
++                             logger=logger,
++                            )
+     try:
+-        fw_server = X2goFwServer(listener=(local_host, local_port),
+-                                 remote_host=remote_host, remote_port=remote_port,
+-                                 ssh_transport=ssh_transport, session_instance=session_instance,
+-                                 logger=logger,
+-                                )
+-        try:
+-            fw_server.start()
+-            return fw_server
+-        except socket.error:
+-            pass
+-    except x2go_exceptions.X2goFwTunnelException:
++        fw_server.start()
++    except socket.error:
++        fw_server.failed = True
++        fw_server.is_active = False
+         pass
+ 
+-    return None
+-
++    return fw_server
+ 
+ def stop_forward_tunnel(fw_server):
+     &quot;&quot;&quot;\
+diff --git a/x2go/registry.py b/x2go/registry.py
+index 54b9a16..0b25e4d 100644
+--- a/x2go/registry.py
++++ b/x2go/registry.py
+@@ -312,8 +312,8 @@ class X2goSessionRegistry(object):
+ 
+                 # unregister as master session
+                 if _profile_name in self.master_sessions.keys():
+-                    self(_session_uuid).unset_master_session()
+                     if self.master_sessions[_profile_name] == self(_session_uuid):
++                        self(_session_uuid).unset_master_session()
+                         del self.master_sessions[_profile_name]
+ 
+                 # session has been suspended
+@@ -324,8 +324,8 @@ class X2goSessionRegistry(object):
+ 
+                 # unregister as master session
+                 if _profile_name in self.master_sessions.keys():
+-                    self(_session_uuid).unset_master_session()
+                     if self.master_sessions[_profile_name] == self(_session_uuid):
++                        self(_session_uuid).unset_master_session()
+                         del self.master_sessions[_profile_name]
+ 
+                 # session has terminated
+diff --git a/x2go/session.py b/x2go/session.py
+index 22f8ac9..35db50a 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -488,7 +488,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         self.logger('Using session %s as master session for profile %s.' % (self.get_session_name(), self.get_profile_name()), loglevel=log.loglevel_NOTICE)
+         self.master_session = True
+-        self.share_all_local_folders()
++        gevent.spawn(self.share_all_local_folders)
+ 
+     def unset_master_session(self):
+         &quot;&quot;&quot;\
+@@ -866,7 +866,6 @@ class X2goSession(object):
+         @return: returns C{True} if this L{X2goSession} has a terminal session associated to itself
+         @rtype: C{bool}
+ 
+-
+         &quot;&quot;&quot;
+         return self.terminal_session not in (None, 'PENDING')
+     __has_terminal_session = has_terminal_session
+@@ -1374,7 +1373,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         if self.terminal_session is not None:
+             self.logger('for %s executing published application: %s' % (self.profile_name, exec_name), loglevel=log.loglevel_NOTICE)
+-            self.terminal_session.exec_published_application(exec_name, timeout=timeout)
++            self.terminal_session.exec_published_application(exec_name, timeout=timeout, env=self.session_environment)
+     __exec_published_application = exec_published_application
+ 
+     def do_auto_start_or_resume(self, newest=True, oldest=False, all_suspended=False, start=True, redirect_to_client=True):
+@@ -1423,7 +1422,7 @@ class X2goSession(object):
+                     if not self.published_applications:
+                         return self.start()
+ 
+-    def resume(self, session_name=None):
++    def resume(self, session_name=None, session_list=None):
+         &quot;&quot;&quot;\
+         Resume or continue a suspended / running X2Go session on the
+         remote X2Go server.
+@@ -1441,11 +1440,13 @@ class X2goSession(object):
+             self.session_name = session_name
+ 
+         if self.is_alive():
++
+             _control = self.control_session
+ 
+             # FIXME: normally this part gets called if you suspend a session that is associated to another client
+             # we do not have a possibility to really check if SSH has released port forwarding channels or
+             # sockets, thus  we plainly have to wait a while
++
+             if self.is_running():
+                 try:
+                     self.suspend()
+@@ -1462,6 +1463,7 @@ class X2goSession(object):
+ 
+             self.terminal_session = _control.resume(session_name=self.session_name,
+                                                     session_instance=self,
++                                                    session_list=session_list,
+                                                     logger=self.logger, **self.terminal_params)
+ 
+             if self.session_name is None:
+@@ -1476,10 +1478,6 @@ class X2goSession(object):
+ 
+                 self.terminal_session.session_info_protect()
+ 
+-                # only run the session startup command if we do not resume...
+-                if _new_session:
+-                    self.has_terminal_session() and self.terminal_session.run_command(env=self.session_environment)
+-
+                 if self.get_session_cmd() != 'PUBLISHED':
+                     self.published_applications = False
+ 
+@@ -1500,24 +1498,27 @@ class X2goSession(object):
+                     self._SUPPORTED_MIMEBOX = False
+                     self._SUPPORTED_FOLDERSHARING = False
+ 
+-                try:
+-                    if self._SUPPORTED_PRINTING and self.printing:
+-                        self.has_terminal_session() and not self.faulty and self.terminal_session.start_printing()
++                if self._SUPPORTED_PRINTING and self.printing:
++                    try:
++                        self.has_terminal_session() and not self.faulty and gevent.spawn(self.terminal_session.start_printing)
+                         self.has_terminal_session() and not self.faulty and self.session_environment.update({'X2GO_SPOOLDIR': self.terminal_session.get_printing_spooldir(), })
+-                except x2go_exceptions.X2goUserException, e:
+-                    self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+-                    self.HOOK_printing_not_available()
+-                    self._SUPPORTED_PRINTING = False
+-
+-                try:
+-                    if self._SUPPORTED_MIMEBOX and self.allow_mimebox:
+-                        self.has_terminal_session() and not self.faulty and self.terminal_session.start_mimebox(mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
++                    except x2go_exceptions.X2goUserException, e:
++                        self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
++                        self.HOOK_printing_not_available()
++                        self._SUPPORTED_PRINTING = False
++
++                if self._SUPPORTED_MIMEBOX and self.allow_mimebox:
++                    try:
++                        self.has_terminal_session() and not self.faulty and gevent.spawn(self.terminal_session.start_mimebox, mimebox_extensions=self.mimebox_extensions, mimebox_action=self.mimebox_action)
+                         self.has_terminal_session() and self.session_environment.update({'X2GO_MIMEBOX': self.terminal_session.get_mimebox_spooldir(), })
+-                except x2go_exceptions.X2goUserException, e:
+-                    self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
+-                    self.HOOK_mimebox_not_available()
+-                    self._SUPPORTED_MIMEBOX = False
++                    except x2go_exceptions.X2goUserException, e:
++                        self.logger('%s' % str(e), loglevel=log.loglevel_WARN)
++                        self.HOOK_mimebox_not_available()
++                        self._SUPPORTED_MIMEBOX = False
+ 
++                # only run the session startup command if we do not resume...
++                if _new_session:
++                    self.has_terminal_session() and self.terminal_session.run_command(env=self.session_environment)
+ 
+                 self.virgin = False
+                 self.suspended = False
+@@ -1525,7 +1526,11 @@ class X2goSession(object):
+                 self.terminated = False
+                 self.faulty = False
+ 
+-                self.share_all_local_folders()
++                # if there is a client instance for X2Go sessions that the client instance will handle the mounting of shared folders
++                if (not self.client_instance) and \
++                   self._SUPPORTED_FOLDERSHARING and \
++                   self.allow_share_local_folders:
++                    gevent.spawn(self.share_all_local_folders)
+ 
+                 self.has_terminal_session() and self.terminal_session.session_info_unprotect()
+                 return True
+@@ -1916,7 +1921,7 @@ class X2goSession(object):
+         &quot;&quot;&quot;
+         _retval = False
+         if self.has_terminal_session() and self.share_local_folders and not self.faulty and self.is_running() and self.allow_share_local_folders:
+-            if self._SUPPORTED_FOLDERSHARING and self.is_folder_sharing_available():
++            if self.is_folder_sharing_available() and self.is_master_session():
+                 if self.control_session.get_transport().reverse_tunnels[self.terminal_session.get_session_name()]['sshfs'][1] is not None:
+                     _retval = True
+                     for _folder in self.share_local_folders:
+diff --git a/x2go/sftpserver.py b/x2go/sftpserver.py
+index 678f838..08243f7 100644
+--- a/x2go/sftpserver.py
++++ b/x2go/sftpserver.py
+@@ -493,6 +493,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+         @type loglevel: int
+ 
+         &quot;&quot;&quot;
++        self.ready = False
+         if logger is None:
+             self.logger = log.X2goLogger(loglevel=loglevel)
+         else:
+@@ -535,6 +536,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+         &quot;&quot;&quot;
+         self._request_port_forwarding()
+         self._keepalive = True
++        self.ready = True
+         while self._keepalive:
+ 
+             self.incoming_channel.acquire()
+@@ -560,6 +562,7 @@ class X2goRevFwTunnelToSFTP(rforward.X2goRevFwTunnel):
+                                                              )
+                 _new_chan_thread.start()
+                 self.open_channels['[%s]:%s' % _chan.origin_addr] = _new_chan_thread
++        self.ready = False
+ 
+ 
+ def x2go_rev_forward_sftpchannel_handler(chan=None, auth_key=None, logger=None):
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 53dc8b9..7f28234 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -200,6 +200,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                  look_for_keys=False,
+                                  allow_agent=False,
+                                 )
++
+                 except x2go_exceptions.AuthenticationException, e:
+                     self.close()
+                     raise x2go_exceptions.X2goSSHProxyAuthenticationException('pubkey auth mechanisms both failed')
+@@ -207,6 +208,11 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                     self.close()
+                     raise
+ 
++                # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
++                t = self.get_transport()
++                if hasattr(t, 'use_compression'):
++                    t.use_compression(compress=True)
++
+             # if there is not private key, we will use the given password, if any
+             else:
+                 # create a random password if password is empty to trigger host key validity check
+diff --git a/x2go/x2go_exceptions.py b/x2go/x2go_exceptions.py
+index 1525359..a8eaa3f 100644
+--- a/x2go/x2go_exceptions.py
++++ b/x2go/x2go_exceptions.py
+@@ -58,6 +58,7 @@ class X2goRevFwTunnelException(_X2goException): pass
+ class X2goPrintException(_X2goException): pass
+ class X2goPrintQueueException(_X2goException): pass
+ class X2goPrintActionException(_X2goException): pass
++class X2goProxyException(_X2goException): pass
+ class X2goMIMEboxActionException(_X2goException): pass
+ class X2goMIMEboxQueueException(_X2goException): pass
+ class X2goSSHProxyException(_X2goException): pass
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="025737.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-240-g5820e62
+</A></li>
+	<LI>Next message: <A HREF="025134.html">[X2Go-Commits] python-x2go.git - build-baikal (branch) updated:	0.1.1.4-250-g0294d5b
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25927">[ date ]</a>
+              <a href="thread.html#25927">[ thread ]</a>
+              <a href="subject.html#25927">[ subject ]</a>
+              <a href="author.html#25927">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2Go-commits
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,428 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-92-g64dbd1b
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/x2go-commits/2012-November/index.html" >
+   <LINK REL="made" HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.10-92-g64dbd1b&In-Reply-To=%3C20121126131746.051C65DB1A%40ymir%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="003733.html">
+   <LINK REL="Next"  HREF="003735.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-92-g64dbd1b</H1>
+    <B>X2Go dev team</B> 
+    <A HREF="mailto:x2go-commits%40lists.berlios.de?Subject=Re%3A%20%5BX2go-Commits%5D%20python-x2go.git%20-%20master%20%28branch%29%20updated%3A%0A%090.2.0.10-92-g64dbd1b&In-Reply-To=%3C20121126131746.051C65DB1A%40ymir%3E"
+       TITLE="[X2go-Commits] python-x2go.git - master (branch) updated:	0.2.0.10-92-g64dbd1b">git-admin at x2go.org
+       </A><BR>
+    <I>Mon Nov 26 14:17:45 CET 2012</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="003733.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-110-g19d9643
+</A></li>
+        <LI>Next message: <A HREF="003735.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-111-geaccadf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3734">[ date ]</a>
+              <a href="thread.html#3734">[ thread ]</a>
+              <a href="subject.html#3734">[ subject ]</a>
+              <a href="author.html#3734">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>The branch, master has been updated
+       via  64dbd1b29eeefb88427ee92a5ba0ccfef2cb309f (commit)
+      from  8b51f4435d5042e8f8a3d38767d8cf70d38a67b6 (commit)
+
+Those revisions listed above that are new to this repository have
+not appeared on any other notification email; so we list those
+revisions in full, below.
+
+- Log -----------------------------------------------------------------
+commit 64dbd1b29eeefb88427ee92a5ba0ccfef2cb309f
+Author: Mike Gabriel &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/x2go-commits">mike.gabriel at das-netzwerkteam.de</A>&gt;
+Date:   Mon Nov 26 14:17:35 2012 +0100
+
+    new connect option sshproxy_force_password_auth, improve detection code that tells if a session can auto-connect or not
+
+-----------------------------------------------------------------------
+
+Summary of changes:
+ x2go/backends/control/_stdout.py |   25 ++++++++++++------
+ x2go/client.py                   |    8 +++++-
+ x2go/session.py                  |   54 ++++++++++++++++----------------------
+ x2go/sshproxy.py                 |   27 ++++++++++++-------
+ 4 files changed, 64 insertions(+), 50 deletions(-)
+
+The diff of changes is:
+diff --git a/x2go/backends/control/_stdout.py b/x2go/backends/control/_stdout.py
+index b95e916..7e29166 100644
+--- a/x2go/backends/control/_stdout.py
++++ b/x2go/backends/control/_stdout.py
+@@ -613,7 +613,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+ 
+     def connect(self, hostname, port=22, username='', password='', pkey=None,
+                 key_filename=None, timeout=None, allow_agent=False, look_for_keys=False,
+-                use_sshproxy=False, sshproxy_host='', sshproxy_port=22, sshproxy_user='', sshproxy_password='',
++                use_sshproxy=False, sshproxy_host='', sshproxy_port=22, sshproxy_user='', sshproxy_password='', sshproxy_force_password_auth=False,
+                 sshproxy_key_filename='', sshproxy_pkey=None, sshproxy_look_for_keys=False, sshproxy_allow_agent=False,
+                 sshproxy_tunnel='',
+                 forward_sshagent=None,
+@@ -689,6 +689,8 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         @param sshproxy_password: a password to use for SSH proxy authentication or for unlocking
+             a private key
+         @type sshproxy_password: C{str}
++        @param sshproxy_force_password_auth: enforce using a given C{sshproxy_password} even if a key(file) is given
++        @type sshproxy_force_password_auth: C{bool}
+         @param sshproxy_key_filename: local file location of the private key file
+         @type sshproxy_key_filename: C{str}
+         @param sshproxy_pkey: an optional private key to use for SSH proxy authentication
+@@ -723,6 +725,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                                                               sshproxy_port=sshproxy_port,
+                                                               sshproxy_user=sshproxy_user,
+                                                               sshproxy_password=sshproxy_password,
++                                                              sshproxy_force_password_auth=sshproxy_force_password_auth,
+                                                               sshproxy_key_filename=sshproxy_key_filename,
+                                                               sshproxy_pkey=sshproxy_pkey,
+                                                               sshproxy_look_for_keys=sshproxy_look_for_keys,
+@@ -773,30 +776,36 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+         if forward_sshagent is not None:
+             self.forward_sshagent = forward_sshagent
+ 
+-        if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey or look_for_keys or allow_agent or (password and force_password_auth):
++        if key_filename or pkey or look_for_keys or allow_agent or (password and force_password_auth):
+             try:
+                 if password and force_password_auth:
+                     self.logger('trying keyboard-interactive SSH authentication with server', loglevel=log.loglevel_DEBUG)
+                     paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=None, password=password,
+                                                key_filename=None, timeout=timeout, allow_agent=False,
+                                                look_for_keys=False)
+-                elif key_filename or pkey:
++                elif (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
+                     self.logger('trying SSH pub/priv key authentication with server', loglevel=log.loglevel_DEBUG)
+                     paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=pkey,
+                                                key_filename=key_filename, timeout=timeout, allow_agent=allow_agent,
+                                                look_for_keys=look_for_keys)
+                 else:
+                     self.logger('trying SSH key discovery or agent authentication with server', loglevel=log.loglevel_DEBUG)
+-                    paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=None,
+-                                               key_filename=None, timeout=timeout, allow_agent=allow_agent,
+-                                               look_for_keys=look_for_keys)
++                    try:
++                        paramiko.SSHClient.connect(self, _hostname, port=port, username=username, pkey=None,
++                                                      key_filename=None, timeout=timeout, allow_agent=allow_agent,
++                                                      look_for_keys=look_for_keys)
++                    except paramiko.SSHException, e:
++                        if str(e) == 'No authentication methods available':
++                            raise paramiko.AuthenticationException('Interactive password authentication required!')
++                        else:
++                            raise(e)
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+                 t = self.get_transport()
+                 if x2go._paramiko.PARAMIKO_FEATURE['use-compression']:
+                     t.use_compression(compress=True)
+ 
+-            except (paramiko.AuthenticationException, paramiko.SSHException), e:
++            except paramiko.AuthenticationException, e:
+                 self.close()
+                 if password:
+                     self.logger('next auth mechanism we\'ll try is keyboard-interactive authentication', loglevel=log.loglevel_DEBUG)
+@@ -812,7 +821,7 @@ class X2goControlSessionSTDOUT(paramiko.SSHClient):
+                     self.close()
+                     if self.sshproxy_session:
+                         self.sshproxy_session.stop_thread()
+-                    raise(paramiko.AuthenticationException('Interactive password authentication required!'))
++                    raise(e)
+ 
+             except:
+                 self.close()
+diff --git a/x2go/client.py b/x2go/client.py
+index 8619e26..c1e5358 100644
+--- a/x2go/client.py
++++ b/x2go/client.py
+@@ -1283,7 +1283,9 @@ class X2goClient(object):
+                         sshproxy_user='',
+                         sshproxy_password='',
+                         add_to_known_hosts=False,
+-                        force_password_auth=False):
++                        force_password_auth=False,
++                        sshproxy_force_password_auth=False,
++                       ):
+         &quot;&quot;&quot;\
+         Connect to a registered X2Go session with registry hash C{session_uuid}
+         This method basically wraps around paramiko.SSHClient.connect() for the
+@@ -1307,6 +1309,9 @@ class X2goClient(object):
+         @param force_password_auth: disable SSH pub/priv key authentication mechanisms
+             completely
+         @type force_password_auth: C{bool}
++        @param sshproxy_force_password_auth: disable SSH pub/priv key authentication mechanisms
++            completely for SSH proxy connection
++        @type sshproxy_force_password_auth: C{bool}
+ 
+         @return: returns True if this method has been successful
+         @rtype: C{bool}
+@@ -1316,6 +1321,7 @@ class X2goClient(object):
+                                                                sshproxy_user=sshproxy_user, sshproxy_password=sshproxy_password,
+                                                                add_to_known_hosts=add_to_known_hosts,
+                                                                force_password_auth=force_password_auth,
++                                                               sshproxy_force_password_auth=sshproxy_force_password_auth,
+                                                               )
+         if self.auto_register_sessions:
+             self.session_registry.register_available_server_sessions(profile_name=self.get_session_profile_name(session_uuid),
+diff --git a/x2go/session.py b/x2go/session.py
+index 0348ae3..e1159f1 100644
+--- a/x2go/session.py
++++ b/x2go/session.py
+@@ -60,6 +60,9 @@ import gevent
+ import re
+ import threading
+ 
++# FIXME: we need the list of keys from a potentially used SSH agent. This part of code has to be moved into the control session code
++import paramiko
++
+ # Python X2Go modules
+ import defaults
+ import log
+@@ -67,7 +70,6 @@ import utils
+ import session
+ import x2go_exceptions
+ 
+-
+ from x2go.backends.control import X2goControlSession as _X2goControlSession
+ from x2go.backends.terminal import X2goTerminalSession as _X2goTerminalSession
+ from x2go.backends.info import X2goServerSessionInfo as _X2goServerSessionInfo
+@@ -1078,13 +1080,15 @@ class X2goSession(object):
+         if self.use_sshproxy:
+             if self.sshproxy_params.has_key('sshproxy_key_filename') and self.sshproxy_params['sshproxy_key_filename'] and os.path.exists(os.path.normpath(self.sshproxy_params['sshproxy_key_filename'])):
+                 return True
++            elif self.sshproxy_reuse_authinfo and self.control_params.has_key('key_filename') and self.control_params['key_filename'] and os.path.exists(os.path.normpath(self.control_params['key_filename'])):
++                return True
+             elif self.sshproxy_params.has_key('sshproxy_pkey') and self.sshproxy_params['sshproxy_pkey']:
+                 return True
+-            ### FIXME -- we do not know by 100%  if this will work just by checking the presence of ,,sshproxy_look_for_keys''...
+-            elif self.sshproxy_params.has_key('sshproxy_look_for_keys') and self.sshproxy_params['sshproxy_look_for_keys']:
++            elif self.sshproxy_reuse_authinfo and self.control_params.has_key('pkey') and self.control_params['pkey']:
++                return True
++            elif self.sshproxy_params.has_key('sshproxy_look_for_keys') and self.sshproxy_params['sshproxy_look_for_keys'] and (os.path.exists(os.path.expanduser('~/.ssh/id_rsa')) or os.path.exists(os.path.expanduser('~/.ssh/id_dsa'))):
+                 return True
+-            ### FIXME -- we do not know by 100% if this will work just by checking the presence of ,,sshproxy_allow_agent''...
+-            elif self.sshproxy_params.has_key('sshproxy_allow_agent') and self.sshproxy_params['sshproxy_allow_agent']:
++            elif self.sshproxy_params.has_key('sshproxy_allow_agent') and self.sshproxy_params['sshproxy_allow_agent'] and paramiko.Agent().get_keys():
+                 return True
+             else:
+                 return False
+@@ -1105,39 +1109,23 @@ class X2goSession(object):
+         if self.control_session is None:
+             return None
+ 
++        _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
++
+         # do we have a key file passed as control parameter?
+         if self.control_params.has_key('key_filename') and self.control_params['key_filename'] and os.path.exists(os.path.normpath(self.control_params['key_filename'])):
+-            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
+-            if _can_sshproxy_auto_connect is not None:
+-                return _can_sshproxy_auto_connect
+-            else:
+-                return True
++            return (_can_sshproxy_auto_connect is not None) or _can_sshproxy_auto_connect
+ 
+         # or a private key?
+         elif self.control_params.has_key('pkey') and self.control_params['pkey']:
+-            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
+-            if _can_sshproxy_auto_connect is not None:
+-                return _can_sshproxy_auto_connect
+-            else:
+-                return True
++            return (_can_sshproxy_auto_connect is not None) or _can_sshproxy_auto_connect
+ 
+         # or a key auto discovery?
+-        ### FIXME -- we do not know by 100% if this will work just by checking the presence of ,,look_for_keys''...
+-        elif self.control_params.has_key('look_for_keys') and self.control_params['look_for_keys']:
+-            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
+-            if _can_sshproxy_auto_connect is not None:
+-                return _can_sshproxy_auto_connect
+-            else:
+-                return True
++        elif self.control_params.has_key('look_for_keys') and self.control_params['look_for_keys'] and (os.path.exists(os.path.expanduser('~/.ssh/id_rsa')) or os.path.exists(os.path.expanduser('~/.ssh/id_dsa'))):
++            return (_can_sshproxy_auto_connect is not None) or _can_sshproxy_auto_connect
+ 
+-        # or a SSH agent usage?
+-        ### FIXME -- we do not know by 100% if this will work just by checking the presence of ,,allow_agent''...
+-        elif self.control_params.has_key('allow_agent') and self.control_params['allow_agent']:
+-            _can_sshproxy_auto_connect = self.can_sshproxy_auto_connect()
+-            if _can_sshproxy_auto_connect is not None:
+-                return _can_sshproxy_auto_connect
+-            else:
+-                return True
++        # or an SSH agent usage?
++        elif self.control_params.has_key('allow_agent') and self.control_params['allow_agent'] and paramiko.Agent().get_keys():
++            return (_can_sshproxy_auto_connect is not None) or _can_sshproxy_auto_connect
+ 
+         else:
+             return False
+@@ -1163,7 +1151,7 @@ class X2goSession(object):
+ 
+     def connect(self, username='', password='', add_to_known_hosts=False, force_password_auth=False,
+                 look_for_keys=None, allow_agent=None,
+-                use_sshproxy=None, sshproxy_reuse_authinfo=False, sshproxy_user='', sshproxy_password=''):
++                use_sshproxy=None, sshproxy_reuse_authinfo=False, sshproxy_user='', sshproxy_password='', sshproxy_force_password_auth=False):
+         &quot;&quot;&quot;\
+         Connects to the L{X2goSession}'s server host. This method basically wraps around 
+         the C{X2goControlSession*.connect()} method.
+@@ -1195,6 +1183,8 @@ class X2goSession(object):
+         @type sshproxy_user: C{str}
+         @param sshproxy_password: password for authentication against the SSH proxy host
+         @type sshproxy_password: C{str}
++        @param sshproxy_force_password_auth: enforce password authentication even is a key(file) is present
++        @type sshproxy_force_password_auth: C{bool}
+ 
+         @return: returns C{True} is the connection to the X2Go server has been successful
+         @rtype C{bool}
+@@ -1230,6 +1220,8 @@ class X2goSession(object):
+                 self.sshproxy_params['sshproxy_user'] = sshproxy_user
+             if sshproxy_password:
+                 self.sshproxy_params['sshproxy_password'] = sshproxy_password
++            if sshproxy_force_password_auth:
++                self.sshproxy_params['sshproxy_force_password_auth'] = sshproxy_force_password_auth
+ 
+             self.control_params['password'] = password
+ 
+diff --git a/x2go/sshproxy.py b/x2go/sshproxy.py
+index 67b5f75..df50f2b 100644
+--- a/x2go/sshproxy.py
++++ b/x2go/sshproxy.py
+@@ -54,11 +54,11 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+     &quot;&quot;&quot;
+     fw_tunnel = None
+ 
+-    def __init__(self, hostname=None, port=22, username=None, password=None, key_filename=None,
++    def __init__(self, hostname=None, port=22, username=None, password=None, force_password_auth=False, key_filename=None,
+                  local_host='localhost', local_port=22022, remote_host='localhost', remote_port=22,
+                  known_hosts=None, add_to_known_hosts=False, pkey=None, look_for_keys=False, allow_agent=False,
+                  sshproxy_host=None, sshproxy_port=22, sshproxy_user=None,
+-                 sshproxy_password=None, sshproxy_key_filename=None, sshproxy_pkey=None,
++                 sshproxy_password=None, sshproxy_force_password_auth=False, sshproxy_key_filename=None, sshproxy_pkey=None,
+                  sshproxy_look_for_keys=False, sshproxy_allow_agent=False,
+                  sshproxy_tunnel=None,
+                  ssh_rootdir=os.path.join(_LOCAL_HOME, _X2GO_SSH_ROOTDIR), 
+@@ -78,6 +78,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         @type key_filename: C{str}
+         @param pkey: a private DSA/RSA key object (as provided by Paramiko/SSH)
+         @type pkey: C{RSA/DSA key instance}
++        @param force_password_auth: enforce password authentication even if a key(file) is present
++        @type force_password_auth: C{bool}
+         @param look_for_keys: look for key files with standard names and try those if any can be found
+         @type look_for_keys: C{bool}
+         @param allow_agent: try authentication via a locally available SSH agent
+@@ -110,6 +112,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+         @type sshproxy_key_filename: C{str}
+         @param sshproxy_pkey: alias for C{pkey}
+         @type sshproxy_pkey: C{RSA/DSA key instance} (Paramiko)
++        @param sshproxy_force_password_auth: alias for C{force_password_auth}
++        @type sshproxy_force_password_auth: C{bool}
+         @param sshproxy_look_for_keys: alias for C{look_for_keys}
+         @type sshproxy_look_for_keys: C{bool}
+         @param sshproxy_allow_agent: alias for C{allow_agent}
+@@ -155,6 +159,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+ 
+         if sshproxy_user: self.username = sshproxy_user
+         if sshproxy_password: password = sshproxy_password
++        if sshproxy_force_password_auth: force_password_auth = sshproxy_force_password_auth
+         if sshproxy_key_filename: key_filename = sshproxy_key_filename
+         if sshproxy_pkey: pkey = sshproxy_pkey
+         if sshproxy_look_for_keys: look_for_keys = sshproxy_look_for_keys
+@@ -208,10 +213,10 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+             self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ 
+         try:
+-            if (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey or look_for_keys or allow_agent:
++            if key_filename or pkey or look_for_keys or allow_agent or (password and force_password_auth):
+                 try:
+-                    if password:
+-                        self.connect(_hostname, port=self.port, 
++                    if password and force_password_auth:
++                        self.connect(_hostname, port=self.port,
+                                      username=self.username,
+                                      password=password,
+                                      key_filename=None,
+@@ -219,8 +224,8 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                      look_for_keys=False,
+                                      allow_agent=False,
+                                     )
+-                    elif key_filename or pkey:
+-                        self.connect(_hostname, port=self.port, 
++                    elif (key_filename and os.path.exists(os.path.normpath(key_filename))) or pkey:
++                        self.connect(_hostname, port=self.port,
+                                      username=self.username, 
+                                      key_filename=key_filename,
+                                      pkey=pkey,
+@@ -228,7 +233,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                                      allow_agent=allow_agent,
+                                     )
+                     else:
+-                        self.connect(_hostname, port=self.port, 
++                        self.connect(_hostname, port=self.port,
+                                      username=self.username, 
+                                      look_for_keys=look_for_keys,
+                                      allow_agent=allow_agent,
+@@ -237,8 +242,10 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                 except x2go_exceptions.AuthenticationException, e:
+                     self.close()
+                     raise x2go_exceptions.X2goSSHProxyAuthenticationException('pubkey auth mechanisms both failed')
+-                except:
++                except x2go_exceptions.SSHException, e:
+                     self.close()
++                    raise x2go_exceptions.X2goSSHProxyAuthenticationException('interactive authentication required')
++                except:
+                     raise
+ 
+                 # since Paramiko 1.7.7.1 there is compression available, let's use it if present...
+@@ -265,7 +272,7 @@ class X2goSSHProxy(paramiko.SSHClient, threading.Thread):
+                     self.close()
+                     raise
+ 
+-        except x2go_exceptions.SSHException, e:
++        except (x2go_exceptions.SSHException, IOError), e:
+             self.close()
+             raise x2go_exceptions.X2goSSHProxyException(str(e))
+         except:
+
+
+hooks/post-receive
+-- 
+python-x2go.git (Python X2Go Client API)
+
+This is an automated email from the git hooks/post-receive script. It was
+generated because a ref change was pushed to the repository containing
+the project &quot;python-x2go.git&quot; (Python X2Go Client API).
+
+</PRE>
+
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="003733.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-110-g19d9643
+</A></li>
+	<LI>Next message: <A HREF="003735.html">[X2go-Commits] pyhoca-gui.git - master (branch) updated:	0.2.0.4-111-geaccadf
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3734">[ date ]</a>
+              <a href="thread.html#3734">[ thread ]</a>
+              <a href="subject.html#3734">[ subject ]</a>
+              <a href="author.html#3734">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/x2go-commits">More information about the X2go-commits
+mailing list</a><br>
+</body></html>
